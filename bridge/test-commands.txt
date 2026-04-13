@@ -1,0 +1,4 @@
+provider add local claude -- claude -p
+session create claude local
+status
+exit

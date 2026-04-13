@@ -1,0 +1,73 @@
+{
+  "replayTimestamp": "2026-04-11T11:52:04.466Z",
+  "trace": {
+    "id": "sample-error-recovery",
+    "timestamp": "2026-04-11T10:45:54.509Z",
+    "agentVersion": "1.0.0",
+    "actions": [
+      {
+        "tool": "file_read",
+        "params": {
+          "path": "nonexistent.txt"
+        }
+      },
+      {
+        "tool": "file_write",
+        "params": {
+          "path": "backup.txt",
+          "content": "recovered"
+        }
+      }
+    ],
+    "result": {
+      "success": true,
+      "totalSteps": 2
+    },
+    "environment": {
+      "nodeVersion": "v24.14.0",
+      "platform": "win32",
+      "arch": "x64"
+    }
+  },
+  "currentResult": {
+    "actions": [
+      {
+        "tool": "file_read",
+        "params": {
+          "path": "nonexistent.txt"
+        },
+        "success": false,
+        "error": "文件不存在"
+      },
+      {
+        "tool": "file_write",
+        "params": {
+          "path": "backup.txt",
+          "content": "recovered"
+        },
+        "success": true,
+        "result": {
+          "output": "执行 file_write 成功"
+        }
+      }
+    ],
+    "success": false,
+    "totalSteps": 2
+  },
+  "comparison": {
+    "matches": false,
+    "successChanged": true,
+    "stepsChanged": false,
+    "details": {
+      "original": {
+        "success": true,
+        "steps": 2
+      },
+      "current": {
+        "success": false,
+        "steps": 2
+      }
+    }
+  },
+  "agentVersion": "1.0.0"
+}

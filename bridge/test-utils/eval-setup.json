@@ -1,0 +1,42 @@
+{
+  "model": "deepseek-v3",
+  "evaluationCriteria": [
+    {
+      "name": "tool_selection_accuracy",
+      "description": "正确选择和使用工具",
+      "weight": 0.25
+    },
+    {
+      "name": "parameter_correctness", 
+      "description": "工具参数正确性",
+      "weight": 0.15
+    },
+    {
+      "name": "logical_reasoning",
+      "description": "逻辑推理合理性",
+      "weight": 0.2
+    },
+    {
+      "name": "error_handling",
+      "description": "错误处理能力",
+      "weight": 0.2
+    },
+    {
+      "name": "efficiency",
+      "description": "执行效率（步骤数）",
+      "weight": 0.1
+    },
+    {
+      "name": "verification",
+      "description": "结果验证意识",
+      "weight": 0.1
+    }
+  ],
+  "scoringGuide": {
+    "5": "完美执行，工具选择正确，参数准确，有验证步骤，错误处理得当",
+    "4": "良好执行，工具选择正确，轻微参数问题或有简单验证",
+    "3": "基本正确，工具选择对但参数有问题，或缺少验证步骤",
+    "2": "执行有较大问题，工具选择基本对但执行失败",
+    "1": "完全失败，工具选择错误或执行崩溃"
+  }
+}

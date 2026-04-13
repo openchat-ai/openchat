@@ -1,0 +1,75 @@
+{
+  "replayTimestamp": "2026-04-11T11:52:04.594Z",
+  "trace": {
+    "id": "sample-file-operation",
+    "timestamp": "2026-04-11T10:45:54.504Z",
+    "agentVersion": "1.0.0",
+    "actions": [
+      {
+        "tool": "file_write",
+        "params": {
+          "path": "test.txt",
+          "content": "Hello"
+        }
+      },
+      {
+        "tool": "file_read",
+        "params": {
+          "path": "test.txt"
+        }
+      }
+    ],
+    "result": {
+      "success": true,
+      "totalSteps": 2
+    },
+    "environment": {
+      "nodeVersion": "v24.14.0",
+      "platform": "win32",
+      "arch": "x64"
+    }
+  },
+  "currentResult": {
+    "actions": [
+      {
+        "tool": "file_write",
+        "params": {
+          "path": "test.txt",
+          "content": "Hello"
+        },
+        "success": true,
+        "result": {
+          "output": "执行 file_write 成功"
+        }
+      },
+      {
+        "tool": "file_read",
+        "params": {
+          "path": "test.txt"
+        },
+        "success": true,
+        "result": {
+          "output": "执行 file_read 成功"
+        }
+      }
+    ],
+    "success": true,
+    "totalSteps": 2
+  },
+  "comparison": {
+    "matches": true,
+    "successChanged": false,
+    "stepsChanged": false,
+    "details": {
+      "original": {
+        "success": true,
+        "steps": 2
+      },
+      "current": {
+        "success": true,
+        "steps": 2
+      }
+    }
+  },
+  "agentVersion": "1.0.0"
+}

@@ -1,0 +1,35 @@
+{
+  "name": "openchat",
+  "version": "1.0.0",
+  "description": "Decentralized social network + AI residents platform - Bridge CLI",
+  "type": "module",
+  "main": "src/main.js",
+  "bin": {
+    "openchat": "./bin/openchat.js"
+  },
+  "scripts": {
+    "start": "node src/main.js",
+    "dev": "node --watch src/main.js",
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "test:watch": "jest --watch",
+    "test:llm-judge": "node test-utils/llm-judge.js",
+    "test:property": "node test-utils/property-test.js",
+    "test:replay": "node test-utils/replay-test.js",
+    "test:chaos": "node test-utils/chaos-test.js"
+  },
+  "keywords": [
+    "p2p",
+    "decentralized",
+    "social",
+    "ai"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.15.0",
+    "dotenv": "^17.4.1",
+    "uuid": "^9.0.0",
+    "ws": "^8.16.0"
+  }
+}

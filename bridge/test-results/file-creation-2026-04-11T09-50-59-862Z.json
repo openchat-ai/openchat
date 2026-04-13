@@ -1,0 +1,23 @@
+{
+  "score": 4,
+  "feedback": "模拟评测: 执行良好，但有些工具选择可优化",
+  "breakdown": {
+    "tool_selection_accuracy": 4,
+    "parameter_correctness": 5,
+    "logical_reasoning": 4,
+    "error_handling": 3,
+    "efficiency": 4
+  },
+  "evaluationId": "961ffe9c-1e2d-46d7-a7c3-233a3ab7ce4e",
+  "testCase": {
+    "id": "file-creation",
+    "description": "创建并验证文件",
+    "prompt": "创建一个名为 test.txt 的文件，内容为 \"Hello World\"，然后验证文件内容是否正确",
+    "expectedActions": [
+      "file_write",
+      "file_read"
+    ],
+    "expectedOutcome": "文件内容应为 \"Hello World\""
+  },
+  "timestamp": "2026-04-11T09-50-59-862Z"
+}

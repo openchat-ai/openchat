@@ -1,0 +1,8 @@
+{
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "fast-check": "^4.6.0",
+    "jest": "^30.3.0",
+    "uuid": "^13.0.0"
+  }
+}

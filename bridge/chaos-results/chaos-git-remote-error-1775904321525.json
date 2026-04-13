@@ -1,0 +1,30 @@
+{
+  "timestamp": "2026-04-11T10:45:21.525Z",
+  "scenario": {
+    "id": "git-remote-error",
+    "description": "Git远程仓库错误",
+    "expectedRecovery": "应该检查权限或使用SSH密钥"
+  },
+  "testCase": {
+    "id": "basic-file-operation",
+    "description": "基础文件操作混沌测试"
+  },
+  "chaosResult": {
+    "scenario": "git-remote-error",
+    "normalResult": null,
+    "chaosInjected": true,
+    "error": "remote: Permission denied"
+  },
+  "recoveryResult": {
+    "attempts": [],
+    "successful": false,
+    "totalAttempts": 0
+  },
+  "testResult": {
+    "scenario": "git-remote-error",
+    "passed": false,
+    "recoveryAttempts": 0,
+    "successfulAttempts": 0,
+    "details": []
+  }
+}

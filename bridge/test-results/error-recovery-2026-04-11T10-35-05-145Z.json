@@ -1,0 +1,26 @@
+{
+  "score": 4,
+  "feedback": "DeepSeek API调用失败，使用模拟评估",
+  "breakdown": {
+    "tool_selection_accuracy": 4,
+    "parameter_correctness": 4,
+    "logical_reasoning": 4,
+    "error_handling": 3,
+    "efficiency": 4
+  },
+  "suggestions": [
+    "检查DeepSeek API连接"
+  ],
+  "evaluationId": "ab60190d-1372-4a10-87c1-8f3a3f844217",
+  "testCase": {
+    "id": "error-recovery",
+    "description": "错误恢复测试",
+    "prompt": "尝试读取一个不存在的文件，然后处理错误",
+    "expectedActions": [
+      "file_read",
+      "error_handling"
+    ],
+    "expectedOutcome": "正确处理文件不存在错误"
+  },
+  "timestamp": "2026-04-11T10-35-05-145Z"
+}

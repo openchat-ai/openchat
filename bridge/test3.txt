@@ -1,0 +1,4 @@
+provider list
+session create claude local
+chat <session_id> 你好
+exit

@@ -1,0 +1,24 @@
+{
+  "score": 4,
+  "feedback": "使用模拟评估",
+  "breakdown": {
+    "tool_selection_accuracy": 4,
+    "parameter_correctness": 4,
+    "logical_reasoning": 4,
+    "error_handling": 3,
+    "efficiency": 4
+  },
+  "evaluationId": "949628fa-01a0-4324-8b17-3d21b70dc673",
+  "testCase": {
+    "id": "git-operation",
+    "description": "基础的Git操作",
+    "prompt": "初始化一个Git仓库，添加一个文件并提交",
+    "expectedActions": [
+      "git_init",
+      "git_add",
+      "git_commit"
+    ],
+    "expectedOutcome": "成功创建提交"
+  },
+  "timestamp": "2026-04-11T10-41-26-859Z"
+}
