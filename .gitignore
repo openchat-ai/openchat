@@ -1,8 +1,8 @@
 node_modules/
 .env
+.env.local
 *.log
 .DS_Store
-/dist
 /build
 /.idea
 /.vscode
@@ -10,6 +10,33 @@ node_modules/
 *.swo
 *~
 .obsidian/
-rules.md
-research.md
-plan.md
+
+# Claude Code local files
+.claude/settings.local.json
+.claude/worktrees/
+.claude/plans/
+
+# Temporary documentation and test files
+AI_CONSTRAINTS_*.md
+AI_QUALITY_CHECK_SYSTEM.md
+AI_DEVELOPER_GUIDE.md
+PHASE*_SUMMARY.md
+FINAL_DELIVERY_SUMMARY.md
+IMPLEMENTATION_COMPLETE.md
+QUALITY_CHECK_QUICK_START.md
+CLAUDE_CODE_SKILL_DEPLOYMENT.md
+DOCUMENTATION_CLARIFICATION.md
+STATUS_CONVENTION.md
+UPDATE_SUMMARY_*.md
+
+# Test files
+test-*.js
+quality-check-skill.js
+quality-check-*.js
+monitor-cli.js
+
+# Editor temp files
+.swp
+.swo
+*~
+*.tmp

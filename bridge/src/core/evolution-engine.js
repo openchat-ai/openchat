@@ -1,12 +1,14 @@
 import { persistentConfig } from '../core/persistent-config.js';
 import { EvolutionMemory } from './evolution-memory.js';
+import SkillManager from './skill-manager.js';
 
 export class EvolutionEngine {
   constructor() {
     this.experiences = [];
-    this.skills = new Map(); // 存储进化出的技能
+    this.skillManager = new SkillManager(); // 使用持久化的 SkillManager
     this.memory = new EvolutionMemory(); // 添加记忆系统
     this.loadExperiences();  // 加载已有经验
+    this.loadSkills();       // 加载已有 Skills
   }
 
   // 任务完成后分析经验
@@ -102,18 +104,25 @@ export class EvolutionEngine {
     for (const pattern of patterns) {
       const skillName = `skill_${pattern.group.replace(/\s+/g, '_')}`;
       const successRate = pattern.tasks.filter(t => t.success).length / pattern.tasks.length;
-      
+
       if (successRate >= 0.6) { // 成功率60%以上
         const skill = {
           name: skillName,
           description: `针对任务模式: ${pattern.group}`,
           successRate,
           tasks: pattern.tasks.length,
-          createdAt: Date.now()
+          createdAt: new Date().toISOString()
         };
 
-        this.skills.set(skillName, skill);
+        this.skillManager.addSkill(skillName, skill);
       }
+    }
+
+    // 保存 Skills 到磁盘
+    try {
+      await this.skillManager.saveSkills();
+    } catch (error) {
+      console.error('Failed to save skills:', error);
     }
   }
 
@@ -121,13 +130,14 @@ export class EvolutionEngine {
   getAvailableSkills(task) {
     const matchingSkills = [];
     const taskLower = task.toLowerCase();
-    
-    for (const [name, skill] of this.skills) {
-      if (taskLower.includes(skill.description.toLowerCase().split(':')[1])) {
+    const allSkills = this.skillManager.getAllSkills();
+
+    allSkills.forEach(skill => {
+      if (taskLower.includes(skill.description.toLowerCase().split(':')[1] || '')) {
         matchingSkills.push(skill);
       }
-    }
-    
+    });
+
     return matchingSkills.sort((a, b) => b.successRate - a.successRate);
   }
 
@@ -150,18 +160,158 @@ export class EvolutionEngine {
     }
   }
 
+  // 加载已有 Skills
+  async loadSkills() {
+    try {
+      await this.skillManager.loadSkills();
+    } catch (error) {
+      console.error('Failed to load skills:', error);
+    }
+  }
+
   // 获取进化统计
   getStats() {
     const total = this.experiences.length;
     const successful = this.experiences.filter(e => e.success).length;
     const successRate = total > 0 ? (successful / total * 100).toFixed(1) : 0;
-    
+
     return {
       totalExperiences: total,
       successfulExperiences: successful,
       successRate: parseFloat(successRate),
-      skillsCount: this.skills.size,
+      skillsCount: this.skillManager.getAllSkills().length,
       recentPatterns: this.findTaskPatterns(this.experiences.slice(-20))
+    };
+  }
+}
+
+// 迭代2: 监控和可观测性
+class SystemMonitor {
+  constructor() {
+    this.events = [];
+    this.alerts = [];
+    this.thresholds = {
+      latency: 1000,
+      errorRate: 0.05,
+      memoryUsage: 0.8
+    };
+  }
+
+  /**
+   * 记录系统事件
+   */
+  recordEvent(eventType, data) {
+    this.events.push({
+      timestamp: new Date().toISOString(),
+      type: eventType,
+      data,
+      id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    });
+
+    if (this.events.length > 10000) {
+      this.events = this.events.slice(-5000);
+    }
+
+    return this.events[this.events.length - 1].id;
+  }
+
+  /**
+   * 检查并生成告警
+   */
+  checkThresholds(metrics) {
+    const issues = [];
+
+    if (metrics.latency > this.thresholds.latency) {
+      issues.push({ type: 'LATENCY', value: metrics.latency, threshold: this.thresholds.latency });
+    }
+    if (metrics.errorRate > this.thresholds.errorRate) {
+      issues.push({ type: 'ERROR_RATE', value: metrics.errorRate, threshold: this.thresholds.errorRate });
+    }
+    if (metrics.memoryUsage > this.thresholds.memoryUsage) {
+      issues.push({ type: 'MEMORY', value: metrics.memoryUsage, threshold: this.thresholds.memoryUsage });
+    }
+
+    if (issues.length > 0) {
+      this.alerts.push({
+        timestamp: new Date().toISOString(),
+        issues,
+        severity: issues.some(i => i.type === 'LATENCY') ? 'HIGH' : 'MEDIUM'
+      });
+    }
+
+    return issues;
+  }
+
+  /**
+   * 获取系统健康状态
+   */
+  getHealthStatus() {
+    const recentEvents = this.events.slice(-100);
+    const recentAlerts = this.alerts.slice(-10);
+
+    return {
+      totalEvents: this.events.length,
+      recentEventsCount: recentEvents.length,
+      activeAlerts: recentAlerts.length,
+      eventTypes: [...new Set(recentEvents.map(e => e.type))],
+      lastEvent: recentEvents[recentEvents.length - 1]?.timestamp
+    };
+  }
+}
+
+// 迭代5: 错误恢复增强
+class RobustErrorHandler {
+  constructor() {
+    this.errorLog = [];
+    this.recoveryStrategies = new Map();
+  }
+
+  /**
+   * 记录错误并尝试恢复
+   * @param {Error} error - 发生的错误
+   * @param {Function} recoveryFn - 恢复函数
+   * @returns {Promise<any>} 恢复结果
+   */
+  async handleAndRecover(error, recoveryFn) {
+    this.errorLog.push({
+      timestamp: new Date().toISOString(),
+      message: error.message,
+      stack: error.stack,
+      severity: this.assessSeverity(error)
+    });
+
+    if (this.errorLog.length > 1000) {
+      this.errorLog = this.errorLog.slice(-500);
+    }
+
+    try {
+      return await recoveryFn();
+    } catch (recoveryError) {
+      console.error('Recovery failed:', recoveryError);
+      throw error;
+    }
+  }
+
+  /**
+   * 评估错误严重程度
+   */
+  assessSeverity(error) {
+    const message = error.message.toLowerCase();
+    if (message.includes('critical') || message.includes('fatal')) return 'CRITICAL';
+    if (message.includes('error') || message.includes('fail')) return 'HIGH';
+    if (message.includes('warning')) return 'MEDIUM';
+    return 'LOW';
+  }
+
+  getErrorReport() {
+    return {
+      total: this.errorLog.length,
+      bySeverity: {
+        critical: this.errorLog.filter(e => e.severity === 'CRITICAL').length,
+        high: this.errorLog.filter(e => e.severity === 'HIGH').length,
+        medium: this.errorLog.filter(e => e.severity === 'MEDIUM').length,
+        low: this.errorLog.filter(e => e.severity === 'LOW').length,
+      }
     };
   }
 }

@@ -1,0 +1,112 @@
+{
+  "timestamp": "2026-04-22T09:25:05.933Z",
+  "checks": [
+    {
+      "file": "bridge/src/core/agent-engine.js",
+      "lineCount": 657,
+      "codeLines": 483,
+      "functions": 6,
+      "classes": 2,
+      "imports": 6,
+      "exports": 3,
+      "errorHandling": 25,
+      "asyncAwait": 56,
+      "documentationLines": 9,
+      "commentDensity": 0.1126331811263318,
+      "hasValidSyntax": true
+    },
+    {
+      "file": "bridge/src/core/evolution-engine.js",
+      "lineCount": 317,
+      "codeLines": 255,
+      "functions": 6,
+      "classes": 3,
+      "imports": 3,
+      "exports": 1,
+      "errorHandling": 11,
+      "asyncAwait": 12,
+      "documentationLines": 5,
+      "commentDensity": 0.0914826498422713,
+      "hasValidSyntax": true
+    },
+    {
+      "file": "bridge/src/core/quality-check-system.js",
+      "lineCount": 504,
+      "codeLines": 411,
+      "functions": 13,
+      "classes": 5,
+      "imports": 0,
+      "exports": 1,
+      "errorHandling": 14,
+      "asyncAwait": 22,
+      "documentationLines": 15,
+      "commentDensity": 0.061507936507936505,
+      "hasValidSyntax": true
+    }
+  ],
+  "anomalies": [
+    {
+      "type": "EXCESSIVE_LOGGING",
+      "file": "bridge/src/core/agent-engine.js",
+      "count": 20,
+      "severity": "LOW"
+    },
+    {
+      "type": "EXCESSIVE_LOGGING",
+      "file": "bridge/src/core/evolution-engine.js",
+      "count": 3,
+      "severity": "LOW"
+    }
+  ],
+  "codeExecutionTrace": [
+    {
+      "timestamp": "2026-04-22T09:25:23.789Z",
+      "testsPassed": 21,
+      "testsFailed": 0,
+      "duration": 14539.6588,
+      "executionSuccess": true
+    }
+  ],
+  "resourceUsage": [
+    {
+      "timestamp": "2026-04-22T09:25:23.965Z",
+      "heapUsed": 5781264,
+      "heapTotal": 8728576,
+      "external": 2007248,
+      "normal": 56848384
+    }
+  ],
+  "testCoverage": {
+    "codeLines": 1149,
+    "functions": 25,
+    "tests": 21,
+    "estimatedCoverage": 100
+  },
+  "gitDiff": {
+    "7dfdf3f": {
+      "additions": 643,
+      "deletions": 0,
+      "filesChanged": 2,
+      "netChange": 643
+    },
+    "e00a6ad": {
+      "additions": 74,
+      "deletions": 0,
+      "filesChanged": 1,
+      "netChange": 74
+    },
+    "5aae9d0": {
+      "additions": 791,
+      "deletions": 5,
+      "filesChanged": 6,
+      "netChange": 786
+    },
+    "6c5f687": {
+      "additions": 57,
+      "deletions": 0,
+      "filesChanged": 1,
+      "netChange": 57
+    }
+  },
+  "functionCalls": []
+}

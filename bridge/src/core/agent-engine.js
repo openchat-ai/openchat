@@ -3,6 +3,7 @@ import { memoryManager } from '../memory/memory-manager.js';
 import { sessionManager } from '../session/session-manager.js';
 import { PromptBuilder } from './prompt-builder.js';
 import { agentMonitor } from './agent-monitor.js';
+import { QualityChecker, Corrector } from './quality-check-system.js';
 
 /**
  * Agent 事件类型
@@ -35,6 +36,11 @@ export class AgentEngine {
     this.qualityThreshold = 4; // 低于这个分数会自动优化
     this.useRAG = options.useRAG !== false; // 默认启用 RAG
     this.useFunctionCalling = options.useFunctionCalling !== false; // 默认启用 FC
+
+    // ✨ 集成质量检查系统
+    this.qualityChecker = new QualityChecker(options.config || {});
+    this.corrector = new Corrector(options.config || {});
+    this.enableQualityCheck = options.enableQualityCheck !== false; // 默认启用
   }
 
   /**
@@ -228,6 +234,17 @@ export class AgentEngine {
       response: finalizedResponse,
       iterations: iteration
     });
+
+    // ✨ 质量检查与纠偏
+    if (this.enableQualityCheck && finalizedResponse) {
+      const qualityResult = await this._checkAndCorrectResponse(
+        finalizedResponse,
+        sessionId,
+        userId,
+        onEvent
+      );
+      finalizedResponse = qualityResult;
+    }
 
     await memoryManager.addMessage(sessionId, 'assistant', finalizedResponse);
     return finalizedResponse;
@@ -496,12 +513,145 @@ export class AgentEngine {
       
       console.log('[Agent] 自我优化完成');
       return optimizedResponse;
-      
+
     } catch (error) {
       console.log('[Agent] 优化失败:', error.message);
       return originalResponse; // 返回原始结果
     }
   }
+
+  /**
+   * ✨ 质量检查与纠偏
+   * @private
+   */
+  async _checkAndCorrectResponse(response, sessionId, userId, onEvent) {
+    try {
+      // 第 1 步: 检查质量
+      const check = await this.qualityChecker.check(response);
+
+      // 发送质量检查事件
+      onEvent({
+        type: 'quality_check',
+        score: check.score,
+        passed: check.passed,
+        issues: check.issues
+      });
+
+      console.log(`[QC] 质量检查: ${check.score}/100, 通过: ${check.passed}`);
+
+      if (check.passed) {
+        // ✅ 合格，直接返回
+        return response;
+      }
+
+      // ❌ 不合格，尝试纠偏
+      console.log(`[QC] 检测到质量问题: ${check.issues.join('; ')}`);
+
+      const session = sessionManager.getSession(sessionId);
+      const provider = sessionManager.getProvider(session.providerType);
+
+      // 第 2 步: 生成纠偏反馈
+      const feedback = this.corrector.generateFeedback(check.issues);
+
+      // 第 3 步: 让大模型重新生成
+      const messages = [
+        { role: 'system', content: await PromptBuilder.buildSystemPrompt(1) },
+        { role: 'user', content: feedback }
+      ];
+
+      const correctedResponse = await provider.chat(session.model, messages);
+      const newContent = correctedResponse.content;
+
+      // 发送纠偏事件
+      onEvent({
+        type: 'correction_attempt',
+        originalScore: check.score,
+        issues: check.issues
+      });
+
+      // 第 4 步: 再检查一次
+      const newCheck = await this.qualityChecker.check(newContent);
+
+      console.log(`[QC] 纠偏后: ${newCheck.score}/100, 通过: ${newCheck.passed}`);
+
+      if (newCheck.passed) {
+        // ✅ 纠偏成功
+        onEvent({
+          type: 'correction_success',
+          newScore: newCheck.score
+        });
+        return newContent;
+      }
+
+      // ❌ 纠偏失败，返回新内容（即使不完美）+ 错误提示
+      console.log(`[QC] 纠偏未达标，返回最佳版本`);
+
+      return newContent;
+
+    } catch (error) {
+      console.error('[QC] 质量检查异常:', error.message);
+      // 异常时直接返回原始响应
+      return response;
+    }
+  }
 }
 
 export const agentEngine = new AgentEngine();
+
+
+// 迭代1: 错误恢复增强
+class RobustErrorHandler {
+  constructor() {
+    this.errorLog = [];
+    this.recoveryStrategies = new Map();
+  }
+
+  /**
+   * 记录错误并尝试恢复
+   * @param {Error} error - 发生的错误
+   * @param {Function} recoveryFn - 恢复函数
+   * @returns {Promise<any>} 恢复结果
+   */
+  async handleAndRecover(error, recoveryFn) {
+    this.errorLog.push({
+      timestamp: new Date().toISOString(),
+      message: error.message,
+      stack: error.stack,
+      severity: this.assessSeverity(error)
+    });
+
+    if (this.errorLog.length > 1000) {
+      this.errorLog = this.errorLog.slice(-500);
+    }
+
+    try {
+      return await recoveryFn();
+    } catch (recoveryError) {
+      console.error('Recovery failed:', recoveryError);
+      throw error;
+    }
+  }
+
+  /**
+   * 评估错误严重程度
+   */
+  assessSeverity(error) {
+    const message = error.message.toLowerCase();
+    if (message.includes('critical') || message.includes('fatal')) return 'CRITICAL';
+    if (message.includes('error') || message.includes('fail')) return 'HIGH';
+    if (message.includes('warning')) return 'MEDIUM';
+    return 'LOW';
+  }
+
+  getErrorReport() {
+    return {
+      total: this.errorLog.length,
+      bySeverity: {
+        critical: this.errorLog.filter(e => e.severity === 'CRITICAL').length,
+        high: this.errorLog.filter(e => e.severity === 'HIGH').length,
+        medium: this.errorLog.filter(e => e.severity === 'MEDIUM').length,
+        low: this.errorLog.filter(e => e.severity === 'LOW').length,
+      }
+    };
+  }
+}

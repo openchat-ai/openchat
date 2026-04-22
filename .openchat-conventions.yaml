@@ -1,0 +1,266 @@
+conventions:
+  code:
+    max_lines_per_feature: 500
+    test_coverage_minimum: 90
+    must_include_tests: true
+    test_frameworks:
+      - jest
+      - mocha
+      - vitest
+
+  documentation:
+    status_marks:
+      allowed:
+        - "✅"  # 已完全实现并集成
+        - "⏱️"  # 可选功能/未来规划
+      forbidden:
+        - "❌"  # 仅用于"错误做法"示例
+        - "⚠️"  # 仅用于section标题
+        - "⏳"  # 废弃，改用⏱️
+        - "[ ]" # 废弃，用emoji而不用checkbox
+        - "[x]" # 废弃，用emoji而不用checkbox
+    required_updates:
+      on_code_change: true
+      on_feature_complete: true
+      doc_files:
+        - plan.md
+        - research.md
+        - rules.md
+        - arch.md
+
+  commits:
+    format: "type(scope): subject"
+    allowed_types:
+      - feat      # 新功能
+      - fix       # 修复bug
+      - docs      # 文档更新
+      - refactor  # 代码重构
+      - test      # 测试添加
+      - chore     # 其他
+    subject_min_length: 10
+    subject_max_length: 50
+    scope_required: true
+    body_required: false
+    co_author_required: true
+    co_author_format: "Co-Authored-By: Claude <noreply@anthropic.com>"
+
+  files:
+    required_headers:
+      - plan.md
+      - research.md
+      - rules.md
+      - arch.md
+    header_format: |
+      # 标题
+
+      > 简短描述
+      >
+      > **状态标记规范**（全局统一）：
+      > - ✅ = 已完全实现并集成
+      > - ⏱️ = 可选功能/未来规划
+      >
+      > 版本：X.X | 创建日期：YYYY-MM-DD | 最后更新：YYYY-MM-DD
+
+  # 🤖 AI 约束规范（新增）
+  ai_constraints:
+    # ✨ 新设计：极简质量检查系统
+    # 不需要预加载规范，不需要复杂路由
+    # 就是：接收输出 → 检查质量 → 不合格纠偏
+
+    quality_check:
+      # 核心配置：质量检查
+      enabled: true
+      strategy: "post_validation"  # 后置验证，不是前置预加载
+      on_fail: "correction"  # 不合格时纠偏，不是拒绝
+
+      # 通过阈值
+      pass_threshold: 80  # 0-100 分，80 分以上通过
+      correction_max_retries: 2  # 纠偏最多重试 2 次
+
+      # 质量检查项
+      checks:
+        - id: 1
+          name: "response_validation"
+          description: "响应质量验证"
+          weight: 20
+          rules:
+            - min_length: 1  # 任何长度都接受
+            - no_crash_keywords: ["FATAL", "SYSTEM ERROR"]
+            - no_empty_response: true
+
+        - id: 2
+          name: "skill_quality"
+          description: "代码质量检查（如果包含代码）"
+          weight: 20
+          trigger: "contains_code"  # 只在响应包含代码时检查
+          rules:
+            - max_lines: 500
+            - has_comments: true
+            - valid_syntax: true
+
+        - id: 3
+          name: "security"
+          description: "安全检查（如果包含代码）"
+          weight: 30
+          trigger: "contains_code"
+          rules:
+            - no_dangerous_patterns: true
+            - forbidden_operations:
+                - "rm -rf"
+                - "eval("
+                - "exec("
+
+        - id: 4
+          name: "format_compliance"
+          description: "格式规范"
+          weight: 15
+          rules:
+            - valid_json_if_json: true
+            - valid_markdown_if_markdown: true
+
+        - id: 5
+          name: "completeness"
+          description: "完整性检查"
+          weight: 15
+          rules:
+            - no_truncation: true
+            - all_parts_present: true
+
+    # 纠偏配置
+    correction:
+      strategy: "simple_feedback"  # 简单反馈，让大模型自己调整
+      feedback_format: "请重新回答。问题：{issues}"
+      max_corrections: 2
+
+    # 日志记录
+    logging:
+      log_quality_checks: true
+      log_corrections: true
+      log_location: "~/.openchat/logs/quality/"
+
+validation:
+  pre_commit_hook:
+    enabled: true
+    checks:
+      - status_marks_syntax
+      - commit_message_format
+      - code_line_count
+      - doc_header_format
+      - ai_constraint_compliance
+    fail_on_violation: true
+
+  auto_verify:
+    after_code_generation: true
+    checks:
+      - line_count_limit
+      - test_coverage
+      - doc_updates
+      - status_marks
+      - response_quality
+      - security_validation
+      - multi_model_consensus
+    auto_fix_minor_issues: true
+
+enforcement:
+  level: "strict"        # hard, medium, soft
+  allow_bypass: false    # 禁止--no-verify
+  require_manual_review: false
+  auto_reject_violations: true
+  ai_governance_level: "strict"
+
+rules:
+  short_steps:
+    description: "每个Step必须 < 500行代码"
+    enforcement: "hard"
+    violation_action: "reject"
+
+  status_marks:
+    description: "只用✅⏱️两种标记，禁止其他"
+    enforcement: "hard"
+    violation_action: "reject"
+
+  test_first:
+    description: "必须包含单元测试（>90%覆盖）"
+    enforcement: "hard"
+    violation_action: "reject"
+
+  doc_sync:
+    description: "代码和文档必须同时更新"
+    enforcement: "hard"
+    violation_action: "reject"
+
+  commit_format:
+    description: "Commit必须符合type(scope): subject格式"
+    enforcement: "hard"
+    violation_action: "reject"
+
+  # 新增 AI 约束规则
+  response_quality:
+    description: "AI响应必须满足质量标准"
+    enforcement: "hard"
+    violation_action: "reject"
+
+  instruction_compliance:
+    description: "AI必须遵守指定的指令（>90%遵守度）"
+    enforcement: "hard"
+    violation_action: "flag_and_review"
+
+  hallucination_detection:
+    description: "检测并标记潜在幻觉"
+    enforcement: "medium"
+    violation_action: "review_required"
+
+  security_validation:
+    description: "Skill必须通过8项安全检查"
+    enforcement: "hard"
+    violation_action: "reject"
+
+  multi_model_consensus:
+    description: "Skill必须获得多模型共识（≥70%）"
+    enforcement: "hard"
+    violation_action: "reject"
+
+  adversarial_testing:
+    description: "Skill必须通过对抗测试（≥90%）"
+    enforcement: "hard"
+    violation_action: "reject"
+
+  naming_convention:
+    description: "Skill命名必须符合规范"
+    enforcement: "medium"
+    violation_action: "warn_and_fix"
+
+  version_control:
+    description: "Skill版本号必须正确递增"
+    enforcement: "medium"
+    violation_action: "warn_and_fix"
+
+  dependency_safety:
+    description: "Skill依赖必须在白名单中"
+    enforcement: "hard"
+    violation_action: "reject"
+
+  error_handling:
+    description: "必须正确处理错误（有try-catch）"
+    enforcement: "hard"
+    violation_action: "reject"
+
+  logging_compliance:
+    description: "所有操作必须记录为JSON格式日志"
+    enforcement: "medium"
+    violation_action: "warn"
+
+  monitoring_metrics:
+    description: "必须跟踪8个关键指标"
+    enforcement: "medium"
+    violation_action: "alert"
+
+  evolution_trigger:
+    description: "只有满足条件才能触发Skill生成"
+    enforcement: "hard"
+    violation_action: "reject"
+
+  pattern_recognition:
+    description: "模式识别必须满足阈值"
+    enforcement: "hard"
+    violation_action: "reject"
