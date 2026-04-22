@@ -1,0 +1,26 @@
+#!/bin/sh
+# OpenChat 提交前自动测试
+
+echo "🔍 运行提交前检查..."
+
+# 1. Bridge 语法检查（秒级）
+echo "📦 检查 Bridge 语法..."
+cd bridge
+for file in src/core/agent-session.js src/core/agent-engine.js src/core/agent-monitor.js; do
+  node --check "$file" 2>/dev/null || {
+    echo "❌ 语法错误: $file"
+    exit 1
+  }
+done
+echo "✅ Bridge 语法检查通过"
+
+# 2. Bridge 单元测试（快速，~1秒）
+echo "🧪 运行 Bridge 单元测试..."
+node --test src/core/__tests__/*.test.mjs --test-reporter=tap 2>/dev/null || {
+  echo "❌ 单元测试失败"
+  exit 1
+}
+echo "✅ Bridge 单元测试通过"
+
+echo ""
+echo "✅ 所有检查通过！继续提交..."

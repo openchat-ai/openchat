@@ -1,14 +1,38 @@
 export const MessageType = {
+  // 连接
   BRIDGE_HANDSHAKE: 'bridge_handshake',
   BRIDGE_STATUS: 'bridge_status',
+
+  // Provider 管理
   PROVIDER_ADD: 'provider_add',
   PROVIDER_REMOVE: 'provider_remove',
   PROVIDER_LIST: 'provider_list',
+  PROVIDER_SYNC: 'provider_sync',
+
+  // Session 管理
   SESSION_CREATE: 'session_create',
   SESSION_CLOSE: 'session_close',
   SESSION_LIST: 'session_list',
+  SESSION_HISTORY: 'session_history',
+
+  // 聊天
   CHAT_MESSAGE: 'chat_message',
   CHAT_RESPONSE: 'chat_response',
+  CHAT_STREAM: 'chat_stream',       // 流式响应
+  CHAT_STREAM_END: 'chat_stream_end', // 流式结束
+
+  // 记忆/RAG
+  MEMORY_SAVE: 'memory_save',
+  MEMORY_QUERY: 'memory_query',
+  MEMORY_STATS: 'memory_stats',
+
+  // Agent
+  AGENT_SPAWN: 'agent_spawn',
+  AGENT_LIST: 'agent_list',
+  AGENT_SEND: 'agent_send',
+  AGENT_TERMINATE: 'agent_TERMINATE',
+
+  // 错误
   ERROR: 'error'
 };
 
@@ -44,14 +68,15 @@ export class MessageBuilder {
     return new BridgeMessage(MessageType.BRIDGE_HANDSHAKE, {
       clientId,
       capabilities,
-      version: 1
+      version: 2  // 升级版本号
     });
   }
 
-  static status(providers, sessions) {
+  static status(providers, sessions, memory = null) {
     return new BridgeMessage(MessageType.BRIDGE_STATUS, {
       providers,
       sessions,
+      memory,
       uptime: process.uptime()
     });
   }
@@ -69,6 +94,37 @@ export class MessageBuilder {
       content,
       metadata
     }, sessionId);
+  }
+
+  // 流式响应
+  static chatStream(sessionId, chunk, isDone = false) {
+    return new BridgeMessage(
+      isDone ? MessageType.CHAT_STREAM_END : MessageType.CHAT_STREAM,
+      { chunk, isDone },
+      sessionId
+    );
+  }
+
+  // 记忆操作
+  static memorySave(fact, id) {
+    return new BridgeMessage(MessageType.MEMORY_SAVE, { fact, id });
+  }
+
+  static memoryQuery(results) {
+    return new BridgeMessage(MessageType.MEMORY_QUERY, { results });
+  }
+
+  static memoryStats(stats) {
+    return new BridgeMessage(MessageType.MEMORY_STATS, stats);
+  }
+
+  // Agent
+  static agentSpawned(agentId, config) {
+    return new BridgeMessage(MessageType.AGENT_SPAWN, { agentId, config });
+  }
+
+  static agentList(agents) {
+    return new BridgeMessage(MessageType.AGENT_LIST, { agents });
   }
 
   static error(message, code = 'UNKNOWN_ERROR') {

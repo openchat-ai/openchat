@@ -168,21 +168,20 @@ class ContactsScreen extends ConsumerWidget {
     );
   }
 
-  void _openChat(BuildContext context, UserIdentity contact) {
+  void _openChat(BuildContext context, Identity contact) {
     Navigator.pushNamed(
       context,
       '/chat',
       arguments: {
-        'peerId': contact.peerId,
+        'id': contact.id,
         'name': contact.name,
-        'isAi': contact.isAi,
       },
     );
   }
 }
 
 class _ContactTile extends StatelessWidget {
-  final UserIdentity contact;
+  final Identity contact;
   final VoidCallback onTap;
 
   const _ContactTile({required this.contact, required this.onTap});
@@ -193,7 +192,7 @@ class _ContactTile extends StatelessWidget {
       onTap: onTap,
       leading: CircleAvatar(
         radius: 24,
-        backgroundColor: contact.isAi ? AppColors.secondary : AppColors.primary,
+        backgroundColor: AppColors.primary,
         child: Text(
           contact.name.isNotEmpty ? contact.name[0].toUpperCase() : '?',
           style: const TextStyle(
@@ -214,23 +213,10 @@ class _ContactTile extends StatelessWidget {
               ),
             ),
           ),
-          if (contact.isAi)
-            Container(
-              margin: const EdgeInsets.only(left: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: AppColors.secondary.withAlpha(51),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Text(
-                'AI',
-                style: TextStyle(fontSize: 10, color: AppColors.secondary),
-              ),
-            ),
         ],
       ),
       subtitle: Text(
-        contact.personality,
+        contact.id,
         style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
       ),
       trailing: Row(

@@ -6,7 +6,7 @@ class StorageService {
   static const String _contactsBoxName = 'contacts';
   static const String _settingsBoxName = 'settings';
 
-  static const String _identityKey = 'user_identity';
+  static const String _identityKey = 'identity';
 
   Box<Map>? _identityBox;
   Box<Map>? _contactsBox;
@@ -15,7 +15,6 @@ class StorageService {
 
   Future<void> init() async {
     if (_initialized) return;
-
     await Hive.initFlutter();
     _identityBox = await Hive.openBox<Map>(_identityBoxName);
     _contactsBox = await Hive.openBox<Map>(_contactsBoxName);
@@ -23,14 +22,14 @@ class StorageService {
     _initialized = true;
   }
 
-  Future<UserIdentity?> getIdentity() async {
+  Future<Identity?> getIdentity() async {
     if (!_initialized) await init();
     final data = _identityBox?.get(_identityKey);
     if (data == null) return null;
-    return UserIdentity.fromJson(Map<String, dynamic>.from(data));
+    return Identity.fromJson(Map<String, dynamic>.from(data));
   }
 
-  Future<void> saveIdentity(UserIdentity identity) async {
+  Future<void> saveIdentity(Identity identity) async {
     if (!_initialized) await init();
     await _identityBox?.put(_identityKey, identity.toJson());
   }
@@ -40,31 +39,31 @@ class StorageService {
     await _identityBox?.delete(_identityKey);
   }
 
-  Future<List<UserIdentity>> getContacts() async {
+  Future<List<Identity>> getContacts() async {
     if (!_initialized) await init();
-    final contacts = <UserIdentity>[];
+    final contacts = <Identity>[];
     for (final key in _contactsBox?.keys ?? []) {
       final data = _contactsBox?.get(key);
       if (data != null) {
-        contacts.add(UserIdentity.fromJson(Map<String, dynamic>.from(data)));
+        contacts.add(Identity.fromJson(Map<String, dynamic>.from(data)));
       }
     }
     return contacts;
   }
 
-  Future<void> addContact(UserIdentity contact) async {
+  Future<void> addContact(Identity contact) async {
     if (!_initialized) await init();
-    await _contactsBox?.put(contact.peerId, contact.toJson());
+    await _contactsBox?.put(contact.id, contact.toJson());
   }
 
-  Future<void> updateContact(UserIdentity contact) async {
+  Future<void> updateContact(Identity contact) async {
     if (!_initialized) await init();
-    await _contactsBox?.put(contact.peerId, contact.toJson());
+    await _contactsBox?.put(contact.id, contact.toJson());
   }
 
-  Future<void> removeContact(String peerId) async {
+  Future<void> removeContact(String id) async {
     if (!_initialized) await init();
-    await _contactsBox?.delete(peerId);
+    await _contactsBox?.delete(id);
   }
 
   Future<T?> getSetting<T>(String key) async {

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:openchat/providers/bridge_provider.dart';
 import 'package:openchat/ui/theme/colors.dart';
+import 'package:openchat/ui/screens/settings/provider_settings_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -35,6 +37,15 @@ class SettingsScreen extends ConsumerWidget {
           _buildSection(
             title: 'AI Settings',
             children: [
+              _buildTile(
+                icon: Icons.api,
+                title: 'AI 服务商',
+                subtitle: ref.watch(currentProviderProvider) ?? '未配置',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ProviderSettingsScreen()),
+                ),
+              ),
               _buildTile(
                 icon: Icons.smart_toy,
                 title: 'AI List',
@@ -139,12 +150,16 @@ class SettingsScreen extends ConsumerWidget {
   Widget _buildTile({
     required IconData icon,
     required String title,
+    String? subtitle,
     Widget? trailing,
     VoidCallback? onTap,
   }) {
     return ListTile(
       leading: Icon(icon, color: AppColors.primary),
       title: Text(title),
+      subtitle: subtitle != null
+          ? Text(subtitle, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12))
+          : null,
       trailing:
           trailing ??
           const Icon(Icons.chevron_right, color: AppColors.textSecondary),

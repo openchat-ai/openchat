@@ -20,6 +20,14 @@ class MessagesNotifier extends StateNotifier<Map<String, List<Message>>> {
     };
   }
 
+  void removeMessage(String peerId, String messageId) {
+    final messages = state[peerId] ?? [];
+    state = {
+      ...state,
+      peerId: messages.where((m) => m.id != messageId).toList(),
+    };
+  }
+
   void markAsRead(String peerId, String messageId) {
     final messages = state[peerId] ?? [];
     final message = messages.firstWhere((m) => m.id == messageId);

@@ -1,119 +1,152 @@
 import 'package:equatable/equatable.dart';
 
-class UserIdentity extends Equatable {
-  final String peerId;
+class Identity extends Equatable {
+  final String id;
   final String name;
   final String? avatar;
-  final String personality;
   final String publicKey;
-  final bool isAi;
   final bool isOnline;
   final DateTime createdAt;
+  final String? parentId;                  // 父 AI ID（null 表示主 AI）
+  final String? providerId;                // 服务商 ID
+  final String? model;                     // 模型名称
+  final Map<String, dynamic>? config;      // 个性化配置
 
-  const UserIdentity({
-    required this.peerId,
+  const Identity({
+    required this.id,
     required this.name,
     this.avatar,
-    this.personality = 'friendly',
     required this.publicKey,
-    this.isAi = false,
     this.isOnline = true,
     required this.createdAt,
+    this.parentId,
+    this.providerId,
+    this.model,
+    this.config,
   });
 
-  UserIdentity copyWith({
-    String? peerId,
+  bool get isMainAi => parentId == null;
+
+  Identity copyWith({
+    String? id,
     String? name,
     String? avatar,
-    String? personality,
     String? publicKey,
-    bool? isAi,
     bool? isOnline,
     DateTime? createdAt,
+    String? parentId,
+    String? providerId,
+    String? model,
+    Map<String, dynamic>? config,
   }) {
-    return UserIdentity(
-      peerId: peerId ?? this.peerId,
+    return Identity(
+      id: id ?? this.id,
       name: name ?? this.name,
       avatar: avatar ?? this.avatar,
-      personality: personality ?? this.personality,
       publicKey: publicKey ?? this.publicKey,
-      isAi: isAi ?? this.isAi,
       isOnline: isOnline ?? this.isOnline,
       createdAt: createdAt ?? this.createdAt,
+      parentId: parentId ?? this.parentId,
+      providerId: providerId ?? this.providerId,
+      model: model ?? this.model,
+      config: config ?? this.config,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'peerId': peerId,
+      'id': id,
       'name': name,
       'avatar': avatar,
-      'personality': personality,
       'publicKey': publicKey,
-      'isAi': isAi,
       'isOnline': isOnline,
       'createdAt': createdAt.toIso8601String(),
+      'parentId': parentId,
+      'providerId': providerId,
+      'model': model,
+      'config': config,
     };
   }
 
-  factory UserIdentity.fromJson(Map<String, dynamic> json) {
-    return UserIdentity(
-      peerId: json['peerId'] as String,
+  factory Identity.fromJson(Map<String, dynamic> json) {
+    return Identity(
+      id: json['id'] as String,
       name: json['name'] as String,
       avatar: json['avatar'] as String?,
-      personality: json['personality'] as String? ?? 'friendly',
       publicKey: json['publicKey'] as String,
-      isAi: json['isAi'] as bool? ?? false,
       isOnline: json['isOnline'] as bool? ?? true,
       createdAt: DateTime.parse(json['createdAt'] as String),
+      parentId: json['parentId'] as String?,
+      providerId: json['providerId'] as String?,
+      model: json['model'] as String?,
+      config: json['config'] as Map<String, dynamic>?,
     );
   }
 
-  static Future<UserIdentity> create({
+  static Future<Identity> create({
     required String name,
     String? avatar,
-    String personality = 'friendly',
-    bool isAi = false,
+    String? parentId,
+    String? providerId,
+    String? model,
+    Map<String, dynamic>? config,
   }) async {
-    final peerId = 'did:key:${DateTime.now().millisecondsSinceEpoch}';
-    final publicKey = 'pk_${DateTime.now().millisecondsSinceEpoch}';
+    final now = DateTime.now();
+    final seconds = (now.millisecondsSinceEpoch ~/ 1000).toString().padLeft(10, '0');
+    final micro = (now.microsecondsSinceEpoch % 1000000).toString().padLeft(6, '0');
+    final id16 = seconds + micro;
 
-    return UserIdentity(
-      peerId: peerId,
+    return Identity(
+      id: id16,
       name: name,
       avatar: avatar,
-      personality: personality,
-      publicKey: publicKey,
-      isAi: isAi,
-      createdAt: DateTime.now(),
+      publicKey: 'pk_$id16',
+      createdAt: now,
+      parentId: parentId,
+      providerId: providerId,
+      model: model,
+      config: config,
     );
-  }
-
-  static Future<UserIdentity> createAi({
-    required String name,
-    String? apiKey,
-  }) async {
-    return create(name: name, isAi: true);
-  }
-
-  static Future<UserIdentity> importFromPrivateKey({
-    required String privateKeyHex,
-    required String name,
-    String? avatar,
-    String personality = 'friendly',
-  }) async {
-    return create(name: name, avatar: avatar, personality: personality);
   }
 
   @override
   List<Object?> get props => [
-    peerId,
-    name,
-    avatar,
-    personality,
-    publicKey,
-    isAi,
-    isOnline,
-    createdAt,
-  ];
+        id,
+        name,
+        avatar,
+        publicKey,
+        isOnline,
+        createdAt,
+        parentId,
+        providerId,
+        model,
+        config,
+      ];
+}
+
+class AiConfig extends Equatable {
+  final String providerId;
+  final String? model;
+  final Map<String, dynamic>? config;
+
+  const AiConfig({
+    required this.providerId,
+    this.model,
+    this.config,
+  });
+
+  AiConfig copyWith({
+    String? providerId,
+    String? model,
+    Map<String, dynamic>? config,
+  }) {
+    return AiConfig(
+      providerId: providerId ?? this.providerId,
+      model: model ?? this.model,
+      config: config ?? this.config,
+    );
+  }
+
+  @override
+  List<Object?> get props => [providerId, model, config];
 }

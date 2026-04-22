@@ -10,13 +10,15 @@
   "scripts": {
     "start": "node src/main.js",
     "dev": "node --watch src/main.js",
-    "test": "jest",
-    "test:coverage": "jest --coverage",
-    "test:watch": "jest --watch",
+    "test": "node --test src/core/__tests__/*.test.mjs",
+    "test:watch": "node --test --watch src/core/__tests__/*.test.mjs",
+    "test:unit": "node test-agent-session.js && node test-agent-monitor.js",
     "test:llm-judge": "node test-utils/llm-judge.js",
     "test:property": "node test-utils/property-test.js",
     "test:replay": "node test-utils/replay-test.js",
-    "test:chaos": "node test-utils/chaos-test.js"
+    "test:chaos": "node test-utils/chaos-test.js",
+    "test:all": "npm run test:unit && npm run test:llm-judge && npm run test:chaos",
+    "prepare": "husky"
   },
   "keywords": [
     "p2p",
@@ -31,5 +33,10 @@
     "dotenv": "^17.4.1",
     "uuid": "^9.0.0",
     "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "husky": "^9.1.7",
+    "jest": "^30.3.0"
   }
 }

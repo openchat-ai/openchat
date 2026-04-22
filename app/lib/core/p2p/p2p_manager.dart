@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 enum P2PConnectionState { disconnected, connecting, connected, failed, closed }
 
@@ -40,12 +42,33 @@ class SignalingMessage {
 }
 
 class PeerConnectionConfig {
-  final Map<String, dynamic> rtcConfiguration = {
-    'iceServers': [
-      {'urls': 'stun:stun.l.google.com:19302'},
-      {'urls': 'stun:stun1.l.google.com:19302'},
-    ],
-  };
+  final List<Map<String, dynamic>> iceServers;
+
+  PeerConnectionConfig({
+    List<Map<String, dynamic>>? iceServers,
+  }) : iceServers = iceServers ?? _getDefaultServers();
+
+  /// 默认使用公共 STUN 服务器（非 Google）
+  static List<Map<String, dynamic>> _getDefaultServers() {
+    return [
+      // Open source STUN servers
+      {'urls': 'stun:stun.voip.eutelia.it:3478'},
+      {'urls': 'stun:stun.sipnet.net:3478'},
+      {'urls': 'stun:stun.ekiga.net:3478'},
+      // 用户可配置自建服务器
+    ];
+  }
+
+  /// 添加自建 TURN 服务器（用于 NAT 穿透困难场景）
+  void addTurnServer(String url, String username, String credential) {
+    iceServers.add({
+      'urls': url,
+      'username': username,
+      'credential': credential,
+    });
+  }
+
+  Map<String, dynamic> get rtcConfiguration => {'iceServers': iceServers};
 }
 
 class P2PMessage {
@@ -83,13 +106,20 @@ class P2PMessage {
 class P2PPeerConnection {
   final String peerId;
   final String myPeerId;
+  final PeerConnectionConfig config;
   RTCPeerConnection? _pc;
   RTCDataChannel? _dataChannel;
   final _messageController = StreamController<P2PMessage>.broadcast();
   final _stateController = StreamController<P2PConnectionState>.broadcast();
   P2PConnectionState _state = P2PConnectionState.disconnected;
+  void Function(RTCIceCandidate)? onIceCandidate;
 
-  P2PPeerConnection({required this.peerId, required this.myPeerId});
+  P2PPeerConnection({
+    required this.peerId,
+    required this.myPeerId,
+    PeerConnectionConfig? config,
+    this.onIceCandidate,
+  }) : config = config ?? PeerConnectionConfig();
 
   Stream<P2PMessage> get messages => _messageController.stream;
   Stream<P2PConnectionState> get state => _stateController.stream;
@@ -97,7 +127,7 @@ class P2PPeerConnection {
   bool get isConnected => _state == P2PConnectionState.connected;
 
   Future<void> initialize() async {
-    _pc = await createPeerConnection(PeerConnectionConfig().rtcConfiguration);
+    _pc = await createPeerConnection(config.rtcConfiguration);
 
     _pc!.onIceCandidate = (candidate) {
       _onIceCandidate(candidate);
@@ -135,7 +165,9 @@ class P2PPeerConnection {
   }
 
   void _onIceCandidate(RTCIceCandidate candidate) {
-    // ICE candidate will be sent to signaling server
+    if (onIceCandidate != null) {
+      onIceCandidate!(candidate);
+    }
   }
 
   void _setupDataChannel(RTCDataChannel channel) {
@@ -151,7 +183,7 @@ class P2PPeerConnection {
   void _handleDataChannelMessage(RTCDataChannelMessage message) {
     try {
       final data = Map<String, dynamic>.from(
-        message.type == 'text'
+        message.type == MessageType.text
             ? _parseJson(message.text)
             : _parseJson(_decodeBase64(message.binary)),
       );
@@ -167,8 +199,12 @@ class P2PPeerConnection {
   }
 
   Map<String, dynamic> _jsonDecode(String text) {
-    // Simple JSON decoder
-    return {};
+    if (text.isEmpty) return {};
+    try {
+      return jsonDecode(text) as Map<String, dynamic>;
+    } catch (e) {
+      return {};
+    }
   }
 
   String _decodeBase64(Uint8List data) {
@@ -261,41 +297,152 @@ class P2PPeerConnection {
   }
 }
 
-abstract class SignalingClient {
+/// WebSocket signaling client that connects to the Bridge server
+class BridgeSignalingClient {
   final String serverUrl;
   final String myPeerId;
   final Function(SignalingMessage)? onMessage;
 
-  SignalingClient({
+  WebSocketChannel? _channel;
+  bool _connected = false;
+
+  BridgeSignalingClient({
     required this.serverUrl,
     required this.myPeerId,
     this.onMessage,
   });
 
-  Future<void> connect();
-  void send(SignalingMessage message);
-  Future<void> disconnect();
+  bool get isConnected => _connected;
+
+  Future<void> connect() async {
+    try {
+      _channel = WebSocketChannel.connect(Uri.parse(serverUrl));
+      _connected = true;
+
+      _channel!.stream.listen(
+        (data) {
+          try {
+            final json = jsonDecode(data as String) as Map<String, dynamic>;
+            if (json['type'] == 'signaling_message') {
+              final msg = SignalingMessage.fromJson(json['data'] as Map<String, dynamic>);
+              if (msg.toPeerId == null || msg.toPeerId == myPeerId) {
+                onMessage?.call(msg);
+              }
+            }
+          } catch (e) {
+            debugPrint('[Signaling] Failed to parse message: $e');
+          }
+        },
+        onError: (e) {
+          debugPrint('[Signaling] WebSocket error: $e');
+          _connected = false;
+        },
+        onDone: () {
+          _connected = false;
+        },
+      );
+
+      // Announce presence
+      final hello = SignalingMessage(
+        type: SignalingMessageType.bye, // repurposed as hello
+        fromPeerId: myPeerId,
+        payload: {'action': 'register'},
+      );
+      send(hello);
+
+      debugPrint('[Signaling] Connected to $serverUrl');
+    } catch (e) {
+      debugPrint('[Signaling] Connection failed: $e');
+      _connected = false;
+    }
+  }
+
+  void send(SignalingMessage message) {
+    if (!_connected || _channel == null) {
+      debugPrint('[Signaling] Not connected, cannot send');
+      return;
+    }
+    final json = jsonEncode({
+      'type': 'signaling_message',
+      'data': message.toJson(),
+    });
+    _channel!.sink.add(json);
+  }
+
+  Future<void> disconnect() async {
+    await _channel?.sink.close();
+    _connected = false;
+  }
 }
 
 class P2PManager {
   final String myPeerId;
-  final SignalingClient? signalingClient;
+  final BridgeSignalingClient? signalingClient;
+  final PeerConnectionConfig config;
   final Map<String, P2PPeerConnection> _connections = {};
   final _peerAddedController = StreamController<String>.broadcast();
   final _peerRemovedController = StreamController<String>.broadcast();
 
-  P2PManager({required this.myPeerId, this.signalingClient});
+  P2PManager({
+    required this.myPeerId,
+    BridgeSignalingClient? this.signalingClient,
+    PeerConnectionConfig? config,
+  }) : config = config ?? PeerConnectionConfig();
 
   Stream<String> get peerAdded => _peerAddedController.stream;
   Stream<String> get peerRemoved => _peerRemovedController.stream;
+
+  /// 配置自建 STUN/TURN 服务器
+  void configureIceServers(List<Map<String, dynamic>> servers) {
+    for (final server in servers) {
+      config.iceServers.add(server);
+    }
+  }
+
+  /// 添加自建 TURN 服务器
+  void addTurnServer(String url, String username, String credential) {
+    config.addTurnServer(url, username, credential);
+  }
 
   Future<P2PPeerConnection> connectToPeer(String peerId) async {
     if (_connections.containsKey(peerId)) {
       return _connections[peerId]!;
     }
 
-    final conn = P2PPeerConnection(peerId: peerId, myPeerId: myPeerId);
+    final conn = P2PPeerConnection(
+      peerId: peerId,
+      myPeerId: myPeerId,
+      config: config,
+      onIceCandidate: (candidate) {
+        // Forward ICE candidate through signaling
+        if (signalingClient != null) {
+          final msg = SignalingMessage(
+            type: SignalingMessageType.iceCandidate,
+            fromPeerId: myPeerId,
+            toPeerId: peerId,
+            payload: {
+              'candidate': candidate.candidate,
+              'sdpMid': candidate.sdpMid,
+              'sdpMLineIndex': candidate.sdpMLineIndex,
+            },
+          );
+          signalingClient!.send(msg);
+        }
+      },
+    );
     await conn.initialize();
+
+    // If we have a signaling client, initiate WebRTC offer
+    if (signalingClient != null && signalingClient!.isConnected) {
+      final offer = await conn.createOffer();
+      final msg = SignalingMessage(
+        type: SignalingMessageType.offer,
+        fromPeerId: myPeerId,
+        toPeerId: peerId,
+        payload: {'sdp': offer.sdp, 'type': offer.type},
+      );
+      signalingClient!.send(msg);
+    }
 
     _connections[peerId] = conn;
     _peerAddedController.add(peerId);

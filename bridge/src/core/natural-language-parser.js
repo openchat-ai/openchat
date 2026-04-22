@@ -1,44 +1,76 @@
 const COMMAND_ALIASES = {
-  'status': { action: 'status' },
+  // Navigation
   'help': { action: 'help' },
+  '?': { action: 'help' },
+  'status': { action: 'status' },
+  's': { action: 'status' },
   'exit': { action: 'exit' },
   'quit': { action: 'exit' },
+  'q': { action: 'exit' },
   'clear': { action: 'clear' },
+  'cls': { action: 'clear' },
 
-  'providers': { action: 'provider_list' },
-  'ls providers': { action: 'provider_list' },
+  // Core commands
+  'm': { action: 'model' },
+  'model': { action: 'model' },
+  'models': { action: 'model' },
+  'p': { action: 'provider' },
+  'provider': { action: 'provider' },
+  'providers': { action: 'provider' },
+  'connect': { action: 'connect' },
+  'conn': { action: 'connect' },
+  'a': { action: 'agent' },
+  'agent': { action: 'agent' },
+  'agents': { action: 'agent' },
+  'mem': { action: 'mem' },
+  'memory': { action: 'mem' },
 
-  'models': { action: 'model_list' },
-  'ls models': { action: 'model_list' },
-
-  'use': { action: 'provider_add' },
-  'use siliconflow': { action: 'provider_add', provider: 'siliconflow' },
-  'use deepseek': { action: 'provider_add', provider: 'deepseek' },
-  'use openai': { action: 'provider_add', provider: 'openai' },
-  'use groq': { action: 'provider_add', provider: 'groq' },
-
-  'switch': { action: 'model_switch' },
-
-  'new': { action: 'session_create' },
-  'sessions': { action: 'session_list' },
-
-  'spawn': { action: 'agent_spawn' },
-  'agents': { action: 'agent_list' },
-  'parallel': { action: 'parallel_mode' },
-  'do': { action: 'agent_task' },
-
-  'config': { action: 'config' },
+  // Expert commands
+  'cfg': { action: 'config' },
+  'cfg set': { action: 'config_set' },
+  'cfg get': { action: 'config_get' },
+  'cfg list': { action: 'config_list' },
   'upgrade': { action: 'upgrade' },
+  'vector': { action: 'vector' },
+  'vec': { action: 'vector' },
+  'security': { action: 'security' },
+  'secure': { action: 'security' },
+  'social': { action: 'social' },
+  'evolution': { action: 'evolution' },
+  'evolve': { action: 'evolution' },
+
+  // Shortcuts
+  'new': { action: 'new' },
+  'c ': { action: 'chat' },
+  'chat ': { action: 'chat' },
+  'send ': { action: 'chat' },
 };
 
 const PROVIDER_ALIASES = {
-  'sf': 'siliconflow',
-  'siliconflow': 'siliconflow',
-  'ds': 'deepseek',
-  'deepseek': 'deepseek',
-  'openai': 'openai',
+  // Common short aliases
+  'sf': 'siliconflow', 'siliconflow': 'siliconflow',
+  'ds': 'deepseek', 'deepseek': 'deepseek',
+  'openai': 'openai', 'openai': 'openai',
+  'anthropic': 'anthropic', 'claude': 'anthropic',
   'groq': 'groq',
   'ollama': 'ollama',
+  'lmstudio': 'lmstudio',
+  'mistral': 'mistral',
+  'xai': 'xai',
+  'cohere': 'cohere',
+  'replicate': 'replicate',
+  'together': 'together',
+  'fireworks': 'fireworks',
+  'perplexity': 'perplexity',
+  'gemini': 'google',
+  'google': 'google',
+  'azure': 'azure',
+  'openrouter': 'openrouter',
+  'minimax': 'minimax',
+  'baidu': 'baidu',
+  'zhipu': 'zhipu',
+  'alibaba': 'alibaba',
+  'moonshot': 'moonshot',
 };
 
 export class NaturalLanguageParser {
@@ -72,8 +104,20 @@ export class NaturalLanguageParser {
   }
 
   isDirectCommand(input) {
-    const directCommands = ['help', 'status', 'clear', 'exit', 'quit', 'q', 'c ', 'chat ', 'provider ', 'session ', 'agent ', 'config ', 'models', 'upgrade', 'switch '];
-    return directCommands.some(cmd => input.toLowerCase().startsWith(cmd));
+    // Commands that should be treated as direct (passthrough)
+    const directCommands = [
+      'help', '?', 'status', 's', 'exit', 'quit', 'q', 'clear', 'cls',
+      'm', 'model', 'models', 'p', 'provider', 'providers',
+      'connect', 'conn', 'a', 'agent', 'agents',
+      'mem', 'memory', 'cfg', 'config',
+      'upgrade', 'vector', 'vec', 'security', 'social', 'evolution', 'evolve',
+      'new', 'c', 'chat', 'send'
+    ];
+    const lower = input.toLowerCase();
+    // Check exact match or prefix (e.g. "m" matches, "model foo" matches via prefix)
+    return directCommands.some(cmd =>
+      lower === cmd || lower.startsWith(cmd + ' ')
+    );
   }
 
   detectProvider(input) {
@@ -90,30 +134,42 @@ export class NaturalLanguageParser {
     const result = { type: 'command', action: config.action, original: remainder };
 
     switch (config.action) {
-      case 'provider_add':
-        if (config.provider) {
-          result.provider = config.provider;
-        } else if (remainder) {
+      case 'provider':
+        if (remainder) {
           result.provider = this.detectProvider(remainder);
           const apiKeyMatch = remainder.match(/sk-[a-zA-Z0-9-]{20,}/);
           if (apiKeyMatch) result.apiKey = apiKeyMatch[0];
         }
         break;
-      case 'session_create':
-        result.provider = remainder || null;
+      case 'model':
+        if (remainder) {
+          const parts = remainder.split(/\s+/);
+          if (parts.length >= 1) result.provider = this.detectProvider(parts[0]);
+          if (parts.length >= 2) result.model = parts.slice(1).join(' ') || null;
+        }
         break;
-      case 'agent_task':
-        result.task = remainder;
-        break;
-      case 'agent_spawn':
-        result.name = remainder || null;
-        break;
-      case 'model_switch':
+      case 'connect':
         if (remainder) {
           const parts = remainder.split(/\s+/);
           result.provider = this.detectProvider(parts[0]);
-          result.model = parts.slice(1).join(' ') || null;
+          if (parts.length >= 2) result.apiKey = parts[1];
         }
+        break;
+      case 'agent':
+        result.task = remainder;
+        break;
+      case 'new':
+        result.provider = remainder || null;
+        break;
+      case 'config_set':
+        const setParts = remainder.split(/\s+/);
+        if (setParts.length >= 2) {
+          result.key = setParts[0];
+          result.value = setParts.slice(1).join(' ');
+        }
+        break;
+      case 'config_get':
+        result.key = remainder;
         break;
     }
 
@@ -126,43 +182,37 @@ export class NaturalLanguageParser {
     }
 
     switch (parsed.action) {
-      case 'status':
-        return 'status';
       case 'help':
-        return 'help';
+      case 'status':
       case 'exit':
-        return 'exit';
       case 'clear':
-        return 'clear';
-      case 'provider_list':
-        return 'providers';
-      case 'provider_add':
-        if (parsed.apiKey) {
-          return `provider add ${parsed.provider} ${parsed.apiKey}`;
-        }
-        return `use ${parsed.provider}`;
-      case 'session_create':
-        return parsed.provider ? `new ${parsed.provider}` : 'new';
-      case 'session_list':
-        return 'sessions';
-      case 'agent_spawn':
-        return parsed.name ? `spawn ${parsed.name}` : 'spawn';
-      case 'agent_list':
-        return 'agents';
-      case 'agent_task':
-      case 'parallel_mode':
-        return `parallel ${parsed.task || parsed.original}`;
-      case 'model_list':
-        return parsed.provider ? `models ${parsed.provider}` : 'models';
-      case 'model_switch':
-        if (parsed.provider && parsed.model) {
-          return `switch ${parsed.provider} ${parsed.model}`;
-        }
-        return 'switch';
-      case 'config':
-        return parsed.original ? `config ${parsed.original}` : 'config';
       case 'upgrade':
-        return 'upgrade';
+        return parsed.action;
+      case 'model':
+        return parsed.model ? `m ${parsed.provider} ${parsed.model}` : 'm';
+      case 'provider':
+        return parsed.provider ? `p ${parsed.provider}` : 'p';
+      case 'connect':
+        return parsed.apiKey ? `connect ${parsed.provider} ${parsed.apiKey}` : `connect ${parsed.provider}`;
+      case 'agent':
+        return `a ${parsed.task}`;
+      case 'new':
+        return parsed.provider ? `new ${parsed.provider}` : 'new';
+      case 'mem':
+        return 'mem';
+      case 'config':
+        return parsed.original ? `cfg ${parsed.original}` : 'cfg';
+      case 'config_set':
+        return `cfg set ${parsed.key} ${parsed.value}`;
+      case 'config_get':
+        return `cfg get ${parsed.key}`;
+      case 'config_list':
+        return 'cfg list';
+      case 'vector':
+      case 'security':
+      case 'social':
+      case 'evolution':
+        return parsed.original || parsed.action;
       default:
         return parsed.original;
     }

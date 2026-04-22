@@ -13,7 +13,7 @@ export const MESSAGE_TYPES = {
 export class MessageBus extends EventEmitter {
   constructor() {
     super();
-    this.setMaxListeners(100);
+    this.setMaxListeners(Infinity);
   }
 
   subscribe(topic, handler) {

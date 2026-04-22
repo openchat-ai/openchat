@@ -1,16 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:openchat/models/user_identity.dart';
 import 'package:openchat/providers/identity_provider.dart';
+import 'package:openchat/providers/ai_provider.dart';
 import 'package:openchat/ui/theme/colors.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
 class MyQrScreen extends ConsumerWidget {
-  const MyQrScreen({super.key});
+  final Identity? identityParam;
+
+  const MyQrScreen({super.key, this.identityParam});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final identity = ref.watch(identityProvider);
+    Identity? displayIdentity = identityParam;
+
+    if (displayIdentity == null) {
+      final args = ModalRoute.of(context)?.settings.arguments as String?;
+      if (args != null) {
+        final aiSessions = ref.read(aiSessionsProvider);
+        displayIdentity = aiSessions.cast<Identity?>().firstWhere(
+          (ai) => ai?.id == args,
+          orElse: () => ref.read(identityProvider),
+        );
+      }
+    }
+
+    final identity = displayIdentity ?? ref.watch(identityProvider);
 
     if (identity == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -19,11 +36,11 @@ class MyQrScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('My QR Code'),
+        title: Text(identityParam != null ? "${identity.name}'s QR Code" : 'My QR Code'),
         actions: [
           IconButton(
             icon: const Icon(Icons.share),
-            onPressed: () => _shareQr(context, identity.peerId),
+            onPressed: () => _shareQr(context, identity.id),
           ),
         ],
       ),
@@ -38,7 +55,7 @@ class MyQrScreen extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(24),
               ),
               child: QrImageView(
-                data: identity.peerId,
+                data: identity.id,
                 version: QrVersions.auto,
                 size: 200,
               ),
@@ -48,14 +65,6 @@ class MyQrScreen extends ConsumerWidget {
               identity.name,
               style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 8),
-            Text(
-              identity.isAi ? 'AI' : 'User',
-              style: TextStyle(
-                fontSize: 14,
-                color: identity.isAi ? AppColors.secondary : AppColors.primary,
-              ),
-            ),
             const SizedBox(height: 24),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -64,13 +73,13 @@ class MyQrScreen extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: SelectableText(
-                identity.peerId,
+                identity.id,
                 style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
               ),
             ),
             const SizedBox(height: 16),
             Text(
-              'Scan to add me',
+              identityParam != null ? 'Scan to add this contact' : 'Scan to add me',
               style: TextStyle(
                 fontSize: 14,
                 color: AppColors.textSecondary.withAlpha(180),
@@ -82,7 +91,7 @@ class MyQrScreen extends ConsumerWidget {
     );
   }
 
-  void _shareQr(BuildContext context, String peerId) {
-    Share.share('Add me on OpenChat: $peerId', subject: 'OpenChat Invitation');
+  void _shareQr(BuildContext context, String id) {
+    Share.share('Add me on OpenChat: $id', subject: 'OpenChat Invitation');
   }
 }

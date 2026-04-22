@@ -1,31 +1,53 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:openchat/models/user_identity.dart';
 
-class AiSessionsNotifier extends StateNotifier<List<UserIdentity>> {
+class AiSessionsNotifier extends StateNotifier<List<Identity>> {
   AiSessionsNotifier() : super([]);
 
-  void addAi(UserIdentity ai) {
+  void addAi(Identity ai) {
     state = [...state, ai];
   }
 
-  void removeAi(String peerId) {
-    state = state.where((ai) => ai.peerId != peerId).toList();
+  void removeAi(String id) {
+    state = state.where((ai) => ai.id != id).toList();
   }
 
-  void updateAiStatus(String peerId, bool isOnline) {
+  void updateAiStatus(String id, bool isOnline) {
     state = state.map((ai) {
-      if (ai.peerId == peerId) {
+      if (ai.id == id) {
         return ai.copyWith(isOnline: isOnline);
       }
       return ai;
     }).toList();
   }
+
+  void updateAi(Identity ai) {
+    state = state.map((a) => a.id == ai.id ? ai : a).toList();
+  }
 }
 
 final aiSessionsProvider =
-    StateNotifierProvider<AiSessionsNotifier, List<UserIdentity>>((ref) {
-      return AiSessionsNotifier();
-    });
+    StateNotifierProvider<AiSessionsNotifier, List<Identity>>((ref) {
+  return AiSessionsNotifier();
+});
+
+// 主 AI 配置（provider + model + 个性化配置）
+// 子 AI 会继承这个配置
+final aiConfigProvider = StateProvider<AiConfig>((ref) => const AiConfig(
+  providerId: 'openai',
+  model: 'gpt-4o-mini',
+));
+
+// 主 AI Identity（每个 Bridge 一个）
+final mainAiProvider = StateProvider<Identity?>((ref) => null);
+
+// 子 AI 列表（主 AI 的 children）
+final childAisProvider = Provider<List<Identity>>((ref) {
+  final mainAi = ref.watch(mainAiProvider);
+  if (mainAi == null) return [];
+  final sessions = ref.watch(aiSessionsProvider);
+  return sessions.where((ai) => ai.parentId == mainAi.id).toList();
+});
 
 final aiProvidersProvider = Provider<List<AiProviderInfo>>((ref) {
   return [

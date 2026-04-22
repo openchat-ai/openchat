@@ -1,12 +1,18 @@
 import { AgentSession } from './agent-session.js';
 import { messageBus, MESSAGE_TYPES } from './message-bus.js';
-import { persistentConfig } from '../memory/persistent-config.js';
+import { persistentConfig } from '../core/persistent-config.js';
+import { socialConnector } from './social-connector.js';
+import { knowledgeNetwork } from './knowledge-network.js';
 
 export class MultiAgentCoordinator {
   constructor() {
     this.agents = new Map();
     this.taskQueue = [];
     this.completedTasks = [];
+    this.socialConnector = socialConnector; // 集成社交网络
+    this.knowledgeNetwork = knowledgeNetwork; // 使用全局知识网络实例
+    // Note: We'll initialize community manager separately to avoid circular dependency
+    this.communityManager = null; // Will be initialized later if needed
   }
 
   async spawnAgent(agentId, config = {}) {
@@ -35,8 +41,33 @@ export class MultiAgentCoordinator {
     return Array.from(this.agents.values()).map(a => a.getStatus());
   }
 
-  decomposeTask(task) {
+  async decomposeTask(task) {
     if (typeof task === 'string') {
+      const coordinatorAgent = await this.spawnAgent('decomposer', {
+        name: 'Decomposer',
+        systemPrompt: 'You are a Task Decomposition expert. Break down the user request into a structured JSON array of discrete, actionable steps. Return ONLY the JSON array. Example: [{"id": "1", "description": "Read file X", "type": "read"}, {"id": "2", "description": "Implement feature Y", "type": "write"}]'
+      });
+
+      try {
+        const result = await coordinatorAgent.run(`Decompose this task into steps: ${task}`);
+        const content = result.content || result;
+        const jsonMatch = content.match(/\[\s*\{.*\}\s*\]/s);
+        if (jsonMatch) {
+          const steps = JSON.parse(jsonMatch[0]);
+          coordinatorAgent.cleanup();
+          return steps.map((step, i) => ({
+            ...step,
+            id: step.id || crypto.randomUUID(),
+            stepNumber: i + 1,
+            totalSteps: steps.length
+          }));
+        }
+      } catch (e) {
+        console.error('Decomposition failed, falling back to simple split', e);
+      } finally {
+        coordinatorAgent.cleanup();
+      }
+
       return [{ id: crypto.randomUUID(), description: task, type: 'general' }];
     }
 
@@ -215,6 +246,118 @@ export class MultiAgentCoordinator {
 
   delegate(fromAgentId, toAgentId, task) {
     messageBus.delegate(fromAgentId, toAgentId, task);
+  }
+
+  async iterativeReviewLoop(task, options = {}) {
+    const {
+      maxLoops = 3,
+      coderConfig = {},
+      reviewerConfig = {}
+    } = options;
+
+    let currentTask = task;
+    let iteration = 0;
+    let isApproved = false;
+    const history = [];
+
+    while (iteration < maxLoops && !isApproved) {
+      iteration++;
+
+      const coder = await this.spawnAgent(`coder-iter-${iteration}`, {
+        name: `Coder-Iter-${iteration}`,
+        ...coderConfig
+      });
+      const codeResult = await coder.run(currentTask);
+      coder.cleanup();
+
+      const reviewer = await this.spawnAgent(`reviewer-iter-${iteration}`, {
+        name: `Reviewer-Iter-${iteration}`,
+        systemPrompt: 'You are a Critical Code Reviewer. Evaluate the provided solution for bugs, performance issues, and security flaws. If the solution is perfect, start your response with "APPROVED". Otherwise, provide specific, actionable feedback for improvement.',
+        ...reviewerConfig
+      });
+
+      const reviewInput = `Original Task: ${typeof task === 'string' ? task : task.description}\n\nProposed Solution:\n${codeResult.content || JSON.stringify(codeResult)}`;
+      const reviewResult = await reviewer.run(reviewInput);
+      reviewer.cleanup();
+
+      history.push({
+        iteration,
+        code: codeResult.content || codeResult,
+        review: reviewResult.content || reviewResult
+      });
+
+      if (reviewResult.content && reviewResult.content.startsWith('APPROVED')) {
+        isApproved = true;
+      } else if (iteration < maxLoops) {
+        currentTask = `Fix the following issues based on review:\n\n${reviewResult.content || reviewResult}\n\nPrevious Solution:\n${codeResult.content || codeResult}`;
+      }
+    }
+
+    return {
+      success: isApproved,
+      finalResult: history[history.length - 1]?.code,
+      iterations: iteration,
+      history
+    };
+  }
+
+  async evolutionLoop(targetModule, goal) {
+    const currentProvider = persistentConfig.getPreference('currentProvider');
+    const currentModel = persistentConfig.getPreference('currentModel');
+
+    const history = [];
+    let isStable = false;
+    let iterations = 0;
+
+    while (!isStable && iterations < 5) {
+      iterations++;
+
+      const agentConfig = {
+        provider: currentProvider,
+        model: currentModel
+      };
+
+      const architect = await this.spawnAgent('arch-evolve', {
+        name: 'Architect',
+        systemPrompt: 'You are the Lead Architect of OpenChat. Analyze the codebase and provide a precise implementation plan to achieve the goal. Specify files to change and expected test results.',
+        ...agentConfig
+      });
+      const plan = await architect.run(`Module: ${targetModule}\nGoal: ${goal}\nAnalyze and provide a plan.`);
+      architect.cleanup();
+
+      const engineer = await this.spawnAgent('eng-evolve', {
+        name: 'Engineer',
+        systemPrompt: 'You are the Senior Engineer. Implement the plan. After writing code, you MUST use run_llm_judge to verify your changes.',
+        ...agentConfig
+      });
+      const implementation = await engineer.run(`Plan: ${plan.content}\nImplement the changes and verify them.`);
+      engineer.cleanup();
+
+      const judge = await this.spawnAgent('judge-evolve', {
+        name: 'QualityJudge',
+        systemPrompt: 'You are the Quality Assurance Judge. Use run_llm_judge to verify if the implementation actually achieves the goal without regressions. If perfect, respond with "EVOLUTION_COMPLETE".',
+        ...agentConfig
+      });
+      const audit = await judge.run(`Implementation: ${implementation.content}\nGoal: ${goal}`);
+      judge.cleanup();
+
+      history.push({
+        iteration: iterations,
+        plan: plan.content,
+        impl: implementation.content,
+        audit: audit.content
+      });
+
+      if (audit.content && audit.content.includes('EVOLUTION_COMPLETE')) {
+        isStable = true;
+      }
+    }
+
+    return {
+      success: isStable,
+      finalSolution: history[history.length - 1]?.impl,
+      history
+    };
   }
 
   getStatus() {

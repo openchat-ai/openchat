@@ -61,7 +61,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
               delegate: SliverChildBuilderDelegate((context, index) {
                 final conversation = sortedConversations[index];
                 final contact = contacts.firstWhere(
-                  (c) => c.peerId == conversation.peerId,
+                  (c) => c.id == conversation.peerId,
                   orElse: () => contacts.first,
                 );
 
@@ -73,9 +73,8 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                       context,
                       '/chat',
                       arguments: {
-                        'peerId': conversation.peerId,
+                        'id': conversation.peerId,
                         'name': contact.name,
-                        'isAi': contact.isAi,
                       },
                     );
                   },

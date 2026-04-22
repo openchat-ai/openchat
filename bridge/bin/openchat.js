@@ -3,6 +3,10 @@
 import { autoDetect } from '../src/cli/auto-detect.js';
 import { startBridge } from '../src/main.js';
 
+// 解析命令行参数
+const args = process.argv.slice(2);
+const isInteractive = args.includes('--cli') || args.includes('-i');
+
 process.stdout.write('\n🔍 Detecting local AI tools...\n');
 
 const detected = await autoDetect();
@@ -26,4 +30,5 @@ if (detected.length > 0) {
 
 await new Promise(resolve => setTimeout(resolve, 100));
 
-await startBridge(detected);
+// 传递 headless 选项
+await startBridge(detected, { headless: !isInteractive });

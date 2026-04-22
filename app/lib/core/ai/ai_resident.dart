@@ -158,19 +158,22 @@ class MemoryEntry {
 }
 
 class AiMemory {
-  final List<MemoryEntry> shortTerm;
-  final List<MemoryEntry> longTerm;
-  final Map<String, List<MemoryEntry>> episodic;
-  final Map<String, dynamic> semantic;
+  List<MemoryEntry> shortTerm;
+  List<MemoryEntry> longTerm;
+  Map<String, List<MemoryEntry>> episodic;
+  Map<String, dynamic> semantic;
   static const int maxShortTerm = 50;
   static const int maxLongTerm = 500;
 
   AiMemory({
-    this.shortTerm = const [],
-    this.longTerm = const [],
-    this.episodic = const {},
-    this.semantic = const {},
-  });
+    List<MemoryEntry>? shortTerm,
+    List<MemoryEntry>? longTerm,
+    Map<String, List<MemoryEntry>>? episodic,
+    Map<String, dynamic>? semantic,
+  })  : shortTerm = shortTerm ?? [],
+        longTerm = longTerm ?? [],
+        episodic = episodic ?? {},
+        semantic = semantic ?? {};
 
   void addToShortTerm(MemoryEntry entry) {
     final updated = [...shortTerm, entry];

@@ -5,7 +5,7 @@ import 'package:openchat/ui/theme/colors.dart';
 
 class ConversationTile extends StatelessWidget {
   final Conversation conversation;
-  final UserIdentity contact;
+  final Identity contact;
   final VoidCallback onTap;
 
   const ConversationTile({
@@ -21,7 +21,7 @@ class ConversationTile extends StatelessWidget {
       onTap: onTap,
       leading: CircleAvatar(
         radius: 24,
-        backgroundColor: contact.isAi ? AppColors.secondary : AppColors.primary,
+        backgroundColor: AppColors.primary,
         child: Text(
           contact.name.isNotEmpty ? contact.name[0].toUpperCase() : '?',
           style: const TextStyle(
@@ -43,19 +43,6 @@ class ConversationTile extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          if (contact.isAi)
-            Container(
-              margin: const EdgeInsets.only(left: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: AppColors.secondary.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Text(
-                'AI',
-                style: TextStyle(fontSize: 10, color: AppColors.secondary),
-              ),
-            ),
         ],
       ),
       subtitle: Text(

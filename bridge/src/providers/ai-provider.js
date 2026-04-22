@@ -1,3 +1,5 @@
+import { providerManager } from './provider-manager.js';
+
 export class AiProvider {
   constructor(id, name) {
     this.id = id;
@@ -37,28 +39,176 @@ export class AiProvider {
   }
 }
 
+// 辅助函数：判断是否为 OpenAI 兼容的提供商
+function isOpenAICompatibleProvider(type) {
+  const lowerType = type.toLowerCase();
+
+  // 包含 '-compatible' 后缀的类型
+  if (lowerType.includes('-compatible')) {
+    return true;
+  }
+
+  // 包含 'openai' 的类型（例如 'custom-openai-api', 'my-openai-service'）
+  if (lowerType.includes('openai')) {
+    return true;
+  }
+
+  // 动态检查：从 provider-manager 获取 transport 配置
+  // 如果 transport 是 'openai_chat'，则使用 OpenAI 兼容接口
+  const config = providerManager.getProviderConfig(type);
+  if (config && config.transport === 'openai_chat') {
+    return true;
+  }
+
+  return false;
+}
+
 export function createProvider(type) {
   switch (type) {
     case 'openai':
-      return new OpenAiProvider();
+      return new OpenAiProvider('openai');
     case 'claude':
       return new ClaudeProvider();
     case 'gemini':
       return new GeminiProvider();
     case 'deepseek':
       return new DeepSeekProvider();
+    case 'minimax-coding-plan':
+      return new MiniMaxCodingPlanProvider();
+    case 'baidu-qianfan-coding-plan':
+      return new BaiduQianfanCodingPlanProvider();
     default:
+      if (isOpenAICompatibleProvider(type)) {
+        return new OpenAiProvider(type);
+      }
       throw new Error(`Unknown provider type: ${type}`);
   }
 }
 
-class OpenAiProvider extends AiProvider {
+// 为 MiniMax Coding Plan 创建专门的 Provider 类
+class MiniMaxCodingPlanProvider extends AiProvider {
   constructor() {
-    super('openai', 'OpenAI');
+    super('minimax-coding-plan', 'MiniMax Coding Plan');
+    // MiniMax Coding Plan 特定的模型列表
+    this.models = ['abab6.5s-chat', 'abab6.5g-chat', 'abab6.5t-chat', 'MiniMax-M2.7'];
+  }
+
+  getDefaultEndpoint() {
+    // MiniMax Coding Plan 的 API 端点 (OpenAI 兼容格式)
+    return 'https://api.minimaxi.com/v1';
+  }
+
+  getModels() {
+    return this.models;
+  }
+
+  async verifyConnection() {
+    // MiniMax 使用 OpenAI 兼容 API，跳过验证直接返回成功
+    // 实际连接会在 chat() 时验证
+    return true;
+  }
+
+  async chat(model, messages) {
+    // MiniMax Coding Plan 使用 OpenAI 兼容格式
+    const response = await fetch(`${this.endpoint}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: model || this.models[0],
+        messages: messages,
+        stream: false
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error?.message || `MiniMax API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return {
+      id: data.id || crypto.randomUUID(),
+      model: data.model || model,
+      content: data.choices?.[0]?.message?.content || '',
+      usage: {
+        input_tokens: data.usage?.prompt_tokens || 0,
+        output_tokens: data.usage?.completion_tokens || 0,
+        total_tokens: data.usage?.total_tokens || 0
+      },
+      created: data.created || Date.now()
+    };
+  }
+}
+
+// 百度千帆 Coding Plan Provider
+class BaiduQianfanCodingPlanProvider extends AiProvider {
+  constructor() {
+    super('baidu-qianfan-coding-plan', '百度千帆 Coding Plan');
+    this.models = ['qianfan-code-latest', 'ernie-4.0-8k-latest', 'ernie-3.5-8k', 'deepseek-v3', 'glm-4'];
+  }
+
+  getDefaultEndpoint() {
+    return 'https://qianfan.baidubce.com/v2/coding';
+  }
+
+  getModels() {
+    return this.models;
+  }
+
+  async verifyConnection() {
+    // 跳过验证，实际连接在 chat() 时验证
+    return true;
+  }
+
+  async chat(model, messages) {
+    const response = await fetch(`${this.endpoint}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: model || 'qianfan-code-latest',
+        messages: messages,
+        stream: false
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error?.message || `百度千帆 API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return {
+      id: data.id || crypto.randomUUID(),
+      model: data.model || model,
+      content: data.choices?.[0]?.message?.content || '',
+      usage: {
+        input_tokens: data.usage?.prompt_tokens || 0,
+        output_tokens: data.usage?.completion_tokens || 0,
+        total_tokens: data.usage?.total_tokens || 0
+      },
+      created: data.created || Date.now()
+    };
+  }
+}
+
+class OpenAiProvider extends AiProvider {
+  constructor(providerType = 'openai') {
+    super(providerType, providerType);
+    this.providerType = providerType;
     this.models = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'];
   }
 
   getDefaultEndpoint() {
+    const config = providerManager.getProviderConfig(this.providerType);
+    if (config && config.baseUrl) {
+      return config.baseUrl;
+    }
     return 'https://api.openai.com/v1';
   }
 
@@ -302,3 +452,6 @@ class DeepSeekProvider extends AiProvider {
     };
   }
 }
+
+// 导出辅助函数以便测试
+export { isOpenAICompatibleProvider };

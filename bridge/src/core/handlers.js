@@ -5,6 +5,12 @@ import { pluginManager } from '../plugins/plugin-manager.js';
 import { ShellPlugin, FilePlugin } from '../plugins/system-plugins.js';
 import { GitPlugin, DevToolsPlugin } from '../plugins/eng-plugins.js';
 import SelfTestPlugin from '../plugins/self-test-plugin.js';
+import {
+  CodeAnalysisPlugin,
+  ProjectManagementPlugin,
+  WebToolsPlugin,
+  MemoryToolsPlugin
+} from '../plugins/agent-tools.js';
 import { agentEngine } from './agent-engine.js';
 
 /**
@@ -70,13 +76,17 @@ export function initCore() {
   // Initialize System Plugins (The "Hands")
   pluginManager.registerPlugin(ShellPlugin);
   pluginManager.registerPlugin(FilePlugin);
-  
+
   // Initialize Engineering Plugins (The "Expertise")
   pluginManager.registerPlugin(GitPlugin);
   pluginManager.registerPlugin(DevToolsPlugin);
-  
+
+  // Initialize Agent Tools (The "Intelligence")
+  pluginManager.registerPlugin(CodeAnalysisPlugin);
+  pluginManager.registerPlugin(ProjectManagementPlugin);
+  pluginManager.registerPlugin(WebToolsPlugin);
+  pluginManager.registerPlugin(MemoryToolsPlugin);
+
   // Initialize Self-Verification Plugins (The "Conscience")
   pluginManager.registerPlugin(SelfTestPlugin);
-  
-  console.log('[Core] Handlers initialized and Engineering/Verification Plugins loaded');
 }

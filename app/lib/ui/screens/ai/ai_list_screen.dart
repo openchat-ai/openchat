@@ -4,6 +4,7 @@ import 'package:openchat/models/user_identity.dart';
 import 'package:openchat/providers/ai_provider.dart';
 import 'package:openchat/providers/contacts_provider.dart';
 import 'package:openchat/ui/theme/colors.dart';
+import 'package:openchat/ui/screens/profile/my_qr_screen.dart';
 
 class AiListScreen extends ConsumerWidget {
   const AiListScreen({super.key});
@@ -11,7 +12,6 @@ class AiListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final aiSessions = ref.watch(aiSessionsProvider);
-    final aiProviders = ref.watch(aiProvidersProvider);
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -20,7 +20,7 @@ class AiListScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
-            onPressed: () => _showAddAiDialog(context, ref, aiProviders),
+            onPressed: () => _showAddAiDialog(context, ref),
           ),
         ],
       ),
@@ -44,8 +44,7 @@ class AiListScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton.icon(
-                    onPressed: () =>
-                        _showAddAiDialog(context, ref, aiProviders),
+                    onPressed: () => _showAddAiDialog(context, ref),
                     icon: const Icon(Icons.add),
                     label: const Text('Add AI'),
                   ),
@@ -67,14 +66,10 @@ class AiListScreen extends ConsumerWidget {
     );
   }
 
-  void _showAddAiDialog(
-    BuildContext context,
-    WidgetRef ref,
-    List<AiProviderInfo> providers,
-  ) {
-    String? selectedProvider;
-    String? selectedModel;
+  void _showAddAiDialog(BuildContext context, WidgetRef ref) {
     final nameController = TextEditingController();
+    final aiConfig = ref.read(aiConfigProvider);
+    final mainAi = ref.read(mainAiProvider);
 
     showModalBottomSheet(
       context: context,
@@ -105,13 +100,26 @@ class AiListScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
-                    'Add AI Assistant',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    mainAi == null ? 'Create Main AI' : 'Add Child AI',
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                 ),
+                if (mainAi != null) ...[
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      'Inherits: ${aiConfig.providerId}/${aiConfig.model ?? "default"}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary.withAlpha(179),
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 24),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -136,102 +144,38 @@ class AiListScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: DropdownButtonFormField<String>(
-                    value: selectedProvider,
-                    dropdownColor: AppColors.backgroundDark,
-                    decoration: InputDecoration(
-                      labelText: 'AI Provider',
-                      labelStyle: const TextStyle(
-                        color: AppColors.textSecondary,
-                      ),
-                      filled: true,
-                      fillColor: AppColors.backgroundDark,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                    items: providers
-                        .map(
-                          (p) => DropdownMenuItem(
-                            value: p.id,
-                            child: Text(p.name),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        selectedProvider = value;
-                        selectedModel = null;
-                      });
-                    },
-                  ),
-                ),
-                if (selectedProvider != null) ...[
-                  const SizedBox(height: 16),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: DropdownButtonFormField<String>(
-                      value: selectedModel,
-                      dropdownColor: AppColors.backgroundDark,
-                      decoration: InputDecoration(
-                        labelText: 'Model',
-                        labelStyle: const TextStyle(
-                          color: AppColors.textSecondary,
-                        ),
-                        filled: true,
-                        fillColor: AppColors.backgroundDark,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                      items: providers
-                          .firstWhere((p) => p.id == selectedProvider)
-                          .models
-                          .map(
-                            (m) => DropdownMenuItem(value: m, child: Text(m)),
-                          )
-                          .toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          selectedModel = value;
-                        });
-                      },
-                    ),
-                  ),
-                ],
                 const SizedBox(height: 24),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed:
-                          selectedProvider != null && selectedModel != null
-                          ? () async {
-                              final name = nameController.text.trim().isEmpty
-                                  ? 'AI ${DateTime.now().millisecondsSinceEpoch % 1000}'
-                                  : nameController.text.trim();
+                      onPressed: () async {
+                        final name = nameController.text.trim().isEmpty
+                            ? 'AI ${DateTime.now().millisecondsSinceEpoch % 1000}'
+                            : nameController.text.trim();
 
-                              final ai = await UserIdentity.create(
-                                name: name,
-                                isAi: true,
-                              );
+                        // 子 AI 继承主 AI 的配置
+                        final ai = await Identity.create(
+                          name: name,
+                          parentId: mainAi?.id,  // null 表示主 AI
+                          providerId: aiConfig.providerId,
+                          model: aiConfig.model,
+                          config: aiConfig.config,
+                        );
 
-                              ref.read(aiSessionsProvider.notifier).addAi(ai);
-                              ref
-                                  .read(contactsProvider.notifier)
-                                  .addContact(ai);
+                        ref.read(aiSessionsProvider.notifier).addAi(ai);
+                        ref.read(contactsProvider.notifier).addContact(ai);
 
-                              if (context.mounted) {
-                                Navigator.pop(context);
-                              }
-                            }
-                          : null,
+                        // 如果是第一个 AI，设为主 AI
+                        if (mainAi == null) {
+                          ref.read(mainAiProvider.notifier).state = ai;
+                        }
+
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                        }
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -239,7 +183,7 @@ class AiListScreen extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text('Add AI'),
+                      child: Text(mainAi == null ? 'Create Main AI' : 'Add AI'),
                     ),
                   ),
                 ),
@@ -252,15 +196,15 @@ class AiListScreen extends ConsumerWidget {
     );
   }
 
-  void _openChat(BuildContext context, UserIdentity ai) {
+  void _openChat(BuildContext context, Identity ai) {
     Navigator.pushNamed(
       context,
       '/chat',
-      arguments: {'peerId': ai.peerId, 'name': ai.name, 'isAi': true},
+      arguments: {'id': ai.id, 'name': ai.name},
     );
   }
 
-  void _deleteAi(BuildContext context, WidgetRef ref, UserIdentity ai) {
+  void _deleteAi(BuildContext context, WidgetRef ref, Identity ai) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -274,7 +218,7 @@ class AiListScreen extends ConsumerWidget {
           ),
           ElevatedButton(
             onPressed: () {
-              ref.read(aiSessionsProvider.notifier).removeAi(ai.peerId);
+              ref.read(aiSessionsProvider.notifier).removeAi(ai.id);
               Navigator.pop(context);
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
@@ -287,7 +231,7 @@ class AiListScreen extends ConsumerWidget {
 }
 
 class _AiCard extends StatelessWidget {
-  final UserIdentity ai;
+  final Identity ai;
   final VoidCallback onTap;
   final VoidCallback onDelete;
 
@@ -324,12 +268,36 @@ class _AiCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      ai.name,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    Row(
+                      children: [
+                        Text(
+                          ai.name,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (ai.isMainAi) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withAlpha(51),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'Main',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     const SizedBox(height: 4),
                     Row(
@@ -354,9 +322,28 @@ class _AiCard extends StatelessWidget {
                                 : AppColors.textSecondary,
                           ),
                         ),
+                        if (ai.providerId != null) ...[
+                          const SizedBox(width: 8),
+                          Text(
+                            '${ai.providerId}${ai.model != null ? '/${ai.model}' : ''}',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: AppColors.textSecondary.withAlpha(179),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.qr_code, color: AppColors.primary),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => MyQrScreen(identityParam: ai),
+                  ),
                 ),
               ),
               IconButton(

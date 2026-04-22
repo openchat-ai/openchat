@@ -37,19 +37,11 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
   Future<void> _processCode(String code) async {
     try {
-      UserIdentity? newContact;
+      Identity? newContact;
 
-      if (code.startsWith('did:key:')) {
-        newContact = await UserIdentity.create(
-          name: 'Contact ${DateTime.now().millisecondsSinceEpoch % 1000}',
-          isAi: false,
-        );
-      } else {
-        newContact = await UserIdentity.create(
-          name: code.substring(0, code.length > 20 ? 20 : code.length),
-          isAi: false,
-        );
-      }
+      newContact = await Identity.create(
+        name: code.length > 20 ? code.substring(0, 20) : code,
+      );
 
       if (mounted) {
         await ref.read(contactsProvider.notifier).addContact(newContact);

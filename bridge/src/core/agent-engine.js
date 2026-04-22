@@ -2,90 +2,387 @@ import { pluginManager } from '../plugins/plugin-manager.js';
 import { memoryManager } from '../memory/memory-manager.js';
 import { sessionManager } from '../session/session-manager.js';
 import { PromptBuilder } from './prompt-builder.js';
+import { agentMonitor } from './agent-monitor.js';
+
+/**
+ * Agent 事件类型
+ */
+export const AgentEvents = {
+  THINKING: 'thinking',           // 思考中
+  CONTENT: 'content',             // 内容输出
+  TOOL_CALL: 'tool_call',         // 工具调用
+  TOOL_RESULT: 'tool_result',     // 工具结果
+  ITERATION: 'iteration',         // 迭代开始
+  COMPLETE: 'complete',           // 完成
+  ERROR: 'error'                  // 错误
+};
 
 /**
  * AgentEngine implements the "Think-Act-Verify" loop with self-verification.
  * It transforms the Bridge from a pass-through server into an autonomous agent.
+ *
+ * 支持 Function Calling：
+ * - 优先使用原生 Function Calling (OpenAI/Claude/etc)
+ * - 自动降级到 ACTION: 文本解析 (不支持 FC 的模型)
+ *
+ * 支持流式输出：
+ * - processStream() 返回 AsyncGenerator
+ * - 通过事件回调实时推送执行状态
  */
 export class AgentEngine {
-  constructor() {
+  constructor(options = {}) {
     this.maxIterations = 10;
     this.qualityThreshold = 4; // 低于这个分数会自动优化
+    this.useRAG = options.useRAG !== false; // 默认启用 RAG
+    this.useFunctionCalling = options.useFunctionCalling !== false; // 默认启用 FC
   }
 
   /**
-   * The main reasoning loop (Think-Act-Verify)
+   * 流式处理 - 通过回调实时推送执行状态
+   * @param {string} sessionId 会话ID
+   * @param {string} userId 用户ID
+   * @param {string} userMessage 用户消息
+   * @param {function} onEvent 事件回调 (event) => void
+   * @returns {Promise<string>} 最终响应
    */
-  async process(sessionId, userId, userMessage) {
+  async processStream(sessionId, userId, userMessage, onEvent = () => {}) {
+    // 初始化
+    if (this.useRAG && !memoryManager.initialized) {
+      await memoryManager.initialize();
+    }
+
+    // RAG 检索
+    let ragContext = [];
+    if (this.useRAG && memoryManager.useRAG) {
+      try {
+        ragContext = await memoryManager.retrieveRelevantContext(userMessage, {
+          userId, sessionId, topK: 5
+        });
+      } catch (e) {
+        console.warn('[Agent] RAG retrieval failed:', e.message);
+      }
+    }
+
     let currentContext = await memoryManager.getContext(sessionId);
-    
-    // 1. Append user message to memory
+
+    if (ragContext.length > 0) {
+      const ragMessages = ragContext.map(r => ({
+        role: 'system',
+        content: `[相关历史] ${r.content}`
+      }));
+      currentContext = [...ragMessages, ...currentContext];
+    }
+
     await memoryManager.addMessage(sessionId, 'user', userMessage);
-    
-    // 记录执行轨迹用于最终自检
-    const executionTrace = {
-      actions: [],
-      startTime: Date.now()
-    };
-    
+
+    const executionTrace = { actions: [], startTime: Date.now() };
     let iteration = 0;
     let finalizedResponse = null;
     let isTaskComplete = false;
 
+    const tools = this.useFunctionCalling ? pluginManager.getToolsForFunctionCalling() : null;
+
+    // 记录执行开始
+    const agentId = `agent-${sessionId}`;
+    agentMonitor.recordExecutionStart(agentId, userMessage, { sessionId, userId });
+
     while (iteration < this.maxIterations && !isTaskComplete) {
       iteration++;
-      
-      // [SENSE] Build current state for LLM
+
+      // 发送迭代事件
+      onEvent({ type: AgentEvents.ITERATION, iteration, max: this.maxIterations });
+
       const systemPrompt = await PromptBuilder.buildSystemPrompt(1);
       const messages = [
         { role: 'system', content: systemPrompt },
         ...currentContext
       ];
 
-      // [THINK] Call actual Provider
       const session = sessionManager.getSession(sessionId);
       if (!session) throw new Error(`Session ${sessionId} not found`);
       const provider = sessionManager.getProvider(session.providerType);
-      
-      const llmResponse = await provider.chat(session.model, messages);
-      const content = llmResponse.content;
 
-      if (content.startsWith('FINAL:')) {
+      const chatOptions = {};
+      if (tools && tools.length > 0) {
+        chatOptions.tools = tools;
+        chatOptions.tool_choice = 'auto';
+      }
+
+      // 发送思考事件
+      onEvent({ type: AgentEvents.THINKING, iteration });
+
+      // 尝试流式调用
+      let content = '';
+      let toolCalls = null;
+
+      try {
+        // 使用流式 API
+        const stream = provider.chatStream(session.model, messages, chatOptions);
+
+        for await (const chunk of stream) {
+          if (chunk.type === 'content') {
+            content += chunk.content;
+            // 实时推送内容
+            onEvent({ type: AgentEvents.CONTENT, content: chunk.content, iteration });
+          } else if (chunk.type === 'tool_calls') {
+            toolCalls = chunk.toolCalls;
+          }
+        }
+      } catch (e) {
+        // 流式不支持，降级到非流式
+        const response = await provider.chat(session.model, messages, chatOptions);
+        content = response.content;
+        toolCalls = response.toolCalls;
+      }
+
+      // 检查是否完成
+      if (content && content.startsWith('FINAL:')) {
         finalizedResponse = content.replace('FINAL:', '').trim();
         isTaskComplete = true;
         break;
       }
 
-      if (content.includes('ACTION:')) {
-        // [ACT] Parse tool call: ACTION: tool_name { "arg": "val" }
+      // 处理工具调用
+      if (toolCalls && toolCalls.length > 0) {
+        for (const tc of toolCalls) {
+          const toolName = tc.name;
+          const args = typeof tc.arguments === 'string' ? JSON.parse(tc.arguments) : tc.arguments;
+
+          // 发送工具调用事件
+          onEvent({ type: AgentEvents.TOOL_CALL, tool: toolName, args, iteration });
+
+          try {
+            const toolResult = await pluginManager.executeTool(toolName, args, { sessionId, userId });
+
+            executionTrace.actions.push({ tool: toolName, args, result: toolResult, mode: 'fc' });
+
+            // 记录工具调用到监控
+            agentMonitor.recordToolCall(agentId, toolName, args, toolResult);
+
+            // 发送工具结果事件
+            onEvent({ type: AgentEvents.TOOL_RESULT, tool: toolName, result: toolResult, iteration });
+
+            // 使用格式化后的结果
+            const formattedResult = pluginManager.formatToolResult(toolName, toolResult);
+            await memoryManager.addMessage(sessionId, 'assistant', `[Tool Call] ${toolName}`);
+            await memoryManager.addMessage(sessionId, 'system', formattedResult);
+
+            currentContext = await memoryManager.getContext(sessionId);
+          } catch (error) {
+            executionTrace.actions.push({ tool: toolName, args, error: error.message, mode: 'fc' });
+            onEvent({ type: AgentEvents.ERROR, tool: toolName, error: error.message, iteration });
+            await memoryManager.addMessage(sessionId, 'system', `[Tool Error] ${toolName}: ${error.message}`);
+            currentContext = await memoryManager.getContext(sessionId);
+          }
+        }
+      } else if (content && content.includes('ACTION:')) {
+        // 降级：文本解析
         const match = content.match(/ACTION:\s*(\w+)\s*({.*})/);
         if (match) {
           const [, toolName, argsJson] = match;
           try {
             const args = JSON.parse(argsJson);
-            const toolResult = await pluginManager.executeTool(
-              toolName, 
-              args, 
-              { sessionId, userId }
-            );
-            
-            // 记录动作用于自检
-            executionTrace.actions.push({ tool: toolName, args, result: toolResult });
-            
-            // [VERIFY] Recording result back to history
-            await memoryManager.addMessage(sessionId, 'assistant', `Action: ${toolName} Result: ${JSON.stringify(toolResult)}`);
-            
-            // Update context for next iteration
+
+            onEvent({ type: AgentEvents.TOOL_CALL, tool: toolName, args, iteration, mode: 'text' });
+
+            const toolResult = await pluginManager.executeTool(toolName, args, { sessionId, userId });
+
+            executionTrace.actions.push({ tool: toolName, args, result: toolResult, mode: 'text' });
+
+            onEvent({ type: AgentEvents.TOOL_RESULT, tool: toolName, result: toolResult, iteration });
+
+            // 使用格式化后的结果
+            const formattedResult = pluginManager.formatToolResult(toolName, toolResult);
+            await memoryManager.addMessage(sessionId, 'assistant', `Action: ${toolName}`);
+            await memoryManager.addMessage(sessionId, 'system', formattedResult);
             currentContext = await memoryManager.getContext(sessionId);
           } catch (error) {
-            // [SELF-HEAL]
-            executionTrace.actions.push({ tool: toolName, args, error: error.message });
-            await memoryManager.addMessage(sessionId, 'system', `Error executing ${toolName}: ${error.message}. Please correct the arguments and try again.`);
+            executionTrace.actions.push({ tool: toolName, args, error: error.message, mode: 'text' });
+            onEvent({ type: AgentEvents.ERROR, tool: toolName, error: error.message, iteration });
+            await memoryManager.addMessage(sessionId, 'system', `Error executing ${toolName}: ${error.message}`);
             currentContext = await memoryManager.getContext(sessionId);
           }
         }
       } else {
-        // Fallback for unstructured responses
+        // 返回结果
+        finalizedResponse = content;
+        isTaskComplete = true;
+      }
+    }
+
+    if (iteration >= this.maxIterations && !isTaskComplete) {
+      finalizedResponse = "I've reached the maximum number of reasoning steps and could not complete the task.";
+    }
+
+    // 发送完成事件
+    onEvent({
+      type: AgentEvents.COMPLETE,
+      response: finalizedResponse,
+      iterations: iteration,
+      actions: executionTrace.actions.length
+    });
+
+    // 记录执行完成到监控
+    agentMonitor.recordExecutionComplete(agentId, {
+      success: isTaskComplete && iteration < this.maxIterations,
+      response: finalizedResponse,
+      iterations: iteration
+    });
+
+    await memoryManager.addMessage(sessionId, 'assistant', finalizedResponse);
+    return finalizedResponse;
+  }
+
+  /**
+   * The main reasoning loop (Think-Act-Verify) with RAG enhancement
+   */
+  async process(sessionId, userId, userMessage) {
+    // 初始化 RAG 系统
+    if (this.useRAG && !memoryManager.initialized) {
+      await memoryManager.initialize();
+    }
+
+    // [优化] 提前获取 session 和 provider，避免循环内重复获取
+    const session = sessionManager.getSession(sessionId);
+    if (!session) throw new Error(`Session ${sessionId} not found`);
+    const provider = sessionManager.getProvider(session.providerType);
+
+    // [RAG] 检索相关历史上下文
+    let ragContext = [];
+    if (this.useRAG && memoryManager.useRAG) {
+      try {
+        ragContext = await memoryManager.retrieveRelevantContext(userMessage, {
+          userId,
+          sessionId,
+          topK: 5
+        });
+
+        if (ragContext.length > 0) {
+          console.log(`[Agent] RAG retrieved ${ragContext.length} relevant messages`);
+        }
+      } catch (e) {
+        console.warn('[Agent] RAG retrieval failed:', e.message);
+      }
+    }
+
+    let currentContext = await memoryManager.getContext(sessionId);
+
+    // 如果有 RAG 上下文，构建增强上下文
+    if (ragContext.length > 0) {
+      const ragMessages = ragContext.map(r => ({
+        role: 'system',
+        content: `[相关历史] ${r.content}`
+      }));
+      // 插入到系统提示后、当前上下文前
+      currentContext = [...ragMessages, ...currentContext];
+    }
+
+    // 1. Append user message to memory
+    await memoryManager.addMessage(sessionId, 'user', userMessage);
+
+    // 记录执行轨迹用于最终自检
+    const executionTrace = {
+      actions: [],
+      startTime: Date.now()
+    };
+
+    let iteration = 0;
+    let finalizedResponse = null;
+    let isTaskComplete = false;
+
+    // 获取 Function Calling 工具定义（一次性）
+    const tools = this.useFunctionCalling ? pluginManager.getToolsForFunctionCalling() : null;
+
+    // [优化] 预构建系统提示
+    const systemPrompt = await PromptBuilder.buildSystemPrompt(1);
+
+    // [优化] 预构建请求选项
+    const chatOptions = {};
+    if (tools && tools.length > 0) {
+      chatOptions.tools = tools;
+      chatOptions.tool_choice = 'auto';
+    }
+
+    while (iteration < this.maxIterations && !isTaskComplete) {
+      iteration++;
+
+      // [SENSE] Build current state for LLM
+      const messages = [
+        { role: 'system', content: systemPrompt },
+        ...currentContext
+      ];
+
+      // [THINK] Call actual Provider with tools
+      const llmResponse = await provider.chat(session.model, messages, chatOptions);
+      const content = llmResponse.content;
+      const toolCalls = llmResponse.toolCalls;
+
+      // 检查是否完成任务
+      if (content && content.startsWith('FINAL:')) {
+        finalizedResponse = content.replace('FINAL:', '').trim();
+        isTaskComplete = true;
+        break;
+      }
+
+      // [ACT] 处理工具调用 - 优先 Function Calling，降级到文本解析
+      if (toolCalls && toolCalls.length > 0) {
+        // Function Calling 模式
+        for (const tc of toolCalls) {
+          const toolName = tc.name;
+          const args = typeof tc.arguments === 'string' ? JSON.parse(tc.arguments) : tc.arguments;
+
+          try {
+            console.log(`[Agent] Function Calling: ${toolName}(${JSON.stringify(args)})`);
+            const toolResult = await pluginManager.executeTool(toolName, args, { sessionId, userId });
+
+            executionTrace.actions.push({ tool: toolName, args, result: toolResult, mode: 'fc' });
+
+            // 使用格式化后的结果
+            const formattedResult = pluginManager.formatToolResult(toolName, toolResult);
+            await memoryManager.addMessage(sessionId, 'assistant', `[Tool Call] ${toolName}`);
+            await memoryManager.addMessage(sessionId, 'system', formattedResult);
+
+            // [优化] 增量更新上下文，而非重新获取全部
+            currentContext.push(
+              { role: 'assistant', content: `[Tool Call] ${toolName}` },
+              { role: 'system', content: formattedResult }
+            );
+          } catch (error) {
+            executionTrace.actions.push({ tool: toolName, args, error: error.message, mode: 'fc' });
+            await memoryManager.addMessage(sessionId, 'system', `[Tool Error] ${toolName}: ${error.message}`);
+            currentContext.push({ role: 'system', content: `[Tool Error] ${toolName}: ${error.message}` });
+          }
+        }
+      } else if (content && content.includes('ACTION:')) {
+        // 降级模式：文本解析 ACTION: tool_name { "arg": "val" }
+        const match = content.match(/ACTION:\s*(\w+)\s*({.*})/);
+        if (match) {
+          const [, toolName, argsJson] = match;
+          try {
+            const args = JSON.parse(argsJson);
+            console.log(`[Agent] Text Parse: ${toolName}(${JSON.stringify(args)})`);
+            const toolResult = await pluginManager.executeTool(toolName, args, { sessionId, userId });
+
+            executionTrace.actions.push({ tool: toolName, args, result: toolResult, mode: 'text' });
+
+            // 使用格式化后的结果
+            const formattedResult = pluginManager.formatToolResult(toolName, toolResult);
+            await memoryManager.addMessage(sessionId, 'assistant', `Action: ${toolName}`);
+            await memoryManager.addMessage(sessionId, 'system', formattedResult);
+
+            // [优化] 增量更新上下文
+            currentContext.push(
+              { role: 'assistant', content: `Action: ${toolName}` },
+              { role: 'system', content: formattedResult }
+            );
+          } catch (error) {
+            executionTrace.actions.push({ tool: toolName, args, error: error.message, mode: 'text' });
+            await memoryManager.addMessage(sessionId, 'system', `Error executing ${toolName}: ${error.message}`);
+            currentContext.push({ role: 'system', content: `Error executing ${toolName}: ${error.message}` });
+          }
+        }
+      } else {
+        // 没有工具调用，直接返回结果
         finalizedResponse = content;
         isTaskComplete = true;
       }
@@ -98,9 +395,9 @@ export class AgentEngine {
     // [SELF-VERIFY] 任务完成后进行质量自检
     executionTrace.endTime = Date.now();
     executionTrace.success = isTaskComplete && iteration < this.maxIterations;
-    
+
     const qualityReport = await this.performSelfVerification(executionTrace);
-    
+
     // 如果质量不达标，触发优化
     if (qualityReport && qualityReport.score < this.qualityThreshold) {
       console.log(`[Agent] 质量得分 ${qualityReport.score} < ${this.qualityThreshold}，开始自我优化...`);

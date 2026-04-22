@@ -10,3 +10,6 @@ node_modules/
 *.swo
 *~
 .obsidian/
+rules.md
+research.md
+plan.md

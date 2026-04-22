@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:openchat/ui/theme/app_theme.dart';
 import 'package:openchat/ui/screens/splash_screen.dart';
+import 'package:openchat/ui/screens/profile/my_qr_screen.dart';
+import 'package:openchat/ui/screens/chat/chat_detail_screen.dart';
+import 'package:openchat/ui/screens/bridge/bridge_status_screen.dart';
 import 'package:openchat/services/storage_service.dart';
 import 'package:openchat/providers/identity_provider.dart';
 
@@ -37,6 +40,17 @@ class OpenChatApp extends ConsumerWidget {
       darkTheme: theme.darkTheme,
       themeMode: themeMode,
       home: const SplashScreen(),
+      routes: {
+        '/profile/my-qr': (context) => const MyQrScreen(),
+        '/chat': (context) {
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+          return ChatDetailScreen(
+            id: args?['id'] ?? '',
+            name: args?['name'] ?? 'Chat',
+          );
+        },
+        '/bridge/status': (context) => const BridgeStatusScreen(),
+      },
     );
   }
 }

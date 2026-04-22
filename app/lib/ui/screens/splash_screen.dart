@@ -27,16 +27,18 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     final identity = ref.read(identityProvider);
 
     if (identity == null) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-      );
-    } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
+      // Auto-generate user with random nickname
+      final nicknames = ['路人甲', '潜水鱼', '打酱油', '吃瓜群众', '路过', '张三', '李四', '王五', '赵六', '孙七'];
+      final randomName = nicknames[DateTime.now().millisecond % nicknames.length];
+      await ref.read(identityProvider.notifier).createIdentity(name: randomName);
     }
+
+    if (!mounted) return;
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const HomeScreen()),
+    );
   }
 
   @override

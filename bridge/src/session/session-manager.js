@@ -1,6 +1,6 @@
 import { createProvider } from '../providers/ai-provider.js';
 import { persistentStore } from '../storage/persistent-store.js';
-import { persistentConfig } from '../memory/persistent-config.js';
+import { persistentConfig } from '../core/persistent-config.js';
 
 export class SessionManager {
   constructor() {
@@ -8,8 +8,14 @@ export class SessionManager {
   }
 
   async addProvider(type, apiKey = null, endpoint = null) {
+    // Already connected? Just return it
     if (this.providers.has(type)) {
-      throw new Error(`Provider ${type} already exists`);
+      const existing = this.providers.get(type);
+      if (existing.connected) {
+        return existing;
+      }
+      // Not connected but exists - remove and re-add
+      this.providers.delete(type);
     }
 
     const effectiveKey = apiKey || persistentConfig.getApiKey(type);
@@ -118,7 +124,7 @@ export class SessionManager {
         response
       };
     } catch (error) {
-      console.error(`✗ Session ${sessionId} error:`, error.message);
+      // 不在这里打印错误，让调用者处理
       throw error;
     }
   }

@@ -1,6 +1,8 @@
 import { messageBus, MESSAGE_TYPES } from './message-bus.js';
-import { persistentConfig } from '../memory/persistent-config.js';
-import { providerManager, PRESET_PROVIDERS, DEFAULT_PROVIDER } from '../memory/provider-manager.js';
+import { persistentConfig } from '../core/persistent-config.js';
+import { providerManager, PRESET_PROVIDERS, DEFAULT_PROVIDER } from '../providers/provider-manager.js';
+import { EvolutionEngine } from './evolution-engine.js';
+import { securityManager } from '../security/security-manager.js';
 
 export const AGENT_STATES = {
   IDLE: 'idle',
@@ -66,7 +68,7 @@ export class ResponseParser {
     });
 
     this.registerParser('stream', (data) => {
-      if (datachoices && data.choices?.[0]?.delta?.content) {
+      if (data.choices && data.choices[0]?.delta?.content) {
         return { type: 'text', content: data.choices[0].delta.content, partial: true };
       }
       if (data.content_block?.text) {
@@ -84,7 +86,14 @@ export class ResponseParser {
   }
 
   parse(data, provider = 'generic') {
-    const parser = this._parsers.get(provider) || this._parsers.get('generic');
+    // 根据 transport 配置自动选择解析器
+    let parserName = provider;
+    const config = providerManager.getProviderConfig(provider);
+    if (config && config.transport === 'openai_chat') {
+      parserName = 'openai';
+    }
+
+    const parser = this._parsers.get(parserName) || this._parsers.get('generic');
     const result = parser(data);
 
     if (result) {
@@ -128,7 +137,7 @@ export class ResponseParser {
   }
 
   detectStream(data) {
-    if (datachoices || datachoices?.[0]?.delta) return true;
+    if (data.choices || data.choices?.[0]?.delta) return true;
     if (data.event === 'message_delta' || data.event === 'content_block_delta') return true;
     if (data._type === 'chunk' || data.type === 'chunk') return true;
     return false;
@@ -1628,37 +1637,17 @@ ${JSON.stringify(this._generateExample(schema), null, 2)}`;
     }
   }
 
+  // NOTE: These methods reference cache methods (this.has, this.set, etc.)
+  // but StructuredOutputValidator is not a cache. These are stubs to prevent
+  // crashes if called, since they are never invoked from outside.
   predictAndWarm(requests, fetchFn, options = {}) {
-    const predictions = this._analyzeRequestPatterns(requests);
-    const warmed = [];
-    const failed = [];
-
-    const warm = async (request) => {
-      try {
-        const key = this._hashRequest(request);
-        if (!this.has(request)) {
-          const response = await fetchFn(request);
-          this.set(request, response, options);
-          warmed.push({ key, request });
-        }
-      } catch (e) {
-        failed.push({ request, error: e.message });
-      }
-    };
-
-    const batchSize = options.batchSize || 5;
-    for (let i = 0; i < predictions.length; i += batchSize) {
-      const batch = predictions.slice(i, i + batchSize);
-      Promise.all(batch.map(warm));
-    }
-
-    return { warmed, failed, total: predictions.length };
+    return { warmed: [], failed: [], total: requests.length };
   }
 
   _analyzeRequestPatterns(requests) {
     const frequency = new Map();
     for (const req of requests) {
-      const key = this._hashRequest(req);
+      const key = this._hashRequest ? this._hashRequest(req) : String(req);
       frequency.set(key, (frequency.get(key) || 0) + 1);
     }
     return Array.from(frequency.entries())
@@ -1667,20 +1656,7 @@ ${JSON.stringify(this._generateExample(schema), null, 2)}`;
   }
 
   warmWithTTL(targetTtl = 0.8) {
-    const entries = this.getEntries();
-    const toWarm = entries.filter(e => {
-      const ageRatio = e.age / e.ttl;
-      return ageRatio >= targetTtl;
-    });
-
-    return {
-      entries: toWarm.length,
-      entriesDetail: toWarm.map(e => ({
-        key: e.key,
-        ageRatio: Math.round(e.age / e.ttl * 100) / 100,
-        remainingTtl: e.remainingTtl
-      }))
-    };
+    return { entries: 0, entriesDetail: [] };
   }
 
   setDistributedSync(nodes, key, value, options = {}) {
@@ -1720,42 +1696,11 @@ ${JSON.stringify(this._generateExample(schema), null, 2)}`;
   }
 
   optimizeForThroughput(targetQps) {
-    const currentStats = this.getStats();
-    if (currentStats.qps >= targetQps) {
-      return { optimized: false, reason: 'Already meeting target QPS' };
-    }
-
-    const newMaxSize = Math.min(this._maxSize * 2, 5000);
-    const newMaxMemory = Math.min(this._maxMemory * 2, 200 * 1024 * 1024);
-
-    this.setMaxSize(newMaxSize);
-    this.setMaxMemory(newMaxMemory);
-
-    return {
-      optimized: true,
-      previousMaxSize: this._maxSize,
-      newMaxSize,
-      previousMaxMemory: this._maxMemory,
-      newMaxMemory,
-      estimatedQpsIncrease: '2x'
-    };
+    return { optimized: false, reason: 'StructuredOutputValidator is not a cache' };
   }
 
   getHitRateTrend(windowMs = 300000) {
-    const now = Date.now();
-    const windowStart = now - windowMs;
-    
-    const hits = this._hits;
-    const misses = this._misses;
-    const total = hits + misses;
-
-    return {
-      hitRate: total > 0 ? hits / total : 0,
-      hits,
-      misses,
-      windowMs,
-      estimate: hits / (windowMs / 1000) * 60
-    };
+    return { hitRate: 0, hits: 0, misses: 0, windowMs, estimate: 0 };
   }
 }
 
@@ -6957,8 +6902,6 @@ export class AdaptiveLimiter {
     if (this._currentInterval > this._minInterval) {
       this._currentInterval = Math.max(this._minInterval, Math.floor(this._currentInterval * 0.8));
     }
-    
-    console.log(`[Limiter] Increased: concurrent=${this._currentConcurrent}, interval=${this._currentInterval}ms`);
   }
 
   getConfig() {
@@ -7335,7 +7278,8 @@ export class AgentSession {
     this.error = null;
     this._heartbeatInterval = null;
     this._isDestroyed = false;
-    
+    this._pendingOperations = new Set();
+
     this._metrics = new MetricsCollector({
       windowSize: config.metricsWindowSize || 60000,
       maxMetrics: config.metricsMaxSize || 10000
@@ -7349,6 +7293,12 @@ export class AgentSession {
       maxInterval: config.maxInterval || 5000,
       initialInterval: 500
     });
+    
+    // 初始化进化引擎
+    this.evolutionEngine = new EvolutionEngine();
+    
+    // 初始化安全系统
+    this.securityManager = securityManager;
     this._limiter.setMetrics(this._metrics);
     
     this._circuitBreaker = new IntelligentCircuitBreaker({
@@ -7655,7 +7605,7 @@ export class AgentSession {
     this.messages.push({
       role,
       content,
-      timestamp: Date.now()
+      timestamp: new Date().toISOString()
     });
     this.lastActivity = Date.now();
   }
@@ -7680,20 +7630,41 @@ export class AgentSession {
       this.addMessage('assistant', response.content);
       this.state = AGENT_STATES.READY;
       this.lastActivity = Date.now();
+      
+      // 任务完成后进行进化分析
+      if (this.currentTask) {
+        await this.evolutionEngine.analyzeExperience(
+          this.currentTask, 
+          response.content || response,
+          { agentId: this.agentId, provider: this.config.provider }
+        );
+      }
+      
       return response;
     } catch (error) {
       this.state = AGENT_STATES.ERROR;
       this.error = error.message;
+      
+      // 即使出错也要记录失败经验
+      if (this.currentTask) {
+        await this.evolutionEngine.analyzeExperience(
+          this.currentTask,
+          `Error: ${error.message}`,
+          { agentId: this.agentId, provider: this.config.provider, error: true }
+        );
+      }
+      
       throw error;
     }
   }
 
   async queryModel(messages) {
-    const request = { model: this.config.model, messageCount: messages.length };
-    let providerName = this._router.selectProvider(request);
+    // 优先使用配置的 provider，而不是让路由器选择
+    let providerName = this.config.provider;
     let apiKey = persistentConfig.getApiKey(providerName);
     let model = this.config.model;
 
+    // 如果配置的 provider 没有 API key，尝试其他 providers
     if (!apiKey) {
       const availableProviders = persistentConfig.listProviders();
       for (const p of availableProviders) {
@@ -7845,15 +7816,17 @@ export class AgentSession {
       const timeoutId = setTimeout(() => controller.abort(), config.maxTimeout);
 
       try {
+        const requestBody = {
+          model: model,
+          messages: filteredMessages,
+          temperature: 0.7,
+          max_tokens: 2000
+        };
+
         response = await fetch(`${providerConfig.baseUrl}${providerConfig.chatEndpoint}`, {
           method: 'POST',
           headers,
-          body: JSON.stringify({
-            model: model,
-            messages: filteredMessages,
-            temperature: 0.7,
-            max_tokens: 2000
-          }),
+          body: JSON.stringify(requestBody),
           signal: controller.signal
         });
 
@@ -8107,7 +8080,6 @@ export class AgentSession {
     this._isDestroyed = true;
     this.state = AGENT_STATES.TERMINATED;
     this.stopHeartbeat();
-    this.stopWatchdog();
     
     for (const opId of this._pendingOperations) {
     }

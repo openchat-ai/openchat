@@ -4,18 +4,18 @@ import 'package:uuid/uuid.dart';
 import 'package:openchat/models/message.dart';
 import 'package:openchat/providers/identity_provider.dart';
 import 'package:openchat/providers/messages_provider.dart';
+import 'package:openchat/providers/bridge_provider.dart';
+import 'package:openchat/services/bridge_service.dart';
 import 'package:openchat/ui/theme/colors.dart';
 
 class ChatDetailScreen extends ConsumerStatefulWidget {
-  final String peerId;
+  final String id;
   final String name;
-  final bool isAi;
 
   const ChatDetailScreen({
     super.key,
-    required this.peerId,
+    required this.id,
     required this.name,
-    this.isAi = false,
   });
 
   @override
@@ -25,6 +25,21 @@ class ChatDetailScreen extends ConsumerStatefulWidget {
 class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
   final _messageController = TextEditingController();
   final _scrollController = ScrollController();
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkBridgeConnection();
+  }
+
+  Future<void> _checkBridgeConnection() async {
+    final isConnected = ref.read(bridgeConnectionProvider);
+    if (!isConnected) {
+      await ref.read(bridgeConnectionProvider.notifier).connect();
+    }
+  }
 
   @override
   void dispose() {
@@ -33,49 +48,128 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
     super.dispose();
   }
 
-  void _sendMessage() {
+  void _sendMessage() async {
     final text = _messageController.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty || _isLoading) return;
 
     final identity = ref.read(identityProvider);
     if (identity == null) return;
 
     final message = Message(
       id: const Uuid().v4(),
-      senderId: identity.peerId,
-      receiverId: widget.peerId,
+      senderId: identity.id,
+      receiverId: widget.id,
       content: text,
       timestamp: DateTime.now(),
       isSent: true,
     );
 
-    ref.read(messagesProvider.notifier).addMessage(widget.peerId, message);
+    ref.read(messagesProvider.notifier).addMessage(widget.id, message);
     _messageController.clear();
-
     _scrollToBottom();
 
-    if (widget.isAi) {
-      _simulateAiResponse(text);
+    await _sendToBridge(text);
+  }
+
+  Future<void> _sendToBridge(String userMessage) async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final bridgeService = ref.read(bridgeServiceProvider);
+      final isConnected = ref.read(bridgeConnectionProvider);
+
+      if (!isConnected) {
+        final connected = await ref.read(bridgeConnectionProvider.notifier).connect();
+        if (!connected) {
+          setState(() {
+            _errorMessage = '无法连接到 Bridge 服务。请确保 Bridge 正在运行。';
+            _isLoading = false;
+          });
+          return;
+        }
+      }
+
+      final streamMessageId = const Uuid().v4();
+      final streamMessage = Message(
+        id: streamMessageId,
+        senderId: widget.id,
+        receiverId: ref.read(identityProvider)?.id ?? '',
+        content: '',
+        timestamp: DateTime.now(),
+        isSent: true,
+        isDelivered: false,
+      );
+
+      ref.read(messagesProvider.notifier).addMessage(widget.id, streamMessage);
+
+      final stream = bridgeService.sendMessageStream(userMessage);
+      final fullContent = StringBuffer();
+
+      await for (final event in stream) {
+        switch (event.type) {
+          case StreamEventType.content:
+            fullContent.write(event.content);
+            _updateStreamMessage(streamMessageId, fullContent.toString());
+            break;
+
+          case StreamEventType.complete:
+            final finalContent = event.content ?? fullContent.toString();
+            _updateStreamMessage(streamMessageId, finalContent, delivered: true);
+            break;
+
+          case StreamEventType.error:
+            setState(() {
+              _errorMessage = event.error ?? '未知错误';
+            });
+            ref.read(messagesProvider.notifier).removeMessage(widget.id, streamMessageId);
+            break;
+
+          case StreamEventType.session:
+            break;
+
+          case StreamEventType.thinking:
+          case StreamEventType.toolCall:
+          case StreamEventType.toolResult:
+            break;
+        }
+      }
+
+      _scrollToBottom();
+    } catch (e) {
+      setState(() {
+        _errorMessage = '发送失败: $e';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
-  void _simulateAiResponse(String userMessage) {
-    Future.delayed(const Duration(seconds: 1), () {
-      if (!mounted) return;
+  void _updateStreamMessage(String messageId, String content, {bool delivered = false}) {
+    final messages = ref.read(messagesProvider);
+    final chatMessages = messages[widget.id] ?? [];
 
-      final aiMessage = Message(
-        id: const Uuid().v4(),
-        senderId: widget.peerId,
-        receiverId: ref.read(identityProvider)?.peerId ?? '',
-        content: 'This is a simulated AI response to: "$userMessage"',
-        timestamp: DateTime.now(),
-        isSent: true,
-        isDelivered: true,
-      );
+    final oldMessage = chatMessages.firstWhere(
+      (m) => m.id == messageId,
+      orElse: () => throw StateError('Message not found'),
+    );
 
-      ref.read(messagesProvider.notifier).addMessage(widget.peerId, aiMessage);
-      _scrollToBottom();
-    });
+    final updatedMessage = Message(
+      id: oldMessage.id,
+      senderId: oldMessage.senderId,
+      receiverId: oldMessage.receiverId,
+      content: content,
+      timestamp: oldMessage.timestamp,
+      isSent: true,
+      isDelivered: delivered,
+    );
+
+    ref.read(messagesProvider.notifier).updateMessage(widget.id, updatedMessage);
+    _scrollToBottom();
   }
 
   void _scrollToBottom() {
@@ -92,7 +186,7 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final messages = ref.watch(chatMessagesProvider(widget.peerId));
+    final messages = ref.watch(chatMessagesProvider(widget.id));
     final identity = ref.watch(identityProvider);
 
     return Scaffold(
@@ -103,9 +197,7 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
           children: [
             CircleAvatar(
               radius: 18,
-              backgroundColor: widget.isAi
-                  ? AppColors.secondary
-                  : AppColors.primary,
+              backgroundColor: AppColors.primary,
               child: Text(
                 widget.name.isNotEmpty ? widget.name[0].toUpperCase() : '?',
                 style: const TextStyle(color: Colors.white, fontSize: 14),
@@ -117,9 +209,9 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(widget.name, style: const TextStyle(fontSize: 16)),
-                  Text(
-                    widget.isAi ? 'AI' : 'Online',
-                    style: const TextStyle(
+                  const Text(
+                    'Online',
+                    style: TextStyle(
                       fontSize: 12,
                       color: AppColors.success,
                     ),
@@ -130,13 +222,62 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
           ],
         ),
         actions: [
-          if (widget.isAi)
-            IconButton(icon: const Icon(Icons.smart_toy), onPressed: () {}),
           IconButton(icon: const Icon(Icons.more_vert), onPressed: () {}),
         ],
       ),
       body: Column(
         children: [
+          Consumer(
+            builder: (context, ref, _) {
+              final isConnected = ref.watch(bridgeConnectionProvider);
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                color: isConnected
+                    ? AppColors.success.withAlpha(30)
+                    : AppColors.error.withAlpha(30),
+                child: Row(
+                  children: [
+                    Icon(
+                      isConnected ? Icons.check_circle : Icons.error_outline,
+                      size: 14,
+                      color: isConnected ? AppColors.success : AppColors.error,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      isConnected ? '已连接 Bridge' : '未连接 Bridge',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isConnected ? AppColors.success : AppColors.error,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          if (_errorMessage != null)
+            Container(
+              padding: const EdgeInsets.all(8),
+              color: AppColors.error.withAlpha(30),
+              child: Row(
+                children: [
+                  const Icon(Icons.error_outline, size: 16, color: AppColors.error),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _errorMessage!,
+                      style: const TextStyle(fontSize: 12, color: AppColors.error),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 16, color: AppColors.error),
+                    onPressed: () => setState(() => _errorMessage = null),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+            ),
           Expanded(
             child: messages.isEmpty
                 ? Center(
@@ -150,10 +291,40 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
                 : ListView.builder(
                     controller: _scrollController,
                     padding: const EdgeInsets.all(16),
-                    itemCount: messages.length,
+                    itemCount: messages.length + (_isLoading ? 1 : 0),
                     itemBuilder: (context, index) {
+                      if (index == messages.length && _isLoading) {
+                        return const Align(
+                          alignment: Alignment.centerLeft,
+                          child: Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  'AI 正在思考...',
+                                  style: TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+
                       final message = messages[index];
-                      final isMe = message.senderId == identity?.peerId;
+                      final isMe = message.senderId == identity?.id;
                       return _MessageBubble(message: message, isMe: isMe);
                     },
                   ),
@@ -176,14 +347,15 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
           children: [
             IconButton(
               icon: const Icon(Icons.add, color: AppColors.textSecondary),
-              onPressed: () {},
+              onPressed: _isLoading ? null : () {},
             ),
             Expanded(
               child: TextField(
                 controller: _messageController,
                 style: const TextStyle(color: Colors.white),
+                enabled: !_isLoading,
                 decoration: InputDecoration(
-                  hintText: 'Type a message...',
+                  hintText: _isLoading ? '等待 AI 响应...' : 'Type a message...',
                   hintStyle: const TextStyle(color: AppColors.textSecondary),
                   filled: true,
                   fillColor: AppColors.backgroundDark,
@@ -196,13 +368,22 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
                     vertical: 8,
                   ),
                 ),
-                onSubmitted: (_) => _sendMessage(),
+                onSubmitted: _isLoading ? null : (_) => _sendMessage(),
               ),
             ),
             const SizedBox(width: 8),
             IconButton(
-              icon: const Icon(Icons.send, color: AppColors.primary),
-              onPressed: _sendMessage,
+              icon: _isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.primary,
+                      ),
+                    )
+                  : const Icon(Icons.send, color: AppColors.primary),
+              onPressed: _isLoading ? null : _sendMessage,
             ),
           ],
         ),
