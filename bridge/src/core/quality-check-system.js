@@ -54,8 +54,14 @@ class AutoRecoveryMixin {
  * 对 LLM 输出进行 5 项检查，计算总分
  */
 class QualityChecker {
-  constructor(config) {
-    this.config = config.ai_constraints.quality_check;
+  constructor(config = {}) {
+    // 容错处理：如果没有配置，使用默认值
+    this.config = config?.ai_constraints?.quality_check || {
+      enabled: true,
+      min_score: 3.0,
+      correction_max_retries: 2,
+      timeout_ms: 30000
+    };
   }
 
   /**
@@ -342,8 +348,12 @@ class QualityChecker {
  * 生成反馈，让大模型重新生成
  */
 class Corrector {
-  constructor(config) {
-    this.config = config.ai_constraints.quality_check;
+  constructor(config = {}) {
+    // 容错处理：如果没有配置，使用默认值
+    this.config = config?.ai_constraints?.quality_check || {
+      enabled: true,
+      correction_max_retries: 2
+    };
   }
 
   /**

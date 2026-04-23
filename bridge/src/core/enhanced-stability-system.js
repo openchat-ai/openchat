@@ -7,7 +7,9 @@ import { globalErrorBoundary } from './error-boundary.js';
 import { getEnhancedMemoryManager } from './memory-manager-enhanced.js';
 import { getPerformanceMonitor } from './performance-monitor.js';
 import { getSystemHealthChecker } from './system-health-checker.js';
-import { getGlobalCoordinator } from './multi-agent-coordinator-enhanced.js';
+// 使用已有的 multi-agent-coordinator.js
+import multiAgentCoordinator from './multi-agent-coordinator.js';
+const getGlobalCoordinator = () => multiAgentCoordinator;
 
 export class EnhancedStabilitySystem {
   constructor(options = {}) {

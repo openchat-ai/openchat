@@ -44,6 +44,17 @@ export class EvolutionSystem {
     this.autoRollback = new AutoRollbackManager();
     this.testOrchestrator = new TestOrchestrator();
 
+    // 🔧 开发模式：根据环境变量启用文件监听
+    // 生产模式（默认）：文件监听禁用，避免与热更新冲突
+    if (process.env.DEV_MODE === 'true' || process.argv.includes('--dev')) {
+      console.log('🛠️  开发模式：启用文件监听（自动重启）');
+      this.autoRestart.enableFileWatching(() => {
+        console.log('📝 文件变化检测到，触发重启...');
+      });
+    } else {
+      console.log('🚀 生产模式：文件监听已禁用（使用热更新）');
+    }
+
     // 初始化 Phase 4 情报与监控子系统
     this.intelligenceCollector = new IntelligenceCollector();
     this.monitor = new Monitor();

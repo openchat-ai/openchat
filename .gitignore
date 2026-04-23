@@ -11,12 +11,21 @@ node_modules/
 *~
 .obsidian/
 
+# OpenChat 运行时数据（会话、记忆、日志等）
+.openchat/
+
 # Claude Code local files
 .claude/settings.local.json
 .claude/worktrees/
 .claude/plans/
 
-# Temporary documentation and test files
+# Sensitive business documentation
+arch.md
+rules.md
+plan.md
+research.md
+
+# Other temporary documentation and test files
 AI_CONSTRAINTS_*.md
 AI_QUALITY_CHECK_SYSTEM.md
 AI_DEVELOPER_GUIDE.md

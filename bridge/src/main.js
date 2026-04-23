@@ -3,6 +3,10 @@ import fs from 'fs';
 import path from 'path';
 import http from 'http';
 import { sessionManager } from './session/session-manager.js';
+
+// 新增：REST API 服务器（31 个端点）
+// 使用动态 import 加载 CommonJS 模块
+let apiServer = null;
 import { executeCommand, commands } from './cli/commands.js';
 import { MessageBuilder, MessageType } from './protocol/message.js';
 import { WebSocketServer } from 'ws';
@@ -68,6 +72,7 @@ class Bridge {
     this.clientId = process.env.CLIENT_ID || crypto.randomUUID();
     this.wss = null;
     this.httpServer = null;
+    this.apiServer = null;  // 新增：REST API 服务器
     this.clients = new Set();
     this.rl = null;
     this.startTime = Date.now();
@@ -154,6 +159,17 @@ class Bridge {
     await this.autoConfigProviders(detectedTools);
 
     initCore();
+
+    // 启动新增的 REST API 服务器（31 个端点）
+    try {
+      const { default: APIServer } = await import('./api/server.js');
+      this.apiServer = new APIServer({ port: 3001 });
+      await this.apiServer.start();
+      console.log(`[API] REST 服务器: http://localhost:3001`);
+      console.log(`[API] 端点: /api/v1/agents, /api/v1/p2p, /api/v1/updates, /api/v1/skills, /api/v1/versions, /api/v1/resources`);
+    } catch (e) {
+      console.log(`[API] 启动失败: ${e.message}`);
+    }
 
     // 无头模式：启动统一服务 (HTTP + WebSocket)
     if (CONFIG.headless) {
@@ -961,6 +977,11 @@ class Bridge {
 
     if (this.httpServer) {
       this.httpServer.close();
+    }
+
+    // 关闭 REST API 服务器
+    if (this.apiServer) {
+      await this.apiServer.stop();
     }
 
     console.log('Goodbye!');

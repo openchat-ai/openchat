@@ -9,7 +9,18 @@ const __dirname = dirname(__filename);
 
 /**
  * AutoRestartManager 类：自动重启机制
- * 监听文件变化，在代码改动时自动重启应用
+ *
+ * 功能拆分（2026-04-24）：
+ * - 文件监听 + 自动重启：默认禁用（开发模式用）
+ * - 父子进程管理：默认启用（始终有效）
+ *
+ * 与 HotUpdateManager 的关系：
+ * - HotUpdateManager: 生产环境热更新（动态加载，不杀进程）
+ * - AutoRestartManager: 保留父子进程管理，文件监听默认关闭
+ *
+ * 使用方式：
+ * - 生产环境：不启用文件监听，用 HotUpdateManager
+ * - 开发环境：启用文件监听（startWatching），自动重启
  */
 class AutoRestartManager {
   constructor(watchDir = null, ignorePatterns = []) {
@@ -17,6 +28,9 @@ class AutoRestartManager {
     this.ignorePatterns = ignorePatterns.length > 0
       ? ignorePatterns
       : ['node_modules', '.git', 'dist', '.claude', 'test', 'spec'];
+
+    // 🔴 关键：文件监听默认关闭，与热更新冲突
+    this.fileWatchingEnabled = false; // 默认禁用！
 
     this.watchers = new Map(); // 文件监听器
     this.isRunning = false;
@@ -53,9 +67,20 @@ class AutoRestartManager {
 
   /**
    * 开始监听文件变化
+   * ⚠️ 注意：默认关闭，与 HotUpdateManager 冲突
+   *       如需启用，请在生产环境外使用，或确保 HotUpdateManager 未运行
    * @param {Function} callback - 重启回调函数
+   * @param {boolean} forceEnable - 强制启用文件监听
    */
-  startWatching(callback) {
+  startWatching(callback, forceEnable = false) {
+    // 🔒 安全检查：默认禁止启用，除非明确指定
+    if (!forceEnable && !this.fileWatchingEnabled) {
+      console.log('⚠️  文件监听已禁用（与热更新冲突）');
+      console.log('   如需启用：autoRestartManager.startWatching(cb, true)');
+      console.log('   或设置：autoRestartManager.fileWatchingEnabled = true');
+      return;
+    }
+
     this.restartCallback = callback;
     this.isRunning = true;
 
@@ -66,6 +91,24 @@ class AutoRestartManager {
     this.watchDirectory(this.watchDir);
 
     console.log('✅ 文件监听已启动');
+  }
+
+  /**
+   * 启用文件监听（谨慎使用）
+   * @param {Function} callback - 重启回调函数
+   */
+  enableFileWatching(callback) {
+    console.log('⚠️  启用文件监听（生产环境建议关闭）');
+    this.fileWatchingEnabled = true;
+    this.startWatching(callback, true);
+  }
+
+  /**
+   * 禁用文件监听
+   */
+  disableFileWatching() {
+    this.fileWatchingEnabled = false;
+    console.log('🔒 文件监听已禁用');
   }
 
   /**
@@ -123,6 +166,11 @@ class AutoRestartManager {
    * @param {string} filePath - 变化的文件路径
    */
   handleFileChange(filePath) {
+    // 🔒 安全检查
+    if (!this.fileWatchingEnabled) {
+      return;
+    }
+
     if (this.shouldIgnore(filePath)) {
       return;
     }
@@ -260,6 +308,7 @@ class AutoRestartManager {
 
     return {
       isRunning: this.isRunning,
+      fileWatchingEnabled: this.fileWatchingEnabled,  // 🔒 新增
       watchingDirectory: this.watchDir,
       watchingFileCount: this.watchers.size,
       totalRestarts: this.restartHistory.length,
@@ -268,6 +317,9 @@ class AutoRestartManager {
         ? new Date(this.lastRestartTime).toISOString()
         : null,
       ignorePatterns: this.ignorePatterns,
+      note: this.fileWatchingEnabled
+        ? '⚠️ 文件监听已启用（可能与热更新冲突）'
+        : '🔒 文件监听已禁用（安全模式，使用热更新）'
     };
   }
 

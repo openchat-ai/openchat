@@ -1,84 +1,180 @@
+/**
+ * OpenChat 配置管理
+ *
+ * 存储结构：
+ *
+ * 用户主目录 ~/.openchat/
+ * └── config.json         # 唯一配置文件（服务商、密钥、模型）
+ *
+ * 项目目录 项目/.openchat/
+ * ├── sessions/           # 会话数据
+ * ├── skills/             # 技能库
+ * ├── memory/             # 进化记忆
+ * └── logs/               # 日志
+ */
+
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 
-const CONFIG_DIR = path.join(os.homedir(), '.openchat');
-const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
-const MEMORY_DIR = path.join(CONFIG_DIR, 'memory');
-const SKILLS_DIR = path.join(CONFIG_DIR, 'skills');
-const SESSIONS_DIR = path.join(CONFIG_DIR, 'sessions');
+// 用户主目录
+const USER_DIR = path.join(os.homedir(), '.openchat');
+const CONFIG_FILE = path.join(USER_DIR, 'config.json');
 
-// No encryption - store API keys as plain text
-class SecureStorage {
-  encrypt(text) {
-    return text;  // Return plain text
-  }
+// 项目目录
+const PROJECT_ROOT = path.resolve(process.cwd(), '..');
+const PROJECT_DIR = path.join(PROJECT_ROOT, '.openchat');
+const SESSIONS_DIR = path.join(PROJECT_DIR, 'sessions');
+const SKILLS_DIR = path.join(PROJECT_DIR, 'skills');
+const MEMORY_DIR = path.join(PROJECT_DIR, 'memory');
+const LOGS_DIR = path.join(PROJECT_DIR, 'logs');
 
-  decrypt(encrypted) {
-    return encrypted;  // Return plain text
+// 默认配置
+const DEFAULT_CONFIG = {
+  providers: {},
+  current: { provider: null, model: null },
+  bridge: { port: 3000, apiPort: 3001 }
+};
+
+// ================== 工具函数 ==================
+
+function ensureDir(dir) {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
   }
 }
 
-const secureStorage = new SecureStorage();
+function readJson(file, defaultValue) {
+  try {
+    if (fs.existsSync(file)) {
+      return JSON.parse(fs.readFileSync(file, 'utf8'));
+    }
+  } catch (e) {
+    // 忽略错误
+  }
+  return defaultValue;
+}
+
+function writeJson(file, data) {
+  ensureDir(path.dirname(file));
+  fs.writeFileSync(file, JSON.stringify(data, null, 2));
+}
+
+// ================== 配置管理类 ==================
 
 class PersistentConfig {
   constructor() {
-    this.config = this.load();
+    ensureDir(USER_DIR);
+    ensureDir(PROJECT_DIR);
+    ensureDir(SESSIONS_DIR);
+    ensureDir(SKILLS_DIR);
+    ensureDir(MEMORY_DIR);
+    ensureDir(LOGS_DIR);
+
+    this.config = readJson(CONFIG_FILE, DEFAULT_CONFIG);
   }
 
-  ensureDirs() {
-    for (const dir of [CONFIG_DIR, MEMORY_DIR, SKILLS_DIR, SESSIONS_DIR]) {
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-      }
-    }
+  // ================== 提供商管理 ==================
+
+  getProvider(name) {
+    return this.config.providers?.[name] || null;
   }
 
-  load() {
-    this.ensureDirs();
-    if (fs.existsSync(CONFIG_FILE)) {
-      try {
-        const raw = fs.readFileSync(CONFIG_FILE, 'utf8');
-        return JSON.parse(raw);
-      } catch {
-        return { apiKeys: {}, preferences: {}, history: [] };
-      }
-    }
-    return { apiKeys: {}, preferences: {}, history: [] };
-  }
-
-  save() {
-    this.ensureDirs();
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(this.config, null, 2));
-  }
-
-  getApiKey(provider) {
-    const encrypted = this.config.apiKeys?.[provider];
-    if (!encrypted) return null;
-    return secureStorage.decrypt(encrypted);
-  }
-
-  setApiKey(provider, key) {
-    if (!this.config.apiKeys) this.config.apiKeys = {};
-    this.config.apiKeys[provider] = secureStorage.encrypt(key);
+  setProvider(name, cfg) {
+    if (!this.config.providers) this.config.providers = {};
+    this.config.providers[name] = cfg;
     this.save();
-    return true;
-  }
-
-  removeApiKey(provider) {
-    if (this.config.apiKeys?.[provider]) {
-      delete this.config.apiKeys[provider];
-      this.save();
-      return true;
-    }
-    return false;
   }
 
   listProviders() {
-    return Object.keys(this.config.apiKeys || {});
+    return Object.keys(this.config.providers || {});
   }
 
+  getEnabledProviders() {
+    const providers = this.config.providers || {};
+    return Object.entries(providers)
+      .filter(([_, cfg]) => cfg.enabled && cfg.apiKey)
+      .map(([name, cfg]) => ({ name, ...cfg }));
+  }
+
+  // ================== API 密钥 ==================
+
+  getApiKey(provider) {
+    return this.config.providers?.[provider]?.apiKey || null;
+  }
+
+  setApiKey(provider, key) {
+    if (!this.config.providers) this.config.providers = {};
+    if (!this.config.providers[provider]) this.config.providers[provider] = {};
+    this.config.providers[provider].apiKey = key;
+    this.save();
+  }
+
+  // ================== 当前选择 ==================
+
+  getCurrentProvider() {
+    return this.config.current?.provider || null;
+  }
+
+  setCurrentProvider(name) {
+    if (!this.config.current) this.config.current = {};
+    this.config.current.provider = name;
+    this.save();
+  }
+
+  getCurrentModel() {
+    return this.config.current?.model || null;
+  }
+
+  setCurrentModel(model) {
+    if (!this.config.current) this.config.current = {};
+    this.config.current.model = model;
+    this.save();
+  }
+
+  // ================== Bridge 配置 ==================
+
+  getBridgeConfig() {
+    return this.config.bridge || { port: 3000, apiPort: 3001 };
+  }
+
+  setBridgeConfig(cfg) {
+    this.config.bridge = { ...this.config.bridge, ...cfg };
+    this.save();
+  }
+
+  // ================== 记忆管理 ==================
+
+  getMemory(topic) {
+    const file = path.join(MEMORY_DIR, `${topic}.md`);
+    return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
+  }
+
+  setMemory(topic, content) {
+    fs.writeFileSync(path.join(MEMORY_DIR, `${topic}.md`), content);
+  }
+
+  listMemory() {
+    if (!fs.existsSync(MEMORY_DIR)) return [];
+    return fs.readdirSync(MEMORY_DIR).filter(f => f.endsWith('.md')).map(f => f.replace('.md', ''));
+  }
+
+  // ================== 技能管理 ==================
+
+  getSkillDir() {
+    return SKILLS_DIR;
+  }
+
+  // ================== 通用偏好设置 ==================
+
   getPreference(key, defaultValue = null) {
+    if (key === 'currentProvider') {
+      return this.getCurrentProvider() || defaultValue;
+    }
+    if (key === 'currentModel') {
+      return this.getCurrentModel() || defaultValue;
+    }
+    // 其他偏好存储在 config.preferences 中
     return this.config.preferences?.[key] ?? defaultValue;
   }
 
@@ -88,85 +184,26 @@ class PersistentConfig {
     this.save();
   }
 
-  getRecentSessions(limit = 10) {
-    return (this.config.history || []).slice(-limit);
+  // ================== 保存 ==================
+
+  save() {
+    writeJson(CONFIG_FILE, this.config);
   }
 
-  addSessionToHistory(sessionId, provider, model) {
-    if (!this.config.history) this.config.history = [];
-    this.config.history.push({
-      id: sessionId,
-      provider,
-      model,
-      timestamp: Date.now()
-    });
-    if (this.config.history.length > 50) {
-      this.config.history = this.config.history.slice(-50);
-    }
-    this.save();
-  }
+  // ================== 路径信息 ==================
 
-  // 获取最近使用的模型（去重）
-  getRecentModels(limit = 10) {
-    const history = this.config.history || [];
-    const seen = new Set();
-    const result = [];
-
-    // 从最新到最旧遍历
-    for (let i = history.length - 1; i >= 0 && result.length < limit; i--) {
-      const item = history[i];
-      if (item.provider && item.model) {
-        const key = `${item.provider}/${item.model}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          result.push({
-            provider: item.provider,
-            model: item.model,
-            timestamp: item.timestamp
-          });
-        }
-      }
-    }
-
-    return result;
-  }
-
-  // 记录模型使用
-  recordModelUse(provider, model) {
-    if (!this.config.history) this.config.history = [];
-    this.config.history.push({
-      id: `model-${Date.now()}`,
-      provider,
-      model,
-      timestamp: Date.now()
-    });
-    if (this.config.history.length > 50) {
-      this.config.history = this.config.history.slice(-50);
-    }
-    this.save();
-  }
-
-  getMemory(topic) {
-    const memFile = path.join(MEMORY_DIR, `${topic}.md`);
-    if (fs.existsSync(memFile)) {
-      return fs.readFileSync(memFile, 'utf8');
-    }
-    return null;
-  }
-
-  setMemory(topic, content) {
-    const memFile = path.join(MEMORY_DIR, `${topic}.md`);
-    fs.writeFileSync(memFile, content);
-  }
-
-  listMemory() {
-    if (!fs.existsSync(MEMORY_DIR)) return [];
-    return fs.readdirSync(MEMORY_DIR)
-      .filter(f => f.endsWith('.md'))
-      .map(f => f.replace('.md', ''));
+  getPaths() {
+    return {
+      configFile: CONFIG_FILE,
+      projectDir: PROJECT_DIR,
+      sessionsDir: SESSIONS_DIR,
+      skillsDir: SKILLS_DIR,
+      memoryDir: MEMORY_DIR,
+      logsDir: LOGS_DIR
+    };
   }
 }
 
 export const persistentConfig = new PersistentConfig();
-export { CONFIG_DIR, MEMORY_DIR, SKILLS_DIR, SESSIONS_DIR };
+export { USER_DIR, PROJECT_DIR, SESSIONS_DIR, SKILLS_DIR, MEMORY_DIR, LOGS_DIR };
 export default persistentConfig;
