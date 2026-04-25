@@ -1,0 +1,41 @@
+{
+  "providers": {
+    "anthropic": {
+      "name": "Anthropic Claude",
+      "enabled": true,
+      "options": {
+        "baseURL": "https://api.anthropic.com",
+        "apiKey": "",
+        "timeout": 60000
+      },
+      "models": {}
+    },
+    "deepseek": {
+      "name": "DeepSeek",
+      "enabled": true,
+      "options": {
+        "baseURL": "https://api.deepseek.com/v1",
+        "apiKey": "",
+        "timeout": 60000
+      },
+      "models": {}
+    },
+    "baiduqianfancodingplan": {
+      "name": "百度千帆编程",
+      "enabled": true,
+      "options": {
+        "baseURL": "https://qianfan.baidubce.com/v2/coding",
+        "apiKey": "bce-v3/ALTAKSP-Xr3Aa9gqYeZXf8Hrul8Jo/e0765953183c9931af60f0759c68da4d73708090",
+        "timeout": 60000
+      },
+      "models": {
+        "minimax-m2.5": { "name": "MiniMax-M2.5" },
+        "glm-5": { "name": "GLM-5" },
+        "kimi-k2.5": { "name": "Kimi-K2.5" },
+        "qianfan-code-latest": { "name": "Qianfan Code Latest" }
+      }
+    }
+  },
+  "defaultProvider": "baiduqianfancodingplan",
+  "defaultModel": "qianfan-code-latest"
+}

@@ -16,6 +16,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import { randomUUID } from 'crypto';
 
 // 用户主目录
 const USER_DIR = path.join(os.homedir(), '.openchat');
@@ -28,12 +29,30 @@ const SESSIONS_DIR = path.join(PROJECT_DIR, 'sessions');
 const SKILLS_DIR = path.join(PROJECT_DIR, 'skills');
 const MEMORY_DIR = path.join(PROJECT_DIR, 'memory');
 const LOGS_DIR = path.join(PROJECT_DIR, 'logs');
+const HOUSES_DIR = path.join(USER_DIR, 'houses');
 
 // 默认配置
 const DEFAULT_CONFIG = {
   providers: {},
   current: { provider: null, model: null },
-  bridge: { port: 3000, apiPort: 3001 }
+  bridge: {
+    mode: 'headless',
+    host: 'localhost',
+    port: 3000,
+    name: '',
+    region: '',
+    dhtPort: 0,
+    localBootstrap: [],
+    directListen: 0,
+    directConnect: [],
+    wsSignaling: '',
+    advertiseHost: '',
+    qiniuEnabled: true,
+    cores: [],
+    hostId: '',
+    deployServerEnabled: true,
+    deployServerPort: 8080
+  }
 };
 
 // ================== 工具函数 ==================
@@ -70,6 +89,7 @@ class PersistentConfig {
     ensureDir(SKILLS_DIR);
     ensureDir(MEMORY_DIR);
     ensureDir(LOGS_DIR);
+    ensureDir(HOUSES_DIR);
 
     this.config = readJson(CONFIG_FILE, DEFAULT_CONFIG);
   }
@@ -100,7 +120,8 @@ class PersistentConfig {
   // ================== API 密钥 ==================
 
   getApiKey(provider) {
-    return this.config.providers?.[provider]?.apiKey || null;
+    const p = this.config.providers?.[provider];
+    return p?.apiKey || p?.options?.apiKey || null;
   }
 
   setApiKey(provider, key) {
@@ -132,15 +153,58 @@ class PersistentConfig {
     this.save();
   }
 
+  /**
+   * 解析模型名：从 providers.models map（key → {name}）反查
+   * 如果 model 直接匹配某个 key 则直接返回，如果匹配 display name 则返回对应 key
+   * 这样用户配置显示名称（如 "Qianfan Code Latest"）时也能正确映射到 API 模型 key
+   */
+  resolveModelName(providerName, model) {
+    if (!model || !providerName) return null;
+    const providerCfg = this.getProvider(providerName);
+    const models = providerCfg?.models;
+    if (!models) return null;
+
+    // 直接匹配 key
+    if (models[model]) return model;
+
+    // 反查：displayName → key
+    for (const [key, val] of Object.entries(models)) {
+      if (val.name === model || val.displayName === model) {
+        return key;
+      }
+    }
+
+    return null;
+  }
+
   // ================== Bridge 配置 ==================
 
   getBridgeConfig() {
-    return this.config.bridge || { port: 3000, apiPort: 3001 };
+    this.ensureHostId();
+    return { ...DEFAULT_CONFIG.bridge, ...(this.config.bridge || {}) };
   }
 
   setBridgeConfig(cfg) {
-    this.config.bridge = { ...this.config.bridge, ...cfg };
+    const oldHostId = this.config.bridge?.hostId || '';
+    this.config.bridge = { ...DEFAULT_CONFIG.bridge, ...this.config.bridge, ...cfg };
+    // 保护 hostId 不被意外覆盖
+    if (oldHostId) this.config.bridge.hostId = oldHostId;
     this.save();
+  }
+
+  /** 确保 hostId 已生成 — 首次启动时创建 UUID，之后复用 */
+  ensureHostId() {
+    if (!this.config.bridge) this.config.bridge = {};
+    if (!this.config.bridge.hostId) {
+      this.config.bridge.hostId = randomUUID();
+      this.save();
+    }
+    return this.config.bridge.hostId;
+  }
+
+  /** 获取本机 hostId */
+  getHostId() {
+    return this.ensureHostId();
   }
 
   // ================== 记忆管理 ==================
@@ -179,6 +243,13 @@ class PersistentConfig {
   }
 
   setPreference(key, value) {
+    // currentProvider / currentModel 写入规范位置 config.current，不走 preferences
+    if (key === 'currentProvider') {
+      return this.setCurrentProvider(value);
+    }
+    if (key === 'currentModel') {
+      return this.setCurrentModel(value);
+    }
     if (!this.config.preferences) this.config.preferences = {};
     this.config.preferences[key] = value;
     this.save();
@@ -199,11 +270,12 @@ class PersistentConfig {
       sessionsDir: SESSIONS_DIR,
       skillsDir: SKILLS_DIR,
       memoryDir: MEMORY_DIR,
-      logsDir: LOGS_DIR
+      logsDir: LOGS_DIR,
+      housesDir: HOUSES_DIR
     };
   }
 }
 
 export const persistentConfig = new PersistentConfig();
-export { USER_DIR, PROJECT_DIR, SESSIONS_DIR, SKILLS_DIR, MEMORY_DIR, LOGS_DIR };
+export { USER_DIR, PROJECT_DIR, SESSIONS_DIR, SKILLS_DIR, MEMORY_DIR, LOGS_DIR, HOUSES_DIR };
 export default persistentConfig;

@@ -10,8 +10,11 @@
 | Logger | core/logger.js | ✅ 完成 | 通过 | 独立模块 |
 | PersistentSessionManager | core/persistent-session-manager.js | ✅ 完成 | 通过 | 独立模块 |
 | SecurityChecker | core/security-checker.js | ✅ 完成 | 通过 | 独立模块 |
-| EvolutionEngine | core/evolution-engine.js | ✅ 升级 | 通过 | 集成SkillManager |
+| EvolutionEngine | core/evolution-engine.js | ✅ 完成 | 通过 | 集成SkillManager |
 | EvolutionSystem | core/evolution-system.js | ✅ 完成 | 9/9 | 综合系统 |
+| **SafeEvolution** | core/safe-evolution.js | ✅ **新增** | 待测 | P2P多点验证 |
+| **BridgeSpawn** | core/bridge-spawn.js | ✅ **新增** | 待测 | 子进程/脚本 |
+| **HouseOrchestrator** | core/house-orchestrator.js | ✅ **新增** | 待测 | 治家系统 |
 | MultiModelTester | 待集成 | ⏳ 待做 | - | - |
 | AdversarialTest | 待集成 | ⏳ 待做 | - | - |
 | AutoRestartManager | 待集成 | ⏳ 待做 | - | - |
@@ -21,7 +24,7 @@
 | IntelligenceCollector | 待集成 | ⏳ 待做 | - | - |
 | Monitor | 待集成 | ⏳ 待做 | - | - |
 
-**总进度**: 6/14 模块已集成 (43%)
+**总进度**: 9/16 模块已集成 (56%)
 
 ## ✅ 已完成的集成
 
@@ -63,10 +66,28 @@
 
 ### Phase 5: 整合与优化
 - [x] **EvolutionSystem** - 综合系统集成
-  - 位置: `bridge/src/core/evolution-system.js`
-  - 功能: 整合所有子系统，提供统一接口
-  - 包含模块: SkillManager, Logger, SessionManager, SecurityChecker, EvolutionEngine
-  - 测试: 9/9 测试通过
+   - 位置: `bridge/src/core/evolution-system.js`
+   - 功能: 整合所有子系统，提供统一接口
+   - 包含模块: SkillManager, Logger, SessionManager, SecurityChecker, EvolutionEngine
+   - 测试: 9/9 测试通过
+
+### Phase 6: P2R-S 居民自治 (2026-04-29)
+- [x] **SafeEvolution** - 安全自治进化
+   - 位置: `bridge/src/core/safe-evolution.js`
+   - 功能: 提案→2+邻居验证→共识→备份→5s/30s看门狗→热回滚
+   - 包含: riskScore评分, .bak备份, watchdog
+
+- [x] **BridgeSpawn** - 进程/脚本生成
+   - 位置: `bridge/src/core/bridge-spawn.js`
+   - 功能: 同机子进程spawn, 跨机部署脚本生成
+
+- [x] **HouseOrchestrator** - 治家系统
+   - 位置: `bridge/src/core/house-orchestrator.js`
+   - 功能: 3 safe houses, 维护, 迁移, 接入SafeEvolution
+
+- [x] **ResidentManager** - 居民管理
+   - 位置: `bridge/src/core/resident-manager.js`
+   - 功能: safeHouses字段, 3窟管理
 
 ## 🧪 集成测试结果
 
@@ -99,10 +120,11 @@
 
 ## 📈 关键指标
 
-- **已创建的集成文件**: 6个
+- **已创建的集成文件**: 9个
 - **已通过的测试**: 15个 (6 + 9)
-- **核心模块集成度**: 43% (6/14)
+- **核心模块集成度**: 56% (9/16)
 - **系统集成度**: 功能完整，可开始日常使用
+- **P2R-S**: 安全自治系统已集成
 
 ## 🎯 后续集成计划
 
@@ -163,5 +185,5 @@
 
 ---
 
-**最后更新**: 2026-04-22
+**最后更新**: 2026-04-29
 **集成者**: Claude Code Integration System

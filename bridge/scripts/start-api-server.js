@@ -4,6 +4,7 @@
  * 启动独立的 API 服务器
  */
 
+import 'dotenv/config';
 import APIServer from '../src/api/server.js';
 import P2PSwarm from '../src/p2p/swarm.js';
 import healthCheck from '../src/monitoring/health-check.js';

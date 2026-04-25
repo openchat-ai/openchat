@@ -1,8 +1,6 @@
 # 📖 术语表 - OpenChat 核心概念
 
-快速参考 OpenChat 系统中的关键术语和概念。
-
----
+> **版本**: 2.1 | **最后更新**: 2026-04-29
 
 ## 🏗️ 系统架构
 
@@ -14,6 +12,32 @@
 - 多个次 AI（Secondary AI）
 
 Bridge 通过 P2P 网络相互连接。
+
+### hostId
+**机器标识 | 持久 UUID | 跨机区分**
+
+每台物理机器的稳定标识：
+- UUID v4，首次启动时自动生成
+- 存于 `~/.openchat/config.json` → `bridge.hostId`
+- 不绑定硬件，可手动替换
+- Bridge 重启不变，子进程通过 `--hostId` 继承
+
+### houseId
+**实例标识 | 推导标识**
+
+某机器上某 Bridge 实例的标识：
+- 格式：`house_<hostId_prefix>_<port>`
+- 由 `hostId + port` 推导，非独立存储
+
+### bridgeId
+**网络标识 | P2P 端点**
+
+Bridge 在 P2P 网络中的连接标识：
+- 格式：`bridge_<ts>_<rand>`
+- 每次启动重新生成（不持久）
+- 仅用于网络层寻址，不用于机器区分
+
+---
 
 ### Primary AI
 **主 AI | 主代理 | 决策者**
@@ -88,6 +112,48 @@ Bridge 之间的去中心化通信系统：
 - LOW（低）
 
 重要消息优先传输。
+
+### SafeEvolution
+**安全自治进化 | P2R-S**
+
+居民自主维护和升级系统：
+- 提案需 ≥2 邻居验证
+- 5s/30s 看门狗双重保护
+- .bak 备份 + 热回滚
+
+### House（房子/Bridge）
+**住所 | 节点**
+
+每个 Bridge 是一个"房子"：
+- 居民居住和工作的空间
+- 居民维护/修理/升级房子
+- 3 safe houses 狡兔三窟（必须来自 ≥2 台不同机器）
+
+### Safe House（安全屋/窟）
+**备灾实例 | 跨机保障**
+
+居民在其他 Bridge 上注册的灾备住所：
+- **跨机最小保证**：至少 3 个有效窟，且来自 ≥2 台不同 hostId
+- 1 小时内验证过的才算有效
+- 每 tick 轮转验证一个安全屋
+- 字段：`{ houseId, bridgeId, hostId, host, port, lastVerified, health }`
+
+### PM2 进程守护
+**进程管理 | 自动重启**
+
+生产环境部署方案：
+- 进程崩溃后自动拉起
+- 日志轮转（`logs/openchat-bridge-{error,out}.log`）
+- 内存超标自动重启（`max_memory_restart: 500M`）
+- 配置：`ecosystem.config.cjs`
+- 命令：`npm run pm2:start` / `npm run pm2:stop`
+
+### Resident（居民/AI Agent）
+**居民 | AI 智能体**
+
+住在 Bridge 中的 AI：
+- 自主决策、维护、迁移
+- 遵守"不毁房子"原则
 
 ---
 

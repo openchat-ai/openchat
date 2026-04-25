@@ -10,6 +10,10 @@
   "scripts": {
     "start": "node src/main.js",
     "dev": "node --watch src/main.js",
+    "deploy:build": "node scripts/build-deploy.js",
+    "pm2:start": "node --input-type=module -e \"import {createLaunchStrategy,detectBestStrategy} from './src/core/launch-strategies.js';const s=createLaunchStrategy(detectBestStrategy(),{name:'openchat-bridge',script:'src/main.js'});await s.launch()\"",
+    "pm2:stop": "pm2 delete openchat-bridge 2>/dev/null; exit 0",
+    "pm2:status": "pm2 status",
     "test": "node --test src/core/__tests__/*.test.mjs",
     "test:watch": "node --test --watch src/core/__tests__/*.test.mjs",
     "test:unit": "node test-agent-session.js && node test-agent-monitor.js",
@@ -29,13 +33,19 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@jitsi/rnnoise-wasm": "^0.2.1",
+    "@shiguredo/rnnoise-wasm": "^2025.1.5",
     "axios": "^1.15.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.1",
     "express": "^4.22.1",
     "helmet": "^7.2.0",
+    "hyperswarm": "^4.17.0",
     "joi": "^17.13.3",
     "morgan": "^1.10.1",
+    "onnxruntime-node": "^1.24.3",
+    "opusscript": "^0.1.1",
+    "qiniu": "^7.15.2",
     "uuid": "^9.0.0",
     "ws": "^8.16.0"
   },
@@ -43,5 +53,8 @@
     "@types/jest": "^30.0.0",
     "husky": "^9.1.7",
     "jest": "^30.3.0"
+  },
+  "optionalDependencies": {
+    "pm2": "^5.4.0"
   }
 }
