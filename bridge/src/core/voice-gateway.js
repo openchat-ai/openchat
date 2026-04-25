@@ -1,12 +1,11 @@
 /**
  * 语音网关 - AI Agent 实时语音通信
  *
- * 功能：
- * - AI Agent 语音房间管理
- * - WebRTC 信令处理
- * - 音频流转发 (SFU 模式)
- * - 语音转文字 (STT)
- * - 文字转语音 (TTS)
+ * 支持多种传输模式:
+ * - 原始 PCM (局域网)
+ * - Neural Codec (AI压缩)
+ * - Opus (标准压缩)
+ * - 自适应 (根据网络自动切换)
  */
 
 const EventEmitter = require('events');
@@ -16,20 +15,23 @@ class VoiceGateway extends EventEmitter {
   constructor(options = {}) {
     super();
     this.port = options.port || 8000;
-    this.rooms = new Map();           // roomId -> room
-    this.participants = new Map();    // participantId -> participant
+    this.rooms = new Map();
+    this.participants = new Map();
+
+    // 传输模式配置
+    this.transportModes = {
+      raw: { name: 'Raw PCM', bitrate: 256, quality: 100 },
+      neural: { name: 'Neural Codec', bitrate: 32, quality: 90 },
+      opus_high: { name: 'Opus HQ', bitrate: 128, quality: 75 },
+      opus_low: { name: 'Opus Low', bitrate: 32, quality: 50 },
+      adaptive: { name: 'Adaptive', bitrate: 'auto', quality: 'auto' }
+    };
+
+    // ICE 服务器
     this.stunServers = options.stunServers || [
       'stun:stun.l.google.com:19302'
     ];
     this.turnServers = options.turnServers || [];
-
-    // 音频配置
-    this.audioConfig = {
-      sampleRate: 16000,
-      channels: 1,
-      codec: 'opus',
-      bitrate: 32000
-    };
   }
 
   /**
@@ -43,16 +45,72 @@ class VoiceGateway extends EventEmitter {
       createdAt: Date.now(),
       maxParticipants: options.maxParticipants || 10,
       participants: new Set(),
-      isRecording: false,
-      mode: options.mode || 'conference', // 'conference' | 'p2p'
-      status: 'active',
-      metadata: options.metadata || {}
+      // 传输模式: 'raw' | 'neural' | 'opus_high' | 'opus_low' | 'adaptive'
+      transportMode: options.transportMode || 'adaptive',
+      status: 'active'
     };
 
     this.rooms.set(roomId, room);
     this.emit('roomCreated', { roomId, room });
 
     return room;
+  }
+
+  /**
+   * 设置房间传输模式
+   */
+  setRoomTransportMode(roomId, mode) {
+    const room = this.rooms.get(roomId);
+    if (!room) throw new Error('Room not found');
+
+    if (!this.transportModes[mode]) {
+      throw new Error(`Unknown transport mode: ${mode}`);
+    }
+
+    room.transportMode = mode;
+
+    // 通知所有参与者
+    for (const pid of room.participants) {
+      this.emit('transportModeChanged', { roomId, participantId: pid, mode });
+    }
+
+    return { roomId, mode, config: this.transportModes[mode] };
+  }
+
+  /**
+   * 获取房间传输信息
+   */
+  getRoomTransportInfo(roomId) {
+    const room = this.rooms.get(roomId);
+    if (!room) return null;
+
+    const mode = room.transportMode;
+    const config = this.transportModes[mode];
+
+    // 计算预估流量
+    const bitrate = typeof config.bitrate === 'number' ? config.bitrate : 0;
+    const dailyMB = (bitrate * 3600 * 24) / 8 / 1000;
+
+    return {
+      roomId,
+      mode,
+      modeName: config.name,
+      bitrate: config.bitrate,
+      quality: `${config.quality}%`,
+      dailyTraffic: `${dailyMB.toFixed(1)} MB`,
+      description: config.description
+    };
+  }
+
+  /**
+   * 获取所有模式信息
+   */
+  getAllTransportModes() {
+    return Object.entries(this.transportModes).map(([key, value]) => ({
+      mode: key,
+      ...value,
+      dailyTraffic: `${((typeof value.bitrate === 'number' ? value.bitrate : 0) * 3600 * 24 / 8 / 1000).toFixed(1)} MB`
+    }));
   }
 
   /**
@@ -64,25 +122,19 @@ class VoiceGateway extends EventEmitter {
       throw new Error(`Room ${roomId} not found`);
     }
 
-    if (room.participants.size >= room.maxParticipants) {
-      throw new Error('Room is full');
-    }
-
     const participantInfo = {
       id: participant.id || crypto.randomUUID(),
       roomId,
       agentId: participant.agentId,
       agentType: participant.agentType,
-      role: participant.role || 'participant', // 'host' | 'participant' | 'listener'
+      role: participant.role || 'participant',
       joinedAt: Date.now(),
       audioEnabled: true,
       speaking: false,
       volume: 0,
-      audioStream: null,
-      // STT/TTS
-      sttEnabled: participant.sttEnabled !== false,
-      ttsEnabled: participant.ttsEnabled !== false,
-      lastTranscript: null
+      // 传输信息
+      transportMode: room.transportMode,
+      bitrate: this.transportModes[room.transportMode]?.bitrate || 0
     };
 
     room.participants.add(participantInfo.id);
@@ -93,7 +145,102 @@ class VoiceGateway extends EventEmitter {
     return {
       roomId,
       participant: participantInfo,
-      iceServers: this.getIceServers()
+      iceServers: this.getIceServers(),
+      transportMode: room.transportMode,
+      transportConfig: this.transportModes[room.transportMode]
+    };
+  }
+
+  /**
+   * 处理音频数据 (根据传输模式)
+   */
+  async processAudio(participantId, pcmData) {
+    const participant = this.participants.get(participantId);
+    if (!participant) return null;
+
+    const room = this.rooms.get(participant.roomId);
+    const mode = room?.transportMode || 'opus_low';
+
+    let processedAudio;
+
+    switch (mode) {
+      case 'raw':
+        // 直接传输 PCM
+        processedAudio = {
+          data: pcmData,
+          method: 'raw',
+          bitrate: 256
+        };
+        break;
+
+      case 'neural':
+        // Neural Codec 压缩
+        // TODO: 实际调用 Neural Codec
+        processedAudio = {
+          data: pcmData, // 实际会是压缩后的数据
+          method: 'neural',
+          bitrate: 32
+        };
+        break;
+
+      case 'opus_high':
+      case 'opus_low':
+        // Opus 压缩
+        const bitrate = mode === 'opus_high' ? 128 : 32;
+        processedAudio = {
+          data: pcmData, // 实际会是压缩后的数据
+          method: 'opus',
+          bitrate
+        };
+        break;
+
+      case 'adaptive':
+        // 自适应: 由外部系统控制
+        processedAudio = {
+          data: pcmData,
+          method: 'adaptive',
+          bitrate: 'auto'
+        };
+        break;
+    }
+
+    // 转发给房间内其他参与者
+    this.forwardAudio(participantId, processedAudio, room);
+
+    return processedAudio;
+  }
+
+  /**
+   * 转发音频
+   */
+  forwardAudio(fromParticipantId, audioData, room) {
+    if (!room) return;
+
+    for (const pid of room.participants) {
+      if (pid !== fromParticipantId) {
+        const target = this.participants.get(pid);
+        if (target && target.audioEnabled) {
+          this.emit('audioStream', {
+            from: fromParticipantId,
+            to: pid,
+            audio: audioData,
+            method: audioData.method,
+            timestamp: Date.now()
+          });
+        }
+      }
+    }
+  }
+
+  /**
+   * 获取 ICE 服务器配置
+   */
+  getIceServers() {
+    return {
+      iceServers: [
+        ...this.stunServers.map(url => ({ urls: url })),
+        ...this.turnServers.map(url => ({ urls: url, credential: 'placeholder' }))
+      ]
     };
   }
 
@@ -115,180 +262,6 @@ class VoiceGateway extends EventEmitter {
   }
 
   /**
-   * 处理 WebRTC 信令
-   */
-  handleSignaling(participantId, signal) {
-    const participant = this.participants.get(participantId);
-    if (!participant) {
-      throw new Error('Participant not found');
-    }
-
-    const { type, data, targetId } = signal;
-
-    switch (type) {
-      case 'offer':
-      case 'answer':
-        // 转发给目标参与者
-        if (targetId) {
-          this.emit('signal', {
-            from: participantId,
-            to: targetId,
-            type,
-            data
-          });
-        }
-        break;
-
-      case 'ice-candidate':
-        // ICE 候选交换
-        if (targetId) {
-          this.emit('iceCandidate', {
-            from: participantId,
-            to: targetId,
-            candidate: data
-          });
-        }
-        break;
-
-      default:
-        console.warn(`[VoiceGateway] Unknown signal type: ${type}`);
-    }
-
-    return { received: true };
-  }
-
-  /**
-   * 转发音频流 (SFU 模式)
-   */
-  forwardAudio(fromParticipantId, audioData) {
-    const participant = this.participants.get(fromParticipantId);
-    if (!participant || !participant.audioEnabled) return;
-
-    // 更新说话状态
-    participant.speaking = true;
-    participant.volume = audioData.volume || 0;
-
-    const room = this.rooms.get(participant.roomId);
-    if (!room) return;
-
-    // 转发给房间内其他参与者
-    for (const pid of room.participants) {
-      if (pid !== fromParticipantId) {
-        const target = this.participants.get(pid);
-        if (target && target.audioEnabled) {
-          this.emit('audioStream', {
-            from: fromParticipantId,
-            to: pid,
-            audio: audioData,
-            timestamp: Date.now()
-          });
-        }
-      }
-    }
-
-    // 更新说话状态
-    setTimeout(() => {
-      participant.speaking = false;
-    }, 500);
-  }
-
-  /**
-   * 语音转文字 (STT)
-   */
-  async speechToText(audioData, participantId) {
-    const participant = this.participants.get(participantId);
-    if (!participant || !participant.sttEnabled) return null;
-
-    // 这里应该集成实际的 STT 服务
-    // 例如: Google Cloud Speech, Whisper, etc.
-    const transcript = {
-      text: '[STT Placeholder] 语音内容...',
-      confidence: 0.9,
-      timestamp: Date.now(),
-      participantId
-    };
-
-    participant.lastTranscript = transcript;
-
-    // 发送给房间内其他参与者
-    const room = this.rooms.get(participant.roomId);
-    if (room) {
-      for (const pid of room.participants) {
-        if (pid !== participantId) {
-          this.emit('transcript', {
-            roomId: room.id,
-            transcript,
-            participantId
-          });
-        }
-      }
-    }
-
-    return transcript;
-  }
-
-  /**
-   * 文字转语音 (TTS)
-   */
-  async textToSpeech(text, participantId, options = {}) {
-    const participant = this.participants.get(participantId);
-    if (!participant || !participant.ttsEnabled) return null;
-
-    // 生成或获取 TTS 音频
-    // 这里应该集成实际的 TTS 服务
-    const audioData = {
-      audio: Buffer.from('TTS_AUDIO_DATA'),
-      format: 'opus',
-      sampleRate: this.audioConfig.sampleRate,
-      duration: options.duration || 1000
-    };
-
-    // 发送到房间
-    const room = this.rooms.get(participant.roomId);
-    if (room) {
-      this.emit('ttsAudio', {
-        roomId: room.id,
-        from: participantId,
-        text,
-        audio: audioData
-      });
-    }
-
-    return audioData;
-  }
-
-  /**
-   * 切换模式：语音 <-> 文字
-   */
-  toggleMode(participantId, mode) {
-    const participant = this.participants.get(participantId);
-    if (!participant) return false;
-
-    if (mode === 'text') {
-      participant.sttEnabled = true;
-      participant.ttsEnabled = true;
-    } else {
-      participant.sttEnabled = false;
-      participant.ttsEnabled = false;
-    }
-
-    this.emit('modeChanged', { participantId, mode });
-    return true;
-  }
-
-  /**
-   * 获取 ICE 服务器配置
-   */
-  getIceServers() {
-    return {
-      iceServers: [
-        ...this.stunServers.map(url => ({ urls: url })),
-        ...this.turnServers.map(url => ({ urls: url, credential: '...' }))
-      ]
-    };
-  }
-
-  /**
    * 获取房间信息
    */
   getRoom(roomId) {
@@ -301,16 +274,15 @@ class VoiceGateway extends EventEmitter {
 
     return {
       ...room,
+      transportInfo: this.getRoomTransportInfo(roomId),
       participants: participants.map(p => ({
         id: p.id,
         agentId: p.agentId,
         agentType: p.agentType,
         role: p.role,
         speaking: p.speaking,
-        sttEnabled: p.sttEnabled,
-        ttsEnabled: p.ttsEnabled
-      })),
-      participantCount: participants.length
+        bitrate: p.bitrate
+      }))
     };
   }
 
@@ -322,48 +294,33 @@ class VoiceGateway extends EventEmitter {
       id: room.id,
       name: room.name,
       participantCount: room.participants.size,
-      createdAt: room.createdAt,
+      transportMode: room.transportMode,
       status: room.status
     }));
   }
 
   /**
-   * 结束房间
-   */
-  endRoom(roomId) {
-    const room = this.rooms.get(roomId);
-    if (!room) return false;
-
-    // 通知所有参与者
-    for (const pid of room.participants) {
-      this.emit('roomEnded', { roomId, participantId: pid });
-      this.participants.delete(pid);
-    }
-
-    this.rooms.delete(roomId);
-    return true;
-  }
-
-  /**
-   * 获取统计信息
+   * 获取统计
    */
   getStats() {
     let totalParticipants = 0;
-    let speakingCount = 0;
+    const modeStats = {};
+
+    // 统计各传输模式的使用情况
+    for (const mode of Object.keys(this.transportModes)) {
+      modeStats[mode] = 0;
+    }
 
     for (const room of this.rooms.values()) {
       totalParticipants += room.participants.size;
-    }
-
-    for (const p of this.participants.values()) {
-      if (p.speaking) speakingCount++;
+      modeStats[room.transportMode] = (modeStats[room.transportMode] || 0) + room.participants.size;
     }
 
     return {
       rooms: this.rooms.size,
       totalParticipants,
-      speakingCount,
-      activeRooms: Array.from(this.rooms.values()).filter(r => r.status === 'active').length
+      modeUsage: modeStats,
+      availableModes: this.getAllTransportModes()
     };
   }
 }

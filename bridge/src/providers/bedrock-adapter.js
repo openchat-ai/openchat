@@ -1,3 +1,26 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// 加载用户配置
+function loadModelConfig() {
+  try {
+    const configPath = path.join(__dirname, '../config/model-selection.json');
+    if (fs.existsSync(configPath)) {
+      const data = fs.readFileSync(configPath, 'utf8');
+      const config = JSON.parse(data);
+      return config.modelSelection?.bedrock || {};
+    }
+  } catch (e) {
+    console.warn('[BedrockAdapter] Failed to load model config:', e.message);
+  }
+  return {};
+}
+
+const modelConfig = loadModelConfig();
+
 /**
  * AWS Bedrock API 适配器
  *
@@ -19,17 +42,12 @@ export class BedrockAdapter {
     this.baseUrl = config.baseUrl || `https://bedrock-runtime.${this.region}.amazonaws.com`;
     this.accessKeyId = config.accessKeyId || null;
     this.secretAccessKey = config.secretAccessKey || null;
-    this.defaultModel = config.defaultModel || 'anthropic.claude-3-5-sonnet-20241022-v2:0';
-    this.models = config.models || [
-      'anthropic.claude-3-5-sonnet-20241022-v2:0',
-      'anthropic.claude-3-5-haiku-20241022-v1:0',
-      'anthropic.claude-3-opus-20240229-v1:0',
-      'meta.llama3-2-90b-instruct-v1:0',
-      'meta.llama3-2-11b-instruct-v1:0',
-      'amazon.titan-text-premier-v1:0',
-      'cohere.command-r-plus-v1:0',
-      'ai21.jamba-1-5-large-v1:0'
-    ];
+
+    // 完全从配置读取模型
+    this.defaultModel = config.defaultModel || modelConfig.defaultModel || null;
+
+    // 可用模型列表完全来自配置
+    this.models = config.models || modelConfig.availableModels || [];
     this.connected = false;
     this.description = config.description || 'AWS Bedrock 多模型服务';
     this.timeout = config.timeout || 60000;

@@ -262,7 +262,12 @@ class OpenAiProvider extends AiProvider {
 class ClaudeProvider extends AiProvider {
   constructor() {
     super('claude', 'Claude');
-    this.models = ['claude-3-5-sonnet-20241022', 'claude-3-opus-20240229', 'claude-3-haiku-20240307'];
+    // 模型列表完全从配置文件读取
+    this.models = [];
+  }
+
+  setModels(models) {
+    this.models = models;
   }
 
   getDefaultEndpoint() {

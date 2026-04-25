@@ -1,3 +1,9 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 /**
  * Anthropic Claude API 适配器
  *
@@ -10,6 +16,23 @@
  * 参考文档: https://docs.anthropic.com/claude/reference/messages_post
  */
 
+// 加载用户配置
+function loadModelConfig() {
+  try {
+    const configPath = path.join(__dirname, '../config/model-selection.json');
+    if (fs.existsSync(configPath)) {
+      const data = fs.readFileSync(configPath, 'utf8');
+      const config = JSON.parse(data);
+      return config.modelSelection?.anthropic || {};
+    }
+  } catch (e) {
+    console.warn('[AnthropicAdapter] Failed to load model config:', e.message);
+  }
+  return {};
+}
+
+const modelConfig = loadModelConfig();
+
 export class AnthropicAdapter {
   constructor(config) {
     this.id = config.id || 'anthropic';
@@ -17,16 +40,12 @@ export class AnthropicAdapter {
     this.nameCn = config.nameCn || 'Anthropic Claude';
     this.baseUrl = config.baseUrl || 'https://api.anthropic.com';
     this.apiKey = config.apiKey || null;
-    this.defaultModel = config.defaultModel || 'claude-sonnet-4-20250514';
-    this.models = config.models || [
-      'claude-opus-4-20250514',
-      'claude-sonnet-4-20250514',
-      'claude-3-5-sonnet-20241022',
-      'claude-3-5-haiku-20241022',
-      'claude-3-opus-20240229',
-      'claude-3-sonnet-20240229',
-      'claude-3-haiku-20240307'
-    ];
+
+    // 完全从配置读取模型，配置有什么就用什么
+    this.defaultModel = config.defaultModel || modelConfig.defaultModel || null;
+
+    // 可用模型列表完全来自配置
+    this.models = config.models || modelConfig.availableModels || [];
     this.connected = false;
     this.description = config.description || 'Anthropic Claude 系列模型';
 
