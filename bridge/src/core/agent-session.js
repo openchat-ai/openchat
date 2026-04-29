@@ -8,6 +8,11 @@ import { ErrorClassifier } from './error-classifier.js';
 import { ContentAnalyzer } from './content-analyzer.js';
 import { QualityScorer } from './quality-scorer.js';
 import { StructuredOutputValidator } from './structured-output-validator.js';
+
+const MAX_GLOBAL_CONCURRENT = parseInt(process.env.MAX_GLOBAL_CONCURRENT_REQUESTS, 10) || 4;
+let _globalConcurrent = 0;
+let _globalWaiting = 0;
+const _globalQueue = [];
 import { StreamingValidator, ValidationErrorExplainer } from './streaming-validator.js';
 import { SchemaAutoGenerator, SchemaVersionManager, FormatConverter } from './schema-manager.js';
 import { MultimodalHandler } from './multimodal-handler.js';
@@ -154,7 +159,8 @@ export class AgentSession {
     for (const p of providers) {
       const pConfig = providerManager.getProviderConfig(p);
       if (pConfig) {
-        this._router.registerProvider(p, pConfig);
+        const apiKey = persistentConfig.getApiKey(p);
+        this._router.registerProvider(p, { ...pConfig, apiKey: apiKey || pConfig.apiKey });
       }
     }
   }
@@ -446,12 +452,24 @@ export class AgentSession {
         if (key) {
           providerName = p;
           apiKey = key;
+          model = null; // provider 变了，model 要重新获取
           break;
         }
       }
     }
 
+    // Phase B: 无 API key → 自动回退到 Ollama（skipAuth，本地模型）
     if (!apiKey) {
+      const ollamaConfig = providerManager.getProviderConfig('ollama');
+      if (ollamaConfig) {
+        console.log('[Agent] API key 未配置，自动回退到 Ollama');
+        providerName = 'ollama';
+        model = ollamaConfig.defaultModel || 'llama3';
+        apiKey = ''; // skipAuth 不需要 key
+      }
+    }
+
+    if (!apiKey && providerName !== 'ollama') {
       return { content: 'No API key configured. Please set: config set <provider> <api_key>' };
     }
 
@@ -463,6 +481,9 @@ export class AgentSession {
     if (!model) {
       model = providerConfig.defaultModel;
     }
+
+    // 让 persistentConfig 解析模型名（处理显示名称 → API key 的映射）
+    model = persistentConfig.resolveModelName(providerName, model) || model;
 
     return this.callApi(providerName, apiKey, model, messages);
   }
@@ -480,13 +501,7 @@ export class AgentSession {
       filteredMessages.unshift({ role: 'system', content: this.config.systemPrompt });
     }
 
-    let headers = { 'Content-Type': 'application/json' };
-
-    if (providerConfig.authType === 'baidu_iam' || provider.includes('baidu')) {
-      headers['Authorization'] = `Bearer ${apiKey}`;
-    } else {
-      headers['Authorization'] = `Bearer ${apiKey}`;
-    }
+    const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` };
 
     const requestKey = { provider, model, messages: filteredMessages };
     
@@ -536,200 +551,215 @@ export class AgentSession {
   }
 
   async _executeRequest(provider, apiKey, model, filteredMessages, headers, providerConfig) {
-    const config = {
-      retries: 3,
-      retryDelay: 100,
-      minTimeout: 1000,
-      maxTimeout: 30000,
-      maxRetryDelay: 30000,
-      factor: 2,
-      randomize: true,
-      maxRetryTime: 60000,
-      noResponseRetries: 2,
-      statusCodesToRetry: [
-        [408, 408],
-        [429, 429],
-        [500, 599]
-      ],
-      retry: true,
-      onRetryAttempt: null,
-      shouldRetry: null,
-      retryBackoff: null,
-      signal: null
+    // Phase C: 全局并发控制 — 超过阈值时排队
+    if (_globalConcurrent >= MAX_GLOBAL_CONCURRENT) {
+      await new Promise(resolve => _globalQueue.push(resolve));
+    }
+    _globalConcurrent++;
+    const release = () => {
+      _globalConcurrent--;
+      const next = _globalQueue.shift();
+      if (next) next();
     };
 
-    const startTime = Date.now();
-    let attempt = 0;
-    let httpRetries = 0;
-    let noResponseRetries = 0;
+    try {
+      const config = {
+        retries: 3,
+        retryDelay: 100,
+        minTimeout: 1000,
+        maxTimeout: 120000,
+        maxRetryDelay: 30000,
+        factor: 2,
+        randomize: true,
+        maxRetryTime: 60000,
+        noResponseRetries: 2,
+        statusCodesToRetry: [
+          [408, 408],
+          [429, 429],
+          [500, 599]
+        ],
+        retry: true,
+        onRetryAttempt: null,
+        shouldRetry: null,
+        retryBackoff: null,
+        signal: null
+      };
 
-    while (true) {
-      if (this._isDestroyed) {
-        return { content: 'Agent destroyed' };
-      }
+      const startTime = Date.now();
+      let attempt = 0;
+      let httpRetries = 0;
+      let noResponseRetries = 0;
 
-      config.signal?.throwIfAborted?.();
-
-      const circuitCheck = this._circuitBreaker.canExecute();
-      if (!circuitCheck.allowed) {
-        const waitTime = Math.ceil(circuitCheck.waitTime / 1000);
-        return { content: `Circuit breaker open, retry in ${waitTime}s` };
-      }
-
-      if (circuitCheck.state === 'HALF_OPEN') {
-        console.log('[API] Circuit half-open, probing...');
-      }
-
-      attempt++;
-
-      let response;
-      let data;
-      let status;
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), config.maxTimeout);
-
-      try {
-        const requestBody = {
-          model: model,
-          messages: filteredMessages,
-          temperature: 0.7,
-          max_tokens: 2000
-        };
-
-        response = await fetch(`${providerConfig.baseUrl}${providerConfig.chatEndpoint}`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(requestBody),
-          signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-
-        status = response.status;
-        data = await response.json();
-
-        if (response.ok) {
-          this._circuitBreaker.recordSuccess();
-          
-          const parsed = this._responseParser.parse(data, provider);
-          
-          if (!parsed.success) {
-            return { content: `API error: ${parsed.content}` };
-          }
-          
-          return { content: parsed.content };
-        }
-
-        const errorClassification = this._errorClassifier.classify(
-          data.error?.message || JSON.stringify(data),
-          { statusCode: status, attempt }
-        );
-
-        let shouldRetry = this._shouldRetryByStatus(status, httpRetries, config, startTime);
-
-        if (shouldRetry && config.shouldRetry) {
-          const customResult = await config.shouldRetry({
-            error: { status, response: data },
-            attemptNumber: attempt,
-            retriesLeft: config.retries - httpRetries,
-            retriesConsumed: httpRetries,
-            classification: errorClassification
-          });
-          if (customResult === false) {
-            shouldRetry = false;
-          }
-        }
-
-        if (!shouldRetry) {
-          this._circuitBreaker.recordFailure();
-          return { content: `API error: HTTP ${status} (${errorClassification.category})` };
-        }
-
-        let delay = this._calculateBackoff(attempt, config, httpRetries);
-
-        if (status === 429) {
-          const retryAfter = response.headers.get('Retry-After');
-          if (retryAfter) {
-            const retryAfterMs = parseInt(retryAfter, 10) * 1000;
-            if (!isNaN(retryAfterMs)) {
-              delay = Math.min(retryAfterMs, config.maxRetryDelay);
-            }
-          }
-        }
-
-        if (config.retryBackoff) {
-          delay = await config.retryBackoff({
-            error: { status, response: data },
-            delay,
-            attemptNumber: attempt
-          });
-        }
-
-        config.onRetryAttempt?.({
-          error: { status, response: data },
-          attemptNumber: attempt,
-          retriesLeft: config.retries - httpRetries,
-          retryDelay: delay
-        });
-
-        console.log(`[API] Attempt ${attempt} failed (HTTP ${status}). Retrying in ${delay}ms...`);
-
-        await this._delay(delay);
-        httpRetries++;
-
-      } catch (error) {
-        clearTimeout(timeoutId);
-
+      while (true) {
         if (this._isDestroyed) {
           return { content: 'Agent destroyed' };
         }
 
         config.signal?.throwIfAborted?.();
 
-        const isNetworkError = !response || error.name === 'TypeError' || error.name === 'AbortError' || error.message.includes('fetch');
-        
-        const errorClassification = this._errorClassifier.classify(
-          error.message,
-          { attempt, noResponse: true }
-        );
-        
-        if (isNetworkError) {
-          if (noResponseRetries >= config.noResponseRetries || !errorClassification.shouldRetry) {
-            this._circuitBreaker.recordFailure();
-            return { content: `API error: ${error.message} (${errorClassification.category})` };
-          }
-          
-          if (!this._withinRetryTime(startTime, config.maxRetryTime)) {
-            return { content: `API error: ${error.message} (${errorClassification.category})` };
+        const circuitCheck = this._circuitBreaker.canExecute();
+        if (!circuitCheck.allowed) {
+          const waitTime = Math.ceil(circuitCheck.waitTime / 1000);
+          return { content: `Circuit breaker open, retry in ${waitTime}s` };
+        }
+
+        if (circuitCheck.state === 'HALF_OPEN') {
+          console.log('[API] Circuit half-open, probing...');
+        }
+
+        attempt++;
+
+        let response;
+        let data;
+        let status;
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), config.maxTimeout);
+
+        try {
+          const requestBody = {
+            model: model,
+            messages: filteredMessages,
+            temperature: 0.7,
+            max_tokens: 2000
+          };
+
+          response = await fetch(`${providerConfig.baseUrl}${providerConfig.chatEndpoint}`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(requestBody),
+            signal: controller.signal
+          });
+
+          clearTimeout(timeoutId);
+
+          status = response.status;
+          data = await response.json();
+
+          if (response.ok) {
+            this._circuitBreaker.recordSuccess();
+
+            const parsed = this._responseParser.parse(data, provider);
+
+            if (!parsed.success) {
+              return { content: `API error: ${parsed.content}` };
+            }
+
+            return { content: parsed.content };
           }
 
-          let delay = this._calculateBackoff(attempt, config, noResponseRetries);
+          const errorClassification = this._errorClassifier.classify(
+            data.error?.message || JSON.stringify(data),
+            { statusCode: status, attempt }
+          );
+
+          let shouldRetry = this._shouldRetryByStatus(status, httpRetries, config, startTime);
+
+          if (shouldRetry && config.shouldRetry) {
+            const customResult = await config.shouldRetry({
+              error: { status, response: data },
+              attemptNumber: attempt,
+              retriesLeft: config.retries - httpRetries,
+              retriesConsumed: httpRetries,
+              classification: errorClassification
+            });
+            if (customResult === false) {
+              shouldRetry = false;
+            }
+          }
+
+          if (!shouldRetry) {
+            this._circuitBreaker.recordFailure();
+            return { content: `API error: HTTP ${status} (${errorClassification.category})` };
+          }
+
+          let delay = this._calculateBackoff(attempt, config, httpRetries);
+
+          if (status === 429) {
+            const retryAfter = response.headers.get('Retry-After');
+            if ( retryAfter) {
+              const retryAfterMs = parseInt(retryAfter, 10) * 1000;
+              if (!isNaN(retryAfterMs)) {
+                delay = Math.min(retryAfterMs, config.maxRetryDelay);
+              }
+            }
+          }
 
           if (config.retryBackoff) {
             delay = await config.retryBackoff({
-              error: { message: error.message },
+              error: { status, response: data },
               delay,
               attemptNumber: attempt
             });
           }
 
           config.onRetryAttempt?.({
-            error: { message: error.message },
+            error: { status, response: data },
             attemptNumber: attempt,
-            retriesLeft: config.noResponseRetries - noResponseRetries,
+            retriesLeft: config.retries - httpRetries,
             retryDelay: delay
           });
 
-          console.log(`[API] Attempt ${attempt} failed (${error.message}). Retrying in ${delay}ms...`);
+          console.log(`[API] Attempt ${attempt} failed (HTTP ${status}). Retrying in ${delay}ms...`);
 
           await this._delay(delay);
-          noResponseRetries++;
-          continue;
-        }
+          httpRetries++;
 
-        return { content: `API error: ${error.message}` };
+        } catch (error) {
+          clearTimeout(timeoutId);
+
+          if (this._isDestroyed) {
+            return { content: 'Agent destroyed' };
+          }
+
+          config.signal?.throwIfAborted?.();
+
+          const isNetworkError = !response || error.name === 'TypeError' || error.name === 'AbortError' || error.message.includes('fetch');
+
+          const errorClassification = this._errorClassifier.classify(
+            error.message,
+            { attempt, noResponse: true }
+          );
+
+          if (isNetworkError) {
+            if (noResponseRetries >= config.noResponseRetries || !errorClassification.shouldRetry) {
+              this._circuitBreaker.recordFailure();
+              return { content: `API error: ${error.message} (${errorClassification.category})` };
+            }
+
+            if (!this._withinRetryTime(startTime, config.maxRetryTime)) {
+              return { content: `API error: ${error.message} (${errorClassification.category})` };
+            }
+
+            let delay = this._calculateBackoff(attempt, config, noResponseRetries);
+
+            if (config.retryBackoff) {
+              delay = await config.retryBackoff({
+                error: { message: error.message },
+                delay,
+                attemptNumber: attempt
+              });
+            }
+
+            config.onRetryAttempt?.({
+              error: { message: error.message },
+              attemptNumber: attempt,
+              retriesLeft: config.noResponseRetries - noResponseRetries,
+              retryDelay: delay
+            });
+
+            console.log(`[API] Attempt ${attempt} failed (${error.message}). Retrying in ${delay}ms...`);
+
+            await this._delay(delay);
+            noResponseRetries++;
+            continue;
+          }
+
+          return { content: `API error: ${error.message}` };
+        }
       }
+    } finally {
+      release();
     }
   }
 

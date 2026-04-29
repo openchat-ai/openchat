@@ -117,32 +117,38 @@ class SkillManager {
    * @returns {Promise<Array>} 加载的 Skills 数组
    */
   async loadSkills() {
-    try {
-      // 如果文件不存在，返回空数组
-      if (!fs.existsSync(this.skillsFile)) {
-        console.log(`Skills file not found at ${this.skillsFile}, starting with empty skills`);
-        return [];
-      }
+    // 如果文件不存在，返回空数组
+    if (!fs.existsSync(this.skillsFile)) {
+      return [];
+    }
 
-      const fileContent = await fs.promises.readFile(this.skillsFile, 'utf-8');
-      const data = JSON.parse(fileContent);
+    // 重试 3 次，防止并发写入时的竞态
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const fileContent = await fs.promises.readFile(this.skillsFile, 'utf-8');
+        const data = JSON.parse(fileContent);
 
-      // 验证数据格式
-      if (!data.skills || !Array.isArray(data.skills)) {
-        throw new Error('Invalid skills file format');
-      }
-
-      // 加载 Skills 到内存
-      this.skills.clear();
-      data.skills.forEach(skill => {
-        if (skill.id) {
-          this.skills.set(skill.id, skill);
+        // 验证数据格式
+        if (!data.skills || !Array.isArray(data.skills)) {
+          throw new Error('Invalid skills file format');
         }
-      });
 
-      return data.skills;
-    } catch (error) {
-      throw new Error(`Failed to load skills: ${error.message}`);
+        // 加载 Skills 到内存
+        this.skills.clear();
+        data.skills.forEach(skill => {
+          if (skill.id) {
+            this.skills.set(skill.id, skill);
+          }
+        });
+
+        return data.skills;
+      } catch (error) {
+        if (attempt < 2) {
+          await new Promise(r => setTimeout(r, 100));
+          continue;
+        }
+        throw new Error(`Failed to load skills: ${error.message}`);
+      }
     }
   }
 

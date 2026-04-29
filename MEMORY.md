@@ -2,6 +2,11 @@
 
 ## 经验教训
 
+- [2026-04-29] 跨平台部署网站：build-deploy.js + 9平台 + Bridge自带/deploy路由
+- [2026-04-29] LLM代理：子桥零配置用母桥key，llmProxyEnabled开关
+- [2026-04-29] House实体化：.openchat/houses/{houseId}/ 数据目录
+- [2026-04-29] 术语统一：hostId/bridgeId/houseId 三层，safeHouse跨机验证
+- [2026-04-29] PM2启动策略 + launch-strategies.js
 - [2026-04-29] P2R-S: 居民安全自治 (多方验证+热回滚)
 - [2026-04-29] P2R: 居民治家 (3窟+维护+迁移)
 - [2026-04-25] 安全增强：实现限流（分路由）+ 黑名单评分系统 + 蜜罐路由 + 封禁到期自动释放
@@ -12,12 +17,14 @@
 
 ## 最近会话摘要
 
-- [2026-04-29] 完成 P2R-S: 居民安全自治系统 (safe-evolution.js + bridge-spawn.js 等 6 文件)
+- [2026-04-29] 完善跨平台部署：build-deploy.js 9平台打包 + install脚本 + 自动IP检测
+- [2026-04-29] Bridge自带部署站点：/deploy路由 + 启动自动构建
+- [2026-04-29] LLM代理系统：llm-proxy-agent.js + 自动发现邻居 + llmProxyEnabled开关
+- [2026-04-29] House实体化：house.js + .openchat/houses/ + cleanHouse/backupHouse
+- [2026-04-29] 术语统一：hostId/bridgeId/houseId + safeHouse跨机验证 (≥2不同hostId)
+- [2026-04-29] 完成 P2R-S: 居民安全自治系统 (safe-evolution.js + bridge-spawn.js 等)
 - [2026-04-29] 完成 P2R: 居民治家系统 (3 safe houses + migration)
-- [2026-04-25] 完成安全防御系统：限流分路由、黑名单评分、蜜罐路由、响应头优化
-- [2026-04-25] 完成代码重构，将超大文件拆分为多个低耦合模块
-- [2026-04-24] 完成代码审查，解决 4 项安全问题
-- [2026-04-24] 统一配置文件位置
+- [2026-04-29] 35+文档更新，版本号/日期统一
 
 ## 主题文件路由表
 
@@ -32,4 +39,9 @@
 
 ## 开放线程
 
-<!-- 格式：- [YYYY-MM-DD] 未完成的工作项 -->
+- [2026-04-29] 跨机P2P+居民迁移测试（需第二台设备）
+- [2026-04-29] LLM真实对话测试
+- [2026-04-29] SafeEvolution端到端验证（提案→验证→回滚）
+- [2026-04-29] PM2 + Docker启动策略端到端测试
+- [2026-04-29] deploy/分发到目标机器实测
+- [2026-04-29] resiov64 + FreeBSD Node.js无官方二进制，需fallback方案
