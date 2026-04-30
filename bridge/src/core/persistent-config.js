@@ -18,9 +18,9 @@ import * as path from 'path';
 import * as os from 'os';
 import { randomUUID } from 'crypto';
 
-// 用户主目录
-const USER_DIR = path.join(os.homedir(), '.openchat');
-const CONFIG_FILE = path.join(USER_DIR, 'config.json');
+// 用户主目录（支持环境变量覆盖配置路径）
+const USER_DIR = process.env.OPENCHAT_HOME || path.join(os.homedir(), '.openchat');
+const CONFIG_FILE = process.env.OPENCHAT_CONFIG || path.join(USER_DIR, 'config.json');
 
 // 项目目录
 const PROJECT_ROOT = path.resolve(process.cwd(), '..');
@@ -51,7 +51,10 @@ const DEFAULT_CONFIG = {
     cores: [],
     hostId: '',
     deployServerEnabled: true,
-    deployServerPort: 8080
+    deployServerPort: 8080,
+    llmDailyTokenBudget: 1000000,  // 每日token预算 (默认100万)
+    llmCacheEnabled: true,          // 响应缓存启用
+    residentThinkMinInterval: 5     // 居民思考最小间隔(分钟, 默认5分钟)
   }
 };
 

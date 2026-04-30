@@ -13,6 +13,7 @@ import { sageManager } from './sage.js';
 import { multiAgentCoordinator } from './multi-agent-coordinator.js';
 import { persistentConfig } from './persistent-config.js';
 import { decideActions } from './resident-decisions.js';
+import { SelfLearner } from './self-learner.js';
 
 // 安全算术求值
 function evalSimple(expr) {
@@ -66,7 +67,10 @@ class ResidentScheduler {
     this._residentRoles = new Map();   // residentId → { role, problemId, subQuestionId }
 
     // Phase A: Routine LLM 跳过追踪
-    this._lastAction = new Map();     // residentId → { action, count }
+    this._lastAction = new Map();
+
+    this._selfLearner = null;
+    this._learnTick = 0;     // residentId → { action, count }
   }
 
   /**
@@ -278,7 +282,7 @@ class ResidentScheduler {
     }
   }
 
-  /** 居民自我体检 */
+  /** 居民自我体检 + 诊断 + 自愈 */
   async _runHealthCheck(residentId, resident) {
     try {
       const report = {
@@ -289,30 +293,62 @@ class ResidentScheduler {
         活跃居民数: residentManager.list('active').length,
       };
 
-      // 检查最近的活动日志看有无异常
       const acts = (resident.activities || []).slice(-20);
       const failed = acts.filter(a => a.type === 'task_failed').length;
-      const errors = failed > 3 ? `⚠️ 最近有 ${failed} 次失败` : '✅ 正常';
 
-      // 检查系统文件完整性
       const fs = await import('fs');
       const os = await import('os');
       const configOk = fs.existsSync(os.homedir() + '/.openchat/config.json');
-      const kbOk = this._convergenceSystem?.kb?.stats()?.total >= 0;
+      const kbStats = this._convergenceSystem?.kb?.stats?.();
+      const kbOk = kbStats && kbStats.total >= 0;
+
+      // 诊断 + 自愈
+      let diagnosis = '一切正常';
+      let healed = [];
+
+      if (report.待解问题数 > 3) {
+        // 问题积压 → 清理过期问题
+        const old = this._pendingProblems.filter(p => Date.now() - p.addedAt > 300000);
+        for (const p of old) {
+          this._pendingProblems = this._pendingProblems.filter(x => x.problemId !== p.problemId);
+          healed.push(`清理过期问题 ${p.problemId?.slice(0,8)}`);
+        }
+        diagnosis = `清理 ${healed.length} 个积压问题`;
+      }
+
+      if (failed > 3) {
+        // 失败过多 → 标记为已处理
+        diagnosis = `最近 ${failed} 次失败已记录`;
+      }
+
+      if (!configOk) {
+        // 配置文件丢失 → 重建
+        try {
+          const cfg = { providers: {}, current: { provider: null, model: null }, bridge: { port: 3000 } };
+          fs.writeFileSync(os.homedir() + '/.openchat/config.json', JSON.stringify(cfg, null, 2));
+          healed.push('重建配置文件');
+          diagnosis = '配置文件已重建';
+        } catch {}
+      }
+
+      if (!kbOk) {
+        diagnosis = '知识库为空，等待积累';
+      }
 
       const result = `📋 ${resident.name} 的体检报告
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
-🫀 房屋健康: ${report.房屋健康分}/100
-🧠 待解问题: ${report.待解问题数}
-👥 活跃居民: ${report.活跃居民数}
-🔧 任务状态: ${errors}
-📁 配置文件: ${configOk ? '✅' : '❌'}
-💾 知识库: ${kbOk ? '✅' : '❌'}
-━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+🫀 健康分: ${report.房屋健康分}/100
+🧠 待解: ${report.待解问题数}
+👥 居民: ${report.活跃居民数}
+🔧 失败: ${failed} 次
+📁 配置: ${configOk ? '✅' : '❌'}
+💾 知识库: ${kbOk ? kbStats.total + '条' : '❌'}
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 诊断: ${diagnosis}${healed.length ? '\n💊 自愈: ' + healed.join(', ') : ''}`;
 
       residentManager.addActivity(residentId, {
         type: 'self_check',
-        message: `自我体检完成`,
+        message: healed.length ? `自愈: ${healed[0]}` : `体检: ${diagnosis.substring(0, 30)}`,
         summary: result,
       });
       console.log(`[体检] ${resident.name}\n${result}`);
@@ -1299,6 +1335,14 @@ ${resB.name} 的性格：勤奋度 ${pct(resB.traits?.diligence ?? 0.5)}，创�
       totalCollabs: [...this._collabCount.values()].reduce((s, c) => s + c, 0),
     };
   }
+
+  _runSelfLearning() {
+    if (!this._selfLearner) {
+      this._selfLearner = new SelfLearner({ scheduler: this });
+    }
+    this._selfLearner.runLearningRound().catch(e => console.log('[self-learn]', e.message));
+  }
+
 }
 
 // 单例
