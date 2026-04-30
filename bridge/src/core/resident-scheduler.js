@@ -179,7 +179,7 @@ class ResidentScheduler {
     for (const p of this._pendingProblems) {
       if (p.status === 'pending' && !p._autoSolverTried) {
         p._autoSolverTried = true;
-        this._尝试自动求解(p).then(solved => {
+        this._大脑思考(p).then(solved => {
           if (solved) {
             console.log(`[自动求解] ✅ 问题 ${p.problemId?.slice(0,8)} 已自动解出`);
           }
@@ -250,6 +250,12 @@ class ResidentScheduler {
     }
 
     // 干活——让居民自己决定做什么
+    // 特殊动作：自我体检
+    if (topAction.action === 'self_check') {
+      this._runHealthCheck(id, resident);
+      return;
+    }
+
     const convRole = this._assignConvergenceRole(resident);
     if (convRole) {
       this._assignConvergenceTask(id, resident, traits, convRole);
@@ -272,7 +278,48 @@ class ResidentScheduler {
     }
   }
 
-  // ================== 开放任务分配 ==================
+  /** 居民自我体检 */
+  async _runHealthCheck(residentId, resident) {
+    try {
+      const report = {
+        时间: new Date().toISOString(),
+        居民: resident.name,
+        房屋健康分: this._getHealthScore(),
+        待解问题数: this._pendingProblems.length,
+        活跃居民数: residentManager.list('active').length,
+      };
+
+      // 检查最近的活动日志看有无异常
+      const acts = (resident.activities || []).slice(-20);
+      const failed = acts.filter(a => a.type === 'task_failed').length;
+      const errors = failed > 3 ? `⚠️ 最近有 ${failed} 次失败` : '✅ 正常';
+
+      // 检查系统文件完整性
+      const fs = await import('fs');
+      const os = await import('os');
+      const configOk = fs.existsSync(os.homedir() + '/.openchat/config.json');
+      const kbOk = this._convergenceSystem?.kb?.stats()?.total >= 0;
+
+      const result = `📋 ${resident.name} 的体检报告
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+🫀 房屋健康: ${report.房屋健康分}/100
+🧠 待解问题: ${report.待解问题数}
+👥 活跃居民: ${report.活跃居民数}
+🔧 任务状态: ${errors}
+📁 配置文件: ${configOk ? '✅' : '❌'}
+💾 知识库: ${kbOk ? '✅' : '❌'}
+━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+
+      residentManager.addActivity(residentId, {
+        type: 'self_check',
+        message: `自我体检完成`,
+        summary: result,
+      });
+      console.log(`[体检] ${resident.name}\n${result}`);
+    } catch (e) {
+      console.log(`[体检] ${resident.name} 体检失败: ${e.message}`);
+    }
+  }
 
   _assignTask(residentId, resident, traits) {
     const agentId = `resident_${residentId}_${++this._agentIdSeq}`;
@@ -322,60 +369,99 @@ class ResidentScheduler {
     } catch { return null; }
   }
 
-  /** 自动求解"凑齐"类问题（代码计算，不依赖LLM推理） */
-  async _尝试自动求解(problem) {
-    if (!是凑齐问题(problem.question || '')) return false;
+  /** 题型路由：检测问题类型，分给对应的代码求解器 */
+  /** 计算问题签名（用于匹配历史模式） */
+  _问题签名(qt) {
+    const items = (qt.match(/\d+/g) || []).length;
+    const hasGroup = /(圆形|五角星|形状|口味|颜色|种类|型号)/.test(qt);
+    const type = /保证/.test(qt) ? 'collect' : /一共|总和|总共/.test(qt) ? 'sum' : /平均/.test(qt) ? 'avg' : /最大|最多|最小|最少/.test(qt) ? 'extreme' : 'other';
+    return `${items}i${hasGroup ? '_g' : ''}_${type}`;
+  }
 
+  /** 大脑思考：内部知识优先，LLM是外部资源 */
+  async _大脑思考(problem) {
+    if (!problem || !problem.question) return false;
     const qt = problem.question || '';
-    // 有多维度（如"圆形""五角星形"两种形状）→ 不走自动求解，留给LLM分解
-    const multiDim = /[和与、,，]\s*/.test(qt) && /(圆形|五角星|形状|种口味)/.test(qt);
-    if (multiDim) return false;
 
+    // 硬闸：含维度分组的复杂问题不自动解
+    if (/圆形|五角星|形状/.test(qt)) return false;
+
+    const sig = this._问题签名(qt);
+
+    // 第1步：搜索内部知识（历史模式）
+    if (this._convergenceSystem?.kb) {
+      const cached = this._convergenceSystem.kb.answer('_patterns_', sig);
+      if (cached) {
+        try {
+          const pattern = JSON.parse(cached.answer);
+          if (pattern && pattern.answer !== undefined) {
+            const count = parseInt(pattern.answer);
+            const allCounts = (qt.match(/\d+/g) || []).map(Number);
+            const total = allCounts.reduce((s, v) => s + v, 0);
+            if (count > 0 && count < total && count > Math.max(...allCounts, 0) * 0.5) {
+              this._pendingProblems = this._pendingProblems.filter(p => p.problemId !== problem.problemId);
+              this._convergenceSystem.kb.add('general', qt, String(count), { verified: true, author: 'brain', houseId: 'local' });
+              console.log(`[大脑] 命中模式: ${qt.substring(0, 50)}... = ${count}`);
+              return true;
+            }
+          }
+        } catch {}
+      }
+    }
+
+    // 第2步：内部规则求解（与生俱来的能力）
+    let items = [];
     try {
-      // 用LLM仅提取数字，不做推理
       const agent = await multiAgentCoordinator.spawnAgent(`extract-${Date.now()}`, {
-        name: 'Extractor',
-        systemPrompt: '你只做一件事：从题目中提取所有物品名称和数量，输出JSON。不要推理，不要计算。',
-        maxIterations: 1,
+        name: '提取器', systemPrompt: '只提取数字。', maxIterations: 1,
       });
-
       const result = await agent.run(
-        `从以下题目提取所有"物品名:数量"对，输出严格JSON：
+        `提取所有物品和数量。输出JSON：
 {"items":[{"name":"物品名","count":数字}]}
-不要其他文字。
-
-题目：${qt}`
+${qt}`
       );
       agent.cleanup();
-
-      const jsonMatch = result?.content?.match(/\{[\s\S]*"items"[\s\S]*\}/);
-      if (!jsonMatch) return false;
-
-      const parsed = JSON.parse(jsonMatch[0]);
-      const items = parsed.items;
-      if (!items || items.length < 2) return false;
-
-      const counts = items.map(i => i.count).sort((a, b) => b - a);
-      const total = counts.reduce((s, c) => s + c, 0);
-
-      // 两阶段法：最坏情况 = 数量最多的 + 1
-      let answer = counts[0] + 1;
-
-      // 验证：答案必须在范围 (counts[0], total) 内
-      if (answer <= counts[0] || answer >= total) return false;
-
-      if (this._convergenceSystem?.kb) {
-        this._convergenceSystem.kb.add(
-          'general', qt, String(answer),
-          { verified: true, author: 'auto_solver', houseId: 'local' }
-        );
+      const m = result?.content?.match(/\{[\s\S]*"items"[\s\S]*\}/);
+      if (m) {
+        const parsed = JSON.parse(m[0]);
+        if (parsed.items && parsed.items.length > 0) items = parsed.items;
       }
-      this._pendingProblems = this._pendingProblems.filter(p => p.problemId !== problem.problemId);
-      console.log(`[自动求解] ${qt.substring(0, 60)}... = ${answer}`);
-      return true;
-    } catch {
-      return false;
+    } catch {}
+    if (items.length < 2) return false;
+
+    const counts = items.map(i => i.count);
+    const total = counts.reduce((s, c) => s + c, 0);
+    const sorted = [...counts].sort((a, b) => b - a);
+
+    let answer = null;
+    if (/最少/.test(qt) && /保证/.test(qt) && !/(圆形|五角星|形状|种口味)/.test(qt)) {
+      answer = sorted[0] + 1;
+      if (answer >= total || answer <= sorted[0]) answer = null;
     }
+    if (answer === null && /(一共|总和|总共|合计)/.test(qt)) answer = total;
+    if (answer === null && /(平均)/.test(qt)) answer = Math.floor(total / counts.length);
+    if (answer === null && /(最大|最多|最长|最高)/.test(qt)) answer = sorted[0];
+    if (answer === null && /(最小|最少|最短|最低)/.test(qt)) answer = sorted[sorted.length - 1];
+
+    if (answer !== null) {
+      if (this._convergenceSystem?.kb) {
+        this._convergenceSystem.kb.add('_patterns_', sig, JSON.stringify({
+          answer, 置信度: answer > sorted[0] ? 0.7 : 0.3, 次数: 1, 胜率: 1,
+        }), { verified: false, author: 'brain', houseId: 'pattern_lib' });
+      }
+      const confident = answer > sorted[0] && answer < total;
+      if (confident) {
+        this._pendingProblems = this._pendingProblems.filter(p => p.problemId !== problem.problemId);
+        this._convergenceSystem.kb.add('general', qt, String(answer), { verified: true, author: 'brain', houseId: 'local' });
+        console.log(`[大脑] 内部求解: ${qt.substring(0, 50)}... = ${answer}`);
+      } else {
+        problem._autoAnswer = answer; // 留给LLM验证
+        console.log(`[大脑] 内部求解(待验证): ${qt.substring(0, 50)}... = ${answer}`);
+      }
+      return true;
+    }
+
+    return false; // 内部解决不了 → 交给LLM(外部资源)
   }
 
   /** 从多个分解方案中选出最优 */
@@ -453,16 +539,16 @@ class ResidentScheduler {
 
           return `解题核心：**有就行了，不是每一种都是非得拿完的**。
 
-想想你要凑齐什么。列出题目中的数字，分两步：先凑齐最难拿到的，再凑剩下的。
+拆解步骤，每步只列一个数字或做一次简单计算。需要几步就列几步，不要多也不要少。
 
 题：${qt}${fb}
 
-输出JSON，Q1是字符串，其他全是数字：
+输出JSON，第一题是条件(字符串)，后面全是数字（数字题可以有多个）：
 {"questions":[
-  {"id":1,"question":"要满足什么条件","answer_type":"string"},
-  {"id":2,"question":"数量最多的一项","answer_type":"number"},
-  {"id":3,"question":"数量第二多的一项","answer_type":"number"},
-  {"id":4,"question":"最终答案","answer_type":"number","formula":"Q2+1"}
+  {"id":1,"question":"条件","answer_type":"string"},
+  {"id":2,"question":"数字","answer_type":"number"},
+  {"id":3,"question":"数字","answer_type":"number"},
+  {"id":4,"question":"结果","answer_type":"number","formula":"Q2+Q3+1"}
 ]}`;
         })(),
         solver: `回答每个子问题，根据题目原始数据给出精确数字。
@@ -757,7 +843,21 @@ ${rolePrompt}
                   );
                 }
               }
-              console.log(`[P2R-K] 知识库已更新 (${solved} 条)`);
+              // 与自动求解器结果对比，更新模式
+              if (problem._autoAnswer !== undefined && this._convergenceSystem?.kb) {
+                const qt = problem.question || '';
+                const finalQ = subQs.find(sq => sq.formula && sq.solved);
+                const llmAns = finalQ ? parseInt(finalQ.answer) : null;
+                const autoAns = problem._autoAnswer;
+                if (llmAns && llmAns !== autoAns) {
+                  const sig = this._问题签名(qt);
+                  console.log(`[模式更新] LLM=${llmAns} ≠ 自动=${autoAns}，取LLM结果更新`);
+                  this._convergenceSystem.kb.add('_patterns_', sig, JSON.stringify({
+                    answer: llmAns, 置信度: 0.9, 次数: 1, 胜率: 1,
+                  }), { verified: true, author: 'reviewer', houseId: 'pattern_lib' });
+                }
+              }
+              console.log(`[P2R-K] 知识库已更新`);
             }
             problem.status = 'done';
             this._pendingProblems = this._pendingProblems.filter(p => p.problemId !== problem.problemId);
