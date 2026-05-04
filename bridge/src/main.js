@@ -33,6 +33,7 @@ import { getEnhancedStabilitySystem } from './core/enhanced-stability-system.js'
 import { CollaborationEngine } from './core/collaboration-engine.js';
 import { residentManager } from './core/resident-manager.js';
 import { residentScheduler } from './core/resident-scheduler.js';
+import { LearningCore } from './core/learning-core.js';
 import P2PSwarm, { hasPublicAddress, getPublicIPv4 } from './p2p/swarm.js';
 import { MessageType as P2PMessageType } from './p2p/messages.js';
 import { PeerRegistry } from './p2p/peer-registry.js';
@@ -64,11 +65,21 @@ const isInteractive = args.includes('--cli') || args.includes('-i');
 
 const isHeadless = savedBridge.mode === 'cli' && !isInteractive ? false : !isInteractive;
 const isPublic = hasPublicAddress() || !!savedBridge.advertiseHost;
-const port = savedBridge.port || 3000;
+
+// 支持 --port 命令行参数覆盖配置
+const portArgIndex = args.findIndex(a => a.startsWith('--port='));
+const cliPort = portArgIndex !== -1 ? parseInt(args[portArgIndex].split('=')[1]) : null;
+const port = cliPort || savedBridge.port || 3000;
+
 const dhtPort = savedBridge.dhtPort || 0;
 const localBootstrap = savedBridge.localBootstrap || [];
 let directListen = savedBridge.directListen || 0;
 let directConnect = savedBridge.directConnect || [];
+// 支持 --directListen CLI 参数
+const directListenIdx = args.findIndex(a => a.startsWith('--directListen='));
+if (directListenIdx !== -1) {
+  directListen = parseInt(args[directListenIdx].split('=')[1]);
+}
 // 本地开发：无 bootstrap 时自动启用直连 TCP（端口 = HTTP 端口 + 2）
 const isNesting = args.includes('--nesting');
 if (!directListen && localBootstrap.length === 0 && !args.includes('--no-direct') && !isNesting) {
@@ -77,8 +88,9 @@ if (!directListen && localBootstrap.length === 0 && !args.includes('--no-direct'
 const bridgeName = savedBridge.name || `bridge-${Math.random().toString(36).substr(2, 4)}`;
 const bridgeRegion = savedBridge.region || process.env.REGION || 'unknown';
 const wsSignalingUrl = savedBridge.wsSignaling || '';
-const advertiseHost = savedBridge.advertiseHost || '';  // 手动指定公网 IP（自动检测失败时）
-const qiniuEnabled = savedBridge.qiniuEnabled !== false; // 默认 true
+const advertiseHost = savedBridge.advertiseHost || '';
+const bridgeTopic = savedBridge.topic || 'openchat-community';
+const qiniuEnabled = savedBridge.qiniuEnabled !== false;
 const cores = savedBridge.cores || [];
 const deployServerEnabled = savedBridge.deployServerEnabled === true; // 默认 false（随 bridge 启动构建量太大，按需开启）
 const deployServerPort = savedBridge.deployServerPort || 8080;
@@ -119,7 +131,8 @@ if (args.includes('--save-config')) {
     dhtPort, localBootstrap, directListen, directConnect,
     wsSignaling: wsSignalingUrl,
     advertiseHost,
-    qiniuEnabled, cores
+    qiniuEnabled, cores,
+    topic: bridgeTopic
   });
   console.log(`[Config] 已保存到 ${path.join(os.homedir(), '.openchat', 'config.json')}`);
 }
@@ -140,7 +153,16 @@ const CONFIG = {
   wsSignalingUrl,
   advertiseHost,
   qiniuEnabled,
-  cores
+  cores,
+  bridge: {
+    port,
+    name: bridgeName,
+    region: bridgeRegion,
+    dhtPort,
+    directListen,
+    directConnect,
+    topic: bridgeTopic
+  }
 };
 
 const COMMANDS = [
@@ -256,7 +278,9 @@ class Bridge {
       this.registry = registry;
 
       const p2pOpts = {
-        topic: Buffer.from('openchat-community').subarray(0, 32),
+        topic: CONFIG.bridge?.topic 
+          ? Buffer.from(CONFIG.bridge.topic).slice(0, 32) 
+          : Buffer.from('openchat-community').subarray(0, 32),
         identity: { name: CONFIG.bridgeName, region: CONFIG.bridgeRegion, residentCount: 0 },
         hostIsPublic: CONFIG.isPublic,
         wsSignalingUrl: CONFIG.wsSignalingUrl,
@@ -370,6 +394,7 @@ class Bridge {
         // P2R: 居民治家初始化
         const { SafeEvolution } = await import('./core/safe-evolution.js');
         const { BridgeSpawn } = await import('./core/bridge-spawn.js');
+        const { detectBestStrategy } = await import('./core/launch-strategies.js');
         const { House } = await import('./core/house.js');
         const { LLMProxyAgent } = await import('./core/llm-proxy-agent.js');
 
@@ -382,7 +407,9 @@ class Bridge {
           await this.house.init();
         }
 
-        const bridgeSpawn = new BridgeSpawn(this.p2p, hostId, this.house);
+        const detectedStrategy = detectBestStrategy();
+        console.log(`[Launch] 启动策略: ${detectedStrategy}`);
+        const bridgeSpawn = new BridgeSpawn(this.p2p, hostId, this.house, detectedStrategy);
 
         const { HouseOrchestrator } = await import('./core/house-orchestrator.js');
         this.houseOrchestrator = new HouseOrchestrator(this.p2p, this.p2p.peerId || 'bridge-1', safeEvo, this.house, bridgeSpawn);
@@ -394,6 +421,88 @@ class Bridge {
         this.llmProxy = new LLMProxyAgent(this.p2p, { enabled: true });
         this.llmProxy.start();
         console.log('[P2R] HouseOrchestrator + SafeEvolution + BridgeSpawn + LLMProxy 已启动');
+
+        // P2R-K: 公共知识库 — 布尔求解 + 最优解法共享
+        try {
+          const { KnowledgeBase } = await import('./core/knowledge-base.js');
+          this.knowledgeBase = new KnowledgeBase(this.p2p);
+          await this.knowledgeBase.init();
+          console.log('[P2R-K] 公共知识库已启动');
+        } catch (e) {
+          console.log(`[P2R-K] 知识库启动失败: ${e.message}`);
+        }
+
+        // P2R-K: 收敛引擎 — 问题分解→竞标→求解→择优
+        try {
+          const { ProblemDecomposer } = await import('./core/problem-decomposer.js');
+          const { ConvergenceEngine } = await import('./core/convergence-engine.js');
+          const { SolutionEngine } = await import('./core/solution-engine.js');
+          const { SolutionOptimizer } = await import('./core/solution-optimizer.js');
+          this.problemDecomposer = new ProblemDecomposer();
+          this.convergenceEngine = new ConvergenceEngine();
+          this.solutionEngine = new SolutionEngine();
+          this.solutionOptimizer = new SolutionOptimizer();
+
+          // 注入收敛系统到居民调度器
+          const { residentScheduler } = await import('./core/resident-scheduler.js');
+          residentScheduler.setConvergenceSystem(
+            this.knowledgeBase,
+            this.problemDecomposer,
+            this.convergenceEngine,
+            this.solutionEngine,
+            this.solutionOptimizer
+          );
+
+          console.log('[P2R-K] 收敛引擎已启动 (分解+竞标+求解+优化)');
+        } catch (e) {
+          console.log(`[P2R-K] 收敛引擎启动失败: ${e.message}`);
+        }
+
+        // 启动学习核心（整合：自学习+调度+协作+收敛）
+        this.learningCore = new LearningCore(this.knowledgeBase, this.p2p, port, residentScheduler);
+        this._startLearningCore();
+        console.log(`[学习核心] 智商=${this.learningCore.iq} 年龄=${this.learningCore.age} 已解决=${this.learningCore.solvedCount}`);
+
+        // P2R-K: 响应邻居的问题求解请求
+        this.p2p.on(P2PMessageType.PROBLEM_SOLVE, async (data) => {
+          const p = data.payload || {};
+          try {
+            const domain = p.domain || 'general';
+
+            // 1. 先查知识库
+            let kbHit = false;
+            if (this.knowledgeBase && p.question) {
+              const kbAns = this.knowledgeBase.answer(domain, p.question);
+              if (kbAns && kbAns.verified) {
+                kbHit = true;
+              }
+            }
+
+            // 2. 加入调度器队列（让居民按 traits 分角色求解）
+            try {
+              const { residentScheduler } = await import('./core/resident-scheduler.js');
+              residentScheduler.addProblem({
+                problemId: p.problemId,
+                domain,
+                question: p.question,
+                subQuestions: p.subQuestions || [],
+                from: data.from,
+              });
+            } catch {}
+
+            // 3. 回复（先返回 KB 能回答的部分）
+            const result = {
+              problemId: p.problemId,
+              ok: true,
+              answer: kbHit ? 'solved' : 'pending',
+              fromBridge: this.p2p?.peerId || '?',
+              note: kbHit ? '知识库命中' : '已分发居民求解',
+            };
+            this.p2p.sendTo(data.from, { type: P2PMessageType.PROBLEM_RESULT, payload: result });
+          } catch (e) {
+            console.log(`[P2R-K] 求解失败: ${e.message}`);
+          }
+        });
 
         // P2R: 窟验证回复
         this.p2p.on('safe-house-verify', (data) => {
@@ -458,6 +567,40 @@ class Bridge {
           const p = data.payload || {};
           const hid = p.hostId ? p.hostId.slice(0, 8) : '?';
           console.log(`[P2R] 收到找窟请求: ${p.residentName} (hostId=${hid}, 偏好: ${p.preferredType})`);
+          // 如果本 Bridge 有 House，回复安全屋信息
+          if (this.house && data.from) {
+            const offer = {
+              type: 'HOUSE_OFFER',
+              payload: {
+                houseId: this.house.houseId,
+                bridgeId: this.house.bridgeId,
+                hostId: hostId,
+                host: 'localhost',
+                port: CONFIG.port || 0,
+                bridgeName: this.p2p.peerId,
+                health: 100,
+                lastVerified: Date.now(),
+                sourceResidentId: p.residentId,
+              },
+            };
+            this.p2p.sendTo(data.from, offer);
+          }
+        });
+        this.p2p.on('HOUSE_OFFER', (data) => {
+          const p = data.payload || {};
+          if (p.sourceResidentId) {
+            residentManager.registerSafeHouse(p.sourceResidentId, {
+              houseId: p.houseId,
+              bridgeId: p.bridgeId,
+              hostId: p.hostId,
+              host: p.host,
+              port: p.port,
+              bridgeName: p.bridgeName,
+              health: p.health || 50,
+              lastVerified: Date.now(),
+            });
+            console.log(`[P2R] 安全屋注册成功: ${p.houseId?.slice(0, 8)} → resident#${p.sourceResidentId}`);
+          }
         });
         this.p2p.on('HOUSE_NEED', (data) => {
           const p = data.payload || {};
@@ -598,6 +741,8 @@ class Bridge {
           await this.handleAgentStatus(req, res, pathname.replace('/api/agents/', ''));
         } else if (pathname.startsWith('/api/agents/') && req.method === 'POST') {
           await this.handleAgentAction(req, res, pathname.replace('/api/agents/', ''));
+        } else if (pathname === '/api/learning' && req.method === 'GET') {
+          await this.handleLearningStatus(req, res);
         } else if (pathname === '/health' && req.method === 'GET') {
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ status: 'ok', uptime: Date.now() - this.startTime }));
@@ -737,6 +882,12 @@ class Bridge {
     console.log(`[HTTP] 正在监听 ${CONFIG.host}:${CONFIG.port}`);
   }
 
+  async handleLearningStatus(req, res) {
+    const stats = this.learningCore ? this.learningCore.getStats() : { iq: 0, age: 0, solvedCount: 0 };
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(stats));
+  }
+
   async handleStatus(req, res) {
     const provider = persistentConfig.getPreference('currentProvider');
     const model = persistentConfig.getPreference('currentModel');
@@ -776,24 +927,71 @@ class Bridge {
     req.on('data', chunk => body += chunk);
     req.on('end', async () => {
       try {
-        const { message, sessionId, provider, model } = JSON.parse(body);
+        const { message, sessionId } = JSON.parse(body);
 
-        // 如果没有 session，创建一个
-        let sid = sessionId;
-        if (!sid) {
-          const p = provider || persistentConfig.getPreference('currentProvider');
-          const m = model || persistentConfig.getPreference('currentModel');
-          sid = await sessionManager.createSession(p, m);
+        // 走 resident 调度器流程（分布式协作）
+        // 1. 先检查知识库
+        const kb = residentScheduler?._convergenceSystem?.kb;
+        let cachedAnswer = null;
+        if (kb) {
+          cachedAnswer = kb.answer('general', message);
         }
 
-        // 发送消息并获取响应
-        const response = await sessionManager.sendMessage(sid, message);
+        if (cachedAnswer) {
+          // 知识库有答案，直接返回
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            response: cachedAnswer,
+            source: 'knowledge_base'
+          }));
+          return;
+        }
 
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-          sessionId: sid,
-          response: response.content || response
-        }));
+        // 2. 没有答案，加入调度器让居民求解
+        const problemId = `chat_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+        
+        if (residentScheduler) {
+          // 添加问题到调度器
+          residentScheduler.addProblem({
+            problemId,
+            domain: 'general',
+            question: message,
+            subQuestions: [],
+            from: 'api_chat',
+          });
+
+          // 等待一段时间让居民求解（最多 10 秒）
+          const maxWait = 10000;
+          const checkInterval = 500;
+          let waited = 0;
+          
+          while (waited < maxWait) {
+            await new Promise(r => setTimeout(r, checkInterval));
+            waited += checkInterval;
+            
+            // 检查是否已有解
+            const pending = residentScheduler._pendingProblems?.find(p => p.problemId === problemId);
+            if (pending?.status === 'done' && pending.answer) {
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({
+                response: pending.answer,
+                source: 'residents_convergence'
+              }));
+              return;
+            }
+          }
+
+          // 超时，返回处理中
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            response: '问题已提交，正在求解中...',
+            source: 'residents_processing',
+            problemId
+          }));
+        } else {
+          // 没有调度器，回退到直接 LLM
+          throw new Error('Resident scheduler not available');
+        }
       } catch (e) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: e.message }));
@@ -1326,6 +1524,28 @@ class Bridge {
     }
   }
 
+  _startLearningCore() {
+    if (!this.learningCore) return;
+
+    let cycle = 0;
+    const runCycle = async () => {
+      cycle++;
+      try {
+        const result = await this.learningCore.runCycle();
+        if (result.status === 'solved') {
+          console.log(`[学习核心] 第${cycle}轮: 解决 ${result.problem} → IQ: ${result.iq}`);
+        } else if (cycle % 10 === 0) {
+          console.log(`[学习核心] 第${cycle}轮: ${result.status} | IQ: ${result.iq} 年龄: ${result.age}`);
+        }
+      } catch (e) {
+        console.log(`[学习核心] 第${cycle}轮异常: ${e.message}`);
+      }
+    };
+
+    runCycle();
+    this._learningTimer = setInterval(runCycle, 60000);
+  }
+
   async shutdown() {
     console.log('\n[Bridge] 正在关闭...');
 
@@ -1370,6 +1590,12 @@ class Bridge {
     }
     if (this.registry) {
       await this.registry.unpublishPeer().catch(() => {});
+    }
+
+    // 停止自学习
+    if (this._learningTimer) {
+      clearInterval(this._selfLearnTimer);
+      this._selfLearnTimer = null;
     }
 
     // 停止 P2P 网络（在调度器之前）

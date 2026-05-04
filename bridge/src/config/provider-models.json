@@ -56,6 +56,8 @@
     "baseUrl": "https://openrouter.ai/api/v1",
     "chatEndpoint": "/chat/completions",
     "defaultModel": "openrouter/auto",
+    "transport": "openai_chat",
+    "authType": "api_key",
     "models": [
       "openrouter/elephant-alpha",
       "anthropic/claude-opus-4.6-fast",
@@ -3954,5 +3956,14 @@
     "envVars": [
       "API2API_API_KEY"
     ]
+  },
+  "_aliases": {
+    "kimi": "kimi-for-coding",
+    "moonshot": "kimi-for-coding",
+    "ollama": "ollama-cloud",
+    "claude": "anthropic",
+    "qwen": "alibaba",
+    "doubao": "volc-engine",
+    "baiduqianfancodingplan": "baidu-qianfan-coding-plan"
   }
 }
