@@ -4,6 +4,7 @@ node_modules/
 *.log
 .DS_Store
 /build
+/deploy
 /.idea
 /.vscode
 *.swp
@@ -49,3 +50,19 @@ monitor-cli.js
 .swo
 *~
 *.tmp
+
+# Bridge 自动生成的研究/分析/临时文件
+bridge/src/core/research-*.cjs
+bridge/src/core/research-*.js
+bridge/src/core/research-*.json
+bridge/src/core/analysis-*.cjs
+bridge/src/core/auto_age_stuck*.cjs
+bridge/src/core/backups/
+bridge/src/core/*.backup*
+bridge/src/core/*sister*
+bridge/src/core/*worker*
+bridge/src/core/self_config.json
+bridge/src/core/my_app.js
+bridge/src/core/state_log.txt
+bridge/src/core/time_capsule.json
+bridge/src/core/age_increment*.js

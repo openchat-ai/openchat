@@ -12,14 +12,17 @@ console.log('自学习模块启动');
 console.log('问题池:', learner.problemPool.length, '题');
 
 async function run() {
-  const stats = learner.getStats();
+  const report = learner.getReport();
   console.log('\n=== 自学习状态 ===');
-  console.log('总问题:', stats.totalProblems);
-  console.log('已学习:', stats.learned);
-  console.log('待处理:', stats.pending);
+  console.log('问题池:', report.totalPool, '题');
+  console.log('已解决:', report.solved);
+  console.log('提交中:', report.submitted);
+  console.log('LLM生成:', report.generated);
+  console.log('KB领域:', report.kbDomains);
+  console.log('KB条目:', report.kbEntries);
 
   const result = await learner.runLearningRound();
-  console.log('\n本轮学习:', result.learned, '题');
+  console.log('\n本轮学习:', JSON.stringify(result));
 }
 
 // 立即执行一次

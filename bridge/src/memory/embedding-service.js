@@ -8,11 +8,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import { CONFIG_DIR } from '../core/persistent-config.js';
+import { USER_DIR } from '../core/persistent-config.js';
 import { persistentConfig } from '../core/persistent-config.js';
 import { providerManager } from '../providers/provider-manager.js';
 
-const CACHE_DIR = path.join(CONFIG_DIR, 'vectors', 'cache');
+const CACHE_DIR = path.join(USER_DIR, 'vectors', 'cache');
 const CACHE_FILE = path.join(CACHE_DIR, 'embedding_cache.json');
 
 // 使用 fs.promises 异步 API

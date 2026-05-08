@@ -564,14 +564,14 @@ export class AgentSession {
 
     try {
       const config = {
-        retries: 3,
-        retryDelay: 100,
+        retries: 2,
+        retryDelay: 500,
         minTimeout: 1000,
-        maxTimeout: 120000,
-        maxRetryDelay: 30000,
+        maxTimeout: 30000,
+        maxRetryDelay: 5000,
         factor: 2,
         randomize: true,
-        maxRetryTime: 60000,
+        maxRetryTime: 15000,
         noResponseRetries: 2,
         statusCodesToRetry: [
           [408, 408],
@@ -621,7 +621,8 @@ export class AgentSession {
             model: model,
             messages: filteredMessages,
             temperature: 0.7,
-            max_tokens: 2000
+            max_tokens: 2000,
+            provider: { allow_fallbacks: true }
           };
 
           response = await fetch(`${providerConfig.baseUrl}${providerConfig.chatEndpoint}`, {
@@ -634,7 +635,12 @@ export class AgentSession {
           clearTimeout(timeoutId);
 
           status = response.status;
-          data = await response.json();
+          const responseText = await response.text();
+          try {
+            data = JSON.parse(responseText);
+          } catch {
+            data = { error: { message: `HTTP ${status}: ${responseText.substring(0, 200)}` } };
+          }
 
           if (response.ok) {
             this._circuitBreaker.recordSuccess();

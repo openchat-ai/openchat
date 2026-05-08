@@ -1,0 +1,5 @@
+[2024-01-15T10:30:00.000Z] Bridge-System [INFO] 系统启动 {"version":"1.0.0","environment":"development"}
+[2024-01-15T10:30:01.000Z] Bridge-System [WARN] 数据库连接池警告 {"poolSize":10,"activeConnections":9,"waitingRequests":2}
+[2024-01-15T10:30:02.000Z] Bridge-System [ERROR] 文件写入失败 {"filePath":"/tmp/test.log","error":"ENOENT"}
+[2024-01-15T10:30:03.000Z] Bridge-System [DEBUG] 请求处理详情 {"method":"POST","path":"/api/users"}
+[2024-01-15T10:30:04.000Z] Bridge-System [FATAL] 系统无法恢复 {"reason":"数据库连接丢失"}

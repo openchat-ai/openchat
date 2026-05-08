@@ -41,10 +41,12 @@ const DEFAULT_CONFIG = {
     port: 3000,
     name: '',
     region: '',
+    age: 0,
     dhtPort: 0,
     localBootstrap: [],
     directListen: 0,
     directConnect: [],
+    topic: 'openchat-community',
     wsSignaling: '',
     advertiseHost: '',
     qiniuEnabled: true,
@@ -208,6 +210,32 @@ class PersistentConfig {
   /** 获取本机 hostId */
   getHostId() {
     return this.ensureHostId();
+  }
+
+  /** 增加年龄（每次升级调用） */
+  incrementAge() {
+    if (!this.config.bridge) this.config.bridge = {};
+    this.config.bridge.age = (this.config.bridge.age || 0) + 1;
+    this.save();
+    return this.config.bridge.age;
+  }
+
+  /** 获取当前年龄 */
+  getAge() {
+    return this.config.bridge?.age || 0;
+  }
+
+  /** 设置智商年龄（居民评估结果） */
+  setMentalAge(age) {
+    if (!this.config.bridge) this.config.bridge = {};
+    this.config.bridge.mentalAge = age;
+    this.config.bridge.mentalAgeEvaluatedAt = Date.now();
+    this.save();
+  }
+
+  /** 获取智商年龄 */
+  getMentalAge() {
+    return this.config.bridge?.mentalAge || 0;
   }
 
   // ================== 记忆管理 ==================

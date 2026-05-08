@@ -1,0 +1,5 @@
+research-*.cjs
+research-*.js
+research-*.json
+*.backup*
+*.backup_*

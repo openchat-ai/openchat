@@ -29,6 +29,7 @@ const MessageType = {
 
   // P2R: 居民治家 — 窟管理
   HOUSE_SEEK:           'house_seek',         // 找窟请求
+  HOUSE_OFFER:          'house_offer',        // 安全屋提供
   HOUSE_NEED:           'house_need',         // 求助/需要窟
 
   // P2R-S: 安全自治 — 多方验证 + 热回滚
@@ -42,7 +43,16 @@ const MessageType = {
 
   // LLM 代理：对等发现
   LLM_AVAILABLE:        'llm_available',        // 广播：本机 LLM 可用（含模型列表）
-  LLM_PROVIDER_QUERY:   'llm_provider_query'    // 查询：谁有 LLM？
+  LLM_PROVIDER_QUERY:   'llm_provider_query',   // 查询：谁有 LLM？
+
+  // P2R-K: 公共知识库 — 布尔求解 + 最优解法共享
+  KNOWLEDGE_PUBLISH:    'knowledge_publish',    // 广播：发布验证过的知识条目
+  KNOWLEDGE_QUERY:      'knowledge_query',      // 查询：谁有某问题的解法
+  KNOWLEDGE_RESPONSE:   'knowledge_response',   // 回复：返回匹配的知识条目
+
+  // P2R-K: 收敛引擎 — 问题求解
+  PROBLEM_SOLVE:        'problem_solve',         // 提交问题给邻居求解
+  PROBLEM_RESULT:       'problem_result',        // 返回求解结果
 };
 
 // 消息类型验证
@@ -364,6 +374,39 @@ const createLLMProviderQueryMessage = (options = {}) => {
   );
 };
 
+// P2R-K: 提交问题给邻居求解
+const createProblemSolveMessage = (options = {}) => {
+  return createMessage(
+    MessageType.PROBLEM_SOLVE,
+    {
+      problemId: options.problemId || require('crypto').randomUUID(),
+      question: options.question || '',
+      domain: options.domain || 'general',
+      subQuestions: options.subQuestions || [],
+      fromBridge: options.fromBridge || '',
+      ttl: options.ttl || 60000,
+    },
+    { priority: options.priority || 'HIGH', ttl: options.ttl || 60000, ...options }
+  );
+};
+
+// P2R-K: 返回求解结果
+const createProblemResultMessage = (options = {}) => {
+  return createMessage(
+    MessageType.PROBLEM_RESULT,
+    {
+      problemId: options.problemId,
+      ok: options.ok !== false,
+      answer: options.answer || '',
+      method: options.method || '',
+      size: options.size || 0,
+      duration: options.duration || 0,
+      fromBridge: options.fromBridge || '',
+    },
+    { priority: options.priority || 'HIGH', ttl: 60000, ...options }
+  );
+};
+
 // 序列化消息（用于网络传输）
 const serializeMessage = (message) => {
   return JSON.stringify(message);
@@ -419,6 +462,8 @@ export {
   createLLMProxyResponse,
   createLLMAvailableMessage,
   createLLMProviderQueryMessage,
+  createProblemSolveMessage,
+  createProblemResultMessage,
   serializeMessage,
   deserializeMessage,
   validateMessage

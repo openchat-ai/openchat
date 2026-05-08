@@ -1,26 +1,40 @@
-import { persistentConfig } from '../core/persistent-config.js';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+
+const MEMORY_FILE = path.join(os.homedir(), '.openchat', 'memory', 'evolution-memory.json');
 
 export class EvolutionMemory {
   constructor() {
     this.memory = new Map(); // 临时内存存储
-    this.loadFromConfig(); // 从配置加载持久化记忆
+    this._ensureDir();
+    this.loadFromConfig(); // 从文件加载持久化记忆
   }
 
-  // 保存记忆到配置
+  _ensureDir() {
+    const dir = path.dirname(MEMORY_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  }
+
+  // 保存记忆到独立文件（不再塞进 config.json）
   saveToConfig() {
     try {
+      this._ensureDir();
       const memoryArray = Array.from(this.memory.entries());
-      persistentConfig.setPreference('evolution_memory', memoryArray);
+      fs.writeFileSync(MEMORY_FILE, JSON.stringify(memoryArray, null, 2));
     } catch (e) {
       console.log('[EvolutionMemory] 保存记忆失败:', e.message);
     }
   }
 
-  // 从配置加载记忆
+  // 从文件加载记忆
   loadFromConfig() {
     try {
-      const savedMemory = persistentConfig.getPreference('evolution_memory', []);
-      this.memory = new Map(savedMemory);
+      if (fs.existsSync(MEMORY_FILE)) {
+        const raw = fs.readFileSync(MEMORY_FILE, 'utf8');
+        const savedMemory = JSON.parse(raw);
+        this.memory = new Map(savedMemory);
+      }
     } catch (e) {
       console.log('[EvolutionMemory] 加载记忆失败:', e.message);
       this.memory = new Map();

@@ -315,6 +315,35 @@ export class SmartRouter {
       this._defaultProvider = name;
     }
   }
+
+  /**
+   * Record a successful API call
+   * @param {string} name Provider name
+   * @param {number} latency Response time in ms
+   */
+  recordSuccess(name, latency) {
+    const provider = this._providers.get(name);
+    if (provider) {
+      provider.requestCount = (provider.requestCount || 0) + 1;
+      provider.avgLatency = provider.avgLatency
+        ? (provider.avgLatency + latency) / 2
+        : latency;
+    }
+  }
+
+  /**
+   * Record a failed API call
+   * @param {string} name Provider name
+   * @param {number} statusCode HTTP status code
+   * @param {number} latency Response time in ms
+   */
+  recordFailure(name, statusCode, latency) {
+    const provider = this._providers.get(name);
+    if (provider) {
+      provider.requestCount = (provider.requestCount || 0) + 1;
+      provider.errorCount = (provider.errorCount || 0) + 1;
+    }
+  }
 }
 
 export class StreamHandler {

@@ -1,0 +1,41 @@
+/**
+ * 评估智商年龄（由居民执行）
+ * 升级次数 = Git 提交次数（自然统计）
+ */
+async evaluateMentalAge() {
+  const { persistentConfig } = await import('./persistent-config.js');
+  const { execSync } = await import('child_process');
+  
+  // 自然统计：Git 提交次数
+  let commitCount = 0;
+  try {
+    const result = execSync('git rev-list --count HEAD', { cwd: process.cwd(), encoding: 'utf8' });
+    commitCount = parseInt(result.trim()) || 0;
+  } catch {
+    commitCount = 0;
+  }
+  
+  // 收集指标
+  const uptimeDays = process.uptime() / 86400;
+  const kbStats = this._convergenceSystem?.kb?.stats?.();
+  const kbSize = kbStats?.total || 0;
+  const residentCount = residentManager.list('active').length;
+  const healthScore = this._getHealthScore();
+  
+  // 计算智商年龄
+  let mentalAge = Math.sqrt(commitCount) * 2;
+  mentalAge += uptimeDays * 0.1;
+  mentalAge += Math.floor(kbSize / 50) * 0.5;
+  mentalAge += residentCount * 0.2;
+  mentalAge -= Math.floor((100 - healthScore) / 10) * 0.3;
+  mentalAge = Math.max(1, Math.round(mentalAge * 10) / 10);
+  
+  persistentConfig.setMentalAge(mentalAge);
+  
+  console.log(`[智商评估] Git提交${commitCount}次 + 运行${uptimeDays.toFixed(1)}天 + 知识${kbSize}条 = ${mentalAge}岁`);
+  
+  return {
+    mentalAge,
+    breakdown: { commitCount, uptimeDays: uptimeDays.toFixed(1), kbSize, residentCount, healthScore }
+  };
+}

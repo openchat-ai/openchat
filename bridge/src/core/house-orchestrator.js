@@ -1,33 +1,33 @@
 /**
- * HouseOrchestrator — 居民治家：维护 / 备灾 / 找窟 / 迁移
+ * BodyOrchestrator — 居民治家：维护 / 备灾 / 找窟 / 迁移
  *
  * 每 tick 被 scheduler 调一次：
  * ① collectHealth() → 采集房子健康
  * ② decideActions() → 分派行动
- * ③ ensureSafeHouses() → 补齐 3 窟
+ * ③ ensureSafeBodys() → 补齐 3 窟
  * ④ verifyOneSafehouse() → 轮转验证
  */
 
-import { residentManager, migrateSafeHouse } from './resident-manager.js';
+import { residentManager, migrateSafeBody } from './resident-manager.js';
 import { getEnhancedStabilitySystem } from './enhanced-stability-system.js';
-import { decideActions, actionPrompt, preferredHouseType } from './resident-decisions.js';
+import { decideActions, actionPrompt, preferredBodyType } from './resident-decisions.js';
 import { persistentConfig, HOUSES_DIR } from './persistent-config.js';
 import { MessageType,
-  createHouseSeekMessage,
-  createHouseNeedMessage,
-  createSafeHouseVerify,
+  createBodySeekMessage,
+  createBodyNeedMessage,
+  createSafeBodyVerify,
   createResidentTransferMessage,
 } from '../p2p/messages.js';
 
 import * as fs from 'fs';
 import * as path from 'path';
 
-class HouseOrchestrator {
+class BodyOrchestrator {
   /**
    * @param {object} p2p   P2PSwarm 实例（用于发消息）
    * @param {string} swarmId  本 Bridge 标识
    * @param {object} safeEvolution  SafeEvolution 实例（可选，居民安全自治）
-   * @param {object} house  House 实例（可选，房间数据管理）
+   * @param {object} house  Body 实例（可选，房间数据管理）
    * @param {object} bridgeSpawn  BridgeSpawn 实例（可选，扩窟）
    */
   constructor(p2p, swarmId, safeEvolution = null, house = null, bridgeSpawn = null) {
@@ -54,13 +54,13 @@ class HouseOrchestrator {
         if (actions.length > 0) {
           await this.executeActions(r, actions.slice(0, 2), health);
         }
-        await this.ensureSafeHouses(r);
+        await this.ensureSafeBodys(r);
       }
 
       // 每 tick 验证一个安全屋
       await this.verifyOneSafehouse(residents);
     } catch (e) {
-      console.log(`[House] tick error: ${e.message}`);
+      console.log(`[Body] tick error: ${e.message}`);
     }
   }
 
@@ -99,26 +99,53 @@ class HouseOrchestrator {
    * 确保居民有至少 3 个安全屋，且至少来自 2 个不同 hostId
    * 每 tick 最多广播一次 seek
    */
-  async ensureSafeHouses(resident) {
-    const safeHouses = (resident.safeHouses || []).map(migrateSafeHouse);
+  async ensureSafeBodys(resident) {
+    const safeBodys = (resident.safeBodys || []).map(migrateSafeBody);
 
     // 过滤已失效的（1 小时内验证过的才算有效）
-    const valid = safeHouses.filter(h => {
+    const valid = safeBodys.filter(h => {
       const age = Date.now() - (h.lastVerified || 0);
       return age < 3600000;
     });
 
-    // 跨机最小保证：至少 3 窟、至少 2 不同 hostId
+    // 已自举过（当前 Body 在列表中的）→ 检查是否满足窟数要求
+    const hasSelf = valid.some(h => h.hostId === this.hostId && h.type === 'self');
+
+    // 如果没有自举，且列表为空，先自举当前 Body
+    if (!hasSelf && valid.length === 0) {
+      residentManager.registerSafeBody(resident.id, {
+        hostId: this.hostId,
+        bridgeId: this.swarmId,
+        host: 'localhost',
+        health: 80,
+        type: 'self',
+        lastVerified: Date.now(),
+      });
+      console.log(`[Body] 自举当前 Body 为安全屋 (hostId=${this.hostId})`);
+      // 重新读取
+      valid.push({
+        hostId: this.hostId,
+        bridgeId: this.swarmId,
+        host: 'localhost',
+        health: 80,
+        type: 'self',
+        lastVerified: Date.now(),
+      });
+    }
+
+    // 跨机最小保证：至少 3 窟、至少 2 不同 hostId（单 Bridge 模式放宽到 1 窟）
+    const peerCount = this.p2p?.connectedPeers?.size || 0;
+    const minBodys = peerCount === 0 ? 1 : 3;
     const uniqueHostIds = new Set(valid.map(h => h.hostId).filter(Boolean));
-    if (valid.length >= 3 && uniqueHostIds.size >= 2) return;
+    if (valid.length >= minBodys && (peerCount === 0 || uniqueHostIds.size >= 2)) return;
 
     const reason = valid.length < 3 ? '窟数不足' : '跨机不足';
-    const prefType = preferredHouseType(resident);
-    console.log(`[House] ${resident.name} 需要找窟 (${reason}, 偏好: ${prefType})`);
+    const prefType = preferredBodyType(resident);
+    console.log(`[Body] ${resident.name} 需要找窟 (${reason}, 偏好: ${prefType})`);
 
     // 通过 P2P 广播 seek
     if (this.p2p) {
-      const msg = createHouseSeekMessage({
+      const msg = createBodySeekMessage({
         residentName: resident.name,
         residentId: resident.id,
         hostId: this.hostId,
@@ -134,20 +161,20 @@ class HouseOrchestrator {
    * 验证一个安全屋（每 tick 轮转一个，避免暴搜）
    */
   async verifyOneSafehouse(residents) {
-    const allHouses = [];
+    const allBodys = [];
     for (const r of residents) {
-      for (const h of (r.safeHouses || []).map(migrateSafeHouse)) {
-        allHouses.push({ residentId: r.id, ...h });
+      for (const h of (r.safeBodys || []).map(migrateSafeBody)) {
+        allBodys.push({ residentId: r.id, ...h });
       }
     }
-    if (allHouses.length === 0) return;
+    if (allBodys.length === 0) return;
 
-    this._verifyIndex = (this._verifyIndex + 1) % allHouses.length;
-    const target = allHouses[this._verifyIndex];
+    this._verifyIndex = (this._verifyIndex + 1) % allBodys.length;
+    const target = allBodys[this._verifyIndex];
     const bridgeId = target.bridgeId;
 
     if (this.p2p && this.p2p.connectedPeers.has(bridgeId)) {
-      const msg = createSafeHouseVerify({
+      const msg = createSafeBodyVerify({
         houseId: target.houseId || bridgeId,
         bridgeId,
         hostId: this.hostId,
@@ -174,41 +201,34 @@ class HouseOrchestrator {
         summary: prompt.substring(0, 200),
       });
 
-      console.log(`[House] ${resident.name} → ${act.action} (${act.desc})`);
+      console.log(`[Body] ${resident.name} → ${act.action} (${act.desc})`);
 
       // P2R-S: "创新""快速修复" → 接入安全自治引擎
       if ((act.action === 'innovate' || act.action === 'quick_fix' || act.action === 'diagnose' || act.action === 'repair') && this.safeEvolution) {
         try {
           await this._evolve(resident, act, health);
         } catch (e) {
-          console.log(`[House] ${resident.name} 进化尝试失败 (非致命): ${e.message}`);
+          console.log(`[Body] ${resident.name} 进化尝试失败 (非致命): ${e.message}`);
         }
       }
 
       // "迁移" → 秒迁到已有窟 + 广播通知
       if (act.action === 'migrate') {
-        await this.switchHouse(resident);
+        await this.switchBody(resident);
         await this._broadcastNeed(act, resident, health);
       } else if (act.action === 'call_help') {
         await this._broadcastNeed(act, resident, health);
       }
       // P2R-S: 创新/修复类行动 → 接入安全自治引擎
-      if ((act.action === 'innovate' || act.action === 'quick_fix' || act.action === 'diagnose' || act.action === 'repair') && this.safeEvolution) {
-        try {
-          await this._evolve(resident, act);
-        } catch (e) {
-          console.log(`[House] ${resident.name} 进化失败 (非致命): ${e.message}`);
-        }
-      }
     }
   }
 
   /**
-   * 秒迁：找 safeHouses 中健康最高的直接迁
+   * 秒迁：找 safeBodys 中健康最高的直接迁
    */
-  async switchHouse(resident) {
-    const houses = (resident.safeHouses || [])
-      .map(migrateSafeHouse)
+  async switchBody(resident) {
+    const houses = (resident.safeBodys || [])
+      .map(migrateSafeBody)
       .filter(h => {
         const age = Date.now() - (h.lastVerified || 0);
         return age < 3600000;
@@ -216,12 +236,12 @@ class HouseOrchestrator {
       .sort((a, b) => (b.health || 0) - (a.health || 0));
 
     if (houses.length === 0) {
-      console.log(`[House] ${resident.name} 想迁但没有可用窟`);
+      console.log(`[Body] ${resident.name} 想迁但没有可用窟`);
       return null;
     }
 
     const target = houses[0];
-    console.log(`[House] ${resident.name} → 迁往 ${target.bridgeId || target.host}`);
+    console.log(`[Body] ${resident.name} → 迁往 ${target.bridgeId || target.host}`);
 
     if (this.p2p) {
       const msg = createResidentTransferMessage({
@@ -251,7 +271,7 @@ class HouseOrchestrator {
   /** 广播求助 / 找窟 */
   async _broadcastNeed(action, resident, health) {
     if (!this.p2p) return;
-    const msg = createHouseNeedMessage({
+    const msg = createBodyNeedMessage({
       action: action.action,
       residentName: resident.name,
       residentId: resident.id,
@@ -266,7 +286,7 @@ class HouseOrchestrator {
   /**
    * 清理房间：清理 workspace 中过期文件（超过 7 天）
    */
-  cleanHouse(maxAgeMs = 7 * 86400000) {
+  cleanBody(maxAgeMs = 7 * 86400000) {
     if (!this.house) return 0;
     const wsDir = this.house.workspace.dir();
     let cleaned = 0;
@@ -284,14 +304,14 @@ class HouseOrchestrator {
         } catch { /* 单文件失败不影响整体 */ }
       }
     } catch { /* 目录可能不存在 */ }
-    if (cleaned > 0) console.log(`[House] 清理 ${cleaned} 个过期工作文件`);
+    if (cleaned > 0) console.log(`[Body] 清理 ${cleaned} 个过期工作文件`);
     return cleaned;
   }
 
   /**
    * 备份房间：将整个 house 目录打包到 .openchat/backups/
    */
-  backupHouse() {
+  backupBody() {
     if (!this.house) return null;
     const backupDir = path.join(HOUSES_DIR, '..', 'backups');
     if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
@@ -308,10 +328,10 @@ class HouseOrchestrator {
         backedUpAt: new Date().toISOString(),
       };
       fs.writeFileSync(backupFile, JSON.stringify(data, null, 2), 'utf8');
-      console.log(`[House] 备份完成: ${backupFile}`);
+      console.log(`[Body] 备份完成: ${backupFile}`);
       return backupFile;
     } catch (e) {
-      console.log(`[House] 备份失败: ${e.message}`);
+      console.log(`[Body] 备份失败: ${e.message}`);
       return null;
     }
   }
@@ -337,6 +357,11 @@ class HouseOrchestrator {
    */
   async _evolve(resident, action) {
     if (!this.safeEvolution) return;
+
+    // 单 Bridge 模式无 P2P 验证者，跳过代码进化
+    if (!this.p2p || this.p2p.connectedPeers?.size === 0) {
+      return;
+    }
 
     // 居民从自身角度产出改进提议
     const targets = [
@@ -397,5 +422,9 @@ function computeHealthScore(baseline, p2pPeers) {
   return { score, alerts, components: { memory: mem, cpu, p2p } };
 }
 
-export { HouseOrchestrator, computeHealthScore };
-export default HouseOrchestrator;
+export { BodyOrchestrator, computeHealthScore };
+export default BodyOrchestrator;
+// [P2R-S] 居民 管家(repair) 于 2026-05-04T05:59:41 标记
+// [P2R-S] 居民 管家(repair) 于 2026-05-04T06:00:38 标记
+// [P2R-S] 居民 管家(repair) 于 2026-05-04T06:00:41 标记
+// [P2R-S] 居民 管家(repair) 于 2026-05-04T06:00:53 标记

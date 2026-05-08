@@ -2,9 +2,12 @@
  * P0-02: Agents API Routes
  * 8 个端点 - 多代理协作框架
  * 支持真实模块连接（通过环境变量控制）
+ * 扩展：支持 residentId 过滤 + 活动日志
  */
 
 import express from 'express'
+import { residentManager } from '../../core/resident-manager.js'
+
 const router = express.Router()
 
 // 模拟的 Agent 存储（后备方案）
@@ -59,7 +62,7 @@ const roleCapabilities = {
 // POST /api/v1/agents - 创建代理
 router.post('/', async (req, res, next) => {
   try {
-    const { role, name, capabilities, task } = req.body
+    const { role, name, capabilities, task, residentId } = req.body
 
     const agentId = `agent_${nextAgentId++}`
     const agent = {
@@ -70,17 +73,31 @@ router.post('/', async (req, res, next) => {
       task,
       status: 'RUNNING',
       createdAt: new Date().toISOString(),
-      feedback: []
+      feedback: [],
+      residentId: residentId || null
     }
 
     agents.set(agentId, agent)
+
+    // 活动日志：Agent 出生
+    if (residentId) {
+      residentManager.addActivity(residentId, {
+        type: 'agent_created',
+        message: `派出 ${agent.role} 执行任务: ${task || '未知任务'}`,
+        agentId: agent.id,
+        agentName: agent.name,
+        agentRole: agent.role,
+        task: task || null
+      })
+    }
 
     res.status(201).json({
       id: agent.id,
       role: agent.role,
       name: agent.name,
       status: agent.status,
-      createdAt: agent.createdAt
+      createdAt: agent.createdAt,
+      residentId: agent.residentId
     })
   } catch (error) {
     next(error)
@@ -90,11 +107,18 @@ router.post('/', async (req, res, next) => {
 // GET /api/v1/agents - 列出所有代理
 router.get('/', async (req, res, next) => {
   try {
-    const { status } = req.query
+    const { status, residentId } = req.query
     let agentList = Array.from(agents.values())
 
     if (status) {
       agentList = agentList.filter(a => a.status === status)
+    }
+
+    if (residentId) {
+      const rid = parseInt(residentId, 10)
+      if (!isNaN(rid)) {
+        agentList = agentList.filter(a => a.residentId === rid)
+      }
     }
 
     res.json({
@@ -103,7 +127,8 @@ router.get('/', async (req, res, next) => {
         role: a.role,
         name: a.name,
         status: a.status,
-        createdAt: a.createdAt
+        createdAt: a.createdAt,
+        residentId: a.residentId
       })),
       total: agentList.length
     })
@@ -161,6 +186,18 @@ router.delete('/:id', async (req, res, next) => {
     agent.status = 'TERMINATED'
     agent.terminatedAt = new Date().toISOString()
     agents.set(id, agent)
+
+    // 活动日志：Agent 完成
+    if (agent.residentId) {
+      residentManager.addActivity(agent.residentId, {
+        type: 'agent_completed',
+        message: `完成了任务: ${agent.task || '未知任务'}`,
+        agentId: agent.id,
+        agentName: agent.name,
+        agentRole: agent.role,
+        task: agent.task || null
+      })
+    }
 
     res.json({
       id: agent.id,

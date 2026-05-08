@@ -1,0 +1,99 @@
+{
+  "timestamp": "2026-05-11T04:45:31.768Z",
+  "config": {
+    "endpointsFile": "F:\\openchat\\bridge\\src\\core\\endpoints.json",
+    "defaultEndpoints": [
+      "https://jsonplaceholder.typicode.com/posts",
+      "https://jsonplaceholder.typicode.com/comments",
+      "https://jsonplaceholder.typicode.com/albums",
+      "https://jsonplaceholder.typicode.com/photos",
+      "https://jsonplaceholder.typicode.com/todos",
+      "https://jsonplaceholder.typicode.com/users"
+    ],
+    "maxConcurrency": 5,
+    "requestTimeout": 15000,
+    "verbose": false
+  },
+  "summary": {
+    "totalEndpoints": 6,
+    "successCount": 4,
+    "failureCount": 2,
+    "avgMs": 9498.83605,
+    "medianMs": 9066.119149999999,
+    "stddevMs": 4917.891623792588
+  },
+  "slowestEndpoints": [
+    {
+      "url": "https://jsonplaceholder.typicode.com/posts",
+      "duration": 15103.5381,
+      "status": "NO_RESPONSE",
+      "ok": false,
+      "error": "timeout of 15000ms exceeded"
+    },
+    {
+      "url": "https://jsonplaceholder.typicode.com/photos",
+      "duration": 15020.2028,
+      "status": "NO_RESPONSE",
+      "ok": false,
+      "error": "timeout of 15000ms exceeded"
+    },
+    {
+      "url": "https://jsonplaceholder.typicode.com/comments",
+      "duration": 9583.991,
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "https://jsonplaceholder.typicode.com/albums",
+      "duration": 8548.247299999999,
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "https://jsonplaceholder.typicode.com/todos",
+      "duration": 8219.7902,
+      "status": 200,
+      "ok": true
+    }
+  ],
+  "allResults": [
+    {
+      "url": "https://jsonplaceholder.typicode.com/posts",
+      "duration": 15103.5381,
+      "status": "NO_RESPONSE",
+      "ok": false,
+      "error": "timeout of 15000ms exceeded"
+    },
+    {
+      "url": "https://jsonplaceholder.typicode.com/comments",
+      "duration": 9583.991,
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "https://jsonplaceholder.typicode.com/albums",
+      "duration": 8548.247299999999,
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "https://jsonplaceholder.typicode.com/photos",
+      "duration": 15020.2028,
+      "status": "NO_RESPONSE",
+      "ok": false,
+      "error": "timeout of 15000ms exceeded"
+    },
+    {
+      "url": "https://jsonplaceholder.typicode.com/todos",
+      "duration": 8219.7902,
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "https://jsonplaceholder.typicode.com/users",
+      "duration": 517.2469000000001,
+      "status": 200,
+      "ok": true
+    }
+  ]
+}

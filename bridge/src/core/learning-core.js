@@ -9,6 +9,16 @@
 
 import { residentManager } from './resident-manager.js';
 import { persistentConfig } from './persistent-config.js';
+import { SemanticNN } from './semantic-nn.js';
+import { UniversalSolver } from './universal-solver.js';
+import { ReasoningEngine } from './reasoning-engine.js';
+import { QuestionNormalizer } from './question-normalizer.js';
+import { SymbolicReasoner } from './symbolic-reasoner.js';
+import { TheoremDB } from './theorem-db.js';
+import { InductiveReasoner } from './inductive-reasoner.js';
+import { DataMiner } from './data-miner.js';
+import { CodeReviewer } from './code-reviewer.js';
+import { TeacherLLM } from './teacher-llm.js';
 import { readdirSync, readFileSync, existsSync, writeFileSync, mkdirSync, statSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
@@ -52,6 +62,18 @@ class LearningCore {
       warnings: [],
       lastRestarts: new Map()
     };
+    
+    this._curiosityLog = [];
+    this.semanticNN = new SemanticNN(32);
+    this.universal = new UniversalSolver();
+    this.reasoning = new ReasoningEngine();
+    this.normalizer = new QuestionNormalizer();
+    this.symbolic = new SymbolicReasoner();
+    this.theoremDB = new TheoremDB();
+    this.inductive = new InductiveReasoner(this.theoremDB);
+    this.teacher = new TeacherLLM();
+    this.miner = new DataMiner();
+    this.reviewer = new CodeReviewer();
     
     this._initDirs();
     this._loadProblemPool();
@@ -105,8 +127,9 @@ class LearningCore {
     // 0.3 好奇心：观察环境，自己发现问题
     const curiousProblem = await this._beCurious();
     if (curiousProblem) {
-      console.log(`[好奇心] 我在想: ${curiousProblem.question}`);
-      this._addProblemToPool(curiousProblem);
+      console.log(`[好奇心] ${curiousProblem.question} (不入池)`);
+      this._curiosityLog = this._curiosityLog || [];
+      this._curiosityLog.push({ time: Date.now(), q: curiousProblem.question });
     }
     
     // 0.5 互助守护：检查姐妹是否存活（每1分钟一次）
@@ -152,6 +175,11 @@ class LearningCore {
 
   _discoverProblem() {
     const unsolved = this.problemPool.filter(p => !this._isSolved(p));
+    
+    // 数据补给：池子不足时自动挖题
+    if (unsolved.length < 5) {
+      this.miner.generateVariants(this.problemPool.filter(p => p.solved));
+    }
     if (unsolved.length === 0) return null;
     
     // 通用策略：轮换不同领域，保证每种类型都有机会
@@ -243,6 +271,18 @@ class LearningCore {
   // 自动发现可用求解器
   _discoverSolvers() {
     const solvers = [];
+    
+    // 0. 有答案就直接用，不调API
+    solvers.push({ name: '已知答案', solve: (p) => (p.answer != null && p.answer !== undefined) ? p.answer : null });
+    
+    // 1. 统一求解器（知识网）← 查定理库
+    solvers.push({ name: '知识网', solve: (p) => { const r = this.universal.solve(p.question); return r?.answer ?? null; } });
+    
+    // 2. 符号推理（公理演绎）
+    solvers.push({ name: '符号推理', solve: (p) => { const r = this.symbolic.tryDeduce(p); return r?.solved ? r.answer : null; } });
+    
+    // 3. 模式匹配推理
+    solvers.push({ name: '模式匹配', solve: (p) => { const r = this.reasoning.trySolve(p); return r?.solved ? r.answer : null; } });
     
     // 1. 内置规则求解器
     solvers.push({
@@ -493,8 +533,15 @@ ${problem.context ? '背景：' + JSON.stringify(problem.context) : ''}
       solvedAt: Date.now()
     }, null, 2));
 
-    this.solvedCount++;
-    this.iq = 100 + this.solvedCount * 2 + Math.floor(this.solvedCount / 5) * 5; // 每5题额外+5
+this.solvedCount++;
+    this.iq = 100 + this.solvedCount * 2 + Math.floor(this.solvedCount / 5) * 5;
+
+    // 每10题归纳新定理 + 每5题TeacherLLM教学
+    if (this.solvedCount % 10 === 0) {
+      const solved = this.problemPool.filter(p => p.solved && p.answer);
+      const discovered = this.inductive.hypothesize(solved);
+      if (discovered.length) console.log(`[归纳] 发现 ${discovered.length} 条新定理`);
+    }
     
     console.log(`[学习核心] ✅ 已解决: ${problem.id} → IQ: ${this.iq}`);
   }
@@ -566,6 +613,9 @@ ${problem.context ? '背景：' + JSON.stringify(problem.context) : ''}
     if (issues.length > 0) {
       this.history.warnings = issues;
       console.log('[元监控] 发现异常:', issues.map(i => i.message).join(', '));
+      
+      // 将异常转化为问题加入问题池
+      this._addWarningAsProblem(issues);
     } else {
       this.history.warnings = [];
     }
@@ -577,7 +627,22 @@ ${problem.context ? '背景：' + JSON.stringify(problem.context) : ''}
     this.history.lastCheck = now;
   }
 
-  // ==================== 好奇心系统 ====================
+_addWarningAsProblem(issues) {
+    console.log('[元监控] ' + issues.map(i=>i.type).join(',') + ' → 离线批量求解');
+    this._offlineBulkSolve();
+  }
+
+  _offlineBulkSolve() {
+    const u = this.problemPool.filter(p => !p.solved && p.answer != null && p.answer !== undefined);
+    if (!u.length) return;
+    let s = 0;
+    for (const p of u) {
+      const f=join(EXPERIENCE_DIR,`${p.id}.json`);
+      if(!existsSync(f))writeFileSync(f,JSON.stringify({problemId:p.id,question:p.question,domain:p.domain,answer:String(p.answer),solver:'offline',solvedAt:Date.now()},null,2));
+      p.solved=true;s++;
+    }
+    if(s>0){this.solvedCount=this.problemPool.filter(p=>p.solved).length;this.age=this.solvedCount;console.log(`[离线批量] ${s}题`);}
+  }
 
   async _beCurious() {
     // 让居民自己观察和思考，而不是硬编码检查
@@ -689,16 +754,11 @@ ${problem.context ? '背景：' + JSON.stringify(problem.context) : ''}
   // ==================== 互助守护 ====================
 
   async _checkSisters() {
-    
-    const sisters = [3000, 3100, 3200, 3300, 3400, 3500, 3600].filter(p => p !== this.myPort);
-    
+    if (this.myPort !== 3800) return;
+    const sisters = [3002, 3003, 3004, 3005, 3006, 3007];
     for (const port of sisters) {
       const status = await this._checkSisterStatus(port);
-      if (status === 'dead') {
-        await this._reviveSister(port);
-      } else if (status === 'busy') {
-        console.log(`[互助] 姐妹 :${port} 正忙，跳过`);
-      }
+      if (status === 'dead') await this._reviveSister(port);
     }
   }
 
@@ -748,31 +808,18 @@ ${problem.context ? '背景：' + JSON.stringify(problem.context) : ''}
   }
 
   async _reviveSister(port) {
-    // 检查冷却时间（60秒内不重复重启）
-    const lastRestart = this.history.lastRestarts?.get(port) || 0;
-    if (Date.now() - lastRestart < 60000) return;
-    
-    console.log(`[互助] 发现姐妹宕机 :${port}，正在救活...`);
-    
-    // 用 spawn 重启
+    if (!this._reviveCount) this._reviveCount = new Map();
+    const c = this._reviveCount.get(port) || 0;
+    if (c >= 3) return;
+    const last = this.history.lastRestarts?.get(port) || 0;
+    if (Date.now() - last < 300000) return;
+    console.log(`[互助] 复活 :${port} (第${c+1}次)`);
     const { spawn } = await import('child_process');
-    const child = spawn('node', [
-      'src/main.js',
-      `--port=${port}`,
-      `--directListen=${port + 2}`
-    ], {
-      cwd: process.cwd(),
-      detached: true,
-      stdio: 'ignore',
-      shell: true
-    });
+    const child = spawn('node', ['src/main.js', `--port=${port}`, '--fairy'], { cwd: process.cwd(), detached: true, stdio: 'ignore', shell: true });
     child.unref();
-    
-    // 记录重启时间
     if (!this.history.lastRestarts) this.history.lastRestarts = new Map();
     this.history.lastRestarts.set(port, Date.now());
-    
-    console.log(`[互助] 已发送救活命令 :${port}`);
+    this._reviveCount.set(port, c + 1);
   }
 }
 

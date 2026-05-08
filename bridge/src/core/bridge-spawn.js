@@ -2,7 +2,7 @@
  * BridgeSpawn — 居民扩窟引擎
  *
  * 三种扩窟方式：
- *  1. 同机子进程 — child_process.spawn('node', ['src/main.js', '--nesting'])
+ *  1. 同机子进程 — 委托给 launch-strategies.js（NodeStrategy / PM2Strategy）
  *  2. 跨机 npm   — 生成 npm install 命令给主人执行
  *  3. 占位协议   — 邻居通过 P2P 请求 spawn
  *
@@ -12,78 +12,61 @@
  *  - 子端口自动分配 3002, 3003, 3004
  */
 
-import { spawn } from 'child_process';
-import { createHash } from 'crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createLaunchStrategy } from './launch-strategies.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const MAX_CHILDREN = 3;
+const MAX_CHILDREN = 6;
 const BASE_PORT = 3002;
 
 class BridgeSpawn {
-  constructor(bridgeId = 'bridge-1', hostId = null, house = null) {
+  /**
+   * @param {string} bridgeId
+   * @param {string} hostId
+   * @param {object} house
+   * @param {string|object} strategyOrType  — 'node'|'pm2' 或 LaunchStrategy 实例，默认 'node'
+   */
+  constructor(bridgeId = 'bridge-1', hostId = null, house = null, strategyOrType = 'node') {
     this.bridgeId = bridgeId;
     this.hostId = hostId;
     this.house = house;
-    this.children = new Map();   // childId → { process, port, startTime, name }
-    this._nextPort = BASE_PORT;
+
+    // 初始化启动策略
+    if (typeof strategyOrType === 'string') {
+      this._strategy = createLaunchStrategy(strategyOrType, {
+        name: bridgeId,
+        script: 'src/main.js',
+        basePort: BASE_PORT,
+        maxChildren: MAX_CHILDREN,
+        args: hostId ? [`--hostId=${hostId}`] : [],
+      });
+    } else {
+      this._strategy = strategyOrType;
+    }
+    this._childNames = new Map(); // childId → name
   }
 
   /**
    * 同机扩窟：spawn 子 Bridge 进程
-   * @returns { childId, port, name }
+   * @returns { childId, port, name } | null
    */
   spawnNesting(options = {}) {
-    if (this.children.size >= MAX_CHILDREN) {
+    if (this._childNames.size >= MAX_CHILDREN) {
       console.log(`[Spawn] 同机子 Bridge 已达上限 ${MAX_CHILDREN}，不再扩窟`);
       return null;
     }
 
-    const port = this._nextPort++;
-    const name = options.name || `nest-${this.bridgeId}-${port}`;
-    const id = `child_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-
-    const mainScript = path.join(__dirname, '..', 'main.js');
-    const childHouseId = this.hostId ? `house_${this.hostId.slice(0, 8)}_${port}` : `house_child_${port}`;
-    const args = [
-      mainScript,
-      '--nesting',
-      `--port=${port}`,
-      `--name=${name}`,
-      `--parent=${this.bridgeId}`,
-      `--houseId=${childHouseId}`,
-    ];
-    if (this.hostId) args.push(`--hostId=${this.hostId}`);
-    const child = spawn('node', args, {
-      stdio: ['ignore', 'pipe', 'pipe'],
-      env: { ...process.env, NESTING_BRIDGE: '1' }
-    });
-
-    child.stdout.on('data', (chunk) => {
-      console.log(`[Spawn/${name}] ${chunk.toString().trim()}`);
-    });
-    child.stderr.on('data', (chunk) => {
-      console.error(`[Spawn/${name}] ${chunk.toString().trim()}`);
-    });
-    child.on('exit', (code) => {
-      console.log(`[Spawn/${name}] 进程退出, code=${code}`);
-      this.children.delete(id);
-    });
-    child.on('error', (err) => {
-      console.error(`[Spawn/${name}] 启动失败: ${err.message}`);
-      this.children.delete(id);
-    });
-
-    const childInfo = { process: child, port, startTime: Date.now(), name, id };
-    this.children.set(id, childInfo);
-    console.log(`[Spawn] 新窟已筑: ${name} pid=${child.pid} port=${port}`);
-    return { childId: id, port, name };
+    const result = this._strategy.spawnHouse(options);
+    if (result) {
+      this._childNames.set(result.childId, result.name);
+      console.log(`[Spawn] 新窟已筑: ${result.name} port=${result.port}`);
+    }
+    return result;
   }
 
   /**
    * 跨机部署：生成安装脚本
-   * @returns { script: string }  — 单行 curl 命令
    */
   getInstallCommand(targetHost = 'localhost:3000') {
     const script = [
@@ -110,53 +93,41 @@ class BridgeSpawn {
       `echo "从 ${targetHost} 获取配置..."`,
       `curl -s http://${targetHost}/install.sh?type=raw | bash`,
     ].join('\n');
-
     return { script, targetHost };
   }
 
-  /**
-   * 响应 P2P spawn 请求
-   */
+  /** 响应 P2P spawn 请求 */
   handleSpawnRequest(data) {
     const p = data.payload || {};
-    const name = p.name || `spawned-${data.from?.slice(0, 8)}`;
-    const result = this.spawnNesting({ name });
-    return result;
+    return this.spawnNesting({ name: p.name || `spawned-${data.from?.slice(0, 8)}` });
   }
 
   /** 列出所有子 Bridge */
   listChildren() {
-    const result = [];
-    for (const [id, info] of this.children) {
-      result.push({
-        id,
-        name: info.name,
-        port: info.port,
-        uptime: Date.now() - info.startTime,
-        pid: info.process?.pid
-      });
-    }
-    return result;
+    return this._strategy.list().filter(p => p.type === 'house');
   }
 
   /** 终止子 Bridge */
   killChild(childId) {
-    const child = this.children.get(childId);
-    if (!child) return false;
+    if (!this._childNames.has(childId)) return false;
     try {
-      child.process.kill('SIGTERM');
+      this._strategy.killChild(childId);
     } catch (e) {
       console.log(`[Spawn] 终止失败: ${e.message}`);
     }
-    this.children.delete(childId);
+    this._childNames.delete(childId);
     return true;
   }
 
   /** 终止所有子 Bridge */
   async shutdown() {
-    for (const [id, child] of this.children) {
-      this.killChild(id);
-    }
+    await this._strategy.shutdown();
+    this._childNames.clear();
+  }
+
+  /** 获取当前启动策略类型 */
+  getStrategyType() {
+    return this._strategy.constructor.name.replace('Strategy', '').toLowerCase();
   }
 }
 

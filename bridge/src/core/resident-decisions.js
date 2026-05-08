@@ -18,7 +18,7 @@ const HEALTH_WARNING = 30;
 /** LEGACY: 旧的决策矩阵，保留供测试引用 */
 const DECISION_MATRIX = Object.freeze({
   normal: {
-    diligence:  { min: 0.7, action: 'maintain',       pri: 2, desc: '维护房子' },
+    diligence:  { min: 0.7, action: 'maintain',       pri: 2, desc: '学习知识' },
     creativity: { min: 0.7, action: 'innovate',        pri: 1, desc: '研究改进方案' },
     sociability:{ min: 0.7, action: 'befriend',        pri: 1, desc: '结交邻居做窟' },
     courage:    { min: 0.7, action: 'explore',         pri: 1, desc: '探索新房' },
@@ -151,14 +151,14 @@ const ACTION_CATALOG = {
     tags: ['maintenance', 'routine'],
     archetypeAffinity: { office_worker: 1.5, cautious: 1.3, lazy: 0.5 },
     healthAllowed: ALL_HEALTH,
-    desc: '维护房子',
+    desc: '学习知识',
   },
   repair: {
     basePri: 3,
     tags: ['maintenance', 'repair'],
     archetypeAffinity: { office_worker: 1.5, creator: 1.2, lazy: 0.3 },
     healthAllowed: ['warning', 'danger'],
-    desc: '紧急修复',
+    desc: '解决问题',
   },
   innovate: {
     basePri: 1,
@@ -172,7 +172,7 @@ const ACTION_CATALOG = {
     tags: ['exploration', 'adventure'],
     archetypeAffinity: { explorer: 2.0, creator: 1.2, office_worker: 0.2, cautious: 0.1 },
     healthAllowed: ['normal', 'warning'],
-    desc: '探索新房子',
+    desc: '探索知识边界',
   },
   befriend: {
     basePri: 1,
@@ -200,7 +200,7 @@ const ACTION_CATALOG = {
     tags: ['survival', 'preparation'],
     archetypeAffinity: { cautious: 2.0, office_worker: 1.5, explorer: 1.2, lazy: 0.3 },
     healthAllowed: ['warning', 'danger'],
-    desc: '备灾准备',
+    desc: '整理知识库',
   },
   stop_nonessential: {
     basePri: 4,
@@ -375,7 +375,7 @@ export function computeInertia(archetypeMatch, recentActivities, healthScore) {
 
   // 找出最频繁的活动类型 → 映射到 action
   const typeToAction = {
-    house_action: 'maintain',
+    learning_action: 'maintain',
     task_done: 'innovate',
     collab_done: 'befriend',
     migrate: 'explore',
@@ -575,22 +575,22 @@ export function actionPrompt(resident, action, context = {}) {
 
   const prompts = {
     // 原有动作（语义更新）
-    maintain:    `房子健康 ${hs} 分，一切正常。${archetypeLine}你决定巡视一圈，看看有什么需要维护的地方。`,
-    innovate:    `房子健康 ${hs} 分，挺不错的。${archetypeLine}你的大脑闲不住，想找个办法让房子变得更好。`,
-    befriend:    `房子健康 ${hs} 分，日子不错。${archetypeLine}你想和其他 Bridge 的居民聊聊，看谁家有空位。`,
-    explore:     `房子健康 ${hs} 分，安稳但你不满足于此。${archetypeLine}你想探索一下外面的世界，找找新的落脚点。`,
-    repair:      `房子健康只有 ${hs} 分，不太妙。${archetypeLine}你卷起袖子开始修——清理日志、释放磁盘、检查进程。`,
-    diagnose:    `房子健康 ${hs} 分，有问题。${archetypeLine}你决定查查原因——日志、资源、网络，一项项排查。`,
-    alert_neighbor: `房子健康 ${hs} 分，你有点担心。${archetypeLine}你决定给邻居 Bridge 发个信，让他们知道这边的情况。`,
-    prep_evac:   `房子健康 ${hs} 分，不太安全了。${archetypeLine}你开始做准备——打包重要数据，确认逃生路线。`,
-    stop_nonessential: `房子健康只剩 ${hs} 分，非常危险。${archetypeLine}你果断停掉所有非核心进程保命。`,
-    quick_fix:   `房子健康 ${hs} 分，来不及细想了。${archetypeLine}你凭直觉做个快速修复。`,
-    call_help:   `房子健康 ${hs} 分，情况危急。${archetypeLine}你大声呼救——向所有已知的 Bridge 发送求助信号。`,
-    migrate:     `房子健康 ${hs} 分，必须走了。${archetypeLine}你立刻收拾东西，准备迁移到其他 Bridge。`,
+    maintain:    `系统状态 ${hs} 分，一切正常。${archetypeLine}你决定巡视一圈，看看有什么需要维护的地方。`,
+    innovate:    `系统状态 ${hs} 分，挺不错的。${archetypeLine}你的大脑闲不住，想找个办法让房子变得更好。`,
+    befriend:    `系统状态 ${hs} 分，日子不错。${archetypeLine}你想和其他 Bridge 的居民聊聊，看谁家有空位。`,
+    explore:     `系统状态 ${hs} 分，安稳但你不满足于此。${archetypeLine}你想探索一下外面的世界，找找新的落脚点。`,
+    repair:      `系统状态只有 ${hs} 分，不太妙。${archetypeLine}你卷起袖子开始修——清理日志、释放磁盘、检查进程。`,
+    diagnose:    `系统状态 ${hs} 分，有问题。${archetypeLine}你决定查查原因——日志、资源、网络，一项项排查。`,
+    alert_neighbor: `系统状态 ${hs} 分，你有点担心。${archetypeLine}你决定给邻居 Bridge 发个信，让他们知道这边的情况。`,
+    prep_evac:   `系统状态 ${hs} 分，不太安全了。${archetypeLine}你开始做准备——打包重要数据，确认逃生路线。`,
+    stop_nonessential: `系统状态只剩 ${hs} 分，非常危险。${archetypeLine}你果断停掉所有非核心进程保命。`,
+    quick_fix:   `系统状态 ${hs} 分，来不及细想了。${archetypeLine}你凭直觉做个快速修复。`,
+    call_help:   `系统状态 ${hs} 分，情况危急。${archetypeLine}你大声呼救——向所有已知的 Bridge 发送求助信号。`,
+    migrate:     `系统状态 ${hs} 分，必须走了。${archetypeLine}你立刻收拾东西，准备迁移到其他 Bridge。`,
     // 新增动作
-    rest:        `房子健康 ${hs} 分。${archetypeLine}你觉得有点累了，决定好好休息一下，恢复体力。`,
-    scout:       `房子健康 ${hs} 分，不太放心。${archetypeLine}你决定出去侦察一圈，看看有没有更安全的地方可以落脚。`,
-    network_alert: `房子健康 ${hs} 分，情况不妙。${archetypeLine}你第一时间通知认识的邻居们，让大家做好准备。`,
+    rest:        `系统状态 ${hs} 分。${archetypeLine}你觉得有点累了，决定好好休息一下，恢复体力。`,
+    scout:       `系统状态 ${hs} 分，不太放心。${archetypeLine}你决定出去侦察一圈，看看有没有更安全的地方可以落脚。`,
+    network_alert: `系统状态 ${hs} 分，情况不妙。${archetypeLine}你第一时间通知认识的邻居们，让大家做好准备。`,
   };
 
   const base = prompts[action] || `${archetypeLine}你决定做点关于「${action}」的事。`;

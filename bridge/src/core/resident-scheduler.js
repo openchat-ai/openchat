@@ -198,6 +198,12 @@ class ResidentScheduler {
     }
 
     this._maybeCollaborate(residents);
+
+    // 自学：每 10 tick 触发一轮讨论/解题
+    this._learnTick++;
+    if (this._learnTick % 10 === 0) {
+      this._runSelfLearning();
+    }
   }
 
   // ================== 居民决策 ==================

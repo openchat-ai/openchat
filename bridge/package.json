@@ -55,6 +55,7 @@
     "jest": "^30.3.0"
   },
   "optionalDependencies": {
-    "pm2": "^5.4.0"
+    "pm2": "^5.4.0",
+    "sql.js": "^1.10.0"
   }
 }

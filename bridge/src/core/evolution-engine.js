@@ -1,5 +1,9 @@
-import { persistentConfig } from '../core/persistent-config.js';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 import { EvolutionMemory } from './evolution-memory.js';
+
+const EXPERIENCES_FILE = path.join(os.homedir(), '.openchat', 'memory', 'evolution-experiences.json');
 import SkillManager from './skill-manager.js';
 
 export class EvolutionEngine {
@@ -141,10 +145,12 @@ export class EvolutionEngine {
     return matchingSkills.sort((a, b) => b.successRate - a.successRate);
   }
 
-  // 保存经验到配置
+  // 保存经验到独立文件（不再塞进 config.json）
   async saveExperiences() {
     try {
-      persistentConfig.setPreference('evolution_experiences', this.experiences.slice(-100));
+      const dir = path.dirname(EXPERIENCES_FILE);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(EXPERIENCES_FILE, JSON.stringify(this.experiences.slice(-100), null, 2));
     } catch (e) {
       // 保存失败不影响主流程
     }
@@ -153,8 +159,12 @@ export class EvolutionEngine {
   // 加载已有经验
   loadExperiences() {
     try {
-      const saved = persistentConfig.getPreference('evolution_experiences', []);
-      this.experiences = saved;
+      if (fs.existsSync(EXPERIENCES_FILE)) {
+        const raw = fs.readFileSync(EXPERIENCES_FILE, 'utf8');
+        this.experiences = JSON.parse(raw);
+      } else {
+        this.experiences = [];
+      }
     } catch (e) {
       this.experiences = [];
     }

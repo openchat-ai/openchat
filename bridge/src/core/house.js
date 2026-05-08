@@ -51,7 +51,7 @@ class House {
     // 写 house.json 元数据
     this._writeMeta();
     this._initialized = true;
-    console.log(`[House] ${this.houseId} 已初始化 (${this._baseDir})`);
+    console.log(`[Body] ${this.houseId} 已初始化 (${this._baseDir})`);
   }
 
   /** 写入 house.json 元数据 */

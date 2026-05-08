@@ -72,13 +72,12 @@ export class ResponseParser {
   }
 
   parse(data, provider = 'generic') {
-    // 根据 transport 配置自动选择解析器
     let parserName = provider;
     const config = providerManager.getProviderConfig(provider);
     if (config && config.transport === 'openai_chat') {
       parserName = 'openai';
     }
-
+    console.log(`[ResponseParser] provider=${provider}, transport=${config?.transport}, parserName=${parserName}`);
     const parser = this._parsers.get(parserName) || this._parsers.get('generic');
     const result = parser(data);
 

@@ -1,0 +1,47 @@
+{
+  "timestamp": "2026-05-12T22:58:02.724Z",
+  "analysis": {
+    "currentIQ": 101.8,
+    "totalProblemsDiscovered": 4,
+    "totalProblemsSolved": 1,
+    "solveRate": "25.0",
+    "iqGrowth": 1.7999999999999972,
+    "recommendations": [
+      "1. 每天发现至少3个新问题",
+      "2. 跨领域思考，结合不同学科",
+      "3. 记录解决过程，形成方法论",
+      "4. 接受失败，从错误中学习",
+      "5. 保持好奇心，持续探索未知"
+    ]
+  },
+  "problems": [
+    {
+      "id": 1,
+      "domain": "数学",
+      "description": "如何优化机制的A成立?",
+      "difficulty": 0.7,
+      "timestamp": "2026-05-12T22:58:02.719Z"
+    },
+    {
+      "id": 1,
+      "domain": "逻辑",
+      "description": "如果结构，那么结构是否成立?",
+      "difficulty": 0.8,
+      "timestamp": "2026-05-12T22:58:02.722Z"
+    },
+    {
+      "id": 1,
+      "domain": "创造",
+      "description": "能否将系统与系统结合产生新机制?",
+      "difficulty": 0.9,
+      "timestamp": "2026-05-12T22:58:02.722Z"
+    },
+    {
+      "id": 1,
+      "domain": "分析",
+      "description": "在现实世界中，流程的影响是什么?",
+      "difficulty": 0.6,
+      "timestamp": "2026-05-12T22:58:02.722Z"
+    }
+  ]
+}

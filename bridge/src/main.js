@@ -70,6 +70,7 @@ const isPublic = hasPublicAddress() || !!savedBridge.advertiseHost;
 const portArgIndex = args.findIndex(a => a.startsWith('--port='));
 const cliPort = portArgIndex !== -1 ? parseInt(args[portArgIndex].split('=')[1]) : null;
 const port = cliPort || savedBridge.port || 3000;
+const isMain = port === 3800 || process.argv.includes('--main');
 
 const dhtPort = savedBridge.dhtPort || 0;
 const localBootstrap = savedBridge.localBootstrap || [];
@@ -398,14 +399,25 @@ class Bridge {
         const { House } = await import('./core/house.js');
         const { LLMProxyAgent } = await import('./core/llm-proxy-agent.js');
 
+        const { Body } = await import('./core/body.js');
+        const { Subconscious } = await import('./core/subconscious.js');
+        const { NeuralMesh } = await import('./core/neural-mesh.js');
+
+        // 初始化仙女身体
+        if (!this.body) {
+          this.body = new Body(port, isMain ? '大仙女' : `仙女${port}`);
+          this.subconscious = new Subconscious(this.body, null);
+          this.subconscious.heartbeat();
+          console.log(`[Body] ${this.body.name} 诞生`);
+        }
+
+        // 神经网格
+        this.neuralMesh = new NeuralMesh(this.p2p, port);
+
         const safeEvo = new SafeEvolution(this.p2p, this.p2p.peerId || 'bridge-1');
 
-        // 初始化默认 House（主 Bridge / 子 Bridge 各自创建）
-        if (!this.house) {
-          const bridgeId = this.p2p.peerId || 'bridge-1';
-          this.house = new House(effectiveHouseId, bridgeId, hostId, 'default');
-          await this.house.init();
-        }
+        // 兼容旧 House 引用
+        if (!this.house) this.house = this.body;
 
         const detectedStrategy = detectBestStrategy();
         console.log(`[Launch] 启动策略: ${detectedStrategy}`);
@@ -420,9 +432,19 @@ class Bridge {
         // LLM 代理：接收子桥的 LLM 调用请求
         this.llmProxy = new LLMProxyAgent(this.p2p, { enabled: true });
         this.llmProxy.start();
-        console.log('[P2R] HouseOrchestrator + SafeEvolution + BridgeSpawn + LLMProxy 已启动');
+        console.log('[P2R] Body + SafeEvolution + BridgeSpawn + LLMProxy 已启动');
 
-        // P2R-K: 公共知识库 — 布尔求解 + 最优解法共享
+        // 仙女 spawn（只有主Bridge生成）
+        if (isMain) {
+          const N = parseInt(process.env.AUTO_CHILDREN || '6');
+          console.log(`[P2R] 生成 ${N} 个仙女身体...`);
+          for (let i = 0; i < N; i++) {
+            const c = bridgeSpawn.spawnNesting({ name: `仙女${i+1}` });
+            if (c) console.log(`[P2R] 仙女${i+1} port=${c.port}`);
+          }
+        }
+
+        // P2R-K: 公共知识库
         try {
           const { KnowledgeBase } = await import('./core/knowledge-base.js');
           this.knowledgeBase = new KnowledgeBase(this.p2p);
@@ -753,24 +775,26 @@ class Bridge {
             info: this.p2p.peerInfo.get(id) || {}
           })) : [];
           res.end(JSON.stringify({ peers }));
-        } else if (pathname === '/' && req.method === 'GET') {
-          // 根路径返回服务信息
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            name: 'OpenChat Bridge',
-            version: '2.0',
-            endpoints: {
-              api: '/api/*',
-              ws: '/ws',
-              signaling: '/signaling (reserved)',
-              health: '/health',
-              peers: '/peers'
-            }
-          }));
+} else if (pathname === '/' && req.method === 'GET') {
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+          res.end(`<html lang="zh"><head><meta charset="utf-8"><title>OpenChat</title></head>
+<body style="background:#0a0a1a;color:#e0e0e0;font-family:monospace;padding:20px">
+<h1 style="color:#7c8aff">OpenChat Bridge</h1>
+<pre id="out" style="font-size:13px;line-height:1.6">Loading...</pre>
+<script>
+async function R(){
+  try{const d=await(await fetch('/api/dashboard')).json();
+  const L=d.learning||{},R=d.reasoning||{},B=d.brain||{};
+  document.getElementById('out').innerHTML=
+    'IQ: <b style=color:#7c8aff>'+L.iq+'</b>  Age: <b style=color:#ffa502>'+L.age+'</b>  Solved: <b style=color:#2ed573>'+L.solved+'</b>  Pool: <b style=color:#4fc3f7>'+L.poolSize+'</b> (Pending: '+L.pending+')'+
+    '\\nIndependence: <b style=color:#ce93d8>'+(R.independence||'0%')+'</b>  Self: <b style=color:#7c8aff>'+(R.selfSolves||0)+'</b>  API: <b style=color:#ff4757>'+(R.llmCalls||0)+'</b>'+
+    '\\nNN: <b style=color:#81c784>'+(B.accuracy||'0%')+'</b>'+
+    '\\n---Residents---\\n'+(d.residents||[]).map(r=>r.name+' ['+r.thinkingStyle+']').join('  ');
+  }catch(e){document.getElementById('out').textContent='Waiting... '+e.message}
+}
+R();setInterval(R,5000);
+</script></body></html>`);
         } else {
-          res.writeHead(404, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Not found' }));
-        }
       } catch (e) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: e.message }));

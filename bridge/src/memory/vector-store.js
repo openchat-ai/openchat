@@ -11,9 +11,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import { CONFIG_DIR } from '../core/persistent-config.js';
+import { USER_DIR } from '../core/persistent-config.js';
 
-const VECTOR_DIR = path.join(CONFIG_DIR, 'vectors');
+const VECTOR_DIR = path.join(USER_DIR, 'vectors');
 const INDEX_FILE = path.join(VECTOR_DIR, 'index.json');
 const EMBEDDINGS_DIR = path.join(VECTOR_DIR, 'embeddings');
 

@@ -1,24 +1,11 @@
 /**
- * P0-03: P2P API Routes
- * 8 个端点 - P2P 通信协议
+ * P2P API Routes
+ * 注入 swarm 实例，对接真实 P2P 网络
  */
 
-import express from 'express'
-const router = express.Router()
+import express from 'express';
 
-// 模拟 P2P 存储
-const peers = new Map()
-const messages = new Map()
-let nextMessageId = 1
-
-// P2P 配置
-let p2pConfig = {
-  encryption: 'TLS',
-  discoveryEnabled: true,
-  maxPeers: 50
-}
-
-// 消息类型
+// 消息类型（与服务端 messages.js 同步）
 const MessageType = {
   SKILL_PUBLISH: 'skill_publish',
   SKILL_REQUEST: 'skill_request',
@@ -26,205 +13,218 @@ const MessageType = {
   COLLABORATION_RESPONSE: 'collaboration_response',
   INSIGHT_SHARE: 'insight_share',
   PERFORMANCE_REPORT: 'performance_report'
+};
+
+export function createP2PRouter(swarm) {
+  const router = express.Router();
+
+  // swarm 为 null 时，挂载纯 mock 路由（永远返回空结果，不崩溃）
+  if (!swarm) {
+    router.all('*', (req, res) => {
+      res.json({
+        peers: [],
+        messages: [],
+        total: 0,
+        swarm: null,
+        note: 'P2P 未初始化（swarm is null）'
+      });
+    });
+    return router;
+  }
+
+  // POST /api/v1/p2p/messages — 发送消息（广播到所有已连接的 peer）
+  router.post('/messages', async (req, res, next) => {
+    try {
+      const { type, payload, priority = 'NORMAL' } = req.body;
+
+      if (!type || !Object.values(MessageType).includes(type)) {
+        return res.status(400).json({
+          error: 'INVALID_MESSAGE_TYPE',
+          message: `type must be one of: ${Object.values(MessageType).join(', ')}`
+        });
+      }
+
+      if (!payload) {
+        return res.status(400).json({
+          error: 'INVALID_PAYLOAD',
+          message: 'payload is required'
+        });
+      }
+
+      const sentCount = swarm.isRunning
+        ? swarm.broadcast(payload, type, priority)
+        : 0;
+
+      res.status(201).json({
+        type,
+        status: 'SENT',
+        peersDelivered: sentCount,
+        createdAt: new Date().toISOString()
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // 保留 GET /messages/:id — P2P 无持久存储，返回模拟响应
+  router.get('/messages/:id', async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      res.json({
+        id,
+        status: 'P2P 消息无中心存储，此 ID 仅用于跟踪',
+        note: '消息已通过 hyperswarm 广播'
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // GET /api/v1/p2p/inbox — P2P 无中心收件箱，返回实时连接状态
+  router.get('/inbox', async (req, res, next) => {
+    try {
+      const status = swarm.getStatus();
+      res.json({
+        messages: [],
+        total: 0,
+        note: 'P2P 模式无中心收件箱，消息通过 hyperswarm 实时收发',
+        connectedPeers: status.connectedPeers
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // GET /api/v1/p2p/peers — 当前已连接的节点列表（含身份信息）
+  router.get('/peers', async (req, res, next) => {
+    try {
+      const seen = new Set();
+      const peerList = [];
+
+      for (const peerId of swarm.connectedPeers.keys()) {
+        const info = swarm.peerInfo.get(peerId) || {};
+        seen.add(peerId);
+        peerList.push({
+          id: peerId.slice(0, 8),
+          name: info.name || '?',
+          region: info.region || '?',
+          residentCount: info.residentCount || 0,
+          transport: 'hyperswarm',
+          status: 'CONNECTED'
+        });
+      }
+      for (const peerId of swarm.directPeers.keys()) {
+        if (seen.has(peerId)) continue;
+        const info = swarm.peerInfo.get(peerId) || {};
+        peerList.push({
+          id: peerId.slice(0, 8),
+          name: info.name || '?',
+          region: info.region || '?',
+          residentCount: info.residentCount || 0,
+          transport: 'direct-tcp',
+          status: 'CONNECTED'
+        });
+      }
+
+      res.json({
+        peers: peerList,
+        total: peerList.length
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // POST /api/v1/p2p/peers/:id/connect — hyperswarm 自动发现，手动连接仅做验证
+  router.post('/peers/:id/connect', async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      if (!swarm.connectedPeers.has(id) && !swarm.directPeers.has(id)) {
+        return res.status(404).json({
+          error: 'PEER_NOT_FOUND',
+          message: `Peer ${id} is not connected.`
+        });
+      }
+      res.json({
+        id,
+        status: 'CONNECTED',
+        connectedAt: new Date().toISOString()
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // DELETE /api/v1/p2p/peers/:id — 断开节点
+  router.delete('/peers/:id', async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      let conn = swarm.connectedPeers.get(id);
+      if (conn) {
+        conn.destroy();
+        swarm.connectedPeers.delete(id);
+      } else {
+        conn = swarm.directPeers.get(id);
+        if (conn) {
+          conn.destroy();
+          swarm.directPeers.delete(id);
+        }
+      }
+      if (!conn) {
+        return res.status(404).json({
+          error: 'PEER_NOT_FOUND',
+          message: `Peer ${id} not connected`
+        });
+      }
+      res.json({
+        id,
+        status: 'DISCONNECTED',
+        disconnectedAt: new Date().toISOString()
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // GET /api/v1/p2p/stats — 统计信息
+  router.get('/stats', async (req, res, next) => {
+    try {
+      const status = swarm.getStatus();
+      res.json({
+        peers: {
+          connected: status.connectedCount
+        },
+        peersInfo: status.peers,
+        identity: status.identity,
+        swarm: status,
+        config: {
+          encryption: 'TLS',
+          discoveryEnabled: true,
+          maxPeers: 50
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // PUT /api/v1/p2p/config — 更新配置（hyperswarm 不支持运行时更改，存为参考）
+  router.put('/config', async (req, res, next) => {
+    try {
+      const { encryption, discoveryEnabled, maxPeers } = req.body;
+      res.json({
+        config: {
+          encryption: encryption || 'TLS',
+          discoveryEnabled: discoveryEnabled !== undefined ? discoveryEnabled : true,
+          maxPeers: maxPeers || 50
+        },
+        updatedAt: new Date().toISOString(),
+        note: 'hyperswarm 配置在 start() 时固定，运行时更改将在下次重启生效'
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  return router;
 }
-
-// POST /api/v1/p2p/messages - 发送消息
-router.post('/messages', async (req, res, next) => {
-  try {
-    const { type, targetPeerId, payload, priority = 'NORMAL' } = req.body
-
-    if (!type || !Object.values(MessageType).includes(type)) {
-      return res.status(400).json({
-        error: 'INVALID_MESSAGE_TYPE',
-        message: `type must be one of: ${Object.values(MessageType).join(', ')}`
-      })
-    }
-
-    if (!payload) {
-      return res.status(400).json({
-        error: 'INVALID_PAYLOAD',
-        message: 'payload is required'
-      })
-    }
-
-    const messageId = `msg_${nextMessageId++}`
-    const message = {
-      id: messageId,
-      type,
-      sourcePeerId: 'self', // 后续从 P2P 模块获取
-      targetPeerId: targetPeerId || null, // null = 广播
-      payload,
-      priority,
-      status: 'PENDING',
-      createdAt: new Date().toISOString(),
-      deliveredAt: null
-    }
-
-    messages.set(messageId, message)
-
-    res.status(201).json({
-      id: message.id,
-      type: message.type,
-      status: message.status,
-      createdAt: message.createdAt
-    })
-  } catch (error) {
-    next(error)
-  }
-})
-
-// GET /api/v1/p2p/messages/:id - 查询消息
-router.get('/messages/:id', async (req, res, next) => {
-  try {
-    const { id } = req.params
-    const message = messages.get(id)
-
-    if (!message) {
-      return res.status(404).json({
-        error: 'MESSAGE_NOT_FOUND',
-        message: `Message ${id} not found`
-      })
-    }
-
-    res.json(message)
-  } catch (error) {
-    next(error)
-  }
-})
-
-// GET /api/v1/p2p/inbox - 收件箱
-router.get('/inbox', async (req, res, next) => {
-  try {
-    const { status, limit = 50 } = req.query
-    let inbox = Array.from(messages.values())
-      .filter(m => m.targetPeerId === 'self' || m.targetPeerId === null)
-
-    if (status) {
-      inbox = inbox.filter(m => m.status === status)
-    }
-
-    inbox.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    inbox = inbox.slice(0, parseInt(limit))
-
-    res.json({
-      messages: inbox,
-      total: inbox.length
-    })
-  } catch (error) {
-    next(error)
-  }
-})
-
-// GET /api/v1/p2p/peers - 节点列表
-router.get('/peers', async (req, res, next) => {
-  try {
-    const peerList = Array.from(peers.values())
-
-    res.json({
-      peers: peerList,
-      total: peerList.length
-    })
-  } catch (error) {
-    next(error)
-  }
-})
-
-// POST /api/v1/p2p/peers/:id/connect - 连接节点
-router.post('/peers/:id/connect', async (req, res, next) => {
-  try {
-    const { id } = req.params
-    const { peerAddress } = req.body
-
-    const peer = {
-      id,
-      address: peerAddress,
-      status: 'CONNECTING',
-      connectedAt: null
-    }
-
-    peers.set(id, peer)
-
-    // 模拟连接成功
-    peer.status = 'CONNECTED'
-    peer.connectedAt = new Date().toISOString()
-    peers.set(id, peer)
-
-    res.json({
-      id: peer.id,
-      status: peer.status,
-      connectedAt: peer.connectedAt
-    })
-  } catch (error) {
-    next(error)
-  }
-})
-
-// DELETE /api/v1/p2p/peers/:id - 断开节点
-router.delete('/peers/:id', async (req, res, next) => {
-  try {
-    const { id } = req.params
-    const peer = peers.get(id)
-
-    if (!peer) {
-      return res.status(404).json({
-        error: 'PEER_NOT_FOUND',
-        message: `Peer ${id} not found`
-      })
-    }
-
-    peer.status = 'DISCONNECTED'
-    peer.disconnectedAt = new Date().toISOString()
-    peers.set(id, peer)
-
-    res.json({
-      id: peer.id,
-      status: 'DISCONNECTED',
-      disconnectedAt: peer.disconnectedAt
-    })
-  } catch (error) {
-    next(error)
-  }
-})
-
-// GET /api/v1/p2p/stats - 统计信息
-router.get('/stats', async (req, res, next) => {
-  try {
-    const stats = {
-      peers: {
-        total: peers.size,
-        connected: Array.from(peers.values()).filter(p => p.status === 'CONNECTED').length,
-        connecting: Array.from(peers.values()).filter(p => p.status === 'CONNECTING').length
-      },
-      messages: {
-        total: messages.size,
-        pending: Array.from(messages.values()).filter(m => m.status === 'PENDING').length,
-        delivered: Array.from(messages.values()).filter(m => m.status === 'DELIVERED').length
-      },
-      config: p2pConfig
-    }
-
-    res.json(stats)
-  } catch (error) {
-    next(error)
-  }
-})
-
-// PUT /api/v1/p2p/config - 更新配置
-router.put('/config', async (req, res, next) => {
-  try {
-    const { encryption, discoveryEnabled, maxPeers } = req.body
-
-    if (encryption) p2pConfig.encryption = encryption
-    if (discoveryEnabled !== undefined) p2pConfig.discoveryEnabled = discoveryEnabled
-    if (maxPeers) p2pConfig.maxPeers = maxPeers
-
-    res.json({
-      config: p2pConfig,
-      updatedAt: new Date().toISOString()
-    })
-  } catch (error) {
-    next(error)
-  }
-})
-
-export default router

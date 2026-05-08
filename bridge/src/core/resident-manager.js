@@ -14,7 +14,7 @@ import { persistentConfig } from './persistent-config.js';
 import { MessageType, createLLMProxyRequest } from '../p2p/messages.js';
 
 const DATA_FILE = path.join(os.homedir(), '.openchat', 'residents.json');
-const MAX_ACTIVITIES = 100;
+const MAX_ACTIVITIES = 0;
 
 // 性格特征池：特征名 → 两极标签
 const TRAIT_POOL = {
@@ -27,14 +27,24 @@ const TRAIT_POOL = {
 
 const TRAIT_KEYS = Object.keys(TRAIT_POOL);
 
+function createTraits(dominantTrait) {
+  const base = {
+    diligence: 0.5,
+    curiosity: 0.5,
+    courage: 0.5,
+    sociability: 0.5,
+    creativity: 0.5,
+  };
+  base[dominantTrait] = 0.9;
+  const otherTraits = TRAIT_KEYS.filter(t => t !== dominantTrait);
+  otherTraits.forEach(t => {
+    base[t] = 0.3 + Math.random() * 0.3;
+  });
+  return base;
+}
+
 // 管家的默认性格
-const BUTLER_TRAITS = {
-  diligence:   0.85,
-  curiosity:   0.60,
-  courage:     0.50,
-  sociability: 0.70,
-  creativity:  0.50,
-};
+const BUTLER_TRAITS = createTraits('diligence');
 
 // ================== 底层 IO ==================
 
@@ -324,8 +334,20 @@ export class ResidentManager extends EventEmitter {
     const residents = readAll();
     const hasActive = residents.some(r => r.status === 'active');
     if (!hasActive) {
-      console.log('[居民] 🏠 首次启动，创建默认居民「管家」');
-      return this.create('管家', { traits: BUTLER_TRAITS });
+      console.log('[居民] 首次启动，创建首批居民');
+      const dominants = ['diligence', 'curiosity', 'courage', 'creativity'];
+      const butler = this.create('管家', { traits: createTraits('diligence') });
+      // 陆续出生（父母=管家），每个有不同的主导特质
+      const firstGen = [
+        { name: '小明', trait: 'courage' },
+        { name: '小红', trait: 'creativity' },
+        { name: '小刚', trait: 'sociability' },
+      ];
+      for (const p of firstGen) {
+        this.create(p.name, { parentId: butler.id, traits: createTraits(p.trait) });
+      }
+      console.log(`[居民] 已创建 ${1 + firstGen.length} 人 (管家 + ${firstGen.map(p => p.name).join(', ')})`);
+      return butler;
     }
     return null;
   }
@@ -491,6 +513,32 @@ export class ResidentManager extends EventEmitter {
     }
     writeAll(residents);
     this.emit('activity', { residentId, residentName: resident.name, entry });
+  }
+
+  evolveTraits(residentId, thinkingStyle, success) {
+    const residents = readAll();
+    const resident = residents.find(r => r.id === residentId);
+    if (!resident || !resident.traits) return;
+
+    const growthRate = success ? 0.02 : -0.01;
+    const styleToTrait = {
+      curiosity: 'curiosity',
+      courage: 'courage',
+      creativity: 'creativity',
+      diligence: 'diligence',
+      sociability: 'sociability'
+    };
+
+    const traitKey = styleToTrait[thinkingStyle];
+    if (!traitKey) return;
+
+    const oldVal = resident.traits[traitKey] || 0.5;
+    resident.traits[traitKey] = Math.round(Math.min(1, Math.max(0, oldVal + growthRate)) * 100) / 100;
+
+    
+
+    writeAll(residents);
+    
   }
 
   /**

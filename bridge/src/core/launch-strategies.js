@@ -18,7 +18,7 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PROJECT_ROOT = path.resolve(__dirname, '..');
+const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
 
 // ================== 基类 ==================
 
@@ -46,6 +46,16 @@ class NodeStrategy extends LaunchStrategy {
     this._children = new Map();
     this._nextPort = options.basePort || 3002;
     this.maxChildren = options.maxChildren || 3;
+  }
+
+  /**
+   * 清理占用指定端口的旧进程
+   * 注意：仅在主 Bridge 启动时调用，Fairy 启动时不调用
+   */
+  _cleanupPort(port) {
+    // 临时禁用，避免误杀 Fairy
+    // 如果需要清理旧进程，应该在主 Bridge 启动时而非 spawn 时调用
+    return;
   }
 
   /**
@@ -93,31 +103,29 @@ class NodeStrategy extends LaunchStrategy {
       return null;
     }
 
-    const port = this._nextPort++;
+    const port = this._nextPort;
+    // 临时禁用清理，避免误杀 Fairy
+    // this._cleanupPort(port);
+    this._nextPort++;
     const name = options.name || `house-${port}`;
     const id = `house_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
     const mainScript = path.resolve(this.cwd, this.script);
     const childArgs = [
       mainScript,
-      '--nesting',
+      '--fairy',
       `--port=${port}`,
       `--name=${name}`,
       ...this.args.filter(a => a.startsWith('--hostId=')),
     ];
 
-    const child = spawn('node', childArgs, {
+    const child = spawn('cmd', ['/c', 'start', '"仙女"', 'node', mainScript, ...childArgs], {
       cwd: this.cwd,
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: 'ignore',
       env: { ...this.env, NESTING_BRIDGE: '1' },
+      shell: true
     });
 
-    child.stdout.on('data', (chunk) => {
-      console.log(`[${name}] ${chunk.toString().trim()}`);
-    });
-    child.stderr.on('data', (chunk) => {
-      console.error(`[${name}] ${chunk.toString().trim()}`);
-    });
     child.on('exit', (code) => {
       console.log(`[${name}] 进程退出, code=${code}`);
       this._children.delete(id);

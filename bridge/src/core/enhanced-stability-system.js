@@ -161,7 +161,7 @@ export class EnhancedStabilitySystem {
     }
     
     if (this.components.coordinator) {
-      status.agents = this.components.coordinator.getStats();
+      status.agents = this.components.coordinator.getStatus ? this.components.coordinator.getStatus() : {};
     }
     
     return status;

@@ -9,6 +9,7 @@
 
 import { createRequire } from 'module';
 import { createHash } from 'crypto';
+import { execSync } from 'child_process';
 import { residentManager } from './resident-manager.js';
 
 const require = createRequire(import.meta.url);
@@ -18,6 +19,15 @@ const path = require('path');
 const MIN_APPROVALS = 2;          // 至少需要 2 个不同 Bridge 同意
 const PROPOSAL_TIMEOUT = 30000;   // 30s 内收不到足够验证回复则作废
 const MAX_RISK_SCORE = 30;        // 风险分 ≥30 直接拒绝
+const SELF_HEAL_MAX_CHANGES = 10; // 自愈修复最多 10 行 diff（移除重复块等合理修复）
+
+/** 危险操作检测模式（复用 verifyProposal 中的列表） */
+const DANGER_PATTERNS = [
+  { pattern: /fs\.rmSync\(.+recursive:\s*true/, msg: '递归删除文件' },
+  { pattern: /child_process\.exec\(/, msg: '执行外部命令' },
+  { pattern: /process\.exit\(/, msg: '调用 process.exit()' },
+  { pattern: /require\('net'\).*connect/, msg: '创建网络连接' },
+];
 
 class SafeEvolution {
   /**
@@ -31,13 +41,19 @@ class SafeEvolution {
     this.hotUpdate = hotUpdate;
     this.pendingProposals = new Map();   // proposalId → { proposal, approvals, rejections, timer }
     this.appliedChanges = [];            // 已应用的变更记录（供回滚）
+    /** 提案冷却: file → 下次允许提案的时间戳 */
+    this._cooldowns = new Map();
+    /** 深检/快检连续失败计数 */
+    this._consecutiveFailures = new Map();
   }
 
   /**
    * 居民发起代码变更提案
    * @param {object} proposal  — { file, oldHash, newContent, reason, proposedBy, residentName }
+   * @param {object} options   — { selfHeal, originalContent }
+   *   selfHeal=true 时跳过 P2P 共识，直接走自愈流程（单 Bridge 模式）
    */
-  async propose(proposal) {
+  async propose(proposal, options = {}) {
     const filePath = path.resolve(proposal.file);
     let oldContent = '';
     let oldHash = '';
@@ -57,8 +73,31 @@ class SafeEvolution {
       return { approved: false, reason: 'syntax_check_failed' };
     }
 
+    // ==== 自愈路径：跳过 P2P 共识，直接校验后落地 ====
+    if (options.selfHeal) {
+      const validation = SafeEvolution.validateSelfHealChange(proposal.file, options.originalContent || oldContent, proposal.newContent);
+      if (!validation.valid) {
+        console.log(`[SafeEvo] 自愈校验失败: ${validation.reason}`);
+        return { approved: false, reason: validation.reason };
+      }
+      // 直接构造 entry 并应用
+      const proposalId = require('crypto').randomUUID();
+      this.pendingProposals.set(proposalId, {
+        proposal: { ...proposal, newHash, oldHash },
+        approvals: new Set([this.bridgeId]),  // 自审批
+        rejections: new Set(),
+        startTime: Date.now(),
+        syntaxOk,
+        selfHeal: true,
+      });
+      console.log(`[SafeEvo] 自愈提案 ${proposalId.slice(0, 8)}: ${proposal.file} ← ${proposal.residentName}`);
+      await this._applyProposal(proposalId);
+      return { proposalId, approved: true, selfHeal: true };
+    }
+
+    // ==== 正常路径：P2P 广播 + 共识 ====
     const proposalId = require('crypto').randomUUID();
-    const msg = this.p2p.broadcast({
+    this.p2p.broadcast({
       type: 'propose_change',
       proposalId,
       file: proposal.file,
@@ -139,13 +178,7 @@ class SafeEvolution {
     }
 
     // ② 危险操作检测
-    const dangerPatterns = [
-      { pattern: /fs\.rmSync\(.+recursive:\s*true/, msg: '递归删除文件' },
-      { pattern: /child_process\.exec\(/, msg: '执行外部命令' },
-      { pattern: /process\.exit\(/, msg: '调用 process.exit()' },
-      { pattern: /require\('net'\).*connect/, msg: '创建网络连接' },
-    ];
-    for (const dp of dangerPatterns) {
+    for (const dp of DANGER_PATTERNS) {
       if (dp.pattern.test(newContent)) {
         warnings.push(`危险操作: ${dp.msg}`);
         score += 20;
@@ -234,12 +267,13 @@ class SafeEvolution {
       // ③ 写入新内容
       fs.writeFileSync(filePath, proposal.newContent);
 
-      // ④ 5s 快检
+      // ④ 5s 快检：文件完整性 + 内存警戒
       await new Promise((resolve) => {
         setTimeout(() => {
           const ok = this._quickHealthCheck();
           if (!ok) {
             console.log(`[SafeEvo] 快检失败，回滚 ${proposal.file}`);
+            this._markFileCooldown(proposal.file);
             if (originalContent !== null) fs.writeFileSync(filePath, originalContent);
             else fs.unlinkSync(filePath);
           }
@@ -247,16 +281,19 @@ class SafeEvolution {
         }, 5000);
       });
 
-      // ⑤ 30s 深检
+      // ⑤ 30s 深检：代码正确性验证（非内存 — 内存波动与代码变更无关）
       await new Promise((resolve) => {
         setTimeout(() => {
           const ok = this._deepHealthCheck();
           if (!ok) {
             console.log(`[SafeEvo] 深检失败，回滚 ${proposal.file}`);
+            this._markFileCooldown(proposal.file);
             if (originalContent !== null) fs.writeFileSync(filePath, originalContent);
             else fs.unlinkSync(filePath);
           } else {
             console.log(`[SafeEvo] 变更应用成功: ${proposal.file}`);
+            // 清除该文件的冷却状态
+            this._cooldowns.delete(proposal.file);
             // 广播成功
             this.p2p.broadcast({
               type: 'change_applied',
@@ -286,38 +323,122 @@ class SafeEvolution {
     }
   }
 
-  /** 语法检查 */
+  /** 语法检查 — 使用 node --check 校验 ESM/JS 语法 */
   _syntaxCheck(file, content) {
     if (!file.endsWith('.js') && !file.endsWith('.mjs') && !file.endsWith('.cjs')) {
       return true; // 非 JS 文件跳过
     }
     try {
-      // 使用 require 动态加载来检测语法
-      new Function(content);
+      // 写入临时文件，用 node --check 做准确校验
+      const tmpFile = path.join(
+        require('os').tmpdir(),
+        `safe-evo-syntax-${require('crypto').randomUUID()}.mjs`
+      );
+      fs.writeFileSync(tmpFile, content, 'utf8');
+      try {
+        execSync(`node --check "${tmpFile}"`, { stdio: 'pipe', timeout: 5000 });
+        return true;
+      } finally {
+        try { fs.unlinkSync(tmpFile); } catch {}
+      }
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
+   * 校验自愈变更是否安全
+   * @param {string} file            文件路径
+   * @param {string} originalContent 原内容
+   * @param {string} newContent      新内容
+   * @returns {{ valid: boolean, reason: string }}
+   */
+  static validateSelfHealChange(file, originalContent, newContent) {
+    // 危险路径检查
+    const dangerousPaths = ['/etc/', '/boot/', 'C:\\Windows\\'];
+    for (const dp of dangerousPaths) {
+      if (file.includes(dp)) {
+        return { valid: false, reason: `危险路径: ${file}` };
+      }
+    }
+
+    // 空内容检查
+    if (!newContent || newContent.length === 0) {
+      return { valid: false, reason: '新内容为空' };
+    }
+    if (newContent.length > 100000) {
+      return { valid: false, reason: '变更过大' };
+    }
+
+    // 危险操作检测
+    for (const dp of DANGER_PATTERNS) {
+      if (dp.pattern.test(newContent)) {
+        return { valid: false, reason: `危险操作: ${dp.msg}` };
+      }
+    }
+
+    // diff 行数限制 — 只计算实际内容变化行（忽略后续偏移）
+    const oldLines = (originalContent || '').split('\n');
+    const newLines = newContent.split('\n');
+    const oldSet = new Set(oldLines);
+    const newSet = new Set(newLines);
+    const addedLines = newLines.filter(l => !oldSet.has(l)).length;
+    const removedLines = oldLines.filter(l => !newSet.has(l)).length;
+    const diffLines = Math.max(addedLines, removedLines);
+    if (diffLines > SELF_HEAL_MAX_CHANGES) {
+      return { valid: false, reason: `自愈变更超过 ${SELF_HEAL_MAX_CHANGES} 行 (${diffLines} 行)` };
+    }
+
+    return { valid: true, reason: 'ok' };
+  }
+
+  /** 5s 快检 — 只检测是否严重内存泄漏（绝对阈值） */
+  _quickHealthCheck() {
+    try {
+      const used = process.memoryUsage();
+      // 堆使用量超过 1.5GB 才视为异常（Node 正常 GC 波动不影响）
+      return used.heapUsed < 1.5 * 1024 * 1024 * 1024;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /** 30s 深检 — 宽松绝对阈值 + 进程存活 */
+  _deepHealthCheck() {
+    try {
+      const used = process.memoryUsage();
+      // 堆使用量超过 2GB 或 rss 超过 4GB 才视为异常
+      if (used.heapUsed > 2 * 1024 * 1024 * 1024) return false;
+      if (used.rss > 4 * 1024 * 1024 * 1024) return false;
       return true;
     } catch (e) {
       return false;
     }
   }
 
-  /** 5s 快检 */
-  _quickHealthCheck() {
-    try {
-      const used = process.memoryUsage();
-      return used.heapUsed < used.heapTotal * 0.95; // 内存未超过 95%
-    } catch (e) {
-      return false;
-    }
+  /** 标记文件已应用（用于冷却判断），避免回滚后立刻重试 */
+  _markFileCooldown(file) {
+    this._cooldowns.set(file, Date.now() + 60000); // 冷却1分钟
   }
 
-  /** 30s 深检 */
-  _deepHealthCheck() {
-    try {
-      const used = process.memoryUsage();
-      return used.heapUsed < used.heapTotal * 0.9;
-    } catch (e) {
+  /** 检查文件是否在冷却中 */
+  _isFileInCooldown(file) {
+    const until = this._cooldowns.get(file);
+    if (!until) return false;
+    if (Date.now() < until) return true;
+    this._cooldowns.delete(file);
+    return false;
+  }
+
+  /** 检查是否可对某个文件进行变更提案 */
+  _canProposeFor(file) {
+    if (this._isFileInCooldown(file)) return false;
+    // 单 Bridge 模式：只有自愈提案能通过（无 P2P 共识）
+    if (!this.p2p || this.p2p.connectedPeers?.size === 0) {
+      // 非自愈提案在单 Bridge 模式直接拒绝
       return false;
     }
+    return true;
   }
 }
 

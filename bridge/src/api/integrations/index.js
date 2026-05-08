@@ -14,7 +14,7 @@ let hotUpdateManagerInstance = null;
  */
 export async function getMultiAgentCoordinator() {
   if (!coordinatorInstance) {
-    const { default: MultiAgentCoordinator } = await import('../../core/multi-agent-coordinator.js');
+    const { MultiAgentCoordinator } = await import('../../core/multi-agent-coordinator.js');
     coordinatorInstance = new MultiAgentCoordinator();
   }
   return coordinatorInstance;
