@@ -475,6 +475,7 @@ class Bridge {
         } else {
           console.log(`[学习核心] 🧚 仙女模式`);
           this._startFairyMonitor();
+          this._startHeartbeat();
         }
 
         // P2R-K: 响应邻居的问题求解请求
@@ -775,6 +776,19 @@ class Bridge {
             info: this.p2p.peerInfo.get(id) || {}
           })) : [];
           res.end(JSON.stringify({ peers }));
+        } else if (pathname === '/api/heartbeat' && req.method === 'POST') {
+          let body = '';
+          req.on('data', c => body += c);
+          req.on('end', () => {
+            try {
+              const p = JSON.parse(body);
+              if (this.learningCore && p.port) {
+                this.learningCore.receiveHeartbeat(p.port);
+              }
+            } catch {}
+            res.writeHead(200);
+            res.end('ok');
+          });
         } else if (pathname === '/api/dashboard' && req.method === 'GET') {
           res.writeHead(200, { 'Content-Type': 'application/json' });
           const lc = this.learningCore;
@@ -1659,6 +1673,20 @@ async function R(){
     } catch (e) {
       console.log(`[FairyMonitor] 复活失败: ${e.message}`);
     }
+  }
+
+  _startHeartbeat() {
+    const myPort = this.body?.port || port || 0;
+    setInterval(async () => {
+      try {
+        await fetch('http://localhost:3800/api/heartbeat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ port: myPort }),
+          signal: AbortSignal.timeout(2000)
+        });
+      } catch {}
+    }, 10000);
   }
 
   async shutdown() {

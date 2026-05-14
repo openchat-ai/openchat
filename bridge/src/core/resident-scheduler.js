@@ -209,7 +209,8 @@ const residents = residentManager.list(null);
   // ================== 居民决策 ==================
 
   _processResident(resident) {
-    const { id, status, traits } = resident;
+    // 无问题待解时，不调 LLM
+    return;
 
     // 已达并发上限 → 跳过
     const running = this._residentAgentCount.get(id) || 0;

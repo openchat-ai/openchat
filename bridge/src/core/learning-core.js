@@ -113,13 +113,7 @@ this.age = Math.max(this.solvedCount, this.age);
     // 0. 元监控检查
     this._metaCheck();
     
-    // 0.3 好奇心：观察环境，自己发现问题
-    const curiousProblem = await this._beCurious();
-    if (curiousProblem) {
-      console.log(`[好奇心] ${curiousProblem.question} (不入池)`);
-    }
-    
-    // 0.5 互助守护：检查姐妹是否存活（每1分钟一次）
+    // 0.1 互助守护：检查姐妹是否存活（每1分钟一次）
     if (!this._lastSisterCheck || Date.now() - this._lastSisterCheck > 60000) {
       this._checkSisters();
       this._lastSisterCheck = Date.now();
@@ -262,13 +256,7 @@ this.age = Math.max(this.solvedCount, this.age);
     solvers.push({ name: '符号推理', solve: (p) => { const r=this.symbolic.tryDeduce(p); return r?.solved?r.answer:null; } });
     // 3. 模式匹配
     solvers.push({ name: '模式匹配', solve: (p) => { const r=this.reasoning.trySolve(p); return r?.solved?r.answer:null; } });
-    // 4. 内置规则
-    solvers.push({
-      name: '内置规则',
-      solve: (p) => this._autoSolve(p)
-    });
-    
-    // 2. 知识库查询
+    // 5. 知识库查询
     if (this.kb?.answer) {
       solvers.push({
         name: '知识库',
@@ -397,30 +385,6 @@ ${problem.context ? '背景：' + JSON.stringify(problem.context) : ''}
 
   async _askPeers(problem) {
     // TODO: 通过 P2P 请求其他实例帮助求解
-    return null;
-  }
-
-  _autoSolve(problem) {
-    const q = problem.question;
-    
-    // 等差数列求和
-    if (/1\+2\+3\+\.\.\.\+(\d+)/.test(q)) {
-      const n = parseInt(q.match(/(\d+)(?=\s*等于)/)?.[1] || '100');
-      return (n * (n + 1)) / 2;
-    }
-    
-    // 简单加减法
-    if (/有(\d+)个/.test(q) && /给了.*(\d+)个/.test(q) && /买了.*(\d+)个/.test(q)) {
-      const nums = q.match(/\d+/g).map(Number);
-      if (nums.length >= 3) return nums[0] - nums[1] + nums[2];
-    }
-    
-    // 半径扩大，面积扩大
-    if (/半径扩大(\d+)倍.*面积扩大/.test(q)) {
-      const r = parseInt(q.match(/半径扩大(\d+)倍/)?.[1] || '2');
-      return r * r;
-    }
-
     return null;
   }
 
@@ -643,207 +607,6 @@ _addWarningAsProblem(issues) {
       p.solved = true; s++;
     }
     if (s > 0) { this.solvedCount = this.problemPool.filter(p => p.solved).length; this.age = this.solvedCount; console.log(`[离线批量] ${s}题`); }
-  }
-        
-        if (question) {
-  }
-
-  // ==================== 好奇心系统 ====================
-
-  async _beCurious() {
-    // 好奇心已禁用——不调用LLM，不生成假问题
-    return null;
-    
-    // 找一个好奇的居民来思考
-    const curiousResident = this._selectCuriousResident();
-    if (!curiousResident) return null;
-    
-    // 居民用 LLM 自己思考有什么值得研究
-    const thought = await this._letResidentThink(curiousResident, context);
-    
-    return thought;
-  }
-
-  async _gatherContext() {
-    const sisters = [3000, 3100, 3200, 3300, 3400, 3500, 3600].filter(p => p !== this.myPort);
-    const sisterStatus = {};
-    
-    for (const port of sisters) {
-      const alive = await this._httpPing(port);
-      sisterStatus[port] = alive ? 'alive' : 'unknown';
-    }
-    
-    return {
-      myPort: this.myPort,
-      myIq: this.iq,
-      myAge: this.age,
-      mySolved: this.solvedCount,
-      pendingProblems: this.problemPool.filter(p => !this._isSolved(p)).length,
-      sisters: sisterStatus,
-      time: new Date().toISOString()
-    };
-  }
-
-  _selectCuriousResident() {
-    const residents = residentManager.list(null).filter(r => r.status === 'active');
-    if (residents.length === 0) return null;
-    
-    // 选好奇心最高的
-    const sorted = residents.sort((a, b) => 
-      (b.traits?.curiosity || 0.5) - (a.traits?.curiosity || 0.5)
-    );
-    return sorted[0];
-  }
-
-  async _letResidentThink(resident, context) {
-    // 居民用 Agent 自己思考：观察到什么？有什么疑问？
-    const prompt = `我是居民 ${resident.name}，我观察到以下情况：
-
-我的状态：智商${context.myIq}，年龄${context.myAge}，已解决${context.mySolved}题，待解${context.pendingProblems}题
-姐妹状态：${JSON.stringify(context.sisters)}
-
-请思考：
-1. 有什么异常或奇怪的地方吗？
-2. 有什么值得研究的问题吗？
-3. 我应该主动做什么？
-
-输出格式（JSON）：
-{ "thoughts": "我的想法...", "questions": ["问题1", "问题2"], "action": "建议行动" }`;
-
-    try {
-      // 直接创建 agent 来思考
-      const { multiAgentCoordinator } = await import('./multi-agent-coordinator.js');
-      const agent = await multiAgentCoordinator.spawnAgent(`curious-${Date.now()}`, {
-        name: resident.name,
-        systemPrompt: '你是一个好奇的思考者，善于发现问题',
-        maxIterations: 1
-      });
-      
-      if (!agent) return null;
-      
-      const result = await agent.run(prompt);
-      agent.cleanup();
-      
-      if (result?.content) {
-        let parsed;
-        const content = result.content;
-        try {
-          parsed = JSON.parse(content.replace(/```json|```/g, '').trim());
-        } catch {
-          const m = content.match(/\{[\s\S]*\}/);
-          if (m) parsed = JSON.parse(m[0]);
-        }
-        
-        // 如果居民产生了问题，加入问题池
-        if (parsed?.questions?.length > 0) {
-          const question = parsed.questions[0];
-          console.log(`[好奇心] ${resident.name} 在想: ${question}`);
-          return {
-            id: `curious_${Date.now()}`,
-            question,
-            domain: 'research',
-            difficulty: 2,
-            answer: null,
-            source: 'curiosity',
-            thoughts: parsed.thoughts
-          };
-        }
-      }
-    } catch (e) {
-      console.log(`[好奇心] ${resident.name} 思考失败: ${e.message}`);
-    }
-    
-    return null;
-  }
-
-  // ==================== 互助守护 ====================
-
-async _checkSisters() {
-    if (this.myPort !== 3800) return; // 只有主 Bridge 救活
-    const sisters = [3002, 3003, 3004, 3005, 3006, 3007];
-    for (const port of sisters) {
-      const status = await this._checkSisterStatus(port);
-      if (status === 'dead') await this._reviveSister(port);
-    }
-  }
-
-  async _checkSisterStatus(port) {
-    const httpAlive = await this._httpPing(port);
-    if (httpAlive) return 'alive';
-    const portListening = await this._checkPortListening(port);
-    return portListening ? 'busy' : 'dead';
-  }
-
-  async _reviveSister(port) {
-    if (!this._reviveCount) this._reviveCount = new Map();
-    const c = this._reviveCount.get(port) || 0;
-    if (c >= 3) return;
-    const last = this.history.lastRestarts?.get(port) || 0;
-    if (Date.now() - last < 300000) return;
-    console.log(`[互助] 复活 Fairy :${port} (第${c+1}次)`);
-    const { spawn } = await import('child_process');
-    spawn(process.execPath, ['src/main.js', `--port=${port}`, '--fairy'], {
-      cwd: process.cwd(), detached: true, stdio: 'ignore'
-    }).unref();
-    if (!this.history.lastRestarts) this.history.lastRestarts = new Map();
-    this.history.lastRestarts.set(port, Date.now());
-    this._reviveCount.set(port, c + 1);
-  }
-
-  async _httpPing(port) {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000);
-      
-      const response = await fetch(`http://localhost:${port}/api/learning`, {
-        signal: controller.signal
-      });
-      clearTimeout(timeout);
-      return response.ok;
-    } catch {
-      return false;
-    }
-  }
-
-  async _checkPortListening(port) {
-    const { spawn } = await import('child_process');
-    return new Promise((resolve) => {
-      const netstat = spawn('netstat', ['-ano'], { shell: true });
-      let output = '';
-      netstat.stdout.on('data', (data) => output += data);
-      netstat.on('close', () => {
-        const listening = output.includes(`:${port}`) && output.includes('LISTENING');
-        resolve(listening);
-      });
-    });
-  }
-
-  async _reviveSister(port) {
-    // 检查冷却时间（60秒内不重复重启）
-    const lastRestart = this.history.lastRestarts?.get(port) || 0;
-    if (Date.now() - lastRestart < 60000) return;
-    
-    console.log(`[互助] 发现姐妹宕机 :${port}，正在救活...`);
-    
-    // 用 spawn 重启
-    const { spawn } = await import('child_process');
-    const child = spawn('node', [
-      'src/main.js',
-      `--port=${port}`,
-      `--directListen=${port + 2}`
-    ], {
-      cwd: process.cwd(),
-      detached: true,
-      stdio: 'ignore',
-      shell: true
-    });
-    child.unref();
-    
-    // 记录重启时间
-    if (!this.history.lastRestarts) this.history.lastRestarts = new Map();
-    this.history.lastRestarts.set(port, Date.now());
-    
-    console.log(`[互助] 已发送救活命令 :${port}`);
   }
 }
 
