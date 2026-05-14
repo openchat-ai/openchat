@@ -119,12 +119,13 @@ class NodeStrategy extends LaunchStrategy {
       ...this.args.filter(a => a.startsWith('--hostId=')),
     ];
 
-    const child = spawn('cmd', ['/c', 'start', '"仙女"', 'node', mainScript, ...childArgs], {
+    const child = spawn(process.execPath, childArgs, {
       cwd: this.cwd,
       stdio: 'ignore',
       env: { ...this.env, NESTING_BRIDGE: '1' },
-      shell: true
+      detached: true
     });
+    child.unref();
 
     child.on('exit', (code) => {
       console.log(`[${name}] 进程退出, code=${code}`);

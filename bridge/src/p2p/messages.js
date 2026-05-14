@@ -443,6 +443,26 @@ const validateMessage = (message) => {
   return { valid: true };
 };
 
+const createBodyNeedMessage = (options = {}) => {
+  return createMessage(MessageType.HOUSE_NEED, {
+    action: options.action, residentName: options.residentName,
+    residentId: options.residentId, hostId: options.hostId || '',
+    healthScore: options.healthScore, alerts: options.alerts || [],
+    source: options.source || ''
+  }, { priority: 'HIGH', ...options });
+};
+
+const createBodySeekMessage = (options = {}) => {
+  return createMessage(MessageType.HOUSE_SEEK, { ...options }, { ...options });
+};
+
+const createSafeBodyVerify = (options = {}) => {
+  return createMessage(MessageType.SAFE_HOUSE_VERIFY || 'safe_house_verify', {
+    houseId: options.houseId, health: options.health || 100,
+    hostId: options.hostId || '', lastActivity: options.lastActivity
+  }, { ...options });
+};
+
 export {
   MessageType,
   isValidMessageType,
@@ -468,6 +488,9 @@ export {
   createLLMProviderQueryMessage,
   createProblemSolveMessage,
   createProblemResultMessage,
+  createBodyNeedMessage,
+  createBodySeekMessage,
+  createSafeBodyVerify,
   serializeMessage,
   deserializeMessage,
   validateMessage

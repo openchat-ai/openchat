@@ -297,13 +297,6 @@ this.age = Math.max(this.solvedCount, this.age);
   }
 
   async _askAgent(problem, solver) {
-    // LLM 调用限流：每天最多 10 次
-    if (!this._apiCallCount) this._apiCallCount = 0;
-    if (!this._apiResetTime) this._apiResetTime = Date.now() + 86400000;
-    if (Date.now() > this._apiResetTime) { this._apiCallCount = 0; this._apiResetTime = Date.now() + 86400000; }
-    if (this._apiCallCount >= 10 && problem.domain !== 'research') return null;
-    this._apiCallCount++;
-
     const isResearch = problem.domain === 'research';
     
     const prompt = isResearch 
@@ -658,9 +651,8 @@ _addWarningAsProblem(issues) {
   // ==================== 好奇心系统 ====================
 
   async _beCurious() {
-    // 让居民自己观察和思考，而不是硬编码检查
-    // 收集环境数据，交给居民自己判断
-    const context = await this._gatherContext();
+    // 好奇心已禁用——不调用LLM，不生成假问题
+    return null;
     
     // 找一个好奇的居民来思考
     const curiousResident = this._selectCuriousResident();
@@ -766,35 +758,36 @@ _addWarningAsProblem(issues) {
 
   // ==================== 互助守护 ====================
 
-  async _checkSisters() {
-    
-    const sisters = [3000, 3100, 3200, 3300, 3400, 3500, 3600].filter(p => p !== this.myPort);
-    
+async _checkSisters() {
+    if (this.myPort !== 3800) return; // 只有主 Bridge 救活
+    const sisters = [3002, 3003, 3004, 3005, 3006, 3007];
     for (const port of sisters) {
       const status = await this._checkSisterStatus(port);
-      if (status === 'dead') {
-        await this._reviveSister(port);
-      } else if (status === 'busy') {
-        console.log(`[互助] 姐妹 :${port} 正忙，跳过`);
-      }
+      if (status === 'dead') await this._reviveSister(port);
     }
   }
 
   async _checkSisterStatus(port) {
-    // 多通道检测
-    // 通道1: HTTP ping (快速，但可能被阻塞)
     const httpAlive = await this._httpPing(port);
     if (httpAlive) return 'alive';
-    
-    // 通道2: 进程检测 (端口是否被监听)
     const portListening = await this._checkPortListening(port);
-    if (portListening) {
-      // 端口在监听但HTTP无响应 = 忙
-      return 'busy';
-    }
-    
-    // 端口也没监听 = 真宕机
-    return 'dead';
+    return portListening ? 'busy' : 'dead';
+  }
+
+  async _reviveSister(port) {
+    if (!this._reviveCount) this._reviveCount = new Map();
+    const c = this._reviveCount.get(port) || 0;
+    if (c >= 3) return;
+    const last = this.history.lastRestarts?.get(port) || 0;
+    if (Date.now() - last < 300000) return;
+    console.log(`[互助] 复活 Fairy :${port} (第${c+1}次)`);
+    const { spawn } = await import('child_process');
+    spawn(process.execPath, ['src/main.js', `--port=${port}`, '--fairy'], {
+      cwd: process.cwd(), detached: true, stdio: 'ignore'
+    }).unref();
+    if (!this.history.lastRestarts) this.history.lastRestarts = new Map();
+    this.history.lastRestarts.set(port, Date.now());
+    this._reviveCount.set(port, c + 1);
   }
 
   async _httpPing(port) {

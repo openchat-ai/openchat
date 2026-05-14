@@ -392,7 +392,8 @@ class Bridge {
           });
         });
 
-        // P2R: 居民治家初始化
+        // P2R: 居民治家初始化（try 块防止 HouseOrchestrator 报错阻止后续初始化）
+        try {
         const { SafeEvolution } = await import('./core/safe-evolution.js');
         const { BridgeSpawn } = await import('./core/bridge-spawn.js');
         const { detectBestStrategy } = await import('./core/launch-strategies.js');
@@ -412,6 +413,14 @@ class Bridge {
         console.log(`[Launch] 启动策略: ${detectedStrategy}`);
         const bridgeSpawn = new BridgeSpawn(this.p2p, hostId, this.house, detectedStrategy);
 
+        // Fairy spawn：必须在 HouseOrchestrator 前（避免其报错阻止）
+        if (isMain) {
+          for (let i = 0; i < 6; i++) {
+            const c = bridgeSpawn.spawnNesting({ name: `仙女${i+1}` });
+            if (c) console.log(`[P2R] 仙女${i+1} port=${c.port}`);
+          }
+        }
+
         const { HouseOrchestrator } = await import('./core/house-orchestrator.js');
         this.houseOrchestrator = new HouseOrchestrator(this.p2p, this.p2p.peerId || 'bridge-1', safeEvo, this.house, bridgeSpawn);
         residentScheduler.houseOrchestrator = this.houseOrchestrator;
@@ -421,16 +430,16 @@ class Bridge {
         // LLM 代理：接收子桥的 LLM 调用请求
         this.llmProxy = new LLMProxyAgent(this.p2p, { enabled: true });
         this.llmProxy.start();
-console.log('[P2R] HouseOrchestrator + SafeEvolution + BridgeSpawn + LLMProxy 已启动');
+        console.log('[P2R] HouseOrchestrator + SafeEvolution + BridgeSpawn + LLMProxy 已启动');
 
-        // Fairy spawn：端口 3002-3007（在 try 块内，bridgeSpawn 可访问）
+        // Fairy spawn：端口 3002-3007
         if (isMain) {
-          const fairyPorts = [3002, 3003, 3004, 3005, 3006, 3007];
-          for (const port of fairyPorts) {
-            const c = bridgeSpawn.spawnNesting({ name: `仙女${port}`, port });
-            if (c) console.log(`[P2R] 仙女${port} 已启动`);
+          for (let i = 0; i < 6; i++) {
+            const c = bridgeSpawn.spawnNesting({ name: `仙女${i+1}` });
+            if (c) console.log(`[P2R] 仙女${i+1} port=${c.port}`);
           }
         }
+        } catch (e) { console.log(`[启动] P2R 初始化失败: ${e.message}`); }
 
         // P2R-K: 收敛引擎 — 问题分解→竞标→求解→择优
         try {
@@ -1604,17 +1613,52 @@ async function R(){
 
   _startFairyMonitor() {
     let downCount = 0;
+    let isMainMode = false;
     this._fairyMonTimer = setInterval(async () => {
+      // 主模式中：检查 3800 是否恢复
+      if (isMainMode) {
+        try {
+          const resp = await fetch('http://localhost:3800/api/status', { signal: AbortSignal.timeout(3000) });
+          if (resp.ok) {
+            console.log('[FairyMonitor] 🔄 主 Bridge 已恢复，归还主模式');
+            // 停止学习循环，退回仙女模式
+            if (this._learningTimer) clearInterval(this._learningTimer);
+            this._learningTimer = null;
+            isMainMode = false;
+            downCount = 0;
+            return;
+          }
+        } catch {}
+        return;
+      }
+
+      // 非主模式：检查 3800 是否存活
       try {
         const resp = await fetch('http://localhost:3800/api/status', { signal: AbortSignal.timeout(3000) });
         if (resp.ok) { downCount = 0; return; }
       } catch { downCount++; }
+
       if (downCount >= 3) {
-        console.log('[FairyMonitor] 🔼 主 Bridge 失联，升级为主模式');
+        console.log('[FairyMonitor] 🔼 主 Bridge 失联，临时接管主模式');
         this._startLearningCore();
-        clearInterval(this._fairyMonTimer);
+        await this._reviveMain(3800);
+        isMainMode = true;
+        downCount = 0;
       }
     }, 15000);
+  }
+
+  async _reviveMain(port) {
+    try {
+      const { spawn } = await import('child_process');
+      const child = spawn(process.execPath, ['src/main.js', `--port=${port}`], {
+        cwd: process.cwd(), detached: true, stdio: 'ignore'
+      });
+      child.unref();
+      console.log(`[FairyMonitor] 发送主 Bridge 复活命令 :${port}`);
+    } catch (e) {
+      console.log(`[FairyMonitor] 复活失败: ${e.message}`);
+    }
   }
 
   async shutdown() {
