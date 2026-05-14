@@ -9,16 +9,10 @@
 
 import { residentManager } from './resident-manager.js';
 import { persistentConfig } from './persistent-config.js';
-import { SemanticNN } from './semantic-nn.js';
-import { UniversalSolver } from './universal-solver.js';
+import { SelfEvolution } from './self-evolution.js';
 import { ReasoningEngine } from './reasoning-engine.js';
-import { QuestionNormalizer } from './question-normalizer.js';
+import { UniversalSolver } from './universal-solver.js';
 import { SymbolicReasoner } from './symbolic-reasoner.js';
-import { TheoremDB } from './theorem-db.js';
-import { InductiveReasoner } from './inductive-reasoner.js';
-import { DataMiner } from './data-miner.js';
-import { CodeReviewer } from './code-reviewer.js';
-import { TeacherLLM } from './teacher-llm.js';
 import { readdirSync, readFileSync, existsSync, writeFileSync, mkdirSync, statSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
@@ -54,7 +48,7 @@ class LearningCore {
     this.age = 0;
     
     // 元监控：记录历史状态
-    this.history = {
+this.history = {
       lastIq: 100,
       lastAge: 0,
       lastSolved: 0,
@@ -63,18 +57,11 @@ class LearningCore {
       lastRestarts: new Map()
     };
     
-    this._curiosityLog = [];
-    this.semanticNN = new SemanticNN(32);
-    this.universal = new UniversalSolver();
+    this.evolution = new SelfEvolution();
     this.reasoning = new ReasoningEngine();
-    this.normalizer = new QuestionNormalizer();
+    this.universal = new UniversalSolver();
     this.symbolic = new SymbolicReasoner();
-    this.theoremDB = new TheoremDB();
-    this.inductive = new InductiveReasoner(this.theoremDB);
-    this.teacher = new TeacherLLM();
-    this.miner = new DataMiner();
-    this.reviewer = new CodeReviewer();
-    
+
     this._initDirs();
     this._loadProblemPool();
     this._loadStats();
@@ -104,18 +91,11 @@ class LearningCore {
     }
   }
 
-  _loadStats() {
+_loadStats() {
     const expFiles = existsSync(EXPERIENCE_DIR) ? readdirSync(EXPERIENCE_DIR).filter(f => f.endsWith('.json')) : [];
-    this.solvedCount = expFiles.length;
-    this.iq = 100 + this.solvedCount * 2;
-    
-    // 年龄 = git commits 数量
-    try {
-      const result = execSync('git rev-list --count HEAD', { encoding: 'utf8', cwd: process.cwd() });
-      this.age = parseInt(result.trim(), 10) || 0;
-    } catch {
-      this.age = 0;
-    }
+    this.solvedCount = expFiles.length || this.problemPool.filter(p => p.solved).length;
+    this.iq = this.evolution.computeRealIQ(this.solvedCount);
+this.age = Math.max(this.solvedCount, this.age);
   }
 
   // ==================== 核心循环 ====================
@@ -128,8 +108,6 @@ class LearningCore {
     const curiousProblem = await this._beCurious();
     if (curiousProblem) {
       console.log(`[好奇心] ${curiousProblem.question} (不入池)`);
-      this._curiosityLog = this._curiosityLog || [];
-      this._curiosityLog.push({ time: Date.now(), q: curiousProblem.question });
     }
     
     // 0.5 互助守护：检查姐妹是否存活（每1分钟一次）
@@ -175,11 +153,6 @@ class LearningCore {
 
   _discoverProblem() {
     const unsolved = this.problemPool.filter(p => !this._isSolved(p));
-    
-    // 数据补给：池子不足时自动挖题
-    if (unsolved.length < 5) {
-      this.miner.generateVariants(this.problemPool.filter(p => p.solved));
-    }
     if (unsolved.length === 0) return null;
     
     // 通用策略：轮换不同领域，保证每种类型都有机会
@@ -272,19 +245,15 @@ class LearningCore {
   _discoverSolvers() {
     const solvers = [];
     
-    // 0. 有答案就直接用，不调API
+    // 0. 有答案就直接用
     solvers.push({ name: '已知答案', solve: (p) => (p.answer != null && p.answer !== undefined) ? p.answer : null });
-    
-    // 1. 统一求解器（知识网）← 查定理库
-    solvers.push({ name: '知识网', solve: (p) => { const r = this.universal.solve(p.question); return r?.answer ?? null; } });
-    
-    // 2. 符号推理（公理演绎）
-    solvers.push({ name: '符号推理', solve: (p) => { const r = this.symbolic.tryDeduce(p); return r?.solved ? r.answer : null; } });
-    
-    // 3. 模式匹配推理
-    solvers.push({ name: '模式匹配', solve: (p) => { const r = this.reasoning.trySolve(p); return r?.solved ? r.answer : null; } });
-    
-    // 1. 内置规则求解器
+    // 1. 统一求解器
+    solvers.push({ name: '知识网', solve: (p) => { const r=this.universal.solve(p.question); return r?.answer??null; } });
+    // 2. 符号推理
+    solvers.push({ name: '符号推理', solve: (p) => { const r=this.symbolic.tryDeduce(p); return r?.solved?r.answer:null; } });
+    // 3. 模式匹配
+    solvers.push({ name: '模式匹配', solve: (p) => { const r=this.reasoning.trySolve(p); return r?.solved?r.answer:null; } });
+    // 4. 内置规则
     solvers.push({
       name: '内置规则',
       solve: (p) => this._autoSolve(p)
@@ -533,14 +502,14 @@ ${problem.context ? '背景：' + JSON.stringify(problem.context) : ''}
       solvedAt: Date.now()
     }, null, 2));
 
-this.solvedCount++;
-    this.iq = 100 + this.solvedCount * 2 + Math.floor(this.solvedCount / 5) * 5;
+    this.solvedCount++;
+    this.evolution.recordSolve(problem, answer, 0, true, 'agent', solver);
 
-    // 每10题归纳新定理 + 每5题TeacherLLM教学
-    if (this.solvedCount % 10 === 0) {
-      const solved = this.problemPool.filter(p => p.solved && p.answer);
-      const discovered = this.inductive.hypothesize(solved);
-      if (discovered.length) console.log(`[归纳] 发现 ${discovered.length} 条新定理`);
+    // 更新 IQ：加载时用基础公式，之后每解一题重新计算真实 IQ
+    if (this.solvedCount <= 3) {
+      this.iq = 100 + this.solvedCount * 2;
+    } else {
+      this.iq = this.evolution.computeRealIQ(this.solvedCount);
     }
     
     console.log(`[学习核心] ✅ 已解决: ${problem.id} → IQ: ${this.iq}`);
@@ -637,12 +606,17 @@ _addWarningAsProblem(issues) {
     if (!u.length) return;
     let s = 0;
     for (const p of u) {
-      const f=join(EXPERIENCE_DIR,`${p.id}.json`);
-      if(!existsSync(f))writeFileSync(f,JSON.stringify({problemId:p.id,question:p.question,domain:p.domain,answer:String(p.answer),solver:'offline',solvedAt:Date.now()},null,2));
-      p.solved=true;s++;
+      const f = join(EXPERIENCE_DIR, `${p.id}.json`);
+      if (!existsSync(f)) writeFileSync(f, JSON.stringify({ problemId: p.id, question: p.question, domain: p.domain, answer: String(p.answer), solver: 'offline', solvedAt: Date.now() }, null, 2));
+      p.solved = true; s++;
     }
-    if(s>0){this.solvedCount=this.problemPool.filter(p=>p.solved).length;this.age=this.solvedCount;console.log(`[离线批量] ${s}题`);}
+    if (s > 0) { this.solvedCount = this.problemPool.filter(p => p.solved).length; this.age = this.solvedCount; console.log(`[离线批量] ${s}题`); }
   }
+        
+        if (question) {
+  }
+
+  // ==================== 好奇心系统 ====================
 
   async _beCurious() {
     // 让居民自己观察和思考，而不是硬编码检查
@@ -754,11 +728,16 @@ _addWarningAsProblem(issues) {
   // ==================== 互助守护 ====================
 
   async _checkSisters() {
-    if (this.myPort !== 3800) return;
-    const sisters = [3002, 3003, 3004, 3005, 3006, 3007];
+    
+    const sisters = [3000, 3100, 3200, 3300, 3400, 3500, 3600].filter(p => p !== this.myPort);
+    
     for (const port of sisters) {
       const status = await this._checkSisterStatus(port);
-      if (status === 'dead') await this._reviveSister(port);
+      if (status === 'dead') {
+        await this._reviveSister(port);
+      } else if (status === 'busy') {
+        console.log(`[互助] 姐妹 :${port} 正忙，跳过`);
+      }
     }
   }
 
@@ -808,18 +787,31 @@ _addWarningAsProblem(issues) {
   }
 
   async _reviveSister(port) {
-    if (!this._reviveCount) this._reviveCount = new Map();
-    const c = this._reviveCount.get(port) || 0;
-    if (c >= 3) return;
-    const last = this.history.lastRestarts?.get(port) || 0;
-    if (Date.now() - last < 300000) return;
-    console.log(`[互助] 复活 :${port} (第${c+1}次)`);
+    // 检查冷却时间（60秒内不重复重启）
+    const lastRestart = this.history.lastRestarts?.get(port) || 0;
+    if (Date.now() - lastRestart < 60000) return;
+    
+    console.log(`[互助] 发现姐妹宕机 :${port}，正在救活...`);
+    
+    // 用 spawn 重启
     const { spawn } = await import('child_process');
-    const child = spawn('node', ['src/main.js', `--port=${port}`, '--fairy'], { cwd: process.cwd(), detached: true, stdio: 'ignore', shell: true });
+    const child = spawn('node', [
+      'src/main.js',
+      `--port=${port}`,
+      `--directListen=${port + 2}`
+    ], {
+      cwd: process.cwd(),
+      detached: true,
+      stdio: 'ignore',
+      shell: true
+    });
     child.unref();
+    
+    // 记录重启时间
     if (!this.history.lastRestarts) this.history.lastRestarts = new Map();
     this.history.lastRestarts.set(port, Date.now());
-    this._reviveCount.set(port, c + 1);
+    
+    console.log(`[互助] 已发送救活命令 :${port}`);
   }
 }
 
