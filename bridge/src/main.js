@@ -782,8 +782,8 @@ class Bridge {
           req.on('end', () => {
             try {
               const p = JSON.parse(body);
-              if (this.learningCore && p.port) {
-                this.learningCore.receiveHeartbeat(p.port);
+              if (this.learningCore?.guardian && p.port) {
+                this.learningCore.guardian.receiveHeartbeat(p.port);
               }
             } catch {}
             res.writeHead(200);

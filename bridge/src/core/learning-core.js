@@ -17,6 +17,7 @@ import { SemanticNN } from './semantic-nn.js';
 import { TeacherLLM } from './teacher-llm.js';
 import { InductiveReasoner } from './inductive-reasoner.js';
 import { TheoremDB } from './theorem-db.js';
+import { FairyGuardian } from './fairy-guardian.js';
 import { readdirSync, readFileSync, existsSync, writeFileSync, mkdirSync, statSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
@@ -69,6 +70,7 @@ this.history = {
     this.teacher = new TeacherLLM();
     this.theoremDB = new TheoremDB();
     this.inductive = new InductiveReasoner(this.theoremDB);
+    this.guardian = new FairyGuardian(myPort);
 
     this._initDirs();
     this._loadProblemPool();
@@ -115,7 +117,7 @@ this.age = Math.max(this.solvedCount, this.age);
     
     // 0.1 互助守护：检查姐妹是否存活（每1分钟一次）
     if (!this._lastSisterCheck || Date.now() - this._lastSisterCheck > 60000) {
-      this._checkSisters();
+      this.guardian.checkAll();
       this._lastSisterCheck = Date.now();
     }
     
