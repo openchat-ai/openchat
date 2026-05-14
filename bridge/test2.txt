@@ -1,4 +1,0 @@
-provider list
-session create claude local
-status
-exit

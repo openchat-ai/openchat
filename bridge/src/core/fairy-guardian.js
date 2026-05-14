@@ -51,7 +51,9 @@ export class FairyGuardian {
     const last = this._lastRestarts.get(port) || 0;
     if (Date.now() - last < 300000) return;
     console.log(`[守护] 复活 Fairy :${port} (第${c+1}次)`);
-    spawn(process.execPath, ['src/main.js', `--port=${port}`, '--fairy'], {
+    const { join } = await import('path');
+    const script = join(process.cwd(), 'src', 'main.js');
+    spawn(process.execPath, [script, `--port=${port}`, '--fairy'], {
       cwd: process.cwd(), detached: true, stdio: 'ignore'
     }).unref();
     this._lastRestarts.set(port, Date.now());
@@ -70,7 +72,7 @@ export class FairyGuardian {
 
   _portListening(port) {
     return new Promise(r => {
-      const s = spawn('netstat', ['-ano'], { shell: true });
+      const s = spawn('netstat', ['-ano']);
       let o = '';
       s.stdout.on('data', d => o += d);
       s.on('close', () => r(o.includes(`:${port}`) && o.includes('LISTENING')));

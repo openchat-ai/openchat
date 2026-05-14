@@ -38,7 +38,7 @@ const DOMAIN_DECOMPOSERS = {
   },
 
   /** 系统健康检查 */
-  house_health(stats) {
+  body_health(stats) {
     return [
       { question: '内存使用率 >80%?',    hint: 'process.memoryUsage().heapUsed / heapTotal', domain: 'resource' },
       { question: 'CPU 负载 >70%?',      hint: 'os.cpus() 计算平均负载',                     domain: 'resource' },
@@ -179,7 +179,7 @@ class ProblemDecomposer {
   detectDomain(problem) {
     const lower = problem.toLowerCase();
     if (/代码|code|bug|函数|变量|内存|语法|编译|js|javascript|python/.test(lower)) return 'code_quality';
-    if (/健康|内存|cpu|磁盘|负载|p2p|连接|限流|进程/.test(lower)) return 'house_health';
+    if (/健康|内存|cpu|磁盘|负载|p2p|连接|限流|进程/.test(lower)) return 'body_health';
     if (/社交|交友|邻居|协作|聊天|匹配|性格/.test(lower)) return 'resident_dating';
     if (/压缩|数据|大小|字节|存储|重复/.test(lower)) return 'data_compression';
     if (/安全|漏洞|攻击|注入|密钥|密码|https|ssl|认证/.test(lower)) return 'security_audit';

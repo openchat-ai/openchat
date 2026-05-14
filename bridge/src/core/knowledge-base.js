@@ -2,7 +2,7 @@
  * KnowledgeBase — 公共知识库（P2P 共享）
  *
  * 索引化存储：只存 { answer, verified, houseIds[] }，不存解法全文。
- * 全文由求解者所在 House 本地管理，通过 P2P 按需获取。
+ * 全文由求解者所在 Body 本地管理，通过 P2P 按需获取。
  *
  * 自动升级存储：
  *   Level 0 — JSON（< 1K 条目）

@@ -1,7 +1,7 @@
 /**
  * Body — 仙女的身体
  *
- * 替代旧的 House 概念。
+ * 替代旧的 Body 概念。
  * 每个 Fairy 实例 = 一个仙女的身体。
  * 身体有五脏：
  *   眼  eyes    — 感知 (perceive)
@@ -26,7 +26,7 @@ export class Body {
     this.id = `body_${port}_${Date.now()}`;
     this.birthTime = Date.now();
     this.pulse = 0;
-    this.houseId = `body_${port}`;  // 兼容旧 House 接口
+    this.houseId = `body_${port}`;  // 兼容旧 Body 接口
     this.bridgeId = `bridge_${port}`;           // 心跳计数
 
     // 五脏

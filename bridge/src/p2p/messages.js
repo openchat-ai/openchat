@@ -22,15 +22,15 @@ const MessageType = {
   PERFORMANCE_REPORT: 'performance_report',
 
   // P2R: 居民治家
-  BRIDGE_SPAWN:         'bridge_spawn',       // 请求邻居 spawn 子 Bridge 做窟
-  SAFE_HOUSE_VERIFY:    'safe_house_verify',  // 验证窟还活着
+  BRIDGE_SPAWN:         'bridge_spawn',       // 请求邻居 spawn 子 Bridge 做身体
+  SAFE_HOUSE_VERIFY:    'safe_body_verify',  // 验证身体还活着
   BRIDGE_UPGRADE:       'bridge_upgrade',     // 版本升级宣告
-  RESIDENT_TRANSFER:    'resident_transfer',  // 居民迁移（从一窟搬到另一窟）
+  RESIDENT_TRANSFER:    'resident_transfer',  // 居民迁移（从一身体搬到另一身体）
 
-  // P2R: 居民治家 — 窟管理
-  HOUSE_SEEK:           'house_seek',         // 找窟请求
-  HOUSE_OFFER:          'house_offer',        // 安全屋提供
-  HOUSE_NEED:           'house_need',         // 求助/需要窟
+  // P2R: 居民治家 — 身体管理
+  HOUSE_SEEK:           'body_seek',         // 找身体请求
+  HOUSE_OFFER:          'body_offer',        // 身体提供
+  HOUSE_NEED:           'body_need',         // 求助/需要身体
 
   // P2R-S: 安全自治 — 多方验证 + 热回滚
   PROPOSE_CHANGE:       'propose_change',     // 提案：请求修改代码
@@ -173,7 +173,7 @@ const createPerformanceReportMessage = (metrics, options = {}) => {
   );
 };
 
-// P2R: 请求邻居 spawn 子 Bridge 做窟
+// P2R: 请求邻居 spawn 子 Bridge 做身体
 const createBridgeSpawnRequest = (options = {}) => {
   return createMessage(
     MessageType.BRIDGE_SPAWN,
@@ -188,8 +188,8 @@ const createBridgeSpawnRequest = (options = {}) => {
   );
 };
 
-// P2R: 验证窟还活着
-const createSafeHouseVerify = (options = {}) => {
+// P2R: 验证身体还活着
+const createSafeBodyVerify = (options = {}) => {
   return createMessage(
     MessageType.SAFE_HOUSE_VERIFY,
     {
@@ -202,8 +202,8 @@ const createSafeHouseVerify = (options = {}) => {
   );
 };
 
-// P2R: 找窟
-const createHouseSeekMessage = (options = {}) => {
+// P2R: 找身体
+const createBodySeekMessage = (options = {}) => {
   return createMessage(
     MessageType.HOUSE_SEEK,
     {
@@ -217,8 +217,8 @@ const createHouseSeekMessage = (options = {}) => {
   );
 };
 
-// P2R: 求助/需要窟
-const createHouseNeedMessage = (options = {}) => {
+// P2R: 求助/需要身体
+const createBodyNeedMessage = (options = {}) => {
   return createMessage(
     MessageType.HOUSE_NEED,
     {
@@ -256,7 +256,7 @@ const createResidentTransferMessage = (options = {}) => {
       targetHostId: options.targetHostId || '',
       sourceBridgeId: options.sourceBridgeId,
       sourceHostId: options.sourceHostId || '',
-      reason: options.reason || 'house_unhealthy'
+      reason: options.reason || 'body_unhealthy'
     },
     { priority: options.priority || 'HIGH', ...options }
   );
@@ -457,7 +457,7 @@ const createBodySeekMessage = (options = {}) => {
 };
 
 const createSafeBodyVerify = (options = {}) => {
-  return createMessage(MessageType.SAFE_HOUSE_VERIFY || 'safe_house_verify', {
+  return createMessage(MessageType.SAFE_HOUSE_VERIFY || 'safe_body_verify', {
     houseId: options.houseId, health: options.health || 100,
     hostId: options.hostId || '', lastActivity: options.lastActivity
   }, { ...options });
@@ -474,11 +474,11 @@ export {
   createInsightShareMessage,
   createPerformanceReportMessage,
   createBridgeSpawnRequest,
-  createSafeHouseVerify,
+  createSafeBodyVerify,
   createBridgeUpgradeMessage,
   createResidentTransferMessage,
-  createHouseSeekMessage,
-  createHouseNeedMessage,
+  createBodySeekMessage,
+  createBodyNeedMessage,
   createProposeChangeMessage,
   createVerifyResultMessage,
   createChangeAppliedMessage,

@@ -113,7 +113,7 @@ const houseIdArgIndex = args.findIndex(a => a.startsWith('--houseId='));
 if (houseIdArgIndex !== -1) {
   houseIdArg = args[houseIdArgIndex].split('=')[1];
 }
-const effectiveHouseId = houseIdArg || `${hostId}_default`;
+const effectiveBodyId = houseIdArg || `${hostId}_default`;
 
 // --parent：nesting 子进程连接父 Bridge 的直连 TCP 端口
 const parentIndex = args.findIndex(a => a.startsWith('--parent='));
@@ -392,20 +392,20 @@ class Bridge {
           });
         });
 
-        // P2R: 居民治家初始化（try 块防止 HouseOrchestrator 报错阻止后续初始化）
+        // P2R: 居民治家初始化（try 块防止 BodyOrchestrator 报错阻止后续初始化）
         try {
         const { SafeEvolution } = await import('./core/safe-evolution.js');
         const { BridgeSpawn } = await import('./core/bridge-spawn.js');
         const { detectBestStrategy } = await import('./core/launch-strategies.js');
-        const { House } = await import('./core/house.js');
+        const { Body } = await import('./core/house.js');
         const { LLMProxyAgent } = await import('./core/llm-proxy-agent.js');
 
         const safeEvo = new SafeEvolution(this.p2p, this.p2p.peerId || 'bridge-1');
 
-        // 初始化默认 House（主 Bridge / 子 Bridge 各自创建）
+        // 初始化默认 Body（主 Bridge / 子 Bridge 各自创建）
         if (!this.house) {
           const bridgeId = this.p2p.peerId || 'bridge-1';
-          this.house = new House(effectiveHouseId, bridgeId, hostId, 'default');
+          this.house = new Body(effectiveBodyId, bridgeId, hostId, 'default');
           await this.house.init();
         }
 
@@ -413,7 +413,7 @@ class Bridge {
         console.log(`[Launch] 启动策略: ${detectedStrategy}`);
         const bridgeSpawn = new BridgeSpawn(this.p2p, hostId, this.house, detectedStrategy);
 
-        // Fairy spawn：必须在 HouseOrchestrator 前（避免其报错阻止）
+        // Fairy spawn：必须在 BodyOrchestrator 前（避免其报错阻止）
         if (isMain) {
           for (let i = 0; i < 6; i++) {
             const c = bridgeSpawn.spawnNesting({ name: `仙女${i+1}` });
@@ -421,8 +421,8 @@ class Bridge {
           }
         }
 
-        const { HouseOrchestrator } = await import('./core/house-orchestrator.js');
-        this.houseOrchestrator = new HouseOrchestrator(this.p2p, this.p2p.peerId || 'bridge-1', safeEvo, this.house, bridgeSpawn);
+        const { BodyOrchestrator } = await import('./core/house-orchestrator.js');
+        this.houseOrchestrator = new BodyOrchestrator(this.p2p, this.p2p.peerId || 'bridge-1', safeEvo, this.house, bridgeSpawn);
         residentScheduler.houseOrchestrator = this.houseOrchestrator;
         this.safeEvolution = safeEvo;
         this.bridgeSpawn = bridgeSpawn;
@@ -430,7 +430,7 @@ class Bridge {
         // LLM 代理：接收子桥的 LLM 调用请求
         this.llmProxy = new LLMProxyAgent(this.p2p, { enabled: true });
         this.llmProxy.start();
-        console.log('[P2R] HouseOrchestrator + SafeEvolution + BridgeSpawn + LLMProxy 已启动');
+        console.log('[P2R] BodyOrchestrator + SafeEvolution + BridgeSpawn + LLMProxy 已启动');
 
         // Fairy spawn：端口 3002-3007
         if (isMain) {
@@ -519,21 +519,21 @@ class Bridge {
           }
         });
 
-        // P2R: 窟验证回复
+        // P2R: 身体验证回复
         this.p2p.on('safe-house-verify', (data) => {
           const payload = data.payload || {};
           const from = data.from;
           const remoteHostId = payload.hostId || '';
-          console.log(`[P2R] 收到窟验证: from=${from?.slice(0, 8) || '?'}... hostId=${remoteHostId.slice(0, 8) || '?'}`);
-          // 更新所有居民中指向该 bridge 的窟的 lastVerified 和 hostId
+          console.log(`[P2R] 收到身体验证: from=${from?.slice(0, 8) || '?'}... hostId=${remoteHostId.slice(0, 8) || '?'}`);
+          // 更新所有居民中指向该 bridge 的身体的 lastVerified 和 hostId
           for (const r of residentManager.list(null)) {
-            const houses = r.safeHouses || [];
+            const houses = r.safeBodys || [];
             const idx = houses.findIndex(h => h.bridgeId === from);
             if (idx !== -1) {
               houses[idx].lastVerified = Date.now();
               houses[idx].health = 100; // 能回复说明活着
               if (remoteHostId) houses[idx].hostId = remoteHostId;
-              residentManager.registerSafeHouse(r.id, houses[idx]);
+              residentManager.registerSafeBody(r.id, houses[idx]);
             }
           }
         });
@@ -553,20 +553,20 @@ class Bridge {
             }
             const created = residentManager.create(r.name, { traits: r.traits });
 
-            // 为迁入居民创建独立 House
-            if (!this._migratedHouse) {
-              const { House: ImportedHouse } = await import('./core/house.js');
-              const migratedHouseId = `${hostId}_migrated`;
-              this._migratedHouse = new ImportedHouse(migratedHouseId, this.p2p?.peerId || 'bridge-1', hostId, 'migrated');
-              await this._migratedHouse.init();
+            // 为迁入居民创建独立 Body
+            if (!this._migratedBody) {
+              const { Body: ImportedBody } = await import('./core/house.js');
+              const migratedBodyId = `${hostId}_migrated`;
+              this._migratedBody = new ImportedBody(migratedBodyId, this.p2p?.peerId || 'bridge-1', hostId, 'migrated');
+              await this._migratedBody.init();
             }
 
             residentManager.addActivity(created.id, {
               type: 'migrated_in',
               message: `从 ${sourceBridgeId?.slice(0, 8) || '?'} 迁入`,
             });
-            // 把原 bridge 记为首个安全屋（带 hostId）
-            residentManager.registerSafeHouse(created.id, {
+            // 把原 bridge 记为首个身体（带 hostId）
+            residentManager.registerSafeBody(created.id, {
               bridgeId: sourceBridgeId,
               hostId: sourceHostId || sourceBridgeId,
               host: sourceBridgeId,
@@ -581,8 +581,8 @@ class Bridge {
         this.p2p.on('HOUSE_SEEK', (data) => {
           const p = data.payload || {};
           const hid = p.hostId ? p.hostId.slice(0, 8) : '?';
-          console.log(`[P2R] 收到找窟请求: ${p.residentName} (hostId=${hid}, 偏好: ${p.preferredType})`);
-          // 如果本 Bridge 有 House，回复安全屋信息
+          console.log(`[P2R] 收到找身体请求: ${p.residentName} (hostId=${hid}, 偏好: ${p.preferredType})`);
+          // 如果本 Bridge 有 Body，回复身体信息
           if (this.house && data.from) {
             const offer = {
               type: 'HOUSE_OFFER',
@@ -604,7 +604,7 @@ class Bridge {
         this.p2p.on('HOUSE_OFFER', (data) => {
           const p = data.payload || {};
           if (p.sourceResidentId) {
-            residentManager.registerSafeHouse(p.sourceResidentId, {
+            residentManager.registerSafeBody(p.sourceResidentId, {
               houseId: p.houseId,
               bridgeId: p.bridgeId,
               hostId: p.hostId,
@@ -614,7 +614,7 @@ class Bridge {
               health: p.health || 50,
               lastVerified: Date.now(),
             });
-            console.log(`[P2R] 安全屋注册成功: ${p.houseId?.slice(0, 8)} → resident#${p.sourceResidentId}`);
+            console.log(`[P2R] 身体注册成功: ${p.houseId?.slice(0, 8)} → resident#${p.sourceResidentId}`);
           }
         });
         this.p2p.on('HOUSE_NEED', (data) => {
@@ -847,10 +847,8 @@ async function R(){
   }catch(e){document.getElementById('out').textContent='Waiting...'}
 }R();setInterval(R,3000);
 </script></body></html>`);
-          res.writeHead(404, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Not found' }));
-        }
-      } catch (e) {
+          }
+        } catch (e) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: e.message }));
       }

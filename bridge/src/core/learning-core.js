@@ -168,17 +168,20 @@ this.age = Math.max(this.solvedCount, this.age);
       byDomain[domain].push(p);
     });
     
-    const domains = Object.keys(byDomain);
+    // 只按领域轮换，排除已被知识系统覆盖的 math/logic
+    const domains = Object.keys(byDomain).filter(d => d !== 'math' && d !== 'logic');
     if (domains.length === 0) return null;
     
-    // 轮换：基于当前轮次选择不同领域
-    const round = this.solvedCount || 0;
+    // 轮换：专用计数器，不受已解决数量影响
+    const round = this._discoverRound = (this._discoverRound || 0) + 1;
     const selectedDomain = domains[round % domains.length];
     const candidates = byDomain[selectedDomain];
     
-    // 在该领域内，优先选难度低的
+    // 按难度分层，同难度内轮换
     candidates.sort((a, b) => (a.difficulty || 2) - (b.difficulty || 2));
-    return candidates[0];
+    const diff = candidates[0].difficulty || 2;
+    const sameDiff = candidates.filter(c => (c.difficulty || 2) === diff);
+    return sameDiff[round % sameDiff.length];
   }
 
   _isSolved(problem) {

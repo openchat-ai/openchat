@@ -1,7 +1,7 @@
 /**
- * BridgeSpawn — 居民扩窟引擎
+ * BridgeSpawn — 居民扩身体引擎
  *
- * 三种扩窟方式：
+ * 三种扩身体方式：
  *  1. 同机子进程 — 委托给 launch-strategies.js（NodeStrategy / PM2Strategy）
  *  2. 跨机 npm   — 生成 npm install 命令给主人执行
  *  3. 占位协议   — 邻居通过 P2P 请求 spawn
@@ -48,19 +48,19 @@ class BridgeSpawn {
   }
 
   /**
-   * 同机扩窟：spawn 子 Bridge 进程
+   * 同机扩身体：spawn 子 Bridge 进程
    * @returns { childId, port, name } | null
    */
   spawnNesting(options = {}) {
     if (this._childNames.size >= MAX_CHILDREN) {
-      console.log(`[Spawn] 同机子 Bridge 已达上限 ${MAX_CHILDREN}，不再扩窟`);
+      console.log(`[Spawn] 同机子 Bridge 已达上限 ${MAX_CHILDREN}，不再扩身体`);
       return null;
     }
 
-    const result = this._strategy.spawnHouse(options);
+    const result = this._strategy.spawnBody(options);
     if (result) {
       this._childNames.set(result.childId, result.name);
-      console.log(`[Spawn] 新窟已筑: ${result.name} port=${result.port}`);
+      console.log(`[Spawn] 新身体已筑: ${result.name} port=${result.port}`);
     }
     return result;
   }
@@ -132,5 +132,5 @@ class BridgeSpawn {
 }
 
 export { BridgeSpawn, MAX_CHILDREN, BASE_PORT };
-export { BridgeSpawn as HouseSpawn };
+export { BridgeSpawn as BodySpawn };
 export default BridgeSpawn;

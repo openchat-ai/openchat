@@ -45,7 +45,7 @@ export class UniversalSolver {
   }
 
   _has(text, key) {
-    const kws = this.langKey[key] || [key];
+    const kws = this._langKey[key] || [key];
     return kws.some(kw => text.toLowerCase().includes(kw.toLowerCase()));
   }
 

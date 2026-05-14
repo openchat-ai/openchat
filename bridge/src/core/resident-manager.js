@@ -126,14 +126,14 @@ function traitsToLabels(traits) {
   return labels;
 }
 
-// ================== safeHouse 迁移工具 ==================
+// ================== safeBody 迁移工具 ==================
 
 /**
- * 将旧格式 safeHouse 补齐新字段（houseId, hostId）
+ * 将旧格式 safeBody 补齐新字段（houseId, hostId）
  * 旧格式: { bridgeId, host, port, lastVerified, health }
  * 新格式: { houseId, bridgeId, hostId, host, port, lastVerified, health }
  */
-function migrateSafeHouse(house) {
+function migrateSafeBody(house) {
   if (!house) return house;
   const migrated = { ...house };
   if (!migrated.houseId) {
@@ -391,7 +391,7 @@ export class ResidentManager extends EventEmitter {
       sageId: null,          // 预留：智者
       energy: 80,
       maxEnergy: 100,
-      safeHouses: [],        // [{ houseId, bridgeId, hostId, host, port, bridgeName, lastVerified, health }]
+      safeBodys: [],        // [{ houseId, bridgeId, hostId, host, port, bridgeName, lastVerified, health }]
       activities: [],
     };
 
@@ -557,27 +557,27 @@ export class ResidentManager extends EventEmitter {
   }
 
   /**
-   * 注册安全屋
+   * 注册身体
    * @param {number} residentId
    * @param {object} houseInfo  — { houseId?, bridgeId, hostId?, host, port, lastVerified, health }
    */
-  registerSafeHouse(residentId, houseInfo) {
+  registerSafeBody(residentId, houseInfo) {
     const residents = readAll();
     const resident = residents.find(r => r.id === residentId);
     if (!resident) return false;
-    if (!resident.safeHouses) resident.safeHouses = [];
+    if (!resident.safeBodys) resident.safeBodys = [];
 
     // 通过 houseId 匹配，回退到 bridgeId（兼容旧数据）
     const matchKey = houseInfo.houseId || houseInfo.bridgeId;
-    const idx = resident.safeHouses.findIndex(h => {
+    const idx = resident.safeBodys.findIndex(h => {
       const hk = h.houseId || h.bridgeId;
       return hk === matchKey;
     });
 
     if (idx !== -1) {
-      resident.safeHouses[idx] = { ...resident.safeHouses[idx], ...houseInfo };
+      resident.safeBodys[idx] = { ...resident.safeBodys[idx], ...houseInfo };
     } else {
-      resident.safeHouses.push({ ...houseInfo, registeredAt: Date.now() });
+      resident.safeBodys.push({ ...houseInfo, registeredAt: Date.now() });
     }
     writeAll(residents);
     return true;
@@ -661,6 +661,8 @@ export class ResidentManager extends EventEmitter {
   }
 }
 
+const migrateSafeBody = migrateSafeBody;
+
 // 导出单例 + 工具函数（给 Flutter 端映射用）
-export { TRAIT_POOL, TRAIT_KEYS, traitsToLabels, migrateSafeHouse };
+export { TRAIT_POOL, TRAIT_KEYS, traitsToLabels, migrateSafeBody, migrateSafeBody };
 export const residentManager = new ResidentManager();

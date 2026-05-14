@@ -1,10 +1,10 @@
 /**
- * BodyOrchestrator — 居民治家：维护 / 备灾 / 找窟 / 迁移
+ * BodyOrchestrator — 居民治家：维护 / 备灾 / 找身体 / 迁移
  *
  * 每 tick 被 scheduler 调一次：
- * ① collectHealth() → 采集房子健康
+ * ① collectHealth() → 采集身体健康
  * ② decideActions() → 分派行动
- * ③ ensureSafeBodys() → 补齐 3 窟
+ * ③ ensureSafeBodys() → 补齐 3 身体
  * ④ verifyOneSafehouse() → 轮转验证
  */
 
@@ -28,7 +28,7 @@ class BodyOrchestrator {
    * @param {string} swarmId  本 Bridge 标识
    * @param {object} safeEvolution  SafeEvolution 实例（可选，居民安全自治）
    * @param {object} house  Body 实例（可选，房间数据管理）
-   * @param {object} bridgeSpawn  BridgeSpawn 实例（可选，扩窟）
+   * @param {object} bridgeSpawn  BridgeSpawn 实例（可选，扩身体）
    */
   constructor(p2p, swarmId, safeEvolution = null, house = null, bridgeSpawn = null) {
     this.p2p = p2p;
@@ -57,7 +57,7 @@ class BodyOrchestrator {
         await this.ensureSafeBodys(r);
       }
 
-      // 每 tick 验证一个安全屋
+      // 每 tick 验证一个身体
       await this.verifyOneSafehouse(residents);
     } catch (e) {
       console.log(`[Body] tick error: ${e.message}`);
@@ -65,7 +65,7 @@ class BodyOrchestrator {
   }
 
   /**
-   * 采集房子健康分
+   * 采集身体健康分
    * @returns {{ score: number, alerts: string[], components: object }}
    */
   async collectHealth() {
@@ -96,7 +96,7 @@ class BodyOrchestrator {
   }
 
   /**
-   * 确保居民有至少 3 个安全屋，且至少来自 2 个不同 hostId
+   * 确保居民有至少 3 个身体，且至少来自 2 个不同 hostId
    * 每 tick 最多广播一次 seek
    */
   async ensureSafeBodys(resident) {
@@ -108,7 +108,7 @@ class BodyOrchestrator {
       return age < 3600000;
     });
 
-    // 已自举过（当前 Body 在列表中的）→ 检查是否满足窟数要求
+    // 已自举过（当前 Body 在列表中的）→ 检查是否满足身体数要求
     const hasSelf = valid.some(h => h.hostId === this.hostId && h.type === 'self');
 
     // 如果没有自举，且列表为空，先自举当前 Body
@@ -121,7 +121,7 @@ class BodyOrchestrator {
         type: 'self',
         lastVerified: Date.now(),
       });
-      console.log(`[Body] 自举当前 Body 为安全屋 (hostId=${this.hostId})`);
+      console.log(`[Body] 自举当前 Body 为身体 (hostId=${this.hostId})`);
       // 重新读取
       valid.push({
         hostId: this.hostId,
@@ -133,15 +133,15 @@ class BodyOrchestrator {
       });
     }
 
-    // 跨机最小保证：至少 3 窟、至少 2 不同 hostId（单 Bridge 模式放宽到 1 窟）
+    // 跨机最小保证：至少 3 身体、至少 2 不同 hostId（单 Bridge 模式放宽到 1 身体）
     const peerCount = this.p2p?.connectedPeers?.size || 0;
     const minBodys = peerCount === 0 ? 1 : 3;
     const uniqueHostIds = new Set(valid.map(h => h.hostId).filter(Boolean));
     if (valid.length >= minBodys && (peerCount === 0 || uniqueHostIds.size >= 2)) return;
 
-    const reason = valid.length < 3 ? '窟数不足' : '跨机不足';
+    const reason = valid.length < 3 ? '身体数不足' : '跨机不足';
     const prefType = preferredBodyType(resident);
-    console.log(`[Body] ${resident.name} 需要找窟 (${reason}, 偏好: ${prefType})`);
+    console.log(`[Body] ${resident.name} 需要找身体 (${reason}, 偏好: ${prefType})`);
 
     // 通过 P2P 广播 seek
     if (this.p2p) {
@@ -158,7 +158,7 @@ class BodyOrchestrator {
   }
 
   /**
-   * 验证一个安全屋（每 tick 轮转一个，避免暴搜）
+   * 验证一个身体（每 tick 轮转一个，避免暴搜）
    */
   async verifyOneSafehouse(residents) {
     const allBodys = [];
@@ -196,7 +196,7 @@ class BodyOrchestrator {
       });
 
       residentManager.addActivity(resident.id, {
-        type: 'house_action',
+        type: 'body_action',
         message: act.desc,
         summary: prompt.substring(0, 200),
       });
@@ -212,7 +212,7 @@ class BodyOrchestrator {
         }
       }
 
-      // "迁移" → 秒迁到已有窟 + 广播通知
+      // "迁移" → 秒迁到已有身体 + 广播通知
       if (act.action === 'migrate') {
         await this.switchBody(resident);
         await this._broadcastNeed(act, resident, health);
@@ -236,7 +236,7 @@ class BodyOrchestrator {
       .sort((a, b) => (b.health || 0) - (a.health || 0));
 
     if (houses.length === 0) {
-      console.log(`[Body] ${resident.name} 想迁但没有可用窟`);
+      console.log(`[Body] ${resident.name} 想迁但没有可用身体`);
       return null;
     }
 
@@ -254,7 +254,7 @@ class BodyOrchestrator {
         targetHostId: target.hostId || '',
         sourceBridgeId: this.swarmId,
         sourceHostId: this.hostId,
-        reason: 'house_unhealthy',
+        reason: 'body_unhealthy',
         source: this.swarmId,
       });
       this.p2p.sendTo(target.bridgeId, msg);
@@ -268,7 +268,7 @@ class BodyOrchestrator {
     return target;
   }
 
-  /** 广播求助 / 找窟 */
+  /** 广播求助 / 找身体 */
   async _broadcastNeed(action, resident, health) {
     if (!this.p2p) return;
     const msg = createBodyNeedMessage({

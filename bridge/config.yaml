@@ -1,0 +1,20 @@
+llm:
+  url: ${LLM_URL}
+  key: ${LLM_KEY}
+  timeout: 5
+  retry_attempts: 3
+  
+fallback:
+  enable: true
+  cache_ttl: 3600
+  rules:
+    - pattern: "hello"
+      response: "Hello! How can I help you?"
+    - pattern: "error"
+      response: "Error handling via fallback"
+  
+core:
+  essential_features:
+    - query_processing
+    - error_handling
+    - basic_response_generation

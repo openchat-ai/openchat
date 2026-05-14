@@ -1,7 +1,7 @@
 /**
  * LaunchStrategies — 启动策略模式
  *
- * 统一 House（Bridge 实例）的启动/停止/管理接口：
+ * 统一 Body（Bridge 实例）的启动/停止/管理接口：
  *   - NodeStrategy:   直接 child_process.spawn
  *   - PM2Strategy:    通过 PM2 守护进程
  *   - DockerStrategy:  Docker 容器（预留桩）
@@ -95,11 +95,11 @@ class NodeStrategy extends LaunchStrategy {
   }
 
   /**
-   * 扩窟：启动子 House 进程（nesting 模式）
+   * 扩身体：启动子 Body 进程（nesting 模式）
    */
-  spawnHouse(options = {}) {
+  spawnBody(options = {}) {
     if (this._children.size >= this.maxChildren) {
-      console.log(`[NodeStrategy] 子 House 已达上限 ${this.maxChildren}`);
+      console.log(`[NodeStrategy] 子 Body 已达上限 ${this.maxChildren}`);
       return null;
     }
 
@@ -108,7 +108,7 @@ class NodeStrategy extends LaunchStrategy {
     // this._cleanupPort(port);
     this._nextPort++;
     const name = options.name || `house-${port}`;
-    const id = `house_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const id = `body_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
     const mainScript = path.resolve(this.cwd, this.script);
     const childArgs = [
@@ -137,7 +137,7 @@ class NodeStrategy extends LaunchStrategy {
     });
 
     this._children.set(id, { process: child, port, startTime: Date.now(), name });
-    console.log(`[NodeStrategy] 新窟已筑: ${name} pid=${child.pid} port=${port}`);
+    console.log(`[NodeStrategy] 新身体已筑: ${name} pid=${child.pid} port=${port}`);
     return { childId: id, port, name };
   }
 

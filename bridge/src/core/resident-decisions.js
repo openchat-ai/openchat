@@ -20,7 +20,7 @@ const DECISION_MATRIX = Object.freeze({
   normal: {
     diligence:  { min: 0.7, action: 'maintain',       pri: 2, desc: '学习知识' },
     creativity: { min: 0.7, action: 'innovate',        pri: 1, desc: '研究改进方案' },
-    sociability:{ min: 0.7, action: 'befriend',        pri: 1, desc: '结交邻居做窟' },
+    sociability:{ min: 0.7, action: 'befriend',        pri: 1, desc: '结交邻居做身体' },
     courage:    { min: 0.7, action: 'explore',         pri: 1, desc: '探索新房' },
   },
   warning: {
@@ -243,7 +243,7 @@ const ACTION_CATALOG = {
     tags: ['exploration', 'survival'],
     archetypeAffinity: { explorer: 2.0, cautious: 0.5, office_worker: 0.3 },
     healthAllowed: ['warning', 'danger'],
-    desc: '侦察安全屋',
+    desc: '侦察身体',
   },
   network_alert: {
     basePri: 4,
@@ -415,7 +415,7 @@ export function detectEvents(resident, healthScore, recentActivities) {
 
   // 2. 外部消息（P2P 活动）
   const externalActs = (recentActivities || []).filter(a =>
-    a.external || a.type === 'collab_request' || a.type === 'house_seek'
+    a.external || a.type === 'collab_request' || a.type === 'body_seek'
   );
   for (const act of externalActs.slice(-3)) {
     events.push({ type: 'external_message', severity: 'info', source: 'p2p', payload: act });
@@ -576,7 +576,7 @@ export function actionPrompt(resident, action, context = {}) {
   const prompts = {
     // 原有动作（语义更新）
     maintain:    `系统状态 ${hs} 分，一切正常。${archetypeLine}你决定巡视一圈，看看有什么需要维护的地方。`,
-    innovate:    `系统状态 ${hs} 分，挺不错的。${archetypeLine}你的大脑闲不住，想找个办法让房子变得更好。`,
+    innovate:    `系统状态 ${hs} 分，挺不错的。${archetypeLine}你的大脑闲不住，想找个办法让身体变得更好。`,
     befriend:    `系统状态 ${hs} 分，日子不错。${archetypeLine}你想和其他 Bridge 的居民聊聊，看谁家有空位。`,
     explore:     `系统状态 ${hs} 分，安稳但你不满足于此。${archetypeLine}你想探索一下外面的世界，找找新的落脚点。`,
     repair:      `系统状态只有 ${hs} 分，不太妙。${archetypeLine}你卷起袖子开始修——清理日志、释放磁盘、检查进程。`,
@@ -608,14 +608,14 @@ ${base} ${sourceNote}
 请以「📋 计划：」开头说说你打算怎么干，然后开始执行。`;
 }
 
-// ================== 窟类型偏好 ==================
+// ================== 身体类型偏好 ==================
 
 /**
- * 按性格偏好推荐窟类型
+ * 按性格偏好推荐身体类型
  * @param {object} resident
  * @returns {'neighbor'|'public'|'sub_bridge'}
  */
-export function preferredHouseType(resident) {
+export function preferredBodyType(resident) {
   const t = resident.traits || {};
 
   // 用 archetype 辅助判断
