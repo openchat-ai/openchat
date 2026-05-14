@@ -51,3 +51,10 @@ data/cache/
 
 # Claude worktrees
 .claude/worktrees/
+
+# Backup files
+*.orig
+data/safe-evo-backups/
+
+# Experience data (solved problems)
+.openchat/

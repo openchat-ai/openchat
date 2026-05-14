@@ -8,9 +8,11 @@ import 'package:openchat_flutter/core/api/feedback_client.dart';
 import 'package:openchat_flutter/core/api/decisions_client.dart';
 import 'package:openchat_flutter/core/api/updates_client.dart';
 import 'package:openchat_flutter/core/api/versions_client.dart';
+import 'package:openchat_flutter/core/api/resident_client.dart';
+import 'package:openchat_flutter/core/api/sage_client.dart';
 import 'config_provider.dart';
 
-// 各 Client 的 Provider（自动读取配置）
+// �?Client �?Provider（自动读取配置）
 final agentClientProvider = Provider<AgentClient>((ref) {
   final config = ref.watch(configProvider);
   return AgentClient(baseUrl: config.baseUrl, token: config.token);
@@ -54,4 +56,14 @@ final updatesClientProvider = Provider<UpdatesClient>((ref) {
 final versionsClientProvider = Provider<VersionsClient>((ref) {
   final config = ref.watch(configProvider);
   return VersionsClient(baseUrl: config.baseUrl, token: config.token);
+});
+
+final residentClientProvider = Provider<ResidentClient>((ref) {
+  final config = ref.watch(configProvider);
+  return ResidentClient(baseUrl: config.baseUrl, token: config.token);
+});
+
+final sageClientProvider = Provider<SageClient>((ref) {
+  final config = ref.watch(configProvider);
+  return SageClient(baseUrl: config.baseUrl, token: config.token);
 });

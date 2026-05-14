@@ -1,5 +1,7 @@
 # OPENCHAT TEST SPECIFICATIONS - FINAL ANALYSIS REPORT
 
+> **最后更新**: 2026-04-29
+
 ## Quick Reference
 
 **Total Test Types**: 7+  

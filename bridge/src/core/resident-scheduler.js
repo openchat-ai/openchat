@@ -191,10 +191,10 @@ class ResidentScheduler {
       }
     }
 
-    const residents = residentManager.list(null);
-    for (const resident of residents) {
-      if (resident.status === 'deleted') continue;
-      this._processResident(resident);
+const residents = residentManager.list(null);
+    // 单居民模式：每轮只处理一个居民
+    for (let i = 0; i < Math.min(1, residents.length); i++) {
+      this._processResident(residents[i]);
     }
 
     this._maybeCollaborate(residents);

@@ -13,6 +13,10 @@ import { SelfEvolution } from './self-evolution.js';
 import { ReasoningEngine } from './reasoning-engine.js';
 import { UniversalSolver } from './universal-solver.js';
 import { SymbolicReasoner } from './symbolic-reasoner.js';
+import { SemanticNN } from './semantic-nn.js';
+import { TeacherLLM } from './teacher-llm.js';
+import { InductiveReasoner } from './inductive-reasoner.js';
+import { TheoremDB } from './theorem-db.js';
 import { readdirSync, readFileSync, existsSync, writeFileSync, mkdirSync, statSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
@@ -61,6 +65,10 @@ this.history = {
     this.reasoning = new ReasoningEngine();
     this.universal = new UniversalSolver();
     this.symbolic = new SymbolicReasoner();
+    this.semanticNN = new SemanticNN(32);
+    this.teacher = new TeacherLLM();
+    this.theoremDB = new TheoremDB();
+    this.inductive = new InductiveReasoner(this.theoremDB);
 
     this._initDirs();
     this._loadProblemPool();
@@ -86,9 +94,10 @@ this.history = {
         try {
           const problems = JSON.parse(readFileSync(join(PROBLEM_POOL_DIR, file), 'utf8'));
           this.problemPool.push(...problems);
-        } catch {}
+        } catch (e) { console.log('[LC] Load fail '+file+':', e.message); }
       }
     }
+    console.log('[LC] Loaded pool:', this.problemPool.length, 'problems');
   }
 
 _loadStats() {
@@ -288,6 +297,13 @@ this.age = Math.max(this.solvedCount, this.age);
   }
 
   async _askAgent(problem, solver) {
+    // LLM 调用限流：每天最多 10 次
+    if (!this._apiCallCount) this._apiCallCount = 0;
+    if (!this._apiResetTime) this._apiResetTime = Date.now() + 86400000;
+    if (Date.now() > this._apiResetTime) { this._apiCallCount = 0; this._apiResetTime = Date.now() + 86400000; }
+    if (this._apiCallCount >= 10 && problem.domain !== 'research') return null;
+    this._apiCallCount++;
+
     const isResearch = problem.domain === 'research';
     
     const prompt = isResearch 
@@ -505,11 +521,34 @@ ${problem.context ? '背景：' + JSON.stringify(problem.context) : ''}
     this.solvedCount++;
     this.evolution.recordSolve(problem, answer, 0, true, 'agent', solver);
 
-    // 更新 IQ：加载时用基础公式，之后每解一题重新计算真实 IQ
     if (this.solvedCount <= 3) {
       this.iq = 100 + this.solvedCount * 2;
     } else {
       this.iq = this.evolution.computeRealIQ(this.solvedCount);
+    }
+
+    // TeacherLLM：LLM 解题后提炼规则
+    if (this.teacher && solver === 'Agent思考' && (problem.domain === 'math' || problem.domain === 'logic')) {
+      try {
+        const prompt = this.teacher.buildExtractPatternPrompt({ question: problem.question, domain: problem.domain, difficulty: problem.difficulty }, String(answer));
+        // TeacherLLM 会在下次会话集成时异步调用，先记日志
+        console.log(`[Teacher] 准备提炼规则: ${problem.id}`);
+      } catch {}
+    }
+
+    // SemanticNN 自监督训练
+    if (this.semanticNN && problem.question) {
+      try {
+        const pairs = SemanticNN.generateData(problem.question);
+        if (pairs.length) this.semanticNN.trainBatch(pairs);
+      } catch {}
+    }
+
+    // 每10题归纳推理
+    if (this.solvedCount % 10 === 0 && this.solvedCount > 0 && this.inductive) {
+      const solved = this.problemPool.filter(p => p.solved && p.answer);
+      const discovered = this.inductive.hypothesize(solved);
+      if (discovered.length) console.log(`[归纳] 发现 ${discovered.length} 条新定理`);
     }
     
     console.log(`[学习核心] ✅ 已解决: ${problem.id} → IQ: ${this.iq}`);

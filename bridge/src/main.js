@@ -421,16 +421,15 @@ class Bridge {
         // LLM 代理：接收子桥的 LLM 调用请求
         this.llmProxy = new LLMProxyAgent(this.p2p, { enabled: true });
         this.llmProxy.start();
-        console.log('[P2R] HouseOrchestrator + SafeEvolution + BridgeSpawn + LLMProxy 已启动');
+console.log('[P2R] HouseOrchestrator + SafeEvolution + BridgeSpawn + LLMProxy 已启动');
 
-        // P2R-K: 公共知识库 — 布尔求解 + 最优解法共享
-        try {
-          const { KnowledgeBase } = await import('./core/knowledge-base.js');
-          this.knowledgeBase = new KnowledgeBase(this.p2p);
-          await this.knowledgeBase.init();
-          console.log('[P2R-K] 公共知识库已启动');
-        } catch (e) {
-          console.log(`[P2R-K] 知识库启动失败: ${e.message}`);
+        // Fairy spawn：端口 3002-3007（在 try 块内，bridgeSpawn 可访问）
+        if (isMain) {
+          const fairyPorts = [3002, 3003, 3004, 3005, 3006, 3007];
+          for (const port of fairyPorts) {
+            const c = bridgeSpawn.spawnNesting({ name: `仙女${port}`, port });
+            if (c) console.log(`[P2R] 仙女${port} 已启动`);
+          }
         }
 
         // P2R-K: 收敛引擎 — 问题分解→竞标→求解→择优
@@ -459,10 +458,15 @@ class Bridge {
           console.log(`[P2R-K] 收敛引擎启动失败: ${e.message}`);
         }
 
-        // 启动学习核心（整合：自学习+调度+协作+收敛）
+        // 启动学习核心
         this.learningCore = new LearningCore(this.knowledgeBase, this.p2p, port, residentScheduler);
-        this._startLearningCore();
-        console.log(`[学习核心] 智商=${this.learningCore.iq} 年龄=${this.learningCore.age} 已解决=${this.learningCore.solvedCount}`);
+        if (isMain) {
+          this._startLearningCore();
+          console.log(`[学习核心] 🌟 主模式 IQ=${this.learningCore.iq} Age=${this.learningCore.age} Solved=${this.learningCore.solvedCount}`);
+        } else {
+          console.log(`[学习核心] 🧚 仙女模式`);
+          this._startFairyMonitor();
+        }
 
         // P2R-K: 响应邻居的问题求解请求
         this.p2p.on(P2PMessageType.PROBLEM_SOLVE, async (data) => {
@@ -624,6 +628,14 @@ class Bridge {
           const p = data.payload || {};
           console.log(`[P2R-S] 变更应用: ${p.file} by ${p.appliedBy?.slice(0, 8)}`);
         });
+        // 分布式 Fairy Gossip
+        this.p2p.on('fairy_gossip', (data) => {
+          const p = data.payload || {};
+          if (this.learningCore?.reasoning) {
+            this.learningCore.reasoning.experienceCount = (this.learningCore.reasoning.experienceCount || 0) + 1;
+            console.log(`[Gossip] 收到 ${p.port} 解题经验: ${p.problemId}`);
+          }
+        });
       }
     } catch (e) {
       console.log(`[启动] API/P2R 初始化失败: ${e.message}`);
@@ -757,19 +769,45 @@ class Bridge {
         } else if (pathname === '/api/dashboard' && req.method === 'GET') {
           res.writeHead(200, { 'Content-Type': 'application/json' });
           const lc = this.learningCore;
-          const evo = lc?.evolution?.getSummary?.() || {};
-          const rea = lc?.reasoning?.getStats?.() || {};
-          const data = lc ? {
-            iq: lc.iq || 0, age: lc.age || 0,
-            solved: lc.solvedCount || 0,
-            poolSize: lc.problemPool?.length || 0,
-            pending: lc.problemPool?.filter(p => !p.solved).length || 0,
-            strategies: evo.strategies || 0,
-            accuracy: evo.accuracy || '0%',
-            independence: rea.independence || '0%',
-            selfSolves: rea.selfSolves || 0,
-            llmCalls: rea.llmCalls || 0
-          } : { iq:0, age:0, solved:0, poolSize:0, pending:0 };
+          let pool=0, s=0, p=0, iq=0, age=0;
+          if (lc) {
+            try {
+              pool = lc.problemPool?.length || 0;
+              s = lc.solvedCount || 0;
+              p = pool - s;
+              iq = lc.iq || 0;
+              age = lc.age || 0;
+            } catch (e) { console.log('[Dash] load fail:', e.message); }
+          }
+          // 后备：直接从文件读取问题池和经验
+          if (pool === 0) {
+            try {
+              const { homedir } = await import('os');
+              const { join } = await import('path');
+              const { readFileSync, readdirSync, existsSync } = await import('fs');
+              const poolDir = join(homedir(), '.openchat', 'problem-pool');
+              if (existsSync(poolDir)) {
+                const files = readdirSync(poolDir).filter(f => f.endsWith('.json'));
+                for (const f of files) {
+                  const p = JSON.parse(readFileSync(join(poolDir, f), 'utf8'));
+                  pool += Array.isArray(p) ? p.length : 1;
+                }
+              }
+              const expDir = join(homedir(), '.openchat', 'experience');
+              if (existsSync(expDir)) {
+                s = readdirSync(expDir).filter(f => f.endsWith('.json')).length;
+              }
+            } catch (e) {}
+          }
+          iq = iq || 100;
+          let fairies = { 3002:0,3003:0,3004:0,3005:0,3006:0,3007:0 };
+          for (const port of [3002,3003,3004,3005,3006,3007]) {
+            try { 
+              const r = await fetch(`http://localhost:${port}/api/status`, { signal: AbortSignal.timeout(1000) });
+              fairies[port] = r.ok ? 1 : 0;
+            } catch { fairies[port] = 0; }
+          }
+          const data = { iq: iq || 100, age: age || pool, solved: s, poolSize: pool, pending: Math.max(0, pool - s), fairies };
           res.end(JSON.stringify(data));
         } else if (pathname === '/' && req.method === 'GET') {
           res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
@@ -780,10 +818,9 @@ class Bridge {
 <script>
 async function R(){
   try{const d=await(await fetch('/api/dashboard')).json();
-  document.getElementById('out').innerHTML=
-    'IQ: <b style=color:#7c8aff>'+d.iq+'</b>  Age: <b style=color:#ffa502>'+d.age+'</b>  Solved: <b style=color:#2ed573>'+d.solved+'</b>  Pool: <b style=color:#4fc3f7>'+d.poolSize+'</b> (Pending: '+d.pending+')'+
-    '\\nSelf-solves: <b style=color:#7c8aff>'+(d.selfSolves||0)+'</b>  LLM calls: <b style=color:#ff4757>'+(d.llmCalls||0)+'</b>  Independence: <b style=color:#ce93d8>'+(d.independence||'0%')+'</b>'+
-    '\\nStrategies: <b style=color:#81c784>'+(d.strategies||0)+'</b>  Accuracy: <b style=color:#2ed573>'+(d.accuracy||'0%')+'</b>';
+  let h='IQ: <b style=color:#7c8aff>'+d.iq+'</b>  Age: <b style=color:#ffa502>'+d.age+'</b>  Solved: <b style=color:#2ed573>'+d.solved+'</b>  Pool: <b style=color:#4fc3f7>'+d.poolSize+'</b> (Pending: '+d.pending+')';
+  if(d.fairies){h+='\\n\\nSeven Fairies:\\n';for(const[p,s]of Object.entries(d.fairies))h+=p+': '+(s?'<b class=on>ON</b>':'<b class=off>OFF</b>')+' ';}
+  document.getElementById('out').innerHTML=h;
   }catch(e){document.getElementById('out').textContent='Waiting...'}
 }R();setInterval(R,3000);
 </script></body></html>`);
@@ -1563,6 +1600,21 @@ async function R(){
 
     runCycle();
     this._learningTimer = setInterval(runCycle, 60000);
+  }
+
+  _startFairyMonitor() {
+    let downCount = 0;
+    this._fairyMonTimer = setInterval(async () => {
+      try {
+        const resp = await fetch('http://localhost:3800/api/status', { signal: AbortSignal.timeout(3000) });
+        if (resp.ok) { downCount = 0; return; }
+      } catch { downCount++; }
+      if (downCount >= 3) {
+        console.log('[FairyMonitor] 🔼 主 Bridge 失联，升级为主模式');
+        this._startLearningCore();
+        clearInterval(this._fairyMonTimer);
+      }
+    }, 15000);
   }
 
   async shutdown() {

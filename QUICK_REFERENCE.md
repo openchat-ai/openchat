@@ -1,5 +1,7 @@
 # OpenChat Test Framework - Quick Reference
 
+> **最后更新**: 2026-04-29
+
 ## 7 Test Types at a Glance
 
 ```

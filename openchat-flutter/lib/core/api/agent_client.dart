@@ -12,6 +12,7 @@ class AgentClient extends BaseClient {
     String? name,
     String? task,
     List<String>? capabilities,
+    int? residentId,
   }) async {
     final response = await dio.post(
       '$baseUrl/api/v1/agents',
@@ -20,15 +21,19 @@ class AgentClient extends BaseClient {
         'name': name,
         'task': task,
         'capabilities': capabilities,
+        if (residentId != null) 'residentId': residentId,
       },
     );
     return Agent.fromJson(response.data);
   }
 
-  Future<List<Agent>> getAgents({String? status}) async {
+  Future<List<Agent>> getAgents({String? status, int? residentId}) async {
+    final params = <String, dynamic>{};
+    if (status != null) params['status'] = status;
+    if (residentId != null) params['residentId'] = residentId;
     final response = await dio.get(
       '$baseUrl/api/v1/agents',
-      queryParameters: status != null ? {'status': status} : null,
+      queryParameters: params.isNotEmpty ? params : null,
     );
     final List<dynamic> data = response.data['agents'];
     return data.map((json) => Agent.fromJson(json)).toList();

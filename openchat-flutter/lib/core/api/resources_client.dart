@@ -96,9 +96,11 @@ class SystemStatus {
 }
 
 class ResourcePolicy {
-  final String compression, networkMode;
+  final String compression;
+  final String networkMode;
   final bool cacheEnabled;
   final int maxStorageMB;
+  final bool cleanupEnabled;
 
   ResourcePolicy({required this.compression, required this.cacheEnabled, required this.networkMode, required this.maxStorageMB, required this.cleanupEnabled});
 
@@ -125,7 +127,8 @@ class PolicyResult {
 }
 
 class CleanupResult {
-  final String startedAt,? completedAt;
+  final String? startedAt;
+  final String? completedAt;
   final Map<String, CleanupTarget> targets;
   final int totalFreedMB;
 

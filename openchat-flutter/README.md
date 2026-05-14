@@ -1,5 +1,7 @@
 # OpenChat Flutter (Agent Console) 开发文档
 
+> **最后更新**: 2026-04-29
+
 ## 1. 项目概览
 `openchat-flutter` 是一个全新的客户端，旨在将 OpenChat 从一个简单的聊天 App 升级为 **Multi-Agent 协作控制台**。它直接对接 `bridge` 的 `/api/v1` 架构，专注于 Agent 的生命周期管理和任务流展示。
 

@@ -68,22 +68,18 @@ class DeviceCapabilityDetector {
   String? _cachedDeviceId;
   String? _cachedDeviceName;
 
-  /// 检测设备算力
-  Future<DeviceCapability> detectCapability() async {
+  /// 检测设备算�?  Future<DeviceCapability> detectCapability() async {
     // 获取设备信息
     final deviceInfo = await _getDeviceInfo();
 
-    // 获取电池状态
-    final batteryInfo = await _getBatteryInfo();
+    // 获取电池状�?    final batteryInfo = await _getBatteryInfo();
 
-    // 获取网络状态
-    final networkInfo = await _getNetworkInfo();
+    // 获取网络状�?    final networkInfo = await _getNetworkInfo();
 
     // 获取硬件算力评估
     final hardwareInfo = _evaluateHardware(deviceInfo);
 
-    // 确定电量状态
-    final powerStatus = _determinePowerStatus(
+    // 确定电量状�?    final powerStatus = _determinePowerStatus(
       batteryInfo['level'],
       batteryInfo['isCharging'],
     );
@@ -165,8 +161,7 @@ class DeviceCapabilityDetector {
   /// 评估硬件算力
   Map<String, dynamic> _evaluateHardware(Map<String, dynamic> deviceInfo) {
     // 基于设备型号估算算力
-    // 实际应该用更精确的方法
-
+    // 实际应该用更精确的方�?
     final name = (deviceInfo['deviceName'] ?? '').toLowerCase();
 
     // 估算 NPU TOPS (基于常见手机芯片)
@@ -204,8 +199,7 @@ class DeviceCapabilityDetector {
         memoryGB = 6;
       }
     } else {
-      // Android 差异较大，保守估计
-      memoryGB = 8;
+      // Android 差异较大，保守估�?      memoryGB = 8;
     }
 
     return {
@@ -216,8 +210,7 @@ class DeviceCapabilityDetector {
     };
   }
 
-  /// 确定电量状态
-  String _determinePowerStatus(int batteryLevel, bool isCharging) {
+  /// 确定电量状�?  String _determinePowerStatus(int batteryLevel, bool isCharging) {
     if (isCharging) {
       return 'charging';
     } else if (batteryLevel > 50) {

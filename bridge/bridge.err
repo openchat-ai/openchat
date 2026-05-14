@@ -1,0 +1,8 @@
+[P2P] 直连错误 (localhost:3002): 
+[P2P] 直连错误 (localhost:3102): 
+[P2P] 直连错误 (localhost:3202): 
+[P2P] 直连错误 (localhost:3302): 
+[P2P] 直连错误 (localhost:3402): 
+[P2P] 直连错误 (localhost:3502): 
+(node:27980) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)

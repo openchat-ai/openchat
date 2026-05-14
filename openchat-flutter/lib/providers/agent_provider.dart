@@ -1,12 +1,11 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:openchat_flutter/core/api/agent_client.dart';
 import 'package:openchat_flutter/core/models/agent_model.dart';
 import 'client_providers.dart';
-import 'dart:async';
 
-/// Agent 状态管理提供者
-/// 管理当前活跃的 Agents 列表及其状态同步
-class AgentNotifier extends StateNotifier<AsyncValue<List<Agent>>> {
+/// Agent 状态管理提供�?/// 管理当前活跃�?Agents 列表及其状态同�?class AgentNotifier extends StateNotifier<AsyncValue<List<Agent>>> {
   final AgentClient _client;
   Timer? _pollTimer;
 
@@ -14,7 +13,7 @@ class AgentNotifier extends StateNotifier<AsyncValue<List<Agent>>> {
     refreshAgents();
   }
 
-  /// 刷新所有 Agent 列表
+  /// 刷新所�?Agent 列表
   Future<void> refreshAgents() async {
     state = const AsyncValue.loading();
     try {
@@ -25,8 +24,7 @@ class AgentNotifier extends StateNotifier<AsyncValue<List<Agent>>> {
     }
   }
 
-  /// 创建一个新的 Agent 并开始追踪其状态
-  Future<void> spawnAgent({
+  /// 创建一个新�?Agent 并开始追踪其状�?  Future<void> spawnAgent({
     required String role,
     String? name,
     String? task,
@@ -56,8 +54,7 @@ class AgentNotifier extends StateNotifier<AsyncValue<List<Agent>>> {
     }
   }
 
-  /// 状态追踪轮询机制
-  void _startPolling(String agentId) {
+  /// 状态追踪轮询机�?  void _startPolling(String agentId) {
     _pollTimer?.cancel();
     _pollTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
       try {
@@ -69,7 +66,7 @@ class AgentNotifier extends StateNotifier<AsyncValue<List<Agent>>> {
           timer.cancel();
         }
 
-        // 更新状态列表中对应的 Agent
+        // 更新状态列表中对应�?Agent
         final currentAgents = state.value ?? [];
         final updatedList = currentAgents.map((a) => a.id == agentId ? updatedAgent : a).toList();
         state = AsyncValue.data(updatedList);

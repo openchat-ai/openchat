@@ -1,5 +1,6 @@
-import 'package:json_annotation/json_annotation.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
+part 'agent_model.freezed.dart';
 part 'agent_model.g.dart';
 
 enum AgentStatus {
@@ -45,7 +46,7 @@ class AgentFeedback with _$AgentFeedback {
 @freezed
 class Finding with _$Finding {
   const factory Finding({
-    required String type, // CRITICAL, HIGH, MEDIUM, LOW
+    required String type,
     required String description,
     required String location,
     required String remediation,

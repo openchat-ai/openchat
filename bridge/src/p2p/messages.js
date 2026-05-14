@@ -53,6 +53,10 @@ const MessageType = {
   // P2R-K: 收敛引擎 — 问题求解
   PROBLEM_SOLVE:        'problem_solve',         // 提交问题给邻居求解
   PROBLEM_RESULT:       'problem_result',        // 返回求解结果
+
+  // P2R-D: Fairy 分布式大脑
+  FAIRY_GOSSIP:         'fairy_gossip',          // Fairy 广播最近求解经验（策略+答案+耗时）
+  FAIRY_CONSENSUS:      'fairy_consensus',       // 多个 Fairy 对同一问题投票共识
 };
 
 // 消息类型验证

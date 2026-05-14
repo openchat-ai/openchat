@@ -1,5 +1,7 @@
 # OpenChat Test Specifications - Reverse Engineering Analysis
 
+> **æœ€åæ›´æ–°**: 2026-04-29
+
 **Analysis Date**: 2026-04-23  
 **Codebase**: OpenChat Bridge/Core Module
 
@@ -74,7 +76,7 @@ Configuration:
 Location: bridge/src/core/strategy-optimizer.js
 
 Algorithms:
-1. E-Greedy (default) - 10% exploration, ¡À5% adjustments
+1. E-Greedy (default) - 10% exploration, ï¿½ï¿½5% adjustments
 2. UCB - Upper Confidence Bound
 3. Thompson Sampling - Bayesian
 4. Gradient Ascent - Reward-based
@@ -204,24 +206,24 @@ Reputation Score: 0.0-1.0 (credibility)
 ## 8. TEST FILE LOCATIONS
 
 bridge/src/core/
-©À©¤©¤ __tests__/
-©¦   ©À©¤©¤ advanced-integration.test.js
-©¦   ©À©¤©¤ agent-session.test.js
-©¦   ©À©¤©¤ cli-integration.test.js
-©¦   ©À©¤©¤ evolution-integration.test.js
-©¦   ©À©¤©¤ evolution-system.test.js
-©¦   ©¸©¤©¤ phase34-integration.test.js
-©À©¤©¤ adversarial-test.js
-©À©¤©¤ multi-model-tester.js
-©À©¤©¤ quality-check-system.js
-©À©¤©¤ experience-accumulator.js
-©À©¤©¤ strategy-optimizer.js
-©À©¤©¤ knowledge-network.js
-©À©¤©¤ result-aggregator.js
-©À©¤©¤ test-orchestrator.js
-©À©¤©¤ auto-restart-manager.js
-©À©¤©¤ auto-rollback-manager.js
-©¸©¤©¤ evolution-system.js (integration)
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ __tests__/
+ï¿½ï¿½   ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ advanced-integration.test.js
+ï¿½ï¿½   ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ agent-session.test.js
+ï¿½ï¿½   ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ cli-integration.test.js
+ï¿½ï¿½   ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ evolution-integration.test.js
+ï¿½ï¿½   ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ evolution-system.test.js
+ï¿½ï¿½   ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ phase34-integration.test.js
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ adversarial-test.js
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ multi-model-tester.js
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ quality-check-system.js
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ experience-accumulator.js
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ strategy-optimizer.js
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ knowledge-network.js
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ result-aggregator.js
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ test-orchestrator.js
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ auto-restart-manager.js
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ auto-rollback-manager.js
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ evolution-system.js (integration)
 
 ---
 

@@ -59,7 +59,7 @@ class AgentTaskCard extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: color, width: 1),
       ),
@@ -81,7 +81,6 @@ class AgentTaskCard extends ConsumerWidget {
   }
 
   void _navigateToDetail(BuildContext context, String agentId) {
-    // 这里的路由将在 screens 中定义
-    Navigator.pushNamed(context, '/agent-detail', arguments: agentId);
+    // 这里的路由将�?screens 中定�?    Navigator.pushNamed(context, '/agent-detail', arguments: agentId);
   }
 }

@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'base_client.dart';
+import '../audio/audio_processor.dart';
 
-/// 语音房间信息
 class VoiceRoom {
   final String id;
   final String name;
@@ -29,7 +31,6 @@ class VoiceRoom {
   }
 }
 
-/// 参与者信息
 class Participant {
   final String id;
   final String agentId;
@@ -62,56 +63,81 @@ class Participant {
   }
 }
 
-/// 语音客户端 - AI Agent 实时语音通信
 class VoiceClient extends BaseClient {
   RTCPeerConnection? _peerConnection;
   RTCDataChannel? _dataChannel;
   MediaStream? _localStream;
+  AudioProcessor? _audioProcessor;
 
   final _audioTracksController = StreamController<Map<String, bool>>.broadcast();
   final _transcriptsController = StreamController<String>.broadcast();
   final _speakingController = StreamController<bool>.broadcast();
+  final _audioLevelController = StreamController<double>.broadcast();
 
   String? _currentRoomId;
   String? _participantId;
   List<Participant> _participants = [];
 
-  VoiceClient(super.baseUrl);
+  VoiceClient({required super.baseUrl, super.token});
 
-  /// 获取音频轨道流
   Stream<Map<String, bool>> get audioTracks => _audioTracksController.stream;
-
-  /// 获取文字转录流
   Stream<String> get transcripts => _transcriptsController.stream;
-
-  /// 获取说话状态流
   Stream<bool> get speakingEvents => _speakingController.stream;
-
-  /// 获取参与者列表
+  Stream<double> get audioLevel => _audioLevelController.stream;
   List<Participant> get participants => _participants;
 
-  /// 创建语音房间
-  Future<VoiceRoom> createRoom({String? name, int maxParticipants = 10}) async {
-    final response = await post(
-      '/api/v1/voice/rooms',
-      body: {
+  /// 初始化音频处理器
+  Future<void> initializeAudio({
+    bool enableDenoise = true,
+    bool enableCodec = true,
+    int sampleRate = 24000,
+  }) async {
+    _audioProcessor = AudioProcessor(
+      sampleRate: sampleRate,
+      enableDenoise: enableDenoise,
+      enableCodec: enableCodec,
+    );
+    await _audioProcessor!.initialize();
+
+    // 监听音频事件
+    _audioProcessor!.speakingEvents.listen((speaking) {
+      _speakingController.add(speaking);
+    });
+
+    _audioProcessor!.audioLevel.listen((level) {
+      _audioLevelController.add(level);
+    });
+  }
+
+  /// 设置音频模式
+  void setAudioMode(AudioMode mode) {
+    _audioProcessor?.setMode(mode);
+  }
+
+  /// 获取音频统计
+  Map<String, dynamic>? getAudioStats() {
+    return _audioProcessor?.getStats();
+  }
+
+  Future<VoiceRoom> createRoom({String? name, int maxParticipants = 10, String mode = 'conference'}) async {
+    final response = await dio.post(
+      '$baseUrl/api/v1/voice/rooms',
+      data: {
         'name': name ?? 'AI Discussion',
         'maxParticipants': maxParticipants,
-        'mode': 'conference',
+        'mode': mode,
       },
     );
     return VoiceRoom.fromJson(response.data);
   }
 
-  /// 获取房间列表
   Future<List<VoiceRoom>> listRooms() async {
-    final response = await get('/api/v1/voice/rooms');
+    final response = await dio.get('$baseUrl/api/v1/voice/rooms');
     return (response.data['rooms'] as List)
         .map((e) => VoiceRoom.fromJson(e))
         .toList();
   }
 
-  /// 加入房间
   Future<void> joinRoom(String roomId, {
     required String agentId,
     required String agentType,
@@ -120,10 +146,9 @@ class VoiceClient extends BaseClient {
   }) async {
     _currentRoomId = roomId;
 
-    // 获取 ICE 服务器配置
-    final iceResponse = await post(
-      '/api/v1/voice/rooms/$roomId/join',
-      body: {
+    final iceResponse = await dio.post(
+      '$baseUrl/api/v1/voice/rooms/$roomId/join',
+      data: {
         'agentId': agentId,
         'agentType': agentType,
         'sttEnabled': sttEnabled,
@@ -134,19 +159,25 @@ class VoiceClient extends BaseClient {
     final data = iceResponse.data;
     _participantId = data['participant']['id'];
 
-    // 初始化 WebRTC
     await _initWebRTC(data['iceServers']);
 
-    // 获取本地音频
-    _localStream = await navigator.mediaDevices({'audio': true});
-    _localStream!.audioTracks.forEach((track) {
-      _peerConnection!.addTrack(track, _localStream!);
-    });
+    _localStream = await navigator.mediaDevices.getUserMedia({'audio': true});
 
-    // 创建数据通道
-    _dataChannel = await _peerConnection!.createDataChannel('voice');
+    // 设置音频处理器进行降噪和编码
+    if (_audioProcessor != null) {
+      // 处理本地音频轨道
+      for (final track in _localStream!.getAudioTracks()) {
+        // 可以在这里添加音频处理器
+        _peerConnection!.addTrack(track, _localStream!);
+      }
+    } else {
+      for (final track in _localStream!.getAudioTracks()) {
+        _peerConnection!.addTrack(track, _localStream!);
+      }
+    }
 
-    // 设置 ICE 候选人
+    _dataChannel = await _peerConnection!.createDataChannel('voice', RTCDataChannelInit()..ordered = true);
+
     _peerConnection!.onIceCandidate = (candidate) {
       _sendSignal({
         'type': 'ice-candidate',
@@ -154,28 +185,56 @@ class VoiceClient extends BaseClient {
       });
     };
 
-    // 监听远程轨道
-    _peerConnection!.onTrack = (event) {
+    _peerConnection!.onTrack = (event) async {
       if (event.track.kind == 'audio') {
-        // 播放远程音频
-        event.streams[0].getAudioTracks().forEach((track) {
-          // 播放音频
-        });
+        // 接收到的音频�?WebRTC 自动播放
+        // 如需处理（解码），可以通过 DataChannel 接收
       }
     };
 
-    // 创建 Offer
+    // 处理 DataChannel 消息（接收音频数据）
+    _peerConnection!.onDataChannel = (channel) {
+      _setupDataChannel(channel);
+    };
+
     final offer = await _peerConnection!.createOffer();
     await _peerConnection!.setLocalDescription(offer);
 
-    // 发送 Offer 到服务器
     await _sendSignal({
       'type': 'offer',
       'data': offer.toMap(),
     });
   }
 
-  /// 初始化 WebRTC
+  /// 发送处理后的音�?(通过 Neural Codec 编码)
+  Future<void> sendProcessedAudio(Uint8List pcmData) async {
+    if (_audioProcessor == null || _dataChannel == null) return;
+
+    final processed = await _audioProcessor!.processMicrophoneInput(pcmData);
+    if (processed != null && _dataChannel!.state == RTCDataChannelState.RTCDataChannelOpen) {
+      final message = {
+        'type': 'audio',
+        'data': base64Encode(processed),
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+      };
+      await _dataChannel!.send(RTCDataChannelMessage(jsonEncode(message)));
+    }
+  }
+
+  /// 处理接收到的音频数据 (通过 Neural Codec 解码)
+  Future<void> _handleReceivedAudioData(String base64Data) async {
+    if (_audioProcessor == null) return;
+
+    try {
+      final encodedData = base64Decode(base64Data);
+      final decoded = await _audioProcessor!.processReceivedAudio(Uint8List.fromList(encodedData));
+      // 解码后的音频可以播放或进一步处�?      if (decoded != null) {
+        // 可以通过 WebRTC �?AudioPlayer 播放
+      }
+    } catch (e) {
+      // 解码失败，忽�?    }
+  }
+
   Future<void> _initWebRTC(List<dynamic> iceServers) async {
     final config = {
       'iceServers': iceServers.map((s) => {
@@ -184,9 +243,8 @@ class VoiceClient extends BaseClient {
       }).toList(),
     };
 
-    _peerConnection = await createPeerConnection(config);
+    _peerConnection = await createPeerConnection(config as Map<String, dynamic>);
 
-    // 监听连接状态
     _peerConnection!.onConnectionState = (state) {
       if (state == RTCPeerConnectionState.RTCPeerConnectionStateConnected) {
         _speakingController.add(true);
@@ -195,41 +253,44 @@ class VoiceClient extends BaseClient {
       }
     };
 
-    // 监听数据通道
-    _peerConnection!.ondatachannel = (channel) {
+    _peerConnection!.onDataChannel = (channel) {
       _setupDataChannel(channel);
     };
   }
 
-  /// 设置数据通道
   void _setupDataChannel(RTCDataChannel channel) {
+    _dataChannel = channel;
+
     channel.onMessage = (message) {
-      final data = message.data;
-      if (data['type'] == 'transcript') {
-        _transcriptsController.add(data['text']);
-      } else if (data['type'] == 'speaking') {
-        _audioTracksController.add(data['participants']);
-      }
+      try {
+        final data = jsonDecode(message.text) as Map<String, dynamic>;
+        if (data['type'] == 'transcript') {
+          _transcriptsController.add(data['text'] as String);
+        } else if (data['type'] == 'speaking') {
+          _audioTracksController.add(Map<String, bool>.from(data['participants'] as Map));
+        } else if (data['type'] == 'audio') {
+          // 处理接收到的音频数据
+          _handleReceivedAudioData(data['data'] as String);
+        }
+      } catch (_) {}
     };
   }
 
-  /// 发送信令消息
   Future<void> _sendSignal(Map<String, dynamic> signal) async {
     if (_currentRoomId == null || _participantId == null) return;
 
-    await post(
-      '/api/v1/voice/rooms/$_currentRoomId/signal',
-      body: {
+    await dio.post(
+      '$baseUrl/api/v1/voice/rooms/$_currentRoomId/signal',
+      data: {
         'participantId': _participantId,
         'signal': signal,
       },
     );
   }
 
-  /// 离开房间
   Future<void> leaveRoom() async {
     if (_participantId != null && _currentRoomId != null) {
-      await post('/api/v1/voice/rooms/$_currentRoomId/leave', body: {
+      await dio.post('$baseUrl/api/v1/voice/rooms/$_currentRoomId/leave', data: {
         'participantId': _participantId,
       });
     }
@@ -237,7 +298,6 @@ class VoiceClient extends BaseClient {
     await _cleanup();
   }
 
-  /// 清理资源
   Future<void> _cleanup() async {
     _localStream?.dispose();
     await _dataChannel?.close();
@@ -251,37 +311,35 @@ class VoiceClient extends BaseClient {
     _participants = [];
   }
 
-  /// 发送文字转语音请求
   Future<void> sendTextToSpeech(String text) async {
     if (_dataChannel == null) return;
-
-    await _dataChannel!.send(RTCDataChannelMessage('{"type":"tts","text":"$text"}'));
+    final msg = jsonEncode({'type': 'tts', 'text': text});
+    await _dataChannel!.send(RTCDataChannelMessage(msg));
   }
 
-  /// 切换到文字模式
   Future<void> toggleTextMode(bool enabled) async {
     if (_participantId == null || _currentRoomId == null) return;
 
-    await post(
-      '/api/v1/voice/rooms/$_currentRoomId/mode',
-      body: {
+    await dio.post(
+      '$baseUrl/api/v1/voice/rooms/$_currentRoomId/mode',
+      data: {
         'participantId': _participantId,
         'mode': enabled ? 'text' : 'voice',
       },
     );
   }
 
-  /// 获取房间信息
   Future<VoiceRoom> getRoom(String roomId) async {
-    final response = await get('/api/v1/voice/rooms/$roomId');
+    final response = await dio.get('$baseUrl/api/v1/voice/rooms/$roomId');
     return VoiceRoom.fromJson(response.data);
   }
 
-  /// 释放资源
   void dispose() {
     _cleanup();
+    _audioProcessor?.dispose();
     _audioTracksController.close();
     _transcriptsController.close();
     _speakingController.close();
+    _audioLevelController.close();
   }
 }

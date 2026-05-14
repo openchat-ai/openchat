@@ -45,7 +45,7 @@ class NodeStrategy extends LaunchStrategy {
     this._process = null;
     this._children = new Map();
     this._nextPort = options.basePort || 3002;
-    this.maxChildren = options.maxChildren || 3;
+    this.maxChildren = options.maxChildren || 6;
   }
 
   /**

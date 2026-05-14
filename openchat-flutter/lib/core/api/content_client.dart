@@ -1,9 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
-import 'package:http/http.dart' as http;
 import 'base_client.dart';
 
-/// 内容类型枚举
 enum ContentType {
   code,
   file,
@@ -14,7 +12,6 @@ enum ContentType {
   json,
 }
 
-/// 内容项
 class ContentItem {
   final String id;
   final ContentType type;
@@ -56,20 +53,18 @@ class ContentItem {
   }
 }
 
-/// 内容管理客户端
 class ContentClient extends BaseClient {
-  ContentClient(super.baseUrl);
+  ContentClient({required super.baseUrl, super.token});
 
-  /// 存储内容
   Future<ContentItem> storeContent({
     required ContentType type,
     String? text,
     Uint8List? data,
     Map<String, dynamic>? metadata,
   }) async {
-    final response = await post(
-      '/api/v1/contents',
-      body: jsonEncode({
+    final response = await dio.post(
+      '$baseUrl/api/v1/contents',
+      data: jsonEncode({
         'type': type.name,
         'text': text,
         'data': data != null ? base64Encode(data) : null,
@@ -80,25 +75,21 @@ class ContentClient extends BaseClient {
     return ContentItem.fromJson(response.data);
   }
 
-  /// 获取内容
   Future<ContentItem> getContent(String contentId) async {
-    final response = await get('/api/v1/contents/$contentId');
+    final response = await dio.get('$baseUrl/api/v1/contents/$contentId');
     return ContentItem.fromJson(response.data);
   }
 
-  /// 获取内容元数据
   Future<ContentItem> getContentMeta(String contentId) async {
-    final response = await get('/api/v1/contents/$contentId/meta');
+    final response = await dio.get('$baseUrl/api/v1/contents/$contentId/meta');
     return ContentItem.fromJson(response.data);
   }
 
-  /// 删除内容
   Future<bool> deleteContent(String contentId) async {
-    final response = await delete('/api/v1/contents/$contentId');
+    final response = await dio.delete('$baseUrl/api/v1/contents/$contentId');
     return response.data['success'] ?? false;
   }
 
-  /// 搜索内容
   Future<List<ContentItem>> searchContents({
     String? query,
     ContentType? type,
@@ -112,15 +103,14 @@ class ContentClient extends BaseClient {
       'offset': offset.toString(),
     };
 
-    final response = await get('/api/v1/contents', queryParams: queryParams);
+    final response = await dio.get('$baseUrl/api/v1/contents', queryParameters: queryParams);
     return (response.data['items'] as List)
         .map((e) => ContentItem.fromJson(e))
         .toList();
   }
 
-  /// 验证内容完整性
   Future<bool> verifyContent(String contentId) async {
-    final response = await post('/api/v1/contents/$contentId/verify');
+    final response = await dio.post('$baseUrl/api/v1/contents/$contentId/verify');
     return response.data['valid'] ?? false;
   }
 }

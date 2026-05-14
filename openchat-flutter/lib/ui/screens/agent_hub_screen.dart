@@ -1,115 +1,491 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:openchat_flutter/providers/agent_provider.dart';
-import 'package:openchat_flutter/ui/widgets/agent_task_card.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/models/resident_model.dart';
+import '../../providers/theme_provider.dart';
+import '../../providers/resident_provider.dart';
+import 'resident_detail_screen.dart';
+import '../components/cards/app_cards.dart';
 
 class AgentHubScreen extends ConsumerWidget {
   const AgentHubScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final agentsAsync = ref.watch(agentProvider);
+    final theme = ref.watch(currentThemeProvider);
+    final residentsAsync = ref.watch(residentProvider);
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
+      backgroundColor: theme.background,
       appBar: AppBar(
-        title: const Text('AI Agent Hub'),
-        centerTitle: true,
-        elevation: 0,
         backgroundColor: Colors.transparent,
-        foregroundColor: Colors.black,
-      ),
-      body: agentsAsync.when(
-        data: (agents) {
-          if (agents.isEmpty) {
-            return _buildEmptyState(context, ref);
-          }
-          return ListView.builder(
-            padding: const EdgeInsets.only(bottom: 80),
-            itemCount: agents.length,
-            itemBuilder: (context, index) => AgentTaskCard(agent: agents[index]),
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Error: $err')),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showCreateAgentDialog(context, ref),
-        label: const Text('Deploy New Agent'),
-        icon: const Icon(Icons.add),
-        backgroundColor: Colors.blueAccent,
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(BuildContext context, WidgetRef ref) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.psychology_outlined, size: 80, color: Colors.grey[400]),
-          const SizedBox(height: 16),
-          Text('No active agents in this Bridge', 
-               style: TextStyle(color: Colors.grey[600], fontSize: 16)),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: () => _showCreateAgentDialog(context, ref),
-            child: const Text('Deploy First Expert'),
+        elevation: 0,
+        title: Text(
+          'AI 居民',
+          style: TextStyle(
+            color: theme.textPrimary,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            letterSpacing: theme.style == ThemeStyle.retroWave ? 4 : 2,
           ),
+        ),
+        actions: [
+          _buildActionButton(Icons.refresh_rounded, theme, () {
+            ref.read(residentProvider.notifier).refresh();
+          }),
+          const SizedBox(width: 8),
         ],
       ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [theme.background, theme.surface],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
+          child: residentsAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.error_outline, color: theme.error, size: 48),
+                  const SizedBox(height: 16),
+                  Text('加载失败', style: TextStyle(color: theme.textSecondary)),
+                ],
+              ),
+            ),
+            data: (residents) => CustomScrollView(
+              slivers: [
+                _buildStatsHeader(theme, residents),
+                _buildSectionTitle(theme, '居民名单', residents.length),
+                _buildResidentList(theme, residents, ref),
+              ],
+            ),
+          ),
+        ),
+      ),
+      floatingActionButton: _buildCreateButton(theme, ref, context),
     );
   }
 
-  void _showCreateAgentDialog(BuildContext context, WidgetRef ref) {
-    final nameController = TextEditingController();
-    final taskController = TextEditingController();
-    String selectedRole = 'custom';
+  Widget _buildActionButton(IconData icon, AppTheme theme, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: theme.surface.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(theme.radiusMedium),
+          border: Border.all(
+            color: theme.textTertiary.withValues(alpha: 0.1),
+            width: 1,
+          ),
+        ),
+        child: Icon(icon, color: theme.textSecondary, size: 20),
+      ),
+    );
+  }
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Deploy Expert Agent'),
-        content: SingleChildScrollView(
+  Widget _buildStatsHeader(AppTheme theme, List<Resident> residents) {
+    final active = residents.where((r) => r.isActive).length;
+    final sleeping = residents.where((r) => r.status == 'sleeping').length;
+    final deleted = residents.where((r) => r.isDeleted).length;
+
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Row(
+          children: [
+            Expanded(
+              child: StatCard(
+                label: '活跃',
+                value: '$active',
+                icon: Icons.play_circle_outline,
+                color: theme.success,
+                onTap: () {},
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: StatCard(
+                label: '休眠',
+                value: '$sleeping',
+                icon: Icons.pending_outlined,
+                color: theme.warning,
+                onTap: () {},
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: StatCard(
+                label: '已注销',
+                value: '$deleted',
+                icon: Icons.check_circle_outline,
+                color: theme.info,
+                onTap: () {},
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(AppTheme theme, String title, int count) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        child: Row(
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                color: theme.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: theme.primary.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '$count',
+                style: TextStyle(
+                  color: theme.primary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResidentList(AppTheme theme, List<Resident> residents, WidgetRef ref) {
+    if (residents.isEmpty) {
+      return SliverToBoxAdapter(
+        child: Container(
+          padding: const EdgeInsets.all(60),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(labelText: 'Agent Name'),
-              ),
+              Icon(Icons.person_outline, color: theme.textTertiary, size: 64),
               const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: selectedRole,
-                decoration: const InputDecoration(labelText: 'Specialization (Role)'),
-                items: ['custom', 'security_auditor', 'code_quality_analyzer', 'performance_analyzer', 'test_engineer']
-                    .map((role) => DropdownMenuItem(value: role, child: Text(role)))
-                    .toList(),
-                onChanged: (val) => selectedRole = val!,
+              Text(
+                '还没有 AI 居民',
+                style: TextStyle(color: theme.textSecondary, fontSize: 16),
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: taskController,
-                decoration: const InputDecoration(labelText: 'Specific Task / Instruction'),
-                maxLines: 3,
+              const SizedBox(height: 8),
+              Text(
+                '点击下方按钮创建第一个居民',
+                style: TextStyle(color: theme.textTertiary, fontSize: 13),
               ),
             ],
           ),
         ),
+      );
+    }
+
+    return SliverPadding(
+      padding: const EdgeInsets.all(16),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) => _buildResidentCard(context, theme, residents[index], ref),
+          childCount: residents.length,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResidentCard(BuildContext context, AppTheme theme, Resident resident, WidgetRef ref) {
+    final isActive = resident.isActive;
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ResidentDetailScreen(residentId: resident.id),
+          ),
+        );
+      },
+      child: Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.surface.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(theme.radiusLarge),
+        border: Border.all(
+          color: isActive
+            ? theme.gradientPrimary[0].withValues(alpha: 0.4)
+            : theme.textTertiary.withValues(alpha: 0.08),
+          width: 1,
+        ),
+        boxShadow: isActive && theme.useGlow ? [
+          BoxShadow(
+            color: theme.primary.withValues(alpha: 0.15),
+            blurRadius: 25,
+            spreadRadius: -5,
+          ),
+        ] : null,
+      ),
+      child: Row(
+        children: [
+          _buildResidentAvatar(theme, resident),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      resident.name,
+                      style: TextStyle(
+                        color: theme.textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (isActive) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: theme.success,
+                          borderRadius: BorderRadius.circular(4),
+                          boxShadow: theme.useGlow ? [
+                            BoxShadow(
+                              color: theme.success.withValues(alpha: 0.6),
+                              blurRadius: 10,
+                              spreadRadius: 2,
+                            ),
+                          ] : null,
+                        ),
+                      ),
+                    ],
+                    if (resident.isDeleted) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: theme.textTertiary.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          '已注销',
+                          style: TextStyle(
+                            color: theme.textTertiary,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'ID: ${resident.id} · ${resident.home}',
+                  style: TextStyle(
+                    color: theme.textTertiary,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    _buildTag(resident.status, theme.gradientPrimary[0], theme),
+                    const SizedBox(width: 6),
+                    _buildTag(
+                      '${_daysSince(resident.createdAt)} 天',
+                      theme.gradientPrimary[1],
+                      theme,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          if (!resident.isDeleted)
+            GestureDetector(
+              onTap: () => _confirmDelete(context, ref, resident),
+              child: Icon(
+                Icons.delete_outline_rounded,
+                color: theme.textTertiary,
+                size: 20,
+              ),
+            ),
+        ],
+      ),
+      ),
+    );
+  }
+
+  Widget _buildResidentAvatar(AppTheme theme, Resident resident) {
+    // 用居民 ID 生成一致的颜色
+    final colors = [
+      theme.gradientPrimary,
+      [theme.success, theme.success.withValues(alpha: 0.7)],
+      [theme.warning, theme.warning.withValues(alpha: 0.7)],
+      [theme.info, theme.info.withValues(alpha: 0.7)],
+      [Colors.purple, Colors.purple.withValues(alpha: 0.7)],
+    ];
+    final palette = colors[resident.id % colors.length];
+
+    return Container(
+      width: 60,
+      height: 60,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: palette),
+        borderRadius: BorderRadius.circular(theme.radiusMedium - 4),
+        boxShadow: theme.useGlow && resident.isActive ? [
+          BoxShadow(
+            color: palette[0].withValues(alpha: 0.4),
+            blurRadius: 20,
+            spreadRadius: 2,
+          ),
+        ] : null,
+      ),
+      child: Center(
+        child: Text(
+          resident.name.isNotEmpty ? resident.name[0] : '?',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTag(String text, Color color, AppTheme theme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: color.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCreateButton(AppTheme theme, WidgetRef ref, BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: theme.gradientPrimary),
+        borderRadius: BorderRadius.circular(theme.radiusMedium - 4),
+        boxShadow: theme.useGlow ? [
+          BoxShadow(
+            color: theme.primary.withValues(alpha: 0.4),
+            blurRadius: 25,
+            spreadRadius: 3,
+          ),
+        ] : null,
+      ),
+      child: FloatingActionButton.extended(
+        onPressed: () => _showCreateDialog(context, ref, theme),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        icon: const Icon(Icons.person_add_rounded, color: Colors.white),
+        label: const Text(
+          '新居民',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showCreateDialog(BuildContext context, WidgetRef ref, AppTheme theme) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: theme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('创建 AI 居民', style: TextStyle(color: theme.textPrimary)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: '输入名字（留空自动生成）',
+            hintStyle: TextStyle(color: theme.textTertiary),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: theme.textTertiary.withValues(alpha: 0.2)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: theme.primary),
+            ),
+          ),
+          style: TextStyle(color: theme.textPrimary),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () async {
-              await ref.read(agentProvider.notifier).spawnAgent(
-                role: selectedRole,
-                name: nameController.text,
-                task: taskController.text,
-              );
-              if (context.mounted) Navigator.pop(context);
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('取消', style: TextStyle(color: theme.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () {
+              final name = controller.text.trim();
+              ref.read(residentProvider.notifier).create(name: name.isEmpty ? null : name);
+              Navigator.pop(ctx);
             },
-            child: const Text('Deploy'),
+            child: Text('创建', style: TextStyle(color: theme.primary)),
           ),
         ],
       ),
     );
+  }
+
+  void _confirmDelete(BuildContext context, WidgetRef ref, Resident resident) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('确认注销'),
+        content: Text('确定要注销「${resident.name}」吗？'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+          TextButton(
+            onPressed: () {
+              ref.read(residentProvider.notifier).delete(resident.id);
+              Navigator.pop(ctx);
+            },
+            child: const Text('注销', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  int _daysSince(DateTime date) {
+    return DateTime.now().difference(date).inDays;
   }
 }
