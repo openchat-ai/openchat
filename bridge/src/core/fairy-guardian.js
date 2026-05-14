@@ -16,6 +16,7 @@ export class FairyGuardian {
     this._heartbeats = new Map();    // port → lastBeat time
     this._reviveCount = new Map();    // port → revive count
     this._lastRestarts = new Map();   // port → last restart time
+    this._bootstrapped = false;       // 是否已自举初始仙女
   }
 
   /** 心跳接收（主 Bridge 用） */
@@ -25,16 +26,35 @@ export class FairyGuardian {
 
   /** 检查所有 Fairy 存活状态（主 Bridge 用） */
   async checkAll() {
-    if (this.myPort !== 3800) return;
-    const sisters = [3002, 3003, 3004, 3005, 3006, 3007];
     const now = Date.now();
-    for (const port of sisters) {
-      const lastBeat = this._heartbeats.get(port) || 0;
+
+    if (!this._bootstrapped && this._heartbeats.size === 0) {
+      this._bootstrapped = true;
+      await this._bootstrap();
+    }
+
+    for (const [port, lastBeat] of this._heartbeats) {
+      if (port === this.myPort) continue;
       const alive = (now - lastBeat < 30000);
       if (!alive) {
         const status = await this._checkStatus(port);
         if (status === 'dead') await this._revive(port);
       }
+    }
+  }
+
+  /** 首次启动时自动创建 6 个姐妹仙女 */
+  async _bootstrap() {
+    const { join } = await import('path');
+    const script = join(process.cwd(), 'src', 'main.js');
+    const names = ['仙女', '玉女', '素女', '青女', '玄女', '嫦娥'];
+    for (let i = 0; i < 6; i++) {
+      const port = this.myPort + (i + 1) * 100;
+      console.log(`[守护] 自举初始仙女: ${names[i]} :${port}`);
+      spawn(process.execPath, [script, `--port=${port}`, '--fairy'], {
+        cwd: process.cwd(), detached: true, stdio: 'ignore'
+      }).unref();
+      await new Promise(r => setTimeout(r, 2000));
     }
   }
 

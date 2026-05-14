@@ -834,19 +834,251 @@ class Bridge {
           res.end(JSON.stringify(data));
         } else if (pathname === '/' && req.method === 'GET') {
           res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-          res.end(`<html lang="zh"><head><meta charset="utf-8"><title>OpenChat</title></head>
-<body style="background:#0a0a1a;color:#e0e0e0;font-family:monospace;padding:20px">
-<h1 style="color:#7c8aff">OpenChat Bridge</h1>
-<pre id="out" style="font-size:13px;line-height:1.6">Loading...</pre>
+          res.end(`<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenChat Bridge</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  background:#06080f;
+  color:#d0d4e0;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:20px;
+  background-image:radial-gradient(ellipse at 50% 0%, #121832 0%, #06080f 70%);
+}
+.container{width:100%;max-width:720px}
+header{
+  text-align:center;
+  padding:30px 0 20px;
+}
+header h1{
+  font-size:28px;
+  font-weight:700;
+  background:linear-gradient(135deg, #7c8aff, #c084fc);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+  letter-spacing:2px;
+}
+header .subtitle{
+  font-size:12px;
+  color:#5a6080;
+  margin-top:4px;
+  letter-spacing:4px;
+  text-transform:uppercase;
+}
+.grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:12px;
+  margin:10px 0;
+}
+.card{
+  background:linear-gradient(135deg, #0f1425 0%, #141a30 100%);
+  border:1px solid #1e2540;
+  border-radius:12px;
+  padding:18px 16px;
+  position:relative;
+  overflow:hidden;
+  transition:border-color .3s;
+}
+.card::before{
+  content:'';
+  position:absolute;
+  top:0;left:0;right:0;
+  height:2px;
+}
+.card:hover{border-color:#2d3560}
+.card .label{
+  font-size:11px;
+  color:#6b7394;
+  text-transform:uppercase;
+  letter-spacing:1px;
+  margin-bottom:6px;
+}
+.card .value{
+  font-size:32px;
+  font-weight:700;
+  letter-spacing:1px;
+}
+.card .unit{
+  font-size:13px;
+  font-weight:400;
+  opacity:.5;
+  margin-left:4px;
+}
+.card.iq::before{background:linear-gradient(90deg,#7c8aff,#c084fc)}
+.card.iq .value{color:#7c8aff}
+.card.age::before{background:linear-gradient(90deg,#ffa502,#ff7f50)}
+.card.age .value{color:#ffa502}
+.card.solved::before{background:linear-gradient(90deg,#2ed573,#7bed9f)}
+.card.solved .value{color:#2ed573}
+.card.pool::before{background:linear-gradient(90deg,#4fc3f7,#00d2ff)}
+.card.pool .value{color:#4fc3f7}
+.progress-bar{
+  margin-top:10px;
+  height:4px;
+  background:#1e2540;
+  border-radius:2px;
+  overflow:hidden;
+}
+.progress-bar .fill{
+  height:100%;
+  background:linear-gradient(90deg,#2ed573,#7bed9f);
+  border-radius:2px;
+  transition:width .6s ease;
+}
+.pool-detail{font-size:12px;color:#6b7394;margin-top:6px}
+.fairies-card{
+  background:linear-gradient(135deg, #0f1425 0%, #141a30 100%);
+  border:1px solid #1e2540;
+  border-radius:12px;
+  padding:18px 16px;
+  margin:12px 0;
+}
+.fairies-card .label{
+  font-size:11px;
+  color:#6b7394;
+  text-transform:uppercase;
+  letter-spacing:1px;
+  margin-bottom:14px;
+}
+.fairy-row{
+  display:flex;
+  justify-content:center;
+  gap:16px;
+  flex-wrap:wrap;
+}
+.fairy{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+}
+.fairy .dot{
+  width:36px;height:36px;
+  border-radius:50%;
+  border:2px solid #1e2540;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:14px;
+  transition:all .3s;
+  background:#0f1425;
+}
+.fairy .dot.on{
+  border-color:#2ed573;
+  background:rgba(46,213,115,.15);
+  box-shadow:0 0 12px rgba(46,213,115,.25);
+  animation:pulse 2s infinite;
+}
+.fairy .dot.on::after{
+  content:'';
+  width:8px;height:8px;
+  border-radius:50%;
+  background:#2ed573;
+}
+.fairy .dot.off{
+  border-color:#2d2040;
+  color:#4a3a5a;
+}
+.fairy .name{
+  font-size:11px;
+  color:#6b7394;
+  text-align:center;
+}
+.fairy .port{
+  font-size:10px;
+  color:#3a4060;
+}
+@keyframes pulse{
+  0%,100%{box-shadow:0 0 12px rgba(46,213,115,.25)}
+  50%{box-shadow:0 0 20px rgba(46,213,115,.45)}
+}
+.footer{
+  text-align:center;
+  padding:16px 0;
+  font-size:11px;
+  color:#3a4060;
+}
+.footer .dot-refresh{display:inline-block;width:6px;height:6px;border-radius:50%;background:#2ed573;margin-right:6px;animation:pulse 1.5s infinite}
+.iq-badge{
+  display:inline-block;
+  font-size:12px;
+  padding:2px 8px;
+  border-radius:10px;
+  margin-left:8px;
+  font-weight:500;
+}
+.iq-badge.genius{background:rgba(124,138,255,.15);color:#c084fc}
+.iq-badge.excellent{background:rgba(124,138,255,.15);color:#7c8aff}
+.iq-badge.normal{background:rgba(100,120,160,.15);color:#7a8ab0}
+.iq-badge.low{background:rgba(255,165,2,.1);color:#ffa502}
+.iq-badge.poor{background:rgba(255,71,87,.1);color:#ff4757}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+  <h1>OpenChat Bridge</h1>
+  <div class="subtitle">Seven Fairies Dashboard</div>
+</header>
+<div class="grid">
+  <div class="card iq"><div class="label">IQ</div><div class="value" id="v-iq">--<span class="iq-badge" id="b-iq"></span></div></div>
+  <div class="card age"><div class="label">Age</div><div class="value" id="v-age">--<span class="unit">yrs</span></div></div>
+  <div class="card solved"><div class="label">Solved</div><div class="value" id="v-solved">--</div></div>
+  <div class="card pool"><div class="label">Problem Pool</div><div class="value" id="v-pool">--</div>
+    <div class="progress-bar"><div class="fill" id="fill-bar" style="width:0%"></div></div>
+    <div class="pool-detail" id="pool-detail"></div>
+  </div>
+</div>
+<div class="fairies-card">
+  <div class="label">Seven Fairies</div>
+  <div class="fairy-row" id="fairy-row"></div>
+</div>
+<div class="footer"><span class="dot-refresh"></span>Live · Auto Refresh 3s</div>
+</div>
 <script>
+const NAMES=['仙女','玉女','素女','青女','玄女','嫦娥','开阳'];
+const PORTS=[3002,3003,3004,3005,3006,3007];
 async function R(){
-  try{const d=await(await fetch('/api/dashboard')).json();
-  let h='IQ: <b style=color:#7c8aff>'+d.iq+'</b>  Age: <b style=color:#ffa502>'+d.age+'</b>  Solved: <b style=color:#2ed573>'+d.solved+'</b>  Pool: <b style=color:#4fc3f7>'+d.poolSize+'</b> (Pending: '+d.pending+')';
-  if(d.fairies){h+='\\n\\nSeven Fairies:\\n';for(const[p,s]of Object.entries(d.fairies))h+=p+': '+(s?'<b class=on>ON</b>':'<b class=off>OFF</b>')+' ';}
-  document.getElementById('out').innerHTML=h;
-  }catch(e){document.getElementById('out').textContent='Waiting...'}
-}R();setInterval(R,3000);
-</script></body></html>`);
+  try{
+    const d=await(await fetch('/api/dashboard')).json();
+    document.getElementById('v-iq').innerHTML=d.iq+B(d.iq);
+    document.getElementById('v-age').innerHTML=d.age+'<span class=unit>yrs</span>';
+    document.getElementById('v-solved').textContent=d.solved;
+    document.getElementById('v-pool').textContent=d.poolSize;
+    const pct=d.poolSize>0?Math.round(d.solved/d.poolSize*100):0;
+    document.getElementById('fill-bar').style.width=pct+'%';
+    document.getElementById('pool-detail').textContent='Pending: '+d.pending;
+    let fr='';
+    for(let i=0;i<PORTS.length;i++){
+      const p=PORTS[i], on=!!d.fairies[p];
+      fr+='<div class=fairy><div class=\"dot '+(on?'on':'off')+'\"></div><div class=name>'+NAMES[i]+'</div><div class=port>:'+p+'</div></div>';
+    }
+    document.getElementById('fairy-row').innerHTML=fr;
+  }catch(e){}
+}
+function B(iq){
+  let cls,label;
+  if(iq>=130){cls='genius';label='\u8d85\u5e38';}
+  else if(iq>=110){cls='excellent';label='\u4f18\u79c0';}
+  else if(iq>=90){cls='normal';label='\u6b63\u5e38';}
+  else if(iq>=70){cls='low';label='\u504f\u4f4e';}
+  else{cls='poor';label='\u4e0d\u8db3';}
+  return ' <span class=\"iq-badge '+cls+'\">'+label+'</span>';
+}
+R();setInterval(R,3000);
+</script>
+</body>
+</html>`);
           }
         } catch (e) {
         res.writeHead(500, { 'Content-Type': 'application/json' });

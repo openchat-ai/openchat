@@ -661,8 +661,5 @@ export class ResidentManager extends EventEmitter {
   }
 }
 
-const migrateSafeBody = migrateSafeBody;
-
-// 导出单例 + 工具函数（给 Flutter 端映射用）
-export { TRAIT_POOL, TRAIT_KEYS, traitsToLabels, migrateSafeBody, migrateSafeBody };
+export { TRAIT_POOL, TRAIT_KEYS, traitsToLabels, migrateSafeBody };
 export const residentManager = new ResidentManager();

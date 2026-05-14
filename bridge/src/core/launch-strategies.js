@@ -121,9 +121,10 @@ class NodeStrategy extends LaunchStrategy {
 
     const child = spawn(process.execPath, childArgs, {
       cwd: this.cwd,
-      stdio: 'ignore',
+      stdio: 'pipe',
       env: { ...this.env, NESTING_BRIDGE: '1' },
-      detached: true
+      detached: true,
+      windowsHide: false
     });
     child.unref();
 
