@@ -29,15 +29,15 @@ export class VariantGenerator {
     if (!solved || solved.length === 0) return [];
 
     const generated = [];
-    const seen = new Set(solved.map(p => this._signature(p.question)));
+    const seenQs = new Set(solved.map(p => p.question)); // exact match only
 
     for (const p of solved) {
       if (!p.question || p.answer === null || p.answer === undefined) continue;
 
-      const variants = this._generateVariants(p, countPerType, seen);
+      const variants = this._generateVariants(p, countPerType, seenQs);
       for (const v of variants) {
         generated.push(v);
-        seen.add(this._signature(v.question));
+        seenQs.add(v.question);
       }
     }
 
@@ -52,7 +52,7 @@ export class VariantGenerator {
   /**
    * 生成单道题的变体
    */
-  _generateVariants(problem, count, seenSigs) {
+  _generateVariants(problem, count, seenQs) {
     const nums = problem.question.match(/\d+/g)?.map(Number) || [];
     if (nums.length === 0) return [];
 
@@ -63,11 +63,10 @@ export class VariantGenerator {
     while (variants.length < count && attempts < 30) {
       attempts++;
       const newNums = nums.map(n => this._vary(n));
-      if (newNums.every((n, i) => n === nums[i])) continue; // no change
+      if (newNums.every((n, i) => n === nums[i])) continue;
 
       const newQ = this._replaceNums(problem.question, newNums);
-      const sig = this._signature(newQ);
-      if (seenSigs.has(sig)) continue;
+      if (seenQs.has(newQ)) continue;
 
       const newAns = this._recompute(problem, newNums);
       if (newAns === null) continue;
@@ -120,6 +119,23 @@ export class VariantGenerator {
       if (isNaN(origAns) || origNums.length === 0) return null;
 
       // 模式1: 加减法
+      if (origNums.length >= 3 && newNums.length >= 3) {
+        // 三数模式: a - b + c (如 8-3+5=10)
+        const abc = origNums[0] - origNums[1] + origNums[2];
+        if (Math.abs(origAns - abc) < 0.01) return newNums[0] - newNums[1] + newNums[2];
+        // a + b - c
+        const apbmc = origNums[0] + origNums[1] - origNums[2];
+        if (Math.abs(origAns - apbmc) < 0.01) return newNums[0] + newNums[1] - newNums[2];
+        // a + b + c
+        const sum3 = origNums[0] + origNums[1] + origNums[2];
+        if (Math.abs(origAns - sum3) < 0.01) return newNums[0] + newNums[1] + newNums[2];
+        // a × b ÷ c
+        if (origNums[2] !== 0) {
+          const muldiv = origNums[0] * origNums[1] / origNums[2];
+          if (Math.abs(origAns - muldiv) < 0.01) return newNums[0] * newNums[1] / newNums[2];
+        }
+      }
+
       if (origNums.length === 2 && newNums.length === 2) {
         const sum = origNums[0] + origNums[1];
         const diff = Math.abs(origNums[0] - origNums[1]);

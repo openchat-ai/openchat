@@ -1,26 +1,23 @@
-import 'dotenv/config';
+﻿import 'dotenv/config';
 import * as readline from 'readline';
 import crypto from 'crypto';
-import fs from 'fs';
 import path from 'path';
 import http from 'http';
-import os from 'os';
 import { sessionManager } from './session/session-manager.js';
+import { parseCliArgs } from './config/cli-args.js';
+import { setupCLI } from './cli/bridge-cli.js';
+import { startLearningCore, startFairyMonitor, startHeartbeat } from './core/learning-loop.js';
+import { dashboardHTML } from './infra/dashboard-html.js';
+import { createHandlers } from './infra/route-handlers.js';
 
 // 新增：REST API 服务器（31 个端点）
 // 使用动态 import 加载 CommonJS 模块
 let apiServer = null;
-import { executeCommand, commands } from './cli/commands.js';
-import { MessageBuilder, MessageType } from './protocol/message.js';
+import { MessageType } from './protocol/message.js';
 import { WebSocketServer } from 'ws';
 import { router } from './core/router.js';
 import { initCore } from './core/handlers.js';
-import { CLIGateway, WSGateway } from './gateway/base.js';
-import { persistentConfig } from './core/persistent-config.js';
-import { providerManager } from './providers/provider-manager.js';
-import { providerRegistry } from './providers/provider-registry.js';
 import { memoryManager } from './memory/memory-manager.js';
-import { agentMonitor } from './core/agent-monitor.js';
 import { AIPerson, aiPersonRegistry, createFounder } from './core/ai-personhood.js';
 import { Deity, deitySystemManager, DEITY_TYPE } from './core/deity-system.js';
 import { MirrorDeity, mirrorDeity, initializeMirrorDeitySystem } from './core/mirror-deity.js';
@@ -34,7 +31,7 @@ import { CollaborationEngine } from './core/collaboration-engine.js';
 import { residentManager } from './core/resident-manager.js';
 import { residentScheduler } from './core/resident-scheduler.js';
 import { LearningCore } from './core/learning-core.js';
-import P2PSwarm, { hasPublicAddress, getPublicIPv4 } from './p2p/swarm.js';
+import P2PSwarm, { getPublicIPv4 } from './p2p/swarm.js';
 import { MessageType as P2PMessageType } from './p2p/messages.js';
 import { PeerRegistry } from './p2p/peer-registry.js';
 import { QiniuBackend } from './p2p/peer-registry/qiniu-backend.js';
@@ -56,135 +53,10 @@ async function fetchLocalModelsFromBridge(providerName) {
   return [];
 }
 
-// 解析命令行参数
-// 读取顺序：~/.openchat/config.json bridge.* → CLI 覆盖
-// 公网 IP 自动检测（无需 --public 参数）
-const args = process.argv.slice(2);
-const savedBridge = persistentConfig.getBridgeConfig();
-const isInteractive = args.includes('--cli') || args.includes('-i');
-
-const isHeadless = savedBridge.mode === 'cli' && !isInteractive ? false : !isInteractive;
-const isPublic = hasPublicAddress() || !!savedBridge.advertiseHost;
-
-// 支持 --port 命令行参数覆盖配置
-const portArgIndex = args.findIndex(a => a.startsWith('--port='));
-const cliPort = portArgIndex !== -1 ? parseInt(args[portArgIndex].split('=')[1]) : null;
-const port = cliPort || savedBridge.port || 3000;
-const portChanged = cliPort !== null && cliPort !== savedBridge.port;
-
-// 主 Bridge 判定：显式 --main 标记
-const isMain = args.includes('--main');
-
-// 主 Bridge 端口（fairy 需要知道往哪发心跳，默认 = 自身端口）
-const mainPortIdx = args.findIndex(a => a.startsWith('--mainPort='));
-const mainPort = mainPortIdx !== -1 ? parseInt(args[mainPortIdx].split('=')[1]) : (isMain ? port : 3800);
-
-const dhtPort = savedBridge.dhtPort || 0;
-const localBootstrap = savedBridge.localBootstrap || [];
-// 端口变更时，丢弃旧端口体系的直连配置
-let directListen = (portChanged ? 0 : savedBridge.directListen) || 0;
-let directConnect = portChanged ? [] : (savedBridge.directConnect || []);
-// 支持 --directListen CLI 参数
-const directListenIdx = args.findIndex(a => a.startsWith('--directListen='));
-if (directListenIdx !== -1) {
-  directListen = parseInt(args[directListenIdx].split('=')[1]);
-}
-// 如果 --port 显式传入但没传 --directListen，则根据新端口重新计算
-if (portArgIndex !== -1 && directListenIdx === -1 && !args.includes('--no-direct') && !args.includes('--nesting')) {
-  directListen = port + 2;
-}
-// 本地开发：无 bootstrap 时自动启用直连 TCP（端口 = HTTP 端口 + 2）
-const isNesting = args.includes('--nesting');
-if (!directListen && localBootstrap.length === 0 && !args.includes('--no-direct') && !isNesting) {
-  directListen = port + 2;
-}
-const bridgeName = savedBridge.name || `bridge-${Math.random().toString(36).substr(2, 4)}`;
-const bridgeRegion = savedBridge.region || process.env.REGION || 'unknown';
-const wsSignalingUrl = savedBridge.wsSignaling || '';
-const advertiseHost = savedBridge.advertiseHost || '';
-const bridgeTopic = savedBridge.topic || 'openchat-community';
-const qiniuEnabled = savedBridge.qiniuEnabled !== false;
-const cores = savedBridge.cores || [];
-const deployServerEnabled = savedBridge.deployServerEnabled === true; // 默认 false（随 bridge 启动构建量太大，按需开启）
-const deployServerPort = savedBridge.deployServerPort || 8080;
-
-// hostId：持久标识，子进程可通过 --hostId 覆盖
-let hostId = savedBridge.hostId || '';
-const hostIdArgIndex = args.findIndex(a => a.startsWith('--hostId='));
-if (hostIdArgIndex !== -1) {
-  hostId = args[hostIdArgIndex].split('=')[1];
-}
-// 确保 hostId 已生成（第一次启动自动创建 UUID）
-if (!hostId) {
-  hostId = persistentConfig.getHostId();
-}
-
-// houseId：子进程通过 --houseId 指定，默认 hostId + '_default'
-let houseIdArg = '';
-const houseIdArgIndex = args.findIndex(a => a.startsWith('--houseId='));
-if (houseIdArgIndex !== -1) {
-  houseIdArg = args[houseIdArgIndex].split('=')[1];
-}
-const effectiveBodyId = houseIdArg || `${hostId}_default`;
-
-// --parent：nesting 子进程连接父 Bridge 的直连 TCP 端口
-const parentIndex = args.findIndex(a => a.startsWith('--parent='));
-if (parentIndex !== -1) {
-  const parentPort = port + 2; // 父 Bridge 的 directListen 默认是 port+2
-  if (!directConnect.find(d => d.host === 'localhost' && d.port === parentPort)) {
-    directConnect.push({ host: 'localhost', port: parentPort });
-  }
-}
-
-// --save-config 持久化本次设置
-if (args.includes('--save-config')) {
-  persistentConfig.setBridgeConfig({
-    mode: isHeadless ? 'headless' : 'cli',
-    port, name: bridgeName, region: bridgeRegion,
-    dhtPort, localBootstrap, directListen, directConnect,
-    wsSignaling: wsSignalingUrl,
-    advertiseHost,
-    qiniuEnabled, cores,
-    topic: bridgeTopic
-  });
-  console.log(`[Config] 已保存到 ${path.join(os.homedir(), '.openchat', 'config.json')}`);
-}
-
-const CONFIG_HOST = isPublic ? '0.0.0.0' : 'localhost';
-const CONFIG = {
-  port,
-  host: CONFIG_HOST,
-  headless: isHeadless,
-  isPublic,
-  enableWebSocket: true,
-  dhtPort,
-  localBootstrap,
-  directListen,
-  directConnect,
-  bridgeName,
-  bridgeRegion,
-  wsSignalingUrl,
-  advertiseHost,
-  qiniuEnabled,
-  cores,
-  mainPort,
-  bridge: {
-    port,
-    name: bridgeName,
-    region: bridgeRegion,
-    dhtPort,
-    directListen,
-    directConnect,
-    topic: bridgeTopic
-  }
-};
-
-const COMMANDS = [
-  'help', 'status', 'clear', 'exit', 'quit',
-  'provider add', 'provider remove', 'provider list',
-  'session create', 'session close', 'session list', 'session history',
-  'chat'
-];
+const {
+  CONFIG, port, args, hostId, houseIdArg, effectiveBodyId,
+  deployServerEnabled, deployServerPort, isMain, isNesting, isHeadless, COMMANDS
+} = parseCliArgs();
 
 class Bridge {
   constructor() {
@@ -212,25 +84,8 @@ class Bridge {
     });
     this.p2p = null;
     this.signalingRooms = new Map();  // peerId → WebSocket 信令映射
-  }
-
-  getPrompt() {
-    const provider = persistentConfig.getPreference('currentProvider');
-    const model = persistentConfig.getPreference('currentModel');
-    if (provider) {
-      // 只显示服务商简称，不显示具体模型名，避免界面混乱
-      const p = providerManager.getProvider(provider);
-      const pname = p?.nameCn || provider;
-      // 简化显示，避免显示冗余信息
-      return pname;  // 不再显示 /模型名 部分
-    }
-    return null;
-  }
-
-  getPromptString() {
-    const current = this.getPrompt();
-    // 简化提示符，避免显示过多信息
-    return current ? `openchat > ` : 'openchat > ';
+    this.cli = setupCLI(this);
+    this.h = createHandlers(this, CONFIG, crypto);
   }
 
   async start(detectedTools = []) {
@@ -277,7 +132,7 @@ class Bridge {
       console.log('[AI-Personhood] 初始化失败:', e.message);
     }
 
-    await this.autoConfigProviders(detectedTools);
+    await this.h.autoConfigProviders(detectedTools);
 
     initCore();
 
@@ -339,8 +194,8 @@ class Bridge {
       console.log(`[P2P] 启动跳过: ${p2pErr.message}`);
     }
 
-    // 自动构建 deploy/（仅主 Bridge，静默执行）
-    if (deployServerEnabled && isMain) {
+    // 自动构建 deploy/（静默执行，仅失败时显示错误摘要）
+    if (deployServerEnabled) {
       try {
         const { execSync } = await import('child_process');
         const bridgeRoot = path.resolve(import.meta.filename ? path.dirname(import.meta.filename) : __dirname, '..');
@@ -405,20 +260,20 @@ class Bridge {
           });
         });
 
-        // P2R: 居民治家初始化（try 块防止 BodyOrchestrator 报错阻止后续初始化）
+        // P2R: 居民治家初始化（try 块防止 HouseOrchestrator 报错阻止后续初始化）
         try {
         const { SafeEvolution } = await import('./core/safe-evolution.js');
         const { BridgeSpawn } = await import('./core/bridge-spawn.js');
         const { detectBestStrategy } = await import('./core/launch-strategies.js');
-        const { Body } = await import('./core/house.js');
+        const { House } = await import('./core/house.js');
         const { LLMProxyAgent } = await import('./core/llm-proxy-agent.js');
 
         const safeEvo = new SafeEvolution(this.p2p, this.p2p.peerId || 'bridge-1');
 
-        // 初始化默认 Body（主 Bridge / 子 Bridge 各自创建）
+        // 初始化默认 House（主 Bridge / 子 Bridge 各自创建）
         if (!this.house) {
           const bridgeId = this.p2p.peerId || 'bridge-1';
-          this.house = new Body(effectiveBodyId, bridgeId, hostId, 'default');
+          this.house = new House(effectiveHouseId, bridgeId, hostId, 'default');
           await this.house.init();
         }
 
@@ -426,8 +281,16 @@ class Bridge {
         console.log(`[Launch] 启动策略: ${detectedStrategy}`);
         const bridgeSpawn = new BridgeSpawn(this.p2p, hostId, this.house, detectedStrategy);
 
-        const { BodyOrchestrator } = await import('./core/house-orchestrator.js');
-        this.houseOrchestrator = new BodyOrchestrator(this.p2p, this.p2p.peerId || 'bridge-1', safeEvo, this.house, bridgeSpawn);
+        // Fairy spawn：必须在 HouseOrchestrator 前（避免其报错阻止）
+        if (isMain) {
+          for (let i = 0; i < 6; i++) {
+            const c = bridgeSpawn.spawnNesting({ name: `仙女${i+1}` });
+            if (c) console.log(`[P2R] 仙女${i+1} port=${c.port}`);
+          }
+        }
+
+        const { HouseOrchestrator } = await import('./core/house-orchestrator.js');
+        this.houseOrchestrator = new HouseOrchestrator(this.p2p, this.p2p.peerId || 'bridge-1', safeEvo, this.house, bridgeSpawn);
         residentScheduler.houseOrchestrator = this.houseOrchestrator;
         this.safeEvolution = safeEvo;
         this.bridgeSpawn = bridgeSpawn;
@@ -435,7 +298,15 @@ class Bridge {
         // LLM 代理：接收子桥的 LLM 调用请求
         this.llmProxy = new LLMProxyAgent(this.p2p, { enabled: true });
         this.llmProxy.start();
-        console.log('[P2R] BodyOrchestrator + SafeEvolution + BridgeSpawn + LLMProxy 已启动');
+        console.log('[P2R] HouseOrchestrator + SafeEvolution + BridgeSpawn + LLMProxy 已启动');
+
+        // Fairy spawn：端口 3002-3007
+        if (isMain) {
+          for (let i = 0; i < 6; i++) {
+            const c = bridgeSpawn.spawnNesting({ name: `仙女${i+1}` });
+            if (c) console.log(`[P2R] 仙女${i+1} port=${c.port}`);
+          }
+        }
         } catch (e) { console.log(`[启动] P2R 初始化失败: ${e.message}`); }
 
         // P2R-K: 收敛引擎 — 问题分解→竞标→求解→择优
@@ -467,12 +338,12 @@ class Bridge {
         // 启动学习核心
         this.learningCore = new LearningCore(this.knowledgeBase, this.p2p, port, residentScheduler);
         if (isMain) {
-          this._startLearningCore();
-          console.log(`[学习核心] 🌟 主模式 IQ=${this.learningCore.iq} Age=${this.learningCore.age} Solved=${this.learningCore.solvedCount}`);
+          startLearningCore(this);
+          console.log(`[学习核心]  主模式 IQ=${this.learningCore.iq} Age=${this.learningCore.age} Solved=${this.learningCore.solvedCount}`);
         } else {
-          console.log(`[学习核心] 🧚 仙女模式`);
-          this._startFairyMonitor();
-          this._startHeartbeat();
+          console.log(`[学习核心]  仙女模式`);
+          startFairyMonitor(this, CONFIG.mainPort);
+          startHeartbeat(this, port, CONFIG.mainPort);
         }
 
         // P2R-K: 响应邻居的问题求解请求
@@ -516,21 +387,21 @@ class Bridge {
           }
         });
 
-        // P2R: 身体验证回复
+        // P2R: 窟验证回复
         this.p2p.on('safe-house-verify', (data) => {
           const payload = data.payload || {};
           const from = data.from;
           const remoteHostId = payload.hostId || '';
-          console.log(`[P2R] 收到身体验证: from=${from?.slice(0, 8) || '?'}... hostId=${remoteHostId.slice(0, 8) || '?'}`);
-          // 更新所有居民中指向该 bridge 的身体的 lastVerified 和 hostId
+          console.log(`[P2R] 收到窟验证: from=${from?.slice(0, 8) || '?'}... hostId=${remoteHostId.slice(0, 8) || '?'}`);
+          // 更新所有居民中指向该 bridge 的窟的 lastVerified 和 hostId
           for (const r of residentManager.list(null)) {
-            const houses = r.safeBodys || [];
+            const houses = r.safeHouses || [];
             const idx = houses.findIndex(h => h.bridgeId === from);
             if (idx !== -1) {
               houses[idx].lastVerified = Date.now();
               houses[idx].health = 100; // 能回复说明活着
               if (remoteHostId) houses[idx].hostId = remoteHostId;
-              residentManager.registerSafeBody(r.id, houses[idx]);
+              residentManager.registerSafeHouse(r.id, houses[idx]);
             }
           }
         });
@@ -550,20 +421,20 @@ class Bridge {
             }
             const created = residentManager.create(r.name, { traits: r.traits });
 
-            // 为迁入居民创建独立 Body
-            if (!this._migratedBody) {
-              const { Body: ImportedBody } = await import('./core/house.js');
-              const migratedBodyId = `${hostId}_migrated`;
-              this._migratedBody = new ImportedBody(migratedBodyId, this.p2p?.peerId || 'bridge-1', hostId, 'migrated');
-              await this._migratedBody.init();
+            // 为迁入居民创建独立 House
+            if (!this._migratedHouse) {
+              const { House: ImportedHouse } = await import('./core/house.js');
+              const migratedHouseId = `${hostId}_migrated`;
+              this._migratedHouse = new ImportedHouse(migratedHouseId, this.p2p?.peerId || 'bridge-1', hostId, 'migrated');
+              await this._migratedHouse.init();
             }
 
             residentManager.addActivity(created.id, {
               type: 'migrated_in',
               message: `从 ${sourceBridgeId?.slice(0, 8) || '?'} 迁入`,
             });
-            // 把原 bridge 记为首个身体（带 hostId）
-            residentManager.registerSafeBody(created.id, {
+            // 把原 bridge 记为首个安全屋（带 hostId）
+            residentManager.registerSafeHouse(created.id, {
               bridgeId: sourceBridgeId,
               hostId: sourceHostId || sourceBridgeId,
               host: sourceBridgeId,
@@ -578,8 +449,8 @@ class Bridge {
         this.p2p.on('HOUSE_SEEK', (data) => {
           const p = data.payload || {};
           const hid = p.hostId ? p.hostId.slice(0, 8) : '?';
-          console.log(`[P2R] 收到找身体请求: ${p.residentName} (hostId=${hid}, 偏好: ${p.preferredType})`);
-          // 如果本 Bridge 有 Body，回复身体信息
+          console.log(`[P2R] 收到找窟请求: ${p.residentName} (hostId=${hid}, 偏好: ${p.preferredType})`);
+          // 如果本 Bridge 有 House，回复安全屋信息
           if (this.house && data.from) {
             const offer = {
               type: 'HOUSE_OFFER',
@@ -601,7 +472,7 @@ class Bridge {
         this.p2p.on('HOUSE_OFFER', (data) => {
           const p = data.payload || {};
           if (p.sourceResidentId) {
-            residentManager.registerSafeBody(p.sourceResidentId, {
+            residentManager.registerSafeHouse(p.sourceResidentId, {
               houseId: p.houseId,
               bridgeId: p.bridgeId,
               hostId: p.hostId,
@@ -611,7 +482,7 @@ class Bridge {
               health: p.health || 50,
               lastVerified: Date.now(),
             });
-            console.log(`[P2R] 身体注册成功: ${p.houseId?.slice(0, 8)} → resident#${p.sourceResidentId}`);
+            console.log(`[P2R] 安全屋注册成功: ${p.houseId?.slice(0, 8)} → resident#${p.sourceResidentId}`);
           }
         });
         this.p2p.on('HOUSE_NEED', (data) => {
@@ -678,7 +549,7 @@ class Bridge {
     } else {
       // CLI 模式 - startCLI 内部处理信号
       console.log('');
-      this.startCLI();
+      this.cli.startCLI();
     }
   }
 
@@ -730,47 +601,42 @@ class Bridge {
       try {
         // 路由处理
         if (pathname === '/api/status' && req.method === 'GET') {
-          await this.handleStatus(req, res);
+          await this.h.handleStatus(req, res);
         } else if (pathname === '/api/providers' && req.method === 'GET') {
-          await this.handleProviders(req, res);
+          await this.h.handleProviders(req, res);
         } else if (pathname === '/api/sessions' && req.method === 'GET') {
-          await this.handleSessions(req, res);
+          await this.h.handleSessions(req, res);
         } else if (pathname === '/api/chat' && req.method === 'POST') {
-          await this.handleChat(req, res);
+          await this.h.handleChat(req, res);
         } else if (pathname === '/api/chat/stream' && req.method === 'POST') {
-          await this.handleChatStream(req, res);
+          await this.h.handleChatStream(req, res);
         } else if (pathname === '/api/config' && req.method === 'GET') {
-          await this.handleGetConfig(req, res);
+          await this.h.handleGetConfig(req, res);
         } else if (pathname === '/api/config' && req.method === 'POST') {
-          await this.handleSetConfig(req, res);
+          await this.h.handleSetConfig(req, res);
         } else if (pathname === '/api/memory' && req.method === 'GET') {
-          await this.handleMemoryStats(req, res);
+          await this.h.handleMemoryStats(req, res);
         } else if (pathname === '/api/memory' && req.method === 'POST') {
-          await this.handleMemoryOp(req, res);
+          await this.h.handleMemoryOp(req, res);
         } else if (pathname === '/api/provider/connect' && req.method === 'POST') {
-          await this.handleProviderConnect(req, res);
+          await this.h.handleProviderConnect(req, res);
         } else if (pathname === '/api/provider/models' && req.method === 'GET') {
-          await this.handleProviderModels(req, res);
+          await this.h.handleProviderModels(req, res);
         } else if (pathname === '/api/provider/set' && req.method === 'POST') {
-          await this.handleProviderSet(req, res);
+          await this.h.handleProviderSet(req, res);
         } else if (pathname === '/api/agents' && req.method === 'GET') {
-          await this.handleAgentsList(req, res);
+          await this.h.handleAgentsList(req, res);
         } else if (pathname === '/api/agents/history' && req.method === 'GET') {
-          await this.handleAgentsHistory(req, res);
+          await this.h.handleAgentsHistory(req, res);
         } else if (pathname.startsWith('/api/agents/') && req.method === 'GET') {
-          await this.handleAgentStatus(req, res, pathname.replace('/api/agents/', ''));
+          await this.h.handleAgentStatus(req, res, pathname.replace('/api/agents/', ''));
         } else if (pathname.startsWith('/api/agents/') && req.method === 'POST') {
-          await this.handleAgentAction(req, res, pathname.replace('/api/agents/', ''));
+          await this.h.handleAgentAction(req, res, pathname.replace('/api/agents/', ''));
         } else if (pathname === '/api/learning' && req.method === 'GET') {
-          await this.handleLearningStatus(req, res);
+          await this.h.handleLearningStatus(req, res);
         } else if (pathname === '/health' && req.method === 'GET') {
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ status: 'ok', uptime: Date.now() - this.startTime }));
-        } else if (pathname === '/shutdown' && req.method === 'POST') {
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ ok: true }));
-          console.log('[Bridge] 收到关闭请求');
-          setImmediate(() => this.shutdown());
         } else if (pathname === '/peers' && req.method === 'GET') {
           res.writeHead(200, { 'Content-Type': 'application/json' });
           const peers = this.p2p ? [...this.p2p.connectedPeers.keys()].map(id => ({
@@ -804,6 +670,7 @@ class Bridge {
               age = lc.age || 0;
             } catch (e) { console.log('[Dash] load fail:', e.message); }
           }
+          // 后备：直接从文件读取问题池和经验
           if (pool === 0) {
             try {
               const { homedir } = await import('os');
@@ -824,510 +691,18 @@ class Bridge {
             } catch (e) {}
           }
           iq = iq || 100;
-          const FAIRY_NAMES = ['仙女', '玉女', '素女', '青女', '玄女', '嫦娥'];
-          function fairyName(port) {
-            const offset = Math.round((port - CONFIG.mainPort) / 10) - 1;
-            return FAIRY_NAMES[offset] || `:${port}`;
+          let fairies = { 3002:0,3003:0,3004:0,3005:0,3006:0,3007:0 };
+          for (const port of [3002,3003,3004,3005,3006,3007]) {
+            try { 
+              const r = await fetch(`http://localhost:${port}/api/status`, { signal: AbortSignal.timeout(1000) });
+              fairies[port] = r.ok ? 1 : 0;
+            } catch { fairies[port] = 0; }
           }
-          const fairies = {};
-          const guardian = this.learningCore?.guardian;
-          if (guardian?._heartbeats) {
-            const now = Date.now();
-            for (const [p, lastBeat] of guardian._heartbeats) {
-              const alive = (now - lastBeat < 30000) ? 1 : 0;
-              fairies[p] = { alive, name: fairyName(p) };
-            }
-          } else {
-            // 后备：无守护数据时，检查主端口 +10 偏移的 6 个端口
-            for (let i = 1; i <= 6; i++) {
-              const port = CONFIG.mainPort + i * 10;
-              try { 
-                const r = await fetch(`http://localhost:${port}/api/status`, { signal: AbortSignal.timeout(1000) });
-                fairies[port] = { alive: r.ok ? 1 : 0, name: fairyName(port) };
-              } catch { fairies[port] = { alive: 0, name: fairyName(port) }; }
-            }
-          }
-          const data = { iq, age: age || pool, solved: s, poolSize: pool, pending: Math.max(0, pool - s), fairies };
-
-          // 知识档案：缓存 60s
-          try {
-            const cacheAge = this._kbCache?.ts ? Date.now() - this._kbCache.ts : Infinity;
-            if (!this._kbCache || cacheAge > 60000) {
-              this._kbCache = { ts: Date.now(), data: this._buildKnowledge() };
-            }
-            data.knowledge = await this._kbCache.data;
-          } catch { data.knowledge = { domains: {}, recent: [], total: 0, evoCount: 0, offlineCount: 0 }; }
-
-          // 神经网络：缓存 120s
-          if (!this._neuralCache || Date.now() - this._neuralCache.ts > 120000) {
-            this._neuralCache = { ts: Date.now(), data: this._buildNeural() };
-          }
-          try { data.neural = await this._neuralCache.data; } catch { data.neural = null; }
-
-          // 领域分模型
-          try { data.models = this.learningCore?.modelMgr?.getStats() || { domains: {}, total: { samples: 0, models: 0 } }; } catch { data.models = null; }
-
-          // 推理链
-          try { data.chain = this.learningCore?.chain?.getStats() || null; } catch { data.chain = null; }
-
+          const data = { iq: iq || 100, age: age || pool, solved: s, poolSize: pool, pending: Math.max(0, pool - s), fairies };
           res.end(JSON.stringify(data));
-        } else if (pathname === '/api/dashboard' && req.method === 'POST') {
-          let body = '';
-          req.on('data', c => body += c);
-          req.on('end', async () => {
-            try {
-              const { action, port } = JSON.parse(body);
-              if (action === 'revive' && port) {
-                const guardian = this.learningCore?.guardian;
-                if (guardian) await guardian._revive(port);
-                res.writeHead(200);
-                res.end(JSON.stringify({ ok: true }));
-              } else {
-                res.writeHead(400);
-                res.end(JSON.stringify({ error: 'invalid' }));
-              }
-            } catch (e) {
-              res.writeHead(500);
-              res.end(JSON.stringify({ error: e.message }));
-            }
-          });
         } else if (pathname === '/' && req.method === 'GET') {
           res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-          res.end(`<!DOCTYPE html>
-<html lang="zh">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>OpenChat Bridge</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{
-  background:#06080f;
-  color:#d0d4e0;
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
-  min-height:100vh;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  padding:20px;
-  background-image:radial-gradient(ellipse at 50% 0%, #121832 0%, #06080f 70%);
-}
-.container{width:100%;max-width:720px}
-header{
-  text-align:center;
-  padding:30px 0 20px;
-}
-header h1{
-  font-size:28px;
-  font-weight:700;
-  background:linear-gradient(135deg, #7c8aff, #c084fc);
-  -webkit-background-clip:text;
-  -webkit-text-fill-color:transparent;
-  background-clip:text;
-  letter-spacing:2px;
-}
-header .subtitle{
-  font-size:12px;
-  color:#5a6080;
-  margin-top:4px;
-  letter-spacing:4px;
-  text-transform:uppercase;
-}
-.grid{
-  display:grid;
-  grid-template-columns:repeat(2,1fr);
-  gap:12px;
-  margin:10px 0;
-}
-.card{
-  background:linear-gradient(135deg, #0f1425 0%, #141a30 100%);
-  border:1px solid #1e2540;
-  border-radius:12px;
-  padding:18px 16px;
-  position:relative;
-  overflow:hidden;
-  transition:border-color .3s;
-}
-.card::before{
-  content:'';
-  position:absolute;
-  top:0;left:0;right:0;
-  height:2px;
-}
-.card:hover{border-color:#2d3560}
-.card .label{
-  font-size:11px;
-  color:#6b7394;
-  text-transform:uppercase;
-  letter-spacing:1px;
-  margin-bottom:6px;
-}
-.card .value{
-  font-size:32px;
-  font-weight:700;
-  letter-spacing:1px;
-}
-.card .unit{
-  font-size:13px;
-  font-weight:400;
-  opacity:.5;
-  margin-left:4px;
-}
-.card.iq::before{background:linear-gradient(90deg,#7c8aff,#c084fc)}
-.card.iq .value{color:#7c8aff}
-.card.age::before{background:linear-gradient(90deg,#ffa502,#ff7f50)}
-.card.age .value{color:#ffa502}
-.card.solved::before{background:linear-gradient(90deg,#2ed573,#7bed9f)}
-.card.solved .value{color:#2ed573}
-.card.pool::before{background:linear-gradient(90deg,#4fc3f7,#00d2ff)}
-.card.pool .value{color:#4fc3f7}
-.progress-bar{
-  margin-top:10px;
-  height:4px;
-  background:#1e2540;
-  border-radius:2px;
-  overflow:hidden;
-}
-.progress-bar .fill{
-  height:100%;
-  background:linear-gradient(90deg,#2ed573,#7bed9f);
-  border-radius:2px;
-  transition:width .6s ease;
-}
-.pool-detail{font-size:12px;color:#6b7394;margin-top:6px}
-.fairies-card{
-  background:linear-gradient(135deg, #0f1425 0%, #141a30 100%);
-  border:1px solid #1e2540;
-  border-radius:12px;
-  padding:18px 16px;
-  margin:12px 0;
-}
-.fairies-card .label{
-  font-size:11px;
-  color:#6b7394;
-  text-transform:uppercase;
-  letter-spacing:1px;
-  margin-bottom:14px;
-}
-.fairy-row{
-  display:flex;
-  justify-content:center;
-  gap:16px;
-  flex-wrap:wrap;
-}
-.fairy{
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:6px;
-}
-.fairy .dot{
-  width:36px;height:36px;
-  border-radius:50%;
-  border:2px solid #1e2540;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:14px;
-  transition:all .3s;
-  background:#0f1425;
-}
-.fairy .dot.on{
-  border-color:#2ed573;
-  background:rgba(46,213,115,.15);
-  box-shadow:0 0 12px rgba(46,213,115,.25);
-  animation:pulse 2s infinite;
-}
-.fairy .dot.on::after{
-  content:'';
-  width:8px;height:8px;
-  border-radius:50%;
-  background:#2ed573;
-}
-.fairy .dot.off{
-  border-color:#2d2040;
-  color:#4a3a5a;
-}
-.fairy .name{
-  font-size:11px;
-  color:#6b7394;
-  text-align:center;
-}
-.fairy .port{
-  font-size:10px;
-  color:#3a4060;
-}
-@keyframes pulse{
-  0%,100%{box-shadow:0 0 12px rgba(46,213,115,.25)}
-  50%{box-shadow:0 0 20px rgba(46,213,115,.45)}
-}
-.footer{
-  text-align:center;
-  padding:16px 0;
-  font-size:11px;
-  color:#3a4060;
-}
-.knowledge-card{
-  background:linear-gradient(135deg, #0f1425 0%, #141a30 100%);
-  border:1px solid #1e2540;
-  border-radius:12px;
-  padding:18px 16px;
-  margin:12px 0;
-}
-.knowledge-card .label{
-  font-size:11px;
-  color:#6b7394;
-  text-transform:uppercase;
-  letter-spacing:1px;
-  margin-bottom:10px;
-}
-.knowledge-bars{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-.knowledge-bar{
-  flex:1;min-width:60px;
-  display:flex;flex-direction:column;align-items:center;gap:4px
-}
-.knowledge-bar .bar-track{
-  width:100%;height:60px;background:#1a1f35;
-  border-radius:6px 6px 0 0;overflow:hidden;
-  display:flex;flex-direction:column-reverse
-}
-.knowledge-bar .bar-fill{border-radius:2px;transition:height .4s}
-.bar-fill.math{background:linear-gradient(180deg,#7c8aff,#4a5adf)}
-.bar-fill.logic{background:linear-gradient(180deg,#c084fc,#8b5cf6)}
-.bar-fill.reason{background:linear-gradient(180deg,#2ed573,#1ea44f)}
-.bar-fill.general{background:linear-gradient(180deg,#ffa502,#e08e00)}
-.knowledge-bar .bar-label{font-size:10px;color:#5a6080;text-align:center}
-.knowledge-bar .bar-count{font-size:14px;font-weight:700;color:#d0d4e0}
-.knowledge-recent{font-size:11px;color:#6b7394;max-height:70px;overflow-y:auto}
-.knowledge-recent .kr-item{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #15192e}
-.knowledge-recent .kr-domain{
-  font-size:9px;padding:1px 6px;border-radius:8px;margin-left:6px;white-space:nowrap
-}
-.kr-domain.math{background:rgba(124,138,255,.15);color:#7c8aff}
-.kr-domain.logic{background:rgba(192,132,252,.15);color:#c084fc}
-.kr-domain.code{background:rgba(255,107,122,.15);color:#ff6b7a}
-.kr-domain.visual{background:rgba(79,195,247,.15);color:#4fc3f7}
-.kr-domain.network{background:rgba(0,210,255,.15);color:#00d2ff}
-.kr-domain.ai{background:rgba(124,138,255,.15);color:#7c8aff}
-.kr-domain.solve{background:rgba(46,213,115,.15);color:#2ed573}
-.kr-domain.general{background:rgba(255,165,2,.15);color:#ffa502}
-.neural-card{
-  background:linear-gradient(135deg, #0f1425 0%, #141a30 100%);
-  border:1px solid #1e2540;
-  border-radius:12px;
-  padding:18px 16px;
-  margin:12px 0;
-}
-.neural-card .label{
-  font-size:11px;
-  color:#6b7394;
-  text-transform:uppercase;
-  letter-spacing:1px;
-  margin-bottom:10px;
-}
-.neural-stats{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px}
-.neural-stat{flex:1;min-width:70px;text-align:center}
-.neural-stat .ns-val{font-size:18px;font-weight:700}
-.neural-stat .ns-label{font-size:10px;color:#5a6080;margin-top:2px}
-.ns-up{color:#2ed573}.ns-warn{color:#ffa502}.ns-info{color:#7c8aff}
-.neural-chart{height:40px;background:#1a1f35;border-radius:6px;position:relative;overflow:hidden}
-.neural-chart svg{width:100%;height:100%}
-.bar-fill.code{background:linear-gradient(180deg,#ff6b7a,#d94a5a)}
-.bar-fill.visual{background:linear-gradient(180deg,#4fc3f7,#0288d1)}
-.bar-fill.network{background:linear-gradient(180deg,#00d2ff,#0091ea)}
-.bar-fill.ai{background:linear-gradient(180deg,#c084fc,#7c4dff)}
-.bar-fill.solve{background:linear-gradient(180deg,#2ed573,#1ea44f)}
-.footer .dot-refresh{display:inline-block;width:6px;height:6px;border-radius:50%;background:#2ed573;margin-right:6px;animation:pulse 1.5s infinite}
-.iq-badge{
-  display:inline-block;
-  font-size:12px;
-  padding:2px 8px;
-  border-radius:10px;
-  margin-left:8px;
-  font-weight:500;
-}
-.iq-badge.genius{background:rgba(124,138,255,.15);color:#c084fc}
-.iq-badge.excellent{background:rgba(124,138,255,.15);color:#7c8aff}
-.iq-badge.normal{background:rgba(100,120,160,.15);color:#7a8ab0}
-.iq-badge.low{background:rgba(255,165,2,.1);color:#ffa502}
-.iq-badge.poor{background:rgba(255,71,87,.1);color:#ff4757}
-.btn-shutdown{
-  background:rgba(255,71,87,.15);
-  border:1px solid rgba(255,71,87,.4);
-  color:#ff6b7a;
-  padding:4px 12px;
-  border-radius:6px;
-  cursor:pointer;
-  font-size:11px;
-  letter-spacing:1px;
-  transition:all .2s;
-}
-.btn-shutdown:hover{background:rgba(255,71,87,.3);color:#ff4757;border-color:#ff4757}
-</style>
-</head>
-<body>
-<div class="container">
-<header>
-  <h1>OpenChat Bridge</h1>
-  <div class="subtitle">Seven Fairies Dashboard</div>
-</header>
-<div class="grid">
-  <div class="card iq"><div class="label">IQ</div><div class="value" id="v-iq">--<span class="iq-badge" id="b-iq"></span></div></div>
-  <div class="card age"><div class="label">Age</div><div class="value" id="v-age">--<span class="unit">yrs</span></div></div>
-  <div class="card solved"><div class="label">Solved</div><div class="value" id="v-solved">--</div></div>
-  <div class="card pool"><div class="label">Problem Pool</div><div class="value" id="v-pool">--</div>
-    <div class="progress-bar"><div class="fill" id="fill-bar" style="width:0%"></div></div>
-    <div class="pool-detail" id="pool-detail"></div>
-  </div>
-</div>
-<div class="fairies-card">
-  <div class="label">Seven Fairies</div>
-  <div class="fairy-row" id="fairy-row"></div>
-</div>
-<div class="knowledge-card">
-  <div class="label">Knowledge · 知识档案 <span style=color:#7c8aff id=k-total></span></div>
-  <div class="knowledge-bars" id="kb-bars"></div>
-  <div class="knowledge-recent" id="kb-recent"></div>
-</div>
-<div class="neural-card">
-  <div class="label">Neural Network · 神经网络</div>
-  <div class="neural-stats" id="neural-stats"></div>
-  <div class="neural-chart" id="neural-chart"></div>
-</div>
-<div class="neural-card">
-  <div class="label">Domain Models · 领域分模型</div>
-  <div class="knowledge-bars" id="models-bars"></div>
-</div>
-<div class="neural-card">
-  <div class="label">Reasoning Chain · 推理链</div>
-  <div class="neural-stats" id="chain-stats"></div>
-</div>
-<div class="footer"><span class="dot-refresh"></span>Live · Auto Refresh 3s &nbsp; <button class="btn-shutdown" onclick="S()">Shutdown All</button></div>
-</div>
-<script>
-async function R(){
-  try{
-    const d=await(await fetch('/api/dashboard')).json();
-    document.getElementById('v-iq').innerHTML=d.iq+B(d.iq);
-    document.getElementById('v-age').innerHTML=d.age+'<span class=unit>yrs</span>';
-    document.getElementById('v-solved').textContent=d.solved;
-    document.getElementById('v-pool').textContent=d.poolSize;
-    const pct=d.poolSize>0?Math.round(d.solved/d.poolSize*100):0;
-    document.getElementById('fill-bar').style.width=pct+'%';
-    document.getElementById('pool-detail').textContent='Pending: '+d.pending;
-    if(d.fairies){
-      const ports=Object.keys(d.fairies).sort((a,b)=>a-b);
-      let fr='';
-      for(const p of ports){
-        const f=d.fairies[p];
-        const on=f.alive;
-        fr+='<div class=fairy data-port='+p+' onclick=\"K('+p+')\"><div class=\"dot '+(on?'on':'off')+'\"></div><div class=name>'+f.name+'</div><div class=port>:'+p+'</div></div>';
-      }
-      document.getElementById('fairy-row').innerHTML=fr;
-    }
-    if(d.knowledge){
-      document.getElementById('k-total').textContent=d.knowledge.evoCount+'⧉'+d.knowledge.offlineCount;
-      const domains=d.knowledge.domains||{};
-      const max=Math.max(1,...Object.values(domains));
-      const colors=['math','logic','code','visual','network','ai','general'];
-      let bars='';
-      for(const domain of colors){
-        const cnt=domains[domain]||0;
-        if(!cnt)continue;
-        const pct=Math.round(cnt/max*100);
-        const c=colors.includes(domain)?domain:'general';
-        bars+='<div class=knowledge-bar><div class=bar-count>'+cnt+'</div><div class=bar-track><div class=\"bar-fill '+c+'\" style=height:'+pct+'%></div></div><div class=bar-label>'+domain+'</div></div>';
-      }
-      document.getElementById('kb-bars').innerHTML=bars;
-      const recents=d.knowledge.recent||[];
-      let rec='';
-      for(const r of recents){
-        const t=new Date(r.solvedAt);
-        const src=r.source==='evolution'?'<span style=color:#7c8aff;font-size:9px>🧠</span>':'<span style=color:#ffa502;font-size:9px>📋</span>';
-        rec+='<div class=kr-item><span>'+src+' '+h(r.task,36)+'</span><span><span class=\"kr-domain '+r.domain+'\">'+r.domain+'</span> '+fmt(t)+'</span></div>';
-      }
-      document.getElementById('kb-recent').innerHTML=rec;
-    }
-    if(d.neural){
-      const n=d.neural;
-      document.getElementById('neural-stats').innerHTML=
-        '<div class=neural-stat><div class=\"ns-val ns-up\">'+n.samples+'</div><div class=ns-label>Samples / 样本</div></div>'+
-        '<div class=neural-stat><div class=\"ns-val '+(n.accNow>=60?'ns-up':'ns-warn')+'\">'+n.accNow+'%</div><div class=ns-label>Accuracy / 准确率</div></div>'+
-        '<div class=neural-stat><div class=\"ns-val ns-info\">'+n.durH+'h</div><div class=ns-label>Training / 训练时长</div></div>'+
-        '<div class=neural-stat><div class=\"ns-val ns-info\">'+n.entries+'</div><div class=ns-label>Rounds / 轮次</div></div>'+
-        (n.weightsSize?'<div class=neural-stat><div class=\"ns-val ns-info\">'+(n.weightsSize/1024).toFixed(0)+'KB</div><div class=ns-label>Weights / 权重</div></div>':'');
-      const t=n.trend||[];
-      if(t.length>1){
-        const maxA=Math.max(...t.map(p=>p.a));
-        const minA=Math.min(...t.map(p=>p.a));
-        const range=maxA-minA||1;
-        let pts='';
-        for(let i=0;i<t.length;i++){
-          const x=i/(t.length-1)*100;
-          const y=100-(t[i].a-minA)/range*90;
-          pts+=x+','+y+' ';
-        }
-        document.getElementById('neural-chart').innerHTML='<svg viewBox="0 0 100 100" preserveAspectRatio=none><polyline points=\"'+pts+'\" fill=none stroke=#7c8aff stroke-width=2 vector-effect=non-scaling-stroke></polyline></svg>';
-      }
-    }
-    if(d.models&&d.models.domains){
-      const dd=d.models.domains;
-      const keys=Object.keys(dd).sort((a,b)=>dd[b].samples-dd[a].samples);
-      const maxS=Math.max(1,...keys.map(k=>dd[k].samples));
-      const colors={math:'math',logic:'logic',code:'code',visual:'visual',network:'network',ai:'ai',solve:'general',general:'general'};
-      let bars='';
-      for(const k of keys){
-        if(!dd[k].samples&&!dd[k].hasModel)continue;
-        const pct=Math.round(dd[k].samples/maxS*100);
-        const c=colors[k]||'general';
-        bars+='<div class=knowledge-bar><div class=bar-count>'+dd[k].samples+'</div><div class=bar-track><div class=\"bar-fill '+c+'\" style=height:'+pct+'%></div></div><div class=bar-label>'+k+'</div></div>';
-      }
-      if(!bars)bars='<span style=font-size:11px;color:#5a6080>No domain models yet · 暂无领域模型</span>';
-      document.getElementById('models-bars').innerHTML=bars;
-    }
-    if(d.chain){
-      const c=d.chain;
-      document.getElementById('chain-stats').innerHTML=
-        '<div class=neural-stat><div class=\"ns-val ns-up\">'+c.deductiveHits+'</div><div class=ns-label>Theorem Hits / 定理命中</div></div>'+
-        '<div class=neural-stat><div class=\"ns-val '+(c.inductiveDiscoveries>0?'ns-up':'ns-info')+'\">'+c.inductiveDiscoveries+'</div><div class=ns-label>Discovered / 归纳发现</div></div>'+
-        '<div class=neural-stat><div class=\"ns-val ns-info\">'+c.theoremCount+'</div><div class=ns-label>Theorem DB / 定理库</div></div>'+
-        '<div class=neural-stat><div class=\"ns-val '+(c.hitRate>=50?'ns-up':'ns-warn')+'\">'+c.hitRate+'%</div><div class=ns-label>Hit Rate / 命中率</div></div>'+
-        (c.pendingCount?'<div class=neural-stat><div class=\"ns-val ns-warn\">'+c.pendingCount+'</div><div class=ns-label>Pending / 待归纳</div></div>':'');
-    }
-  }catch(e){}
-}
-async function K(port){
-  if(confirm('复活仙女 :'+port+' ?')){
-    await fetch('/api/dashboard',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'revive',port})});
-    R();
-  }
-}
-async function S(){
-  if(!confirm('关闭所有 7 个 Bridge？'))return;
-  document.querySelector('.btn-shutdown').disabled=true;
-  document.querySelector('.btn-shutdown').textContent='Shutting down...';
-  const d=await(await fetch('/api/dashboard')).json();
-  const ports=Object.keys(d.fairies||{}).sort((a,b)=>a-b);
-  for(const p of ports){
-    try{await fetch('http://localhost:'+p+'/shutdown',{method:'POST'})}catch(e){}
-  }
-  await fetch('/shutdown',{method:'POST'}).catch(()=>{});
-}
-function B(iq){
-  let cls,label;
-  if(iq>=130){cls='genius';label='\u8d85\u5e38';}
-  else if(iq>=110){cls='excellent';label='\u4f18\u79c0';}
-  else if(iq>=90){cls='normal';label='\u6b63\u5e38';}
-  else if(iq>=70){cls='low';label='\u504f\u4f4e';}
-  else{cls='poor';label='\u4e0d\u8db3';}
-  return ' <span class=\"iq-badge '+cls+'\">'+label+'</span>';
-}
-function h(s,n){return s.length>n?s.slice(0,n)+'\u2026':s}
-function fmt(d){const h=('0'+d.getHours()).slice(-2),m=('0'+d.getMinutes()).slice(-2);return h+':'+m}
-R();setInterval(R,3000);
-</script>
-</body>
-</html>`);
+          res.end(dashboardHTML());
           }
         } catch (e) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -1348,7 +723,7 @@ R();setInterval(R,3000);
       ws.on('message', async (data) => {
         try {
           const msg = JSON.parse(data.toString());
-          await this.handleWSMessage(ws, msg);
+          await this.h.handleWSMessage(ws, msg);
         } catch (e) {
           ws.send(JSON.stringify({ type: 'error', data: { message: e.message } }));
         }
@@ -1438,815 +813,6 @@ R();setInterval(R,3000);
     // 启动 HTTP 服务器
     this.httpServer.listen(CONFIG.port, CONFIG.host);
     console.log(`[HTTP] 正在监听 ${CONFIG.host}:${CONFIG.port}`);
-  }
-
-  async handleLearningStatus(req, res) {
-    const stats = this.learningCore ? this.learningCore.getStats() : { iq: 0, age: 0, solvedCount: 0 };
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(stats));
-  }
-
-  async handleStatus(req, res) {
-    const provider = persistentConfig.getPreference('currentProvider');
-    const model = persistentConfig.getPreference('currentModel');
-    const memStats = await memoryManager.getStats();
-
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      status: 'running',
-      uptime: Math.floor((Date.now() - this.startTime) / 1000),
-      currentProvider: provider,
-      currentModel: model,
-      wsClients: this.clients.size,
-      memory: memStats
-    }));
-  }
-
-  async handleProviders(req, res) {
-    // 使用新的统一 Provider 系统
-    const providers = providerRegistry.listAll();
-    const current = persistentConfig.getPreference('currentProvider');
-
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      current,
-      providers
-    }));
-  }
-
-  async handleSessions(req, res) {
-    const sessions = sessionManager.listSessions();
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ sessions }));
-  }
-
-  async handleChat(req, res) {
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', async () => {
-      try {
-        const { message, sessionId } = JSON.parse(body);
-
-        // 走 resident 调度器流程（分布式协作）
-        // 1. 先检查知识库
-        const kb = residentScheduler?._convergenceSystem?.kb;
-        let cachedAnswer = null;
-        if (kb) {
-          cachedAnswer = kb.answer('general', message);
-        }
-
-        if (cachedAnswer) {
-          // 知识库有答案，直接返回
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            response: cachedAnswer,
-            source: 'knowledge_base'
-          }));
-          return;
-        }
-
-        // 2. 没有答案，加入调度器让居民求解
-        const problemId = `chat_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
-        
-        if (residentScheduler) {
-          // 添加问题到调度器
-          residentScheduler.addProblem({
-            problemId,
-            domain: 'general',
-            question: message,
-            subQuestions: [],
-            from: 'api_chat',
-          });
-
-          // 等待一段时间让居民求解（最多 10 秒）
-          const maxWait = 10000;
-          const checkInterval = 500;
-          let waited = 0;
-          
-          while (waited < maxWait) {
-            await new Promise(r => setTimeout(r, checkInterval));
-            waited += checkInterval;
-            
-            // 检查是否已有解
-            const pending = residentScheduler._pendingProblems?.find(p => p.problemId === problemId);
-            if (pending?.status === 'done' && pending.answer) {
-              res.writeHead(200, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({
-                response: pending.answer,
-                source: 'residents_convergence'
-              }));
-              return;
-            }
-          }
-
-          // 超时，返回处理中
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            response: '问题已提交，正在求解中...',
-            source: 'residents_processing',
-            problemId
-          }));
-        } else {
-          // 没有调度器，回退到直接 LLM
-          throw new Error('Resident scheduler not available');
-        }
-      } catch (e) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: e.message }));
-      }
-    });
-  }
-
-  /**
-   * 流式聊天接口 (Server-Sent Events)
-   */
-  async handleChatStream(req, res) {
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', async () => {
-      try {
-        const { message, sessionId, provider, model } = JSON.parse(body);
-
-        // 设置 SSE 头
-        res.writeHead(200, {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
-          'Access-Control-Allow-Origin': '*'
-        });
-
-        // 发送 SSE 事件的辅助函数
-        const sendEvent = (event, data) => {
-          res.write(`event: ${event}\n`);
-          res.write(`data: ${JSON.stringify(data)}\n\n`);
-        };
-
-        // 如果没有 session，创建一个
-        let sid = sessionId;
-        if (!sid) {
-          const p = provider || persistentConfig.getPreference('currentProvider');
-          const m = model || persistentConfig.getPreference('currentModel');
-          sid = await sessionManager.createSession(p, m);
-        }
-
-        sendEvent('session', { sessionId: sid });
-
-        // 导入 agentEngine
-        const { agentEngine } = await import('./core/agent-engine.js');
-
-        // 使用流式处理
-        let fullContent = '';
-        await agentEngine.processStream(sid, 'default-user', message, (event) => {
-          switch (event.type) {
-            case 'thinking':
-              sendEvent('thinking', { iteration: event.iteration });
-              break;
-            case 'content':
-              fullContent += event.content;
-              sendEvent('content', { chunk: event.content });
-              break;
-            case 'tool_call':
-              sendEvent('tool_call', { tool: event.tool, args: event.args });
-              break;
-            case 'tool_result':
-              sendEvent('tool_result', { tool: event.tool, result: event.result });
-              break;
-            case 'complete':
-              sendEvent('complete', {
-                response: event.response || fullContent,
-                iterations: event.iterations
-              });
-              break;
-            case 'error':
-              sendEvent('error', { message: event.error || event.message });
-              break;
-          }
-        });
-
-        res.end();
-      } catch (e) {
-        res.write(`event: error\ndata: ${JSON.stringify({ message: e.message })}\n\n`);
-        res.end();
-      }
-    });
-  }
-
-  async handleGetConfig(req, res) {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      currentProvider: persistentConfig.getPreference('currentProvider'),
-      currentModel: persistentConfig.getPreference('currentModel'),
-      configuredProviders: persistentConfig.listProviders()
-    }));
-  }
-
-  async handleSetConfig(req, res) {
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', async () => {
-      try {
-        const { provider, model, apiKey } = JSON.parse(body);
-
-        if (apiKey) {
-          persistentConfig.setApiKey(provider, apiKey);
-        }
-        if (provider) {
-          persistentConfig.setPreference('currentProvider', provider);
-        }
-        if (model) {
-          persistentConfig.setPreference('currentModel', model);
-        }
-
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: true }));
-      } catch (e) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: e.message }));
-      }
-    });
-  }
-
-  async handleMemoryStats(req, res) {
-    const stats = await memoryManager.getStats();
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(stats));
-  }
-
-  async handleMemoryOp(req, res) {
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', async () => {
-      try {
-        const { action, fact, query } = JSON.parse(body);
-
-        if (action === 'remember' && fact) {
-          const id = await memoryManager.saveFact('default', fact);
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ success: true, id }));
-        } else if (action === 'recall' && query) {
-          const results = await memoryManager.queryFacts('default', query);
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ results }));
-        } else {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Invalid action' }));
-        }
-      } catch (e) {
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: e.message }));
-      }
-    });
-  }
-
-  /**
-   * 配置 Provider（新 API）
-   */
-  async handleProviderConnect(req, res) {
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', async () => {
-      try {
-        const { providerId, apiKey, baseUrl } = JSON.parse(body);
-
-        if (!providerId) {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'providerId required' }));
-          return;
-        }
-
-        const result = await providerRegistry.configure(providerId, { apiKey, baseUrl });
-
-        if (result.success) {
-          const models = providerRegistry.getModels(providerId);
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            success: true,
-            providerId,
-            modelCount: models.length,
-            models: models.slice(0, 20)  // 返回前 20 个模型
-          }));
-        } else {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: result.error }));
-        }
-      } catch (e) {
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: e.message }));
-      }
-    });
-  }
-
-  /**
-   * 获取 Provider 模型列表
-   */
-  async handleProviderModels(req, res) {
-    const url = new URL(req.url, `http://localhost:${CONFIG.port}`);
-    const providerId = url.searchParams.get('providerId');
-
-    if (!providerId) {
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'providerId required' }));
-      return;
-    }
-
-    try {
-      // 尝试刷新模型列表
-      const models = await providerRegistry.refreshModels(providerId);
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ providerId, models, count: models.length }));
-    } catch (e) {
-      // 返回缓存的模型
-      const models = providerRegistry.getModels(providerId);
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ providerId, models, count: models.length, cached: true }));
-    }
-  }
-  
-  /**
-   * 获取系统状态
-   */
-  getSystemStatus() {
-    if (this.stabilitySystem) {
-      return this.stabilitySystem.getSystemStatus();
-    }
-    return {
-      status: 'running',
-      uptime: Math.floor((Date.now() - this.startTime) / 1000),
-      components: ['basic']
-    };
-  }
-
-  /**
-   * 获取 Agent 列表和监控摘要
-   */
-  async handleAgentsList(req, res) {
-    const summary = agentMonitor.getSummary();
-
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(summary));
-  }
-
-  /**
-   * 获取 Agent 执行历史
-   */
-  async handleAgentsHistory(req, res) {
-    const url = new URL(req.url, `http://localhost:${CONFIG.port}`);
-    const limit = parseInt(url.searchParams.get('limit')) || 20;
-
-    const history = agentMonitor.getExecutionHistory(limit);
-
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ history }));
-  }
-
-  /**
-   * 获取单个 Agent 状态
-   */
-  async handleAgentStatus(req, res, agentId) {
-    const agent = agentMonitor.getAgent(agentId);
-
-    if (!agent) {
-      res.writeHead(404, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Agent not found' }));
-      return;
-    }
-
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(agent));
-  }
-
-  /**
-   * 执行 Agent 操作 (暂停/恢复/提供输入)
-   */
-  async handleAgentAction(req, res, agentId) {
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', async () => {
-      try {
-        const { action, input } = JSON.parse(body);
-
-        switch (action) {
-          case 'pause':
-            agentMonitor.pauseAgent(agentId);
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ success: true, agentId, action: 'paused' }));
-            break;
-
-          case 'resume':
-            agentMonitor.resumeAgent(agentId);
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ success: true, agentId, action: 'resumed' }));
-            break;
-
-          case 'input':
-            agentMonitor.provideHumanInput(agentId, input);
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ success: true, agentId, action: 'input_provided' }));
-            break;
-
-          default:
-            res.writeHead(400, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Unknown action. Use: pause, resume, input' }));
-        }
-      } catch (e) {
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: e.message }));
-      }
-    });
-  }
-
-  async autoConfigProviders(detectedTools) {
-    for (const tool of detectedTools) {
-      try {
-        const { createLocalProvider } = await import('./providers/local-provider.js');
-        const provider = createLocalProvider(tool.name, {
-          mode: 'command',
-          command: tool.command,
-          args: []
-        });
-        await provider.connect({ mode: 'command', command: tool.command, args: [] });
-        sessionManager.addProviderDirect(provider);
-      } catch (e) {
-        // Auto-configuration failed, skip silently
-      }
-    }
-  }
-
-  async handleWSMessage(ws, msg) {
-    const { type, data, sessionId } = msg;
-
-    // 确保 RAG 已初始化
-    if (!memoryManager.initialized) {
-      try {
-        await memoryManager.initialize();
-      } catch (e) {
-        // 忽略初始化错误，继续处理
-      }
-    }
-
-    // 处理记忆/RAG 相关消息
-    if (type === 'memory_save' || type === MessageType.MEMORY_SAVE) {
-      try {
-        const { fact, userId = 'default' } = data;
-        const id = await memoryManager.saveFact(userId, fact);
-        ws.send(JSON.stringify({
-          type: 'memory_save',
-          data: { success: true, id, fact }
-        }));
-        return;
-      } catch (e) {
-        ws.send(JSON.stringify({ type: MessageType.ERROR, data: { message: e.message } }));
-        return;
-      }
-    }
-
-    if (type === 'memory_query' || type === MessageType.MEMORY_QUERY) {
-      try {
-        const { query, userId = 'default', topK = 5 } = data;
-        const results = await memoryManager.queryFacts(userId, query, { topK });
-        ws.send(JSON.stringify({
-          type: 'memory_query',
-          data: { results }
-        }));
-        return;
-      } catch (e) {
-        ws.send(JSON.stringify({ type: MessageType.ERROR, data: { message: e.message } }));
-        return;
-      }
-    }
-
-    if (type === 'memory_stats' || type === MessageType.MEMORY_STATS) {
-      try {
-        const stats = await memoryManager.getStats();
-        ws.send(JSON.stringify({
-          type: 'memory_stats',
-          data: stats
-        }));
-        return;
-      } catch (e) {
-        ws.send(JSON.stringify({ type: MessageType.ERROR, data: { message: e.message } }));
-        return;
-      }
-    }
-
-    // 处理状态查询
-    if (type === 'bridge_status' || type === MessageType.BRIDGE_STATUS) {
-      const provider = persistentConfig.getPreference('currentProvider');
-      const model = persistentConfig.getPreference('currentModel');
-      const memStats = await memoryManager.getStats();
-
-      ws.send(JSON.stringify({
-        type: 'bridge_status',
-        data: {
-          status: 'running',
-          uptime: Math.floor((Date.now() - this.startTime) / 1000),
-          currentProvider: provider,
-          currentModel: model,
-          wsClients: this.clients.size,
-          memory: memStats
-        }
-      }));
-      return;
-    }
-
-    // 其他消息通过 Router 处理
-    const gatewayId = `ws-${sessionId || crypto.randomUUID()}`;
-    const wsGateway = new WSGateway(gatewayId, router, ws);
-    router.registerGateway(gatewayId, wsGateway);
-
-    try {
-      const result = await router.dispatch(gatewayId, { type, data, sessionId });
-    } catch (e) {
-      ws.send(JSON.stringify({ type: MessageType.ERROR, data: { message: e.message }, sessionId }));
-    }
-  }
-
-  getCompletions(line) {
-    const trimmed = line.trim();
-    if (!trimmed) return [];
-
-    const parts = trimmed.split(/\s+/);
-    const last = parts[parts.length - 1];
-    const matches = [];
-
-    if (parts.length === 1) {
-      if ('session'.startsWith(last)) matches.push('session');
-      if ('provider'.startsWith(last)) matches.push('provider');
-      if ('help'.startsWith(last)) matches.push('help');
-      if ('status'.startsWith(last)) matches.push('status');
-      if ('clear'.startsWith(last)) matches.push('clear');
-      if ('exit'.startsWith(last)) matches.push('exit');
-      if ('quit'.startsWith(last)) matches.push('quit');
-      if ('chat'.startsWith(last)) matches.push('chat');
-      return matches;
-    }
-
-    if (parts.length === 2 && parts[0] === 'session') {
-      if ('create'.startsWith(last)) matches.push('create');
-      if ('close'.startsWith(last)) matches.push('close');
-      if ('list'.startsWith(last)) matches.push('list');
-      if ('history'.startsWith(last)) matches.push('history');
-      return matches;
-    }
-
-    if (parts.length === 2 && parts[0] === 'provider') {
-      if ('add'.startsWith(last)) matches.push('add');
-      if ('remove'.startsWith(last)) matches.push('remove');
-      if ('list'.startsWith(last)) matches.push('list');
-      return matches;
-    }
-
-    if (parts.length === 3 && parts[0] === 'session' && parts[1] === 'create') {
-      if ('claude'.startsWith(last)) matches.push('claude');
-      if ('opencode'.startsWith(last)) matches.push('opencode');
-      return matches;
-    }
-
-    return matches;
-  }
-
-  startCLI() {
-    this.history = this.loadHistory();
-    this.executing = false;
-
-    // Print welcome once
-    const pname = this.getPrompt();
-    console.log('');
-    console.log('  OPENCHAT BRIDGE v2.0');
-    if (pname) console.log(`  [${pname}]`);
-    console.log('  输入 ? 查看帮助，或直接开始聊天\n');
-
-    // 使用 readline 模块处理交互输入
-    // crlfDelay 确保 Windows 换行符正确处理
-    this.rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout,
-      terminal: true,
-      crlfDelay: Infinity,
-      prompt: this.getPromptString()
-    });
-
-    this.rl.on('line', async (line) => {
-      const cmd = line.trim();
-
-      if (cmd) {
-        this.history.unshift(cmd);
-        if (this.history.length > 100) this.history.pop();
-        this.saveHistory();
-        this.executing = true;
-        try {
-          await executeCommand(cmd);
-        } finally {
-          this.executing = false;
-        }
-      }
-
-      // 更新提示符（可能在执行命令后改变了 provider）
-      this.rl.setPrompt(this.getPromptString());
-      this.rl.prompt();
-    });
-
-    this.rl.on('close', () => {
-      console.log('\n[CLI] 再见!');
-      process.exit(0);
-    });
-
-    // Ctrl+C 退出 - Windows 兼容
-    this.rl.on('SIGINT', () => {
-      this.rl.close();
-    });
-
-    // 初始提示
-    this.rl.prompt();
-  }
-
-  loadHistory() {
-    try {
-      const historyPath = path.join(process.env.HOME || process.env.USERPROFILE, '.openchat', 'history.json');
-      if (fs.existsSync(historyPath)) {
-        const data = fs.readFileSync(historyPath, 'utf8');
-        return JSON.parse(data);
-      }
-    } catch (e) {
-      console.error('[历史] 加载失败:', e);
-    }
-    return [];
-  }
-
-  saveHistory() {
-    try {
-      const historyPath = path.join(process.env.HOME || process.env.USERPROFILE, '.openchat', 'history.json');
-      fs.writeFileSync(historyPath, JSON.stringify(this.history), 'utf8');
-    } catch (e) {
-      console.error('[历史] 保存失败:', e);
-    }
-  }
-
-  _startLearningCore() {
-    if (!this.learningCore) return;
-
-    let cycle = 0;
-    const runCycle = async () => {
-      cycle++;
-      try {
-        const result = await this.learningCore.runCycle();
-        if (result.status === 'solved') {
-          console.log(`[学习核心] 第${cycle}轮: 解决 ${result.problem} → IQ: ${result.iq}`);
-        } else if (cycle % 10 === 0) {
-          console.log(`[学习核心] 第${cycle}轮: ${result.status} | IQ: ${result.iq} 年龄: ${result.age}`);
-        }
-      } catch (e) {
-        console.log(`[学习核心] 第${cycle}轮异常: ${e.message}`);
-      }
-    };
-
-    runCycle();
-    this._learningTimer = setInterval(runCycle, 60000);
-  }
-
-  _startFairyMonitor() {
-    let downCount = 0;
-    let isMainMode = false;
-    const targetUrl = `http://localhost:${CONFIG.mainPort}/api/status`;
-    const targetPort = CONFIG.mainPort;
-    this._fairyMonTimer = setInterval(async () => {
-      if (isMainMode) {
-        try {
-          const resp = await fetch(targetUrl, { signal: AbortSignal.timeout(3000) });
-          if (resp.ok) {
-            console.log('[FairyMonitor] 🔄 主 Bridge 已恢复，归还主模式');
-            if (this._learningTimer) clearInterval(this._learningTimer);
-            this._learningTimer = null;
-            isMainMode = false;
-            downCount = 0;
-            return;
-          }
-        } catch {}
-        return;
-      }
-
-      try {
-        const resp = await fetch(targetUrl, { signal: AbortSignal.timeout(3000) });
-        if (resp.ok) { downCount = 0; return; }
-      } catch { downCount++; }
-
-      if (downCount >= 3) {
-        console.log('[FairyMonitor] 🔼 主 Bridge 失联，临时接管主模式');
-        this._startLearningCore();
-        await this._reviveMain(targetPort);
-        isMainMode = true;
-        downCount = 0;
-      }
-    }, 15000);
-  }
-
-  async _reviveMain(port) {
-    try {
-      const { exec } = await import('child_process');
-      exec(`start "OpenChat Bridge" node src/main.js --port=${port} --main`, {
-        cwd: process.cwd()
-      });
-      console.log(`[FairyMonitor] 复活主 Bridge :${port}`);
-    } catch (e) {
-      console.log(`[FairyMonitor] 复活失败: ${e.message}`);
-    }
-  }
-
-  _startHeartbeat() {
-    const myPort = this.body?.port || port || 0;
-    setInterval(async () => {
-      try {
-        await fetch(`http://localhost:${CONFIG.mainPort}/api/heartbeat`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ port: myPort }),
-          signal: AbortSignal.timeout(2000)
-        });
-      } catch {}
-    }, 10000);
-  }
-
-  async _buildKnowledge() {
-    const domains = {};
-    const recent = [];
-    let evoCount = 0;
-    let offlineCount = 0;
-    try {
-      const { readFile, readdir } = await import('fs/promises');
-      const { homedir } = await import('os');
-      const { join } = await import('path');
-      const expDir = join(homedir(), '.openchat', 'experience');
-      const evoFile = join(homedir(), '.openchat', 'memory', 'evolution-experiences.json');
-
-      try {
-        const raw = await readFile(evoFile, 'utf8');
-        const evos = JSON.parse(raw);
-        evoCount = Array.isArray(evos) ? evos.length : 0;
-        if (Array.isArray(evos)) {
-          for (const ev of evos) {
-            if (!ev.success) continue;
-            const task = (ev.task || '').toLowerCase();
-            let domain = 'general';
-            if (task.includes('math') || task.includes('数学') || task.includes('计算') || task.includes('概率')) domain = 'math';
-            else if (task.includes('code') || task.includes('代码') || task.includes('编程') || task.includes('python')) domain = 'code';
-            else if (task.includes('logic') || task.includes('逻辑') || task.includes('推理')) domain = 'logic';
-            else if (task.includes('visual') || task.includes('可视化') || task.includes('图像') || task.includes('图')) domain = 'visual';
-            else if (task.includes('network') || task.includes('网络') || task.includes('p2p')) domain = 'network';
-            else if (task.includes('ai') || task.includes('模型') || task.includes('机器学习')) domain = 'ai';
-            domains[domain] = (domains[domain] || 0) + 1;
-            recent.push({ task: (ev.task || '').replace(/\n.*/s, '').slice(0, 40), domain, solvedAt: ev.timestamp, source: 'evolution' });
-          }
-        }
-      } catch {}
-
-      try {
-        const files = (await readdir(expDir).catch(() => [])).filter(f => f.endsWith('.json'));
-        for (const f of files) {
-          try {
-            const raw = await readFile(join(expDir, f), 'utf8');
-            const e = JSON.parse(raw);
-            const domain = (e.domain === 'reason' ? 'logic' : e.domain) || 'general';
-            domains[domain] = (domains[domain] || 0) + 1;
-            offlineCount++;
-            if (e.solvedAt) recent.push({ task: e.question, domain, solvedAt: e.solvedAt, source: 'offline' });
-          } catch {}
-        }
-      } catch {}
-    } catch {}
-    recent.sort((a, b) => (b.solvedAt || 0) - (a.solvedAt || 0));
-    return { domains, recent: recent.slice(0, 8), total: evoCount + offlineCount, evoCount, offlineCount };
-  }
-
-  async _buildNeural() {
-    try {
-      const { readFile } = await import('fs/promises');
-      const { homedir } = await import('os');
-      const { join } = await import('path');
-      const logFile = join(homedir(), '.openchat', 'brain', 'training-log.json');
-      const weightsFile = join(homedir(), '.openchat', 'brain', 'weights.json');
-
-      const log = JSON.parse(await readFile(logFile, 'utf8'));
-      const first = log[0], last = log[log.length - 1];
-      const durH = ((last.time - first.time) / 3600000).toFixed(1);
-      const samples = last.samples;
-      const samplesGrowth = last.samples - first.samples;
-      const accNow = (last.accuracy * 100).toFixed(1);
-      const accFirst = (first.accuracy * 100).toFixed(1);
-      const accDelta = ((last.accuracy - first.accuracy) * 100).toFixed(1);
-
-      let weightsSize = 0;
-      try { const stat = await import('fs/promises').then(m => m.stat(weightsFile)); weightsSize = stat.size; } catch {}
-
-      const trend = [];
-      const step = Math.max(1, Math.floor(log.length / 20));
-      for (let i = 0; i < log.length; i += step) {
-        trend.push({ s: log[i].samples, a: +(log[i].accuracy * 100).toFixed(1), t: log[i].time });
-      }
-      trend.push({ s: last.samples, a: +(last.accuracy * 100).toFixed(1), t: last.time });
-
-      return { entries: log.length, samples, samplesGrowth, accNow, accFirst, accDelta, durH, weightsSize, trend };
-    } catch { return null; }
-  }
 
   async shutdown() {
     console.log('\n[Bridge] 正在关闭...');

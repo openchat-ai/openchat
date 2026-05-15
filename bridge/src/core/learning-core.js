@@ -153,7 +153,7 @@ this.history = {
 _loadStats() {
     const expFiles = existsSync(EXPERIENCE_DIR) ? readdirSync(EXPERIENCE_DIR).filter(f => f.endsWith('.json')) : [];
     const fromPool = this.problemPool.filter(p => p.solved || (p.answer != null && p.answer !== undefined)).length;
-    this.solvedCount = expFiles.length || fromPool;
+    this.solvedCount = Math.max(expFiles.length, fromPool);
     this.iq = this.evolution.computeRealIQ(this.solvedCount);
 this.age = Math.max(this.solvedCount, this.age);
   }

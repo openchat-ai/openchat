@@ -484,6 +484,9 @@ class P2PSwarm extends EventEmitter {
           // 连接活跃
           break;
 
+        // 神经网格: 分布式权重共享
+        case 'neural_share':
+
         case MessageType.SKILL_PUBLISH:
         case MessageType.COLLABORATION_REQUEST:
         case MessageType.COLLABORATION_RESPONSE:

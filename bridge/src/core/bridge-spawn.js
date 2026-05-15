@@ -131,6 +131,6 @@ class BridgeSpawn {
   }
 }
 
-export { BridgeSpawn, MAX_CHILDREN, BASE_PORT };
+export { BridgeSpawn, MAX_CHILDREN };
 export { BridgeSpawn as BodySpawn };
 export default BridgeSpawn;
