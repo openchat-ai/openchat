@@ -844,6 +844,30 @@ class Bridge {
             }
           }
           const data = { iq, age: age || pool, solved: s, poolSize: pool, pending: Math.max(0, pool - s), fairies };
+
+          // 知识图谱：按领域统计 + 最近条目
+          try {
+            const { homedir } = await import('os');
+            const { join } = await import('path');
+            const { readdirSync, readFileSync, existsSync } = await import('fs');
+            const expDir = join(homedir(), '.openchat', 'experience');
+            const domains = {};
+            const recent = [];
+            if (existsSync(expDir)) {
+              const files = readdirSync(expDir).filter(f => f.endsWith('.json'));
+              for (const f of files) {
+                try {
+                  const e = JSON.parse(readFileSync(join(expDir, f), 'utf8'));
+                  const domain = e.domain || 'general';
+                  domains[domain] = (domains[domain] || 0) + 1;
+                  if (e.solvedAt) recent.push({ question: e.question, domain, solvedAt: e.solvedAt });
+                } catch {}
+              }
+            }
+            recent.sort((a, b) => b.solvedAt - a.solvedAt);
+            data.knowledge = { domains, recent: recent.slice(0, 5), total: s };
+          } catch { data.knowledge = { domains: {}, recent: [], total: s }; }
+
           res.end(JSON.stringify(data));
         } else if (pathname === '/api/dashboard' && req.method === 'POST') {
           let body = '';
@@ -1041,6 +1065,46 @@ header .subtitle{
   font-size:11px;
   color:#3a4060;
 }
+.knowledge-card{
+  background:linear-gradient(135deg, #0f1425 0%, #141a30 100%);
+  border:1px solid #1e2540;
+  border-radius:12px;
+  padding:18px 16px;
+  margin:12px 0;
+}
+.knowledge-card .label{
+  font-size:11px;
+  color:#6b7394;
+  text-transform:uppercase;
+  letter-spacing:1px;
+  margin-bottom:10px;
+}
+.knowledge-bars{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.knowledge-bar{
+  flex:1;min-width:60px;
+  display:flex;flex-direction:column;align-items:center;gap:4px
+}
+.knowledge-bar .bar-track{
+  width:100%;height:60px;background:#1a1f35;
+  border-radius:6px 6px 0 0;overflow:hidden;
+  display:flex;flex-direction:column-reverse
+}
+.knowledge-bar .bar-fill{border-radius:2px;transition:height .4s}
+.bar-fill.math{background:linear-gradient(180deg,#7c8aff,#4a5adf)}
+.bar-fill.logic{background:linear-gradient(180deg,#c084fc,#8b5cf6)}
+.bar-fill.reason{background:linear-gradient(180deg,#2ed573,#1ea44f)}
+.bar-fill.general{background:linear-gradient(180deg,#ffa502,#e08e00)}
+.knowledge-bar .bar-label{font-size:10px;color:#5a6080;text-align:center}
+.knowledge-bar .bar-count{font-size:14px;font-weight:700;color:#d0d4e0}
+.knowledge-recent{font-size:11px;color:#6b7394;max-height:70px;overflow-y:auto}
+.knowledge-recent .kr-item{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #15192e}
+.knowledge-recent .kr-domain{
+  font-size:9px;padding:1px 6px;border-radius:8px;margin-left:6px;white-space:nowrap
+}
+.kr-domain.math{background:rgba(124,138,255,.15);color:#7c8aff}
+.kr-domain.logic{background:rgba(192,132,252,.15);color:#c084fc}
+.kr-domain.reason{background:rgba(46,213,115,.15);color:#2ed573}
+.kr-domain.general{background:rgba(255,165,2,.15);color:#ffa502}
 .footer .dot-refresh{display:inline-block;width:6px;height:6px;border-radius:50%;background:#2ed573;margin-right:6px;animation:pulse 1.5s infinite}
 .iq-badge{
   display:inline-block;
@@ -1088,6 +1152,11 @@ header .subtitle{
   <div class="label">Seven Fairies</div>
   <div class="fairy-row" id="fairy-row"></div>
 </div>
+<div class="knowledge-card">
+  <div class="label">Knowledge Graph · 知识图谱</div>
+  <div class="knowledge-bars" id="kb-bars"></div>
+  <div class="knowledge-recent" id="kb-recent"></div>
+</div>
 <div class="footer"><span class="dot-refresh"></span>Live · Auto Refresh 3s &nbsp; <button class="btn-shutdown" onclick="S()">Shutdown All</button></div>
 </div>
 <script>
@@ -1110,6 +1179,27 @@ async function R(){
         fr+='<div class=fairy data-port='+p+' onclick=\"K('+p+')\"><div class=\"dot '+(on?'on':'off')+'\"></div><div class=name>'+f.name+'</div><div class=port>:'+p+'</div></div>';
       }
       document.getElementById('fairy-row').innerHTML=fr;
+    }
+    if(d.knowledge){
+      const domains=d.knowledge.domains||{};
+      const max=Math.max(1,...Object.values(domains));
+      const order=['math','logic','reason','general'];
+      const colors=['math','logic','reason','general'];
+      let bars='';
+      for(const domain of order){
+        const cnt=domains[domain]||0;
+        const pct=Math.round(cnt/max*100);
+        const c=colors.includes(domain)?domain:'general';
+        bars+='<div class=knowledge-bar><div class=bar-count>'+cnt+'</div><div class=bar-track><div class=\"bar-fill '+c+'\" style=height:'+pct+'%></div></div><div class=bar-label>'+domain+'</div></div>';
+      }
+      document.getElementById('kb-bars').innerHTML=bars;
+      const recents=d.knowledge.recent||[];
+      let rec='';
+      for(const r of recents){
+        const t=new Date(r.solvedAt);
+        rec+='<div class=kr-item><span>'+h(r.question,24)+'</span><span><span class=\"kr-domain '+r.domain+'\">'+r.domain+'</span> '+fmt(t)+'</span></div>';
+      }
+      document.getElementById('kb-recent').innerHTML=rec;
     }
   }catch(e){}
 }
@@ -1139,6 +1229,8 @@ function B(iq){
   else{cls='poor';label='\u4e0d\u8db3';}
   return ' <span class=\"iq-badge '+cls+'\">'+label+'</span>';
 }
+function h(s,n){return s.length>n?s.slice(0,n)+'\u2026':s}
+function fmt(d){const h=('0'+d.getHours()).slice(-2),m=('0'+d.getMinutes()).slice(-2);return h+':'+m}
 R();setInterval(R,3000);
 </script>
 </body>

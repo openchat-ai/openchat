@@ -17,7 +17,7 @@ import { SemanticNN } from './semantic-nn.js';
 import { TeacherLLM } from './teacher-llm.js';
 import { InductiveReasoner } from './inductive-reasoner.js';
 import { TheoremDB } from './theorem-db.js';
-import { FairyGuardian } from './fairy-guardian.js';
+import { FairyGuardian } from '../../../modules/fairy-guardian/index.js';
 import { readdirSync, readFileSync, existsSync, writeFileSync, mkdirSync, statSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
@@ -73,7 +73,13 @@ this.history = {
     this.teacher = new TeacherLLM();
     this.theoremDB = new TheoremDB();
     this.inductive = new InductiveReasoner(this.theoremDB);
-    this.guardian = new FairyGuardian(myPort);
+    this.guardian = new FairyGuardian({
+      myPort,
+      childNames: ['仙女', '玉女', '素女', '青女', '玄女', '嫦娥'],
+      portOffset: 10,
+      spawnCmd: (port) => [process.execPath, 'src/main.js', `--port=${port}`, '--fairy', `--mainPort=${myPort}`],
+      cwd: process.cwd(),
+    });
 
     this._initDirs();
     this._loadProblemPool();
