@@ -9,7 +9,7 @@
  * 约束：
  *  - 同一台机器最多 3 个子 Bridge（MAX_CHILDREN）
  *  - 子 Bridge 不带 REST API（--nesting 模式），仅 P2P + 调度
- *  - 子端口自动分配 3002, 3003, 3004
+ *  - 子端口从 basePort 起依次分配（默认 3802，即主端口+2）
  */
 
 import path from 'path';
@@ -18,7 +18,7 @@ import { createLaunchStrategy } from './launch-strategies.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MAX_CHILDREN = 6;
-const BASE_PORT = 3002;
+const BASE_PORT = 3802;
 
 class BridgeSpawn {
   /**

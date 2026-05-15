@@ -836,7 +836,9 @@ class Bridge {
               fairies[p] = { alive, name: fairyName(p) };
             }
           } else {
-            for (const port of [3002,3003,3004,3005,3006,3007]) {
+            // 后备：无守护数据时，检查主端口 +10 偏移的 6 个端口
+            for (let i = 1; i <= 6; i++) {
+              const port = CONFIG.mainPort + i * 10;
               try { 
                 const r = await fetch(`http://localhost:${port}/api/status`, { signal: AbortSignal.timeout(1000) });
                 fairies[port] = { alive: r.ok ? 1 : 0, name: fairyName(port) };
@@ -845,28 +847,14 @@ class Bridge {
           }
           const data = { iq, age: age || pool, solved: s, poolSize: pool, pending: Math.max(0, pool - s), fairies };
 
-          // 知识图谱：按领域统计 + 最近条目
+          // 知识档案：缓存 60s
           try {
-            const { homedir } = await import('os');
-            const { join } = await import('path');
-            const { readdirSync, readFileSync, existsSync } = await import('fs');
-            const expDir = join(homedir(), '.openchat', 'experience');
-            const domains = {};
-            const recent = [];
-            if (existsSync(expDir)) {
-              const files = readdirSync(expDir).filter(f => f.endsWith('.json'));
-              for (const f of files) {
-                try {
-                  const e = JSON.parse(readFileSync(join(expDir, f), 'utf8'));
-                  const domain = e.domain || 'general';
-                  domains[domain] = (domains[domain] || 0) + 1;
-                  if (e.solvedAt) recent.push({ question: e.question, domain, solvedAt: e.solvedAt });
-                } catch {}
-              }
+            const cacheAge = this._kbCache?.ts ? Date.now() - this._kbCache.ts : Infinity;
+            if (!this._kbCache || cacheAge > 60000) {
+              this._kbCache = { ts: Date.now(), data: this._buildKnowledge() };
             }
-            recent.sort((a, b) => b.solvedAt - a.solvedAt);
-            data.knowledge = { domains, recent: recent.slice(0, 5), total: s };
-          } catch { data.knowledge = { domains: {}, recent: [], total: s }; }
+            data.knowledge = await this._kbCache.data;
+          } catch { data.knowledge = { domains: {}, recent: [], total: 0, evoCount: 0, offlineCount: 0 }; }
 
           res.end(JSON.stringify(data));
         } else if (pathname === '/api/dashboard' && req.method === 'POST') {
@@ -1103,8 +1091,17 @@ header .subtitle{
 }
 .kr-domain.math{background:rgba(124,138,255,.15);color:#7c8aff}
 .kr-domain.logic{background:rgba(192,132,252,.15);color:#c084fc}
-.kr-domain.reason{background:rgba(46,213,115,.15);color:#2ed573}
+.kr-domain.code{background:rgba(255,107,122,.15);color:#ff6b7a}
+.kr-domain.visual{background:rgba(79,195,247,.15);color:#4fc3f7}
+.kr-domain.network{background:rgba(0,210,255,.15);color:#00d2ff}
+.kr-domain.ai{background:rgba(124,138,255,.15);color:#7c8aff}
+.kr-domain.solve{background:rgba(46,213,115,.15);color:#2ed573}
 .kr-domain.general{background:rgba(255,165,2,.15);color:#ffa502}
+.bar-fill.code{background:linear-gradient(180deg,#ff6b7a,#d94a5a)}
+.bar-fill.visual{background:linear-gradient(180deg,#4fc3f7,#0288d1)}
+.bar-fill.network{background:linear-gradient(180deg,#00d2ff,#0091ea)}
+.bar-fill.ai{background:linear-gradient(180deg,#c084fc,#7c4dff)}
+.bar-fill.solve{background:linear-gradient(180deg,#2ed573,#1ea44f)}
 .footer .dot-refresh{display:inline-block;width:6px;height:6px;border-radius:50%;background:#2ed573;margin-right:6px;animation:pulse 1.5s infinite}
 .iq-badge{
   display:inline-block;
@@ -1153,7 +1150,7 @@ header .subtitle{
   <div class="fairy-row" id="fairy-row"></div>
 </div>
 <div class="knowledge-card">
-  <div class="label">Knowledge Graph · 知识图谱</div>
+  <div class="label">Knowledge · 知识档案 <span style=color:#7c8aff id=k-total></span></div>
   <div class="knowledge-bars" id="kb-bars"></div>
   <div class="knowledge-recent" id="kb-recent"></div>
 </div>
@@ -1181,13 +1178,14 @@ async function R(){
       document.getElementById('fairy-row').innerHTML=fr;
     }
     if(d.knowledge){
+      document.getElementById('k-total').textContent=d.knowledge.evoCount+'⧉'+d.knowledge.offlineCount;
       const domains=d.knowledge.domains||{};
       const max=Math.max(1,...Object.values(domains));
-      const order=['math','logic','reason','general'];
-      const colors=['math','logic','reason','general'];
+      const colors=['math','logic','code','visual','network','ai','general'];
       let bars='';
-      for(const domain of order){
+      for(const domain of colors){
         const cnt=domains[domain]||0;
+        if(!cnt)continue;
         const pct=Math.round(cnt/max*100);
         const c=colors.includes(domain)?domain:'general';
         bars+='<div class=knowledge-bar><div class=bar-count>'+cnt+'</div><div class=bar-track><div class=\"bar-fill '+c+'\" style=height:'+pct+'%></div></div><div class=bar-label>'+domain+'</div></div>';
@@ -1197,7 +1195,8 @@ async function R(){
       let rec='';
       for(const r of recents){
         const t=new Date(r.solvedAt);
-        rec+='<div class=kr-item><span>'+h(r.question,24)+'</span><span><span class=\"kr-domain '+r.domain+'\">'+r.domain+'</span> '+fmt(t)+'</span></div>';
+        const src=r.source==='evolution'?'<span style=color:#7c8aff;font-size:9px>🧠</span>':'<span style=color:#ffa502;font-size:9px>📋</span>';
+        rec+='<div class=kr-item><span>'+src+' '+h(r.task,36)+'</span><span><span class=\"kr-domain '+r.domain+'\">'+r.domain+'</span> '+fmt(t)+'</span></div>';
       }
       document.getElementById('kb-recent').innerHTML=rec;
     }
@@ -2071,6 +2070,57 @@ R();setInterval(R,3000);
         });
       } catch {}
     }, 10000);
+  }
+
+  async _buildKnowledge() {
+    const domains = {};
+    const recent = [];
+    let evoCount = 0;
+    let offlineCount = 0;
+    try {
+      const { readFile, readdir } = await import('fs/promises');
+      const { homedir } = await import('os');
+      const { join } = await import('path');
+      const expDir = join(homedir(), '.openchat', 'experience');
+      const evoFile = join(homedir(), '.openchat', 'memory', 'evolution-experiences.json');
+
+      try {
+        const raw = await readFile(evoFile, 'utf8');
+        const evos = JSON.parse(raw);
+        evoCount = Array.isArray(evos) ? evos.length : 0;
+        if (Array.isArray(evos)) {
+          for (const ev of evos) {
+            if (!ev.success) continue;
+            const task = (ev.task || '').toLowerCase();
+            let domain = 'general';
+            if (task.includes('math') || task.includes('数学') || task.includes('计算') || task.includes('概率')) domain = 'math';
+            else if (task.includes('code') || task.includes('代码') || task.includes('编程') || task.includes('python')) domain = 'code';
+            else if (task.includes('logic') || task.includes('逻辑') || task.includes('推理')) domain = 'logic';
+            else if (task.includes('visual') || task.includes('可视化') || task.includes('图像') || task.includes('图')) domain = 'visual';
+            else if (task.includes('network') || task.includes('网络') || task.includes('p2p')) domain = 'network';
+            else if (task.includes('ai') || task.includes('模型') || task.includes('机器学习')) domain = 'ai';
+            domains[domain] = (domains[domain] || 0) + 1;
+            recent.push({ task: (ev.task || '').replace(/\n.*/s, '').slice(0, 40), domain, solvedAt: ev.timestamp, source: 'evolution' });
+          }
+        }
+      } catch {}
+
+      try {
+        const files = (await readdir(expDir).catch(() => [])).filter(f => f.endsWith('.json'));
+        for (const f of files) {
+          try {
+            const raw = await readFile(join(expDir, f), 'utf8');
+            const e = JSON.parse(raw);
+            const domain = (e.domain === 'reason' ? 'logic' : e.domain) || 'general';
+            domains[domain] = (domains[domain] || 0) + 1;
+            offlineCount++;
+            if (e.solvedAt) recent.push({ task: e.question, domain, solvedAt: e.solvedAt, source: 'offline' });
+          } catch {}
+        }
+      } catch {}
+    } catch {}
+    recent.sort((a, b) => (b.solvedAt || 0) - (a.solvedAt || 0));
+    return { domains, recent: recent.slice(0, 8), total: evoCount + offlineCount, evoCount, offlineCount };
   }
 
   async shutdown() {
