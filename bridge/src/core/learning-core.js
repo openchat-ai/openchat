@@ -57,7 +57,10 @@ this.history = {
       lastIq: 100,
       lastAge: 0,
       lastSolved: 0,
+      lastKbSize: 0,
       lastCheck: Date.now(),
+      startTime: Date.now(),
+      cycles: 0,
       warnings: [],
       lastRestarts: new Map()
     };
@@ -113,6 +116,7 @@ this.age = Math.max(this.solvedCount, this.age);
 
   async runCycle() {
     // 0. 元监控检查
+    this.history.cycles++;
     this._metaCheck();
     
     // 0.1 互助守护：检查姐妹是否存活（每1分钟一次）
@@ -556,49 +560,96 @@ ${problem.context ? '背景：' + JSON.stringify(problem.context) : ''}
 
   _metaCheck() {
     const now = Date.now();
-    const elapsed = (now - this.history.lastCheck) / 1000; // 秒
-    
-    // 每60秒检查一次
-    if (elapsed < 60) return;
-    
+    const elapsed = (now - this.history.lastCheck) / 1000;
+
+    // 每5分钟检查一次（避免频繁输出）
+    if (elapsed < 300) return;
+
     const issues = [];
-    
-    // 检查1：年龄是否增长
-    if (this.age === this.history.lastAge && this.age > 0) {
-      issues.push({ type: 'age_stuck', message: '年龄长时间未增长', value: this.age });
-    }
-    
-    // 检查2：IQ是否增长（有待解决问题时）
     const pending = this.problemPool.filter(p => !this._isSolved(p)).length;
-    if (pending > 0 && this.iq === this.history.lastIq && elapsed > 120) {
-      issues.push({ type: 'iq_stuck', message: '有未解决问题但IQ未增长', value: this.iq });
+    const total = this.problemPool.length;
+
+    // 1. 池健康：解决率 & 新鲜度
+    if (total > 0) {
+      const solveRate = this.solvedCount / total;
+      if (solveRate < 0.3 && elapsed > 600) {
+        issues.push({ level: 'warn', type: 'low_solve_rate', message: `解决率仅 ${Math.round(solveRate * 100)}% (${this.solvedCount}/${total})`, solveRate });
+      }
+      if (pending > 0 && this.solvedCount === this.history.lastSolved && elapsed > 900) {
+        issues.push({ level: 'warn', type: 'solving_stuck', message: `${pending}题待解但无进展`, pending });
+      }
     }
-    
-    // 检查3：解决问题数是否增长
-    if (pending > 0 && this.solvedCount === this.history.lastSolved && elapsed > 120) {
-      issues.push({ type: 'solving_stuck', message: '问题池有题但无法解决', pending });
+    if (pending === 0 && total > 0) {
+      issues.push({ level: 'info', type: 'pool_drained', message: `问题池已清空(${total}题)`, total });
     }
-    
-    // 记录问题
-    if (issues.length > 0) {
-      this.history.warnings = issues;
-      console.log('[元监控] 发现异常:', issues.map(i => i.message).join(', '));
-      
-      // 将异常转化为问题加入问题池
-      this._addWarningAsProblem(issues);
-    } else {
-      this.history.warnings = [];
+
+    // 2. 年龄增长速率（每小时增速）
+    const ageGrowth = this.age - this.history.lastAge;
+    const agePerHour = ageGrowth / (elapsed / 3600);
+    if (ageGrowth === 0 && this.age > 0 && elapsed > 600) {
+      issues.push({ level: 'warn', type: 'age_stuck', message: `年龄 ${this.age} 超过10分钟未增长`, age: this.age });
+    } else if (agePerHour > 0 && agePerHour < 0.5 && elapsed > 900) {
+      issues.push({ level: 'info', type: 'age_slow', message: `年龄增速仅 ${agePerHour.toFixed(1)}/h`, agePerHour });
     }
-    
-    // 更新历史
+
+    // 3. IQ 趋势
+    const iqDelta = this.iq - this.history.lastIq;
+    if (pending > 0 && iqDelta <= 0 && elapsed > 600) {
+      issues.push({ level: 'warn', type: 'iq_stagnant', message: `IQ ${this.iq} 未增长(${pending}题待解)`, pending });
+    } else if (iqDelta > 0) {
+      issues.push({ level: 'info', type: 'iq_up', message: `IQ +${iqDelta} → ${this.iq}` });
+    }
+
+    // 4. 解题效率（每轮解题率）
+    const sinceStart = Math.max(1, (now - this.history.startTime) / 1000);
+    const cycles = Math.max(1, this.history.cycles);
+    if (cycles > 20 && this.solvedCount > 0) {
+      const eff = this.solvedCount / cycles;
+      if (eff < 0.05 && elapsed > 900) {
+        issues.push({ level: 'warn', type: 'low_efficiency', message: `解题效率 ${(eff * 100).toFixed(1)}% (${this.solvedCount}/${cycles}轮)`, eff });
+      }
+    }
+
+    // 5. 知识库增长
+    const kbFiles = existsSync(EXPERIENCE_DIR) ? readdirSync(EXPERIENCE_DIR).filter(f => f.endsWith('.json')) : [];
+    const kbSize = kbFiles.length;
+    if (kbSize > this.history.lastKbSize) {
+      issues.push({ level: 'info', type: 'kb_growth', message: `知识库 +${kbSize - this.history.lastKbSize} → ${kbSize}条`, kbSize });
+    }
+
+    // 6. 运行时长
+    if (sinceStart > 3600 && cycles % 20 === 0) {
+      issues.push({ level: 'info', type: 'uptime', message: `运行 ${Math.round(sinceStart / 60)}min, ${cycles}轮` });
+    }
+
+    // 分级输出
+    const crits = issues.filter(i => i.level === 'critical');
+    const warns = issues.filter(i => i.level === 'warn');
+    const infos = issues.filter(i => i.level === 'info');
+
+    if (crits.length || warns.length) {
+      const msgs = [...crits, ...warns, ...infos].map(i => {
+        const prefix = i.level === 'critical' ? '🔴' : i.level === 'warn' ? '🟡' : 'ℹ️';
+        return prefix + ' ' + i.message;
+      });
+      console.log('[元监控]', msgs.join(' | '));
+      this.history.warnings = [...crits, ...warns];
+      if (crits.length > 0) this._offlineBulkSolve();
+    } else if (infos.length && elapsed > 1800) {
+      console.log('[元监控]', infos.map(i => 'ℹ️ ' + i.message).join(' | '));
+    }
+
     this.history.lastIq = this.iq;
     this.history.lastAge = this.age;
     this.history.lastSolved = this.solvedCount;
+    this.history.lastKbSize = kbSize;
     this.history.lastCheck = now;
   }
 
-_addWarningAsProblem(issues) {
-    console.log('[元监控] ' + issues.map(i=>i.type).join(',') + ' → 离线批量求解');
+  _addWarningAsProblem(issues) {
+    const crits = issues.filter(i => i.level === 'critical');
+    if (crits.length === 0) return;
+    console.log('[元监控] ' + crits.map(i => i.type).join(',') + ' → 批量离线求解');
     this._offlineBulkSolve();
   }
 

@@ -764,6 +764,11 @@ class Bridge {
         } else if (pathname === '/health' && req.method === 'GET') {
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ status: 'ok', uptime: Date.now() - this.startTime }));
+        } else if (pathname === '/shutdown' && req.method === 'POST') {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: true }));
+          console.log('[Bridge] 收到关闭请求');
+          setImmediate(() => this.shutdown());
         } else if (pathname === '/peers' && req.method === 'GET') {
           res.writeHead(200, { 'Content-Type': 'application/json' });
           const peers = this.p2p ? [...this.p2p.connectedPeers.keys()].map(id => ({
@@ -1050,6 +1055,18 @@ header .subtitle{
 .iq-badge.normal{background:rgba(100,120,160,.15);color:#7a8ab0}
 .iq-badge.low{background:rgba(255,165,2,.1);color:#ffa502}
 .iq-badge.poor{background:rgba(255,71,87,.1);color:#ff4757}
+.btn-shutdown{
+  background:rgba(255,71,87,.15);
+  border:1px solid rgba(255,71,87,.4);
+  color:#ff6b7a;
+  padding:4px 12px;
+  border-radius:6px;
+  cursor:pointer;
+  font-size:11px;
+  letter-spacing:1px;
+  transition:all .2s;
+}
+.btn-shutdown:hover{background:rgba(255,71,87,.3);color:#ff4757;border-color:#ff4757}
 </style>
 </head>
 <body>
@@ -1071,7 +1088,7 @@ header .subtitle{
   <div class="label">Seven Fairies</div>
   <div class="fairy-row" id="fairy-row"></div>
 </div>
-<div class="footer"><span class="dot-refresh"></span>Live · Auto Refresh 3s</div>
+<div class="footer"><span class="dot-refresh"></span>Live · Auto Refresh 3s &nbsp; <button class="btn-shutdown" onclick="S()">Shutdown All</button></div>
 </div>
 <script>
 async function R(){
@@ -1101,6 +1118,17 @@ async function K(port){
     await fetch('/api/dashboard',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'revive',port})});
     R();
   }
+}
+async function S(){
+  if(!confirm('关闭所有 7 个 Bridge？'))return;
+  document.querySelector('.btn-shutdown').disabled=true;
+  document.querySelector('.btn-shutdown').textContent='Shutting down...';
+  const d=await(await fetch('/api/dashboard')).json();
+  const ports=Object.keys(d.fairies||{}).sort((a,b)=>a-b);
+  for(const p of ports){
+    try{await fetch('http://localhost:'+p+'/shutdown',{method:'POST'})}catch(e){}
+  }
+  await fetch('/shutdown',{method:'POST'}).catch(()=>{});
 }
 function B(iq){
   let cls,label;
@@ -1929,11 +1957,11 @@ R();setInterval(R,3000);
 
   async _reviveMain(port) {
     try {
-      const { spawn } = await import('child_process');
-      spawn(process.execPath, ['src/main.js', `--port=${port}`, '--main'], {
-        cwd: process.cwd(), detached: true, stdio: 'ignore', windowsHide: false
-      }).unref();
-      console.log(`[FairyMonitor] 发送主 Bridge 复活命令 :${port}`);
+      const { exec } = await import('child_process');
+      exec(`start "OpenChat Bridge" node src/main.js --port=${port} --main`, {
+        cwd: process.cwd()
+      });
+      console.log(`[FairyMonitor] 复活主 Bridge :${port}`);
     } catch (e) {
       console.log(`[FairyMonitor] 复活失败: ${e.message}`);
     }

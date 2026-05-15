@@ -28,7 +28,7 @@ export class FairyGuardian {
   async checkAll() {
     const now = Date.now();
 
-    if (!this._bootstrapped && this._heartbeats.size === 0) {
+    if (!this._bootstrapped) {
       this._bootstrapped = true;
       await this._bootstrap();
     }
@@ -49,16 +49,17 @@ export class FairyGuardian {
     const script = join(process.cwd(), 'src', 'main.js');
     const names = ['仙女', '玉女', '素女', '青女', '玄女', '嫦娥'];
 
-    const ports = names.map((_, i) => this.myPort + (i + 1) * 10);
-    // 任意一个目标端口已存活 → 集群已存在，跳过
-    const anyAlive = (await Promise.all(ports.map(p => this._httpPing(p).catch(() => false)))).some(Boolean);
-    if (anyAlive) {
-      console.log('[守护] 已有仙女集群存活，跳过自举');
-      return;
+    // 快速检查任意一个目标端口是否已存活 → 集群已存在
+    for (let i = 0; i < names.length; i++) {
+      const checkPort = this.myPort + (i + 1) * 10;
+      if (await this._httpPing(checkPort).catch(() => false)) {
+        console.log('[守护] 已有仙女集群存活(' + names[i] + ' :'+checkPort+')，跳过自举');
+        return;
+      }
     }
 
     for (let i = 0; i < names.length; i++) {
-      const port = ports[i];
+      const port = this.myPort + (i + 1) * 10;
       console.log(`[守护] 自举初始仙女: ${names[i]} :${port}`);
       spawn(process.execPath, [script, `--port=${port}`, '--fairy', `--mainPort=${this.myPort}`], {
         cwd: process.cwd(), detached: true, stdio: 'ignore'
@@ -92,8 +93,8 @@ export class FairyGuardian {
   async _httpPing(port) {
     try {
       const c = new AbortController();
-      const t = setTimeout(() => c.abort(), 5000);
-      const r = await fetch(`http://localhost:${port}/api/learning`, { signal: c.signal });
+      const t = setTimeout(() => c.abort(), 3000);
+      const r = await fetch(`http://localhost:${port}/health`, { signal: c.signal });
       clearTimeout(t);
       return r.ok;
     } catch { return false; }
