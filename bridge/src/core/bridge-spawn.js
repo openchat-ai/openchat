@@ -18,7 +18,7 @@ import { createLaunchStrategy } from './launch-strategies.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MAX_CHILDREN = 6;
-const BASE_PORT = 3802;
+// basePort 从实际主端口动态派生（port + 2），不再硬编码
 
 class BridgeSpawn {
   /**
@@ -37,7 +37,7 @@ class BridgeSpawn {
       this._strategy = createLaunchStrategy(strategyOrType, {
         name: bridgeId,
         script: 'src/main.js',
-        basePort: BASE_PORT,
+        basePort: 0,
         maxChildren: MAX_CHILDREN,
         args: hostId ? [`--hostId=${hostId}`] : [],
       });

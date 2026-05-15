@@ -51,7 +51,7 @@ function getLocalIP() {
 
 // 优先环境变量 → 自动检测 → 交互式输入
 let MOTHER_IP   = process.env.MOTHER_IP   || getLocalIP() || '';
-let MOTHER_PORT = process.env.MOTHER_PORT || '3802';
+let MOTHER_PORT = process.env.MOTHER_PORT || '0';
 let BRIDGE_NAME = process.env.BRIDGE_NAME || 'bridge-child';
 let LLM_MODE    = process.env.LLM_MODE    || 'proxy';
 

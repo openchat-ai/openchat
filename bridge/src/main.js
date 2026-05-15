@@ -70,18 +70,20 @@ const isPublic = hasPublicAddress() || !!savedBridge.advertiseHost;
 const portArgIndex = args.findIndex(a => a.startsWith('--port='));
 const cliPort = portArgIndex !== -1 ? parseInt(args[portArgIndex].split('=')[1]) : null;
 const port = cliPort || savedBridge.port || 3000;
+const portChanged = cliPort !== null && cliPort !== savedBridge.port;
 
 // 主 Bridge 判定：显式 --main 标记
 const isMain = args.includes('--main');
 
-// 主 Bridge 端口（fairy 需要知道往哪发心跳，默认 3800）
+// 主 Bridge 端口（fairy 需要知道往哪发心跳，默认 = 自身端口）
 const mainPortIdx = args.findIndex(a => a.startsWith('--mainPort='));
-const mainPort = mainPortIdx !== -1 ? parseInt(args[mainPortIdx].split('=')[1]) : 3800;
+const mainPort = mainPortIdx !== -1 ? parseInt(args[mainPortIdx].split('=')[1]) : (isMain ? port : 3800);
 
 const dhtPort = savedBridge.dhtPort || 0;
 const localBootstrap = savedBridge.localBootstrap || [];
-let directListen = savedBridge.directListen || 0;
-let directConnect = savedBridge.directConnect || [];
+// 端口变更时，丢弃旧端口体系的直连配置
+let directListen = (portChanged ? 0 : savedBridge.directListen) || 0;
+let directConnect = portChanged ? [] : (savedBridge.directConnect || []);
 // 支持 --directListen CLI 参数
 const directListenIdx = args.findIndex(a => a.startsWith('--directListen='));
 if (directListenIdx !== -1) {

@@ -37,11 +37,9 @@ const DEFAULT_CONFIG = {
   current: { provider: null, model: null },
   bridge: {
     mode: 'headless',
-    host: 'localhost',
     port: 3000,
     name: '',
     region: '',
-    age: 0,
     dhtPort: 0,
     localBootstrap: [],
     directListen: 0,
@@ -51,12 +49,11 @@ const DEFAULT_CONFIG = {
     advertiseHost: '',
     qiniuEnabled: true,
     cores: [],
-    hostId: '',
     deployServerEnabled: true,
     deployServerPort: 8080,
-    llmDailyTokenBudget: 1000000,  // 每日token预算 (默认100万)
-    llmCacheEnabled: true,          // 响应缓存启用
-    residentThinkMinInterval: 5     // 居民思考最小间隔(分钟, 默认5分钟)
+    llmDailyTokenBudget: 1000000,
+    llmCacheEnabled: true,
+    residentThinkMinInterval: 5
   }
 };
 
