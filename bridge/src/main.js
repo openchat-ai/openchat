@@ -867,6 +867,9 @@ class Bridge {
           // 领域分模型
           try { data.models = this.learningCore?.modelMgr?.getStats() || { domains: {}, total: { samples: 0, models: 0 } }; } catch { data.models = null; }
 
+          // 推理链
+          try { data.chain = this.learningCore?.chain?.getStats() || null; } catch { data.chain = null; }
+
           res.end(JSON.stringify(data));
         } else if (pathname === '/api/dashboard' && req.method === 'POST') {
           let body = '';
@@ -1195,6 +1198,10 @@ header .subtitle{
   <div class="label">Domain Models · 领域分模型</div>
   <div class="knowledge-bars" id="models-bars"></div>
 </div>
+<div class="neural-card">
+  <div class="label">Reasoning Chain · 推理链</div>
+  <div class="neural-stats" id="chain-stats"></div>
+</div>
 <div class="footer"><span class="dot-refresh"></span>Live · Auto Refresh 3s &nbsp; <button class="btn-shutdown" onclick="S()">Shutdown All</button></div>
 </div>
 <script>
@@ -1277,6 +1284,15 @@ async function R(){
       }
       if(!bars)bars='<span style=font-size:11px;color:#5a6080>No domain models yet · 暂无领域模型</span>';
       document.getElementById('models-bars').innerHTML=bars;
+    }
+    if(d.chain){
+      const c=d.chain;
+      document.getElementById('chain-stats').innerHTML=
+        '<div class=neural-stat><div class=\"ns-val ns-up\">'+c.deductiveHits+'</div><div class=ns-label>Theorem Hits / 定理命中</div></div>'+
+        '<div class=neural-stat><div class=\"ns-val '+(c.inductiveDiscoveries>0?'ns-up':'ns-info')+'\">'+c.inductiveDiscoveries+'</div><div class=ns-label>Discovered / 归纳发现</div></div>'+
+        '<div class=neural-stat><div class=\"ns-val ns-info\">'+c.theoremCount+'</div><div class=ns-label>Theorem DB / 定理库</div></div>'+
+        '<div class=neural-stat><div class=\"ns-val '+(c.hitRate>=50?'ns-up':'ns-warn')+'\">'+c.hitRate+'%</div><div class=ns-label>Hit Rate / 命中率</div></div>'+
+        (c.pendingCount?'<div class=neural-stat><div class=\"ns-val ns-warn\">'+c.pendingCount+'</div><div class=ns-label>Pending / 待归纳</div></div>':'');
     }
   }catch(e){}
 }

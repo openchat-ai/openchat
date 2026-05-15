@@ -18,6 +18,8 @@ import { TeacherLLM } from './teacher-llm.js';
 import { InductiveReasoner } from './inductive-reasoner.js';
 import { TheoremDB } from './theorem-db.js';
 import { ModelManager } from './model-manager.js';
+import { ReasoningChain } from './reasoning-chain.js';
+import { VariantGenerator } from './variant-generator.js';
 import { FairyGuardian } from '../../../modules/fairy-guardian/index.js';
 import { readdirSync, readFileSync, existsSync, writeFileSync, mkdirSync, statSync } from 'fs';
 import { homedir } from 'os';
@@ -75,6 +77,8 @@ this.history = {
     this.theoremDB = new TheoremDB();
     this.inductive = new InductiveReasoner(this.theoremDB);
     this.modelMgr = new ModelManager();
+    this.chain = new ReasoningChain(this.theoremDB, this.inductive, this.symbolic);
+    this.generator = new VariantGenerator();
     this.guardian = new FairyGuardian({
       myPort,
       childNames: ['仙女', '玉女', '素女', '青女', '玄女', '嫦娥'],
@@ -115,7 +119,16 @@ this.history = {
         this.modelMgr.trainBatch(all);
         console.log('[LC] 领域分模型已从', all.length, '条经验初始化');
       }
-    } catch {}
+      // 触发 variant generation for problems with known answers
+      for (const p of this.problemPool) {
+        if (p.answer != null && p.answer !== undefined) {
+          const variants = this.generator.generate([p], 2);
+          for (const v of variants) {
+            this.problemPool.push(v);
+          }
+        }
+      }
+    } catch {}  // _bootstrapModels catch
   }
 
   _loadProblemPool() {
@@ -139,7 +152,8 @@ this.history = {
 
 _loadStats() {
     const expFiles = existsSync(EXPERIENCE_DIR) ? readdirSync(EXPERIENCE_DIR).filter(f => f.endsWith('.json')) : [];
-    this.solvedCount = expFiles.length || this.problemPool.filter(p => p.solved).length;
+    const fromPool = this.problemPool.filter(p => p.solved || (p.answer != null && p.answer !== undefined)).length;
+    this.solvedCount = expFiles.length || fromPool;
     this.iq = this.evolution.computeRealIQ(this.solvedCount);
 this.age = Math.max(this.solvedCount, this.age);
   }
@@ -221,6 +235,7 @@ this.age = Math.max(this.solvedCount, this.age);
   }
 
   _isSolved(problem) {
+    if (problem.answer != null && problem.answer !== undefined) return true;
     if (!this.kb) return false;
     try {
       const result = this.kb.answer(problem.domain, problem.question);
@@ -519,6 +534,25 @@ ${problem.context ? '背景：' + JSON.stringify(problem.context) : ''}
     this.solvedCount++;
     this.evolution.recordSolve(problem, answer, 0, true, 'agent', solver);
     this.modelMgr.train(problem, answer, solver);
+
+    // 触发归纳推理：积累同题型样本 → 发现新定理
+    const domainProblems = this.problemPool.filter(p => p.solved || (p.answer != null && p.answer !== undefined));
+    if (domainProblems.length >= 3) {
+      const discoveries = this.chain.runInduction(domainProblems);
+      if (discoveries.length > 0) {
+        console.log(`[LC] 🧠 归纳发现 ${discoveries.length} 条新定理:`, discoveries.map(d => d.name).join(', '));
+      }
+    }
+
+    // 生成问题变体（喂入题池，促进归纳）
+    if (problem.question && problem.question.match(/\d+/g)) {
+      const variants = this.generator.generate([problem], 2);
+      for (const v of variants) {
+        if (!this.problemPool.find(p => p.question === v.question)) {
+          this.problemPool.push(v);
+        }
+      }
+    }
 
     if (this.solvedCount <= 3) {
       this.iq = 100 + this.solvedCount * 2;
