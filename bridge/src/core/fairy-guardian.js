@@ -43,15 +43,24 @@ export class FairyGuardian {
     }
   }
 
-  /** 首次启动时自动创建 6 个姐妹仙女 */
+  /** 首次启动时自动创建 6 个姐妹仙女（端口 = 主端口 + 10 * n） */
   async _bootstrap() {
     const { join } = await import('path');
     const script = join(process.cwd(), 'src', 'main.js');
     const names = ['仙女', '玉女', '素女', '青女', '玄女', '嫦娥'];
-    for (let i = 0; i < 6; i++) {
-      const port = this.myPort + (i + 1) * 100;
+
+    const ports = names.map((_, i) => this.myPort + (i + 1) * 10);
+    // 任意一个目标端口已存活 → 集群已存在，跳过
+    const anyAlive = (await Promise.all(ports.map(p => this._httpPing(p).catch(() => false)))).some(Boolean);
+    if (anyAlive) {
+      console.log('[守护] 已有仙女集群存活，跳过自举');
+      return;
+    }
+
+    for (let i = 0; i < names.length; i++) {
+      const port = ports[i];
       console.log(`[守护] 自举初始仙女: ${names[i]} :${port}`);
-      spawn(process.execPath, [script, `--port=${port}`, '--fairy'], {
+      spawn(process.execPath, [script, `--port=${port}`, '--fairy', `--mainPort=${this.myPort}`], {
         cwd: process.cwd(), detached: true, stdio: 'ignore'
       }).unref();
       await new Promise(r => setTimeout(r, 2000));
@@ -73,7 +82,7 @@ export class FairyGuardian {
     console.log(`[守护] 复活 Fairy :${port} (第${c+1}次)`);
     const { join } = await import('path');
     const script = join(process.cwd(), 'src', 'main.js');
-    spawn(process.execPath, [script, `--port=${port}`, '--fairy'], {
+    spawn(process.execPath, [script, `--port=${port}`, '--fairy', `--mainPort=${this.myPort}`], {
       cwd: process.cwd(), detached: true, stdio: 'ignore'
     }).unref();
     this._lastRestarts.set(port, Date.now());

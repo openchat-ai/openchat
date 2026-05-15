@@ -70,7 +70,13 @@ const isPublic = hasPublicAddress() || !!savedBridge.advertiseHost;
 const portArgIndex = args.findIndex(a => a.startsWith('--port='));
 const cliPort = portArgIndex !== -1 ? parseInt(args[portArgIndex].split('=')[1]) : null;
 const port = cliPort || savedBridge.port || 3000;
-const isMain = port === 3800 || process.argv.includes('--main');
+
+// 主 Bridge 判定：显式 --main 标记
+const isMain = args.includes('--main');
+
+// 主 Bridge 端口（fairy 需要知道往哪发心跳，默认 3800）
+const mainPortIdx = args.findIndex(a => a.startsWith('--mainPort='));
+const mainPort = mainPortIdx !== -1 ? parseInt(args[mainPortIdx].split('=')[1]) : 3800;
 
 const dhtPort = savedBridge.dhtPort || 0;
 const localBootstrap = savedBridge.localBootstrap || [];
@@ -80,6 +86,10 @@ let directConnect = savedBridge.directConnect || [];
 const directListenIdx = args.findIndex(a => a.startsWith('--directListen='));
 if (directListenIdx !== -1) {
   directListen = parseInt(args[directListenIdx].split('=')[1]);
+}
+// 如果 --port 显式传入但没传 --directListen，则根据新端口重新计算
+if (portArgIndex !== -1 && directListenIdx === -1 && !args.includes('--no-direct') && !args.includes('--nesting')) {
+  directListen = port + 2;
 }
 // 本地开发：无 bootstrap 时自动启用直连 TCP（端口 = HTTP 端口 + 2）
 const isNesting = args.includes('--nesting');
@@ -155,6 +165,7 @@ const CONFIG = {
   advertiseHost,
   qiniuEnabled,
   cores,
+  mainPort,
   bridge: {
     port,
     name: bridgeName,
@@ -413,14 +424,6 @@ class Bridge {
         console.log(`[Launch] 启动策略: ${detectedStrategy}`);
         const bridgeSpawn = new BridgeSpawn(this.p2p, hostId, this.house, detectedStrategy);
 
-        // Fairy spawn：必须在 BodyOrchestrator 前（避免其报错阻止）
-        if (isMain) {
-          for (let i = 0; i < 6; i++) {
-            const c = bridgeSpawn.spawnNesting({ name: `仙女${i+1}` });
-            if (c) console.log(`[P2R] 仙女${i+1} port=${c.port}`);
-          }
-        }
-
         const { BodyOrchestrator } = await import('./core/house-orchestrator.js');
         this.houseOrchestrator = new BodyOrchestrator(this.p2p, this.p2p.peerId || 'bridge-1', safeEvo, this.house, bridgeSpawn);
         residentScheduler.houseOrchestrator = this.houseOrchestrator;
@@ -431,14 +434,6 @@ class Bridge {
         this.llmProxy = new LLMProxyAgent(this.p2p, { enabled: true });
         this.llmProxy.start();
         console.log('[P2R] BodyOrchestrator + SafeEvolution + BridgeSpawn + LLMProxy 已启动');
-
-        // Fairy spawn：端口 3002-3007
-        if (isMain) {
-          for (let i = 0; i < 6; i++) {
-            const c = bridgeSpawn.spawnNesting({ name: `仙女${i+1}` });
-            if (c) console.log(`[P2R] 仙女${i+1} port=${c.port}`);
-          }
-        }
         } catch (e) { console.log(`[启动] P2R 初始化失败: ${e.message}`); }
 
         // P2R-K: 收敛引擎 — 问题分解→竞标→求解→择优
@@ -802,7 +797,6 @@ class Bridge {
               age = lc.age || 0;
             } catch (e) { console.log('[Dash] load fail:', e.message); }
           }
-          // 后备：直接从文件读取问题池和经验
           if (pool === 0) {
             try {
               const { homedir } = await import('os');
@@ -823,15 +817,49 @@ class Bridge {
             } catch (e) {}
           }
           iq = iq || 100;
-          let fairies = { 3002:0,3003:0,3004:0,3005:0,3006:0,3007:0 };
-          for (const port of [3002,3003,3004,3005,3006,3007]) {
-            try { 
-              const r = await fetch(`http://localhost:${port}/api/status`, { signal: AbortSignal.timeout(1000) });
-              fairies[port] = r.ok ? 1 : 0;
-            } catch { fairies[port] = 0; }
+          const FAIRY_NAMES = ['仙女', '玉女', '素女', '青女', '玄女', '嫦娥'];
+          function fairyName(port) {
+            const offset = Math.round((port - CONFIG.mainPort) / 10) - 1;
+            return FAIRY_NAMES[offset] || `:${port}`;
           }
-          const data = { iq: iq || 100, age: age || pool, solved: s, poolSize: pool, pending: Math.max(0, pool - s), fairies };
+          const fairies = {};
+          const guardian = this.learningCore?.guardian;
+          if (guardian?._heartbeats) {
+            const now = Date.now();
+            for (const [p, lastBeat] of guardian._heartbeats) {
+              const alive = (now - lastBeat < 30000) ? 1 : 0;
+              fairies[p] = { alive, name: fairyName(p) };
+            }
+          } else {
+            for (const port of [3002,3003,3004,3005,3006,3007]) {
+              try { 
+                const r = await fetch(`http://localhost:${port}/api/status`, { signal: AbortSignal.timeout(1000) });
+                fairies[port] = { alive: r.ok ? 1 : 0, name: fairyName(port) };
+              } catch { fairies[port] = { alive: 0, name: fairyName(port) }; }
+            }
+          }
+          const data = { iq, age: age || pool, solved: s, poolSize: pool, pending: Math.max(0, pool - s), fairies };
           res.end(JSON.stringify(data));
+        } else if (pathname === '/api/dashboard' && req.method === 'POST') {
+          let body = '';
+          req.on('data', c => body += c);
+          req.on('end', async () => {
+            try {
+              const { action, port } = JSON.parse(body);
+              if (action === 'revive' && port) {
+                const guardian = this.learningCore?.guardian;
+                if (guardian) await guardian._revive(port);
+                res.writeHead(200);
+                res.end(JSON.stringify({ ok: true }));
+              } else {
+                res.writeHead(400);
+                res.end(JSON.stringify({ error: 'invalid' }));
+              }
+            } catch (e) {
+              res.writeHead(500);
+              res.end(JSON.stringify({ error: e.message }));
+            }
+          });
         } else if (pathname === '/' && req.method === 'GET') {
           res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
           res.end(`<!DOCTYPE html>
@@ -1046,8 +1074,6 @@ header .subtitle{
 <div class="footer"><span class="dot-refresh"></span>Live · Auto Refresh 3s</div>
 </div>
 <script>
-const NAMES=['仙女','玉女','素女','青女','玄女','嫦娥','开阳'];
-const PORTS=[3002,3003,3004,3005,3006,3007];
 async function R(){
   try{
     const d=await(await fetch('/api/dashboard')).json();
@@ -1058,13 +1084,23 @@ async function R(){
     const pct=d.poolSize>0?Math.round(d.solved/d.poolSize*100):0;
     document.getElementById('fill-bar').style.width=pct+'%';
     document.getElementById('pool-detail').textContent='Pending: '+d.pending;
-    let fr='';
-    for(let i=0;i<PORTS.length;i++){
-      const p=PORTS[i], on=!!d.fairies[p];
-      fr+='<div class=fairy><div class=\"dot '+(on?'on':'off')+'\"></div><div class=name>'+NAMES[i]+'</div><div class=port>:'+p+'</div></div>';
+    if(d.fairies){
+      const ports=Object.keys(d.fairies).sort((a,b)=>a-b);
+      let fr='';
+      for(const p of ports){
+        const f=d.fairies[p];
+        const on=f.alive;
+        fr+='<div class=fairy data-port='+p+' onclick=\"K('+p+')\"><div class=\"dot '+(on?'on':'off')+'\"></div><div class=name>'+f.name+'</div><div class=port>:'+p+'</div></div>';
+      }
+      document.getElementById('fairy-row').innerHTML=fr;
     }
-    document.getElementById('fairy-row').innerHTML=fr;
   }catch(e){}
+}
+async function K(port){
+  if(confirm('复活仙女 :'+port+' ?')){
+    await fetch('/api/dashboard',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'revive',port})});
+    R();
+  }
 }
 function B(iq){
   let cls,label;
@@ -1858,14 +1894,14 @@ R();setInterval(R,3000);
   _startFairyMonitor() {
     let downCount = 0;
     let isMainMode = false;
+    const targetUrl = `http://localhost:${CONFIG.mainPort}/api/status`;
+    const targetPort = CONFIG.mainPort;
     this._fairyMonTimer = setInterval(async () => {
-      // 主模式中：检查 3800 是否恢复
       if (isMainMode) {
         try {
-          const resp = await fetch('http://localhost:3800/api/status', { signal: AbortSignal.timeout(3000) });
+          const resp = await fetch(targetUrl, { signal: AbortSignal.timeout(3000) });
           if (resp.ok) {
             console.log('[FairyMonitor] 🔄 主 Bridge 已恢复，归还主模式');
-            // 停止学习循环，退回仙女模式
             if (this._learningTimer) clearInterval(this._learningTimer);
             this._learningTimer = null;
             isMainMode = false;
@@ -1876,16 +1912,15 @@ R();setInterval(R,3000);
         return;
       }
 
-      // 非主模式：检查 3800 是否存活
       try {
-        const resp = await fetch('http://localhost:3800/api/status', { signal: AbortSignal.timeout(3000) });
+        const resp = await fetch(targetUrl, { signal: AbortSignal.timeout(3000) });
         if (resp.ok) { downCount = 0; return; }
       } catch { downCount++; }
 
       if (downCount >= 3) {
         console.log('[FairyMonitor] 🔼 主 Bridge 失联，临时接管主模式');
         this._startLearningCore();
-        await this._reviveMain(3800);
+        await this._reviveMain(targetPort);
         isMainMode = true;
         downCount = 0;
       }
@@ -1895,10 +1930,9 @@ R();setInterval(R,3000);
   async _reviveMain(port) {
     try {
       const { spawn } = await import('child_process');
-      const child = spawn(process.execPath, ['src/main.js', `--port=${port}`], {
-        cwd: process.cwd(), detached: true, stdio: 'ignore'
-      });
-      child.unref();
+      spawn(process.execPath, ['src/main.js', `--port=${port}`, '--main'], {
+        cwd: process.cwd(), detached: true, stdio: 'ignore', windowsHide: false
+      }).unref();
       console.log(`[FairyMonitor] 发送主 Bridge 复活命令 :${port}`);
     } catch (e) {
       console.log(`[FairyMonitor] 复活失败: ${e.message}`);
@@ -1909,7 +1943,7 @@ R();setInterval(R,3000);
     const myPort = this.body?.port || port || 0;
     setInterval(async () => {
       try {
-        await fetch('http://localhost:3800/api/heartbeat', {
+        await fetch(`http://localhost:${CONFIG.mainPort}/api/heartbeat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ port: myPort }),
