@@ -864,6 +864,9 @@ class Bridge {
           }
           try { data.neural = await this._neuralCache.data; } catch { data.neural = null; }
 
+          // 领域分模型
+          try { data.models = this.learningCore?.modelMgr?.getStats() || { domains: {}, total: { samples: 0, models: 0 } }; } catch { data.models = null; }
+
           res.end(JSON.stringify(data));
         } else if (pathname === '/api/dashboard' && req.method === 'POST') {
           let body = '';
@@ -1188,6 +1191,10 @@ header .subtitle{
   <div class="neural-stats" id="neural-stats"></div>
   <div class="neural-chart" id="neural-chart"></div>
 </div>
+<div class="neural-card">
+  <div class="label">Domain Models · 领域分模型</div>
+  <div class="knowledge-bars" id="models-bars"></div>
+</div>
 <div class="footer"><span class="dot-refresh"></span>Live · Auto Refresh 3s &nbsp; <button class="btn-shutdown" onclick="S()">Shutdown All</button></div>
 </div>
 <script>
@@ -1255,6 +1262,21 @@ async function R(){
         }
         document.getElementById('neural-chart').innerHTML='<svg viewBox="0 0 100 100" preserveAspectRatio=none><polyline points=\"'+pts+'\" fill=none stroke=#7c8aff stroke-width=2 vector-effect=non-scaling-stroke></polyline></svg>';
       }
+    }
+    if(d.models&&d.models.domains){
+      const dd=d.models.domains;
+      const keys=Object.keys(dd).sort((a,b)=>dd[b].samples-dd[a].samples);
+      const maxS=Math.max(1,...keys.map(k=>dd[k].samples));
+      const colors={math:'math',logic:'logic',code:'code',visual:'visual',network:'network',ai:'ai',solve:'general',general:'general'};
+      let bars='';
+      for(const k of keys){
+        if(!dd[k].samples&&!dd[k].hasModel)continue;
+        const pct=Math.round(dd[k].samples/maxS*100);
+        const c=colors[k]||'general';
+        bars+='<div class=knowledge-bar><div class=bar-count>'+dd[k].samples+'</div><div class=bar-track><div class=\"bar-fill '+c+'\" style=height:'+pct+'%></div></div><div class=bar-label>'+k+'</div></div>';
+      }
+      if(!bars)bars='<span style=font-size:11px;color:#5a6080>No domain models yet · 暂无领域模型</span>';
+      document.getElementById('models-bars').innerHTML=bars;
     }
   }catch(e){}
 }

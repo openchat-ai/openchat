@@ -17,6 +17,7 @@ import { SemanticNN } from './semantic-nn.js';
 import { TeacherLLM } from './teacher-llm.js';
 import { InductiveReasoner } from './inductive-reasoner.js';
 import { TheoremDB } from './theorem-db.js';
+import { ModelManager } from './model-manager.js';
 import { FairyGuardian } from '../../../modules/fairy-guardian/index.js';
 import { readdirSync, readFileSync, existsSync, writeFileSync, mkdirSync, statSync } from 'fs';
 import { homedir } from 'os';
@@ -73,6 +74,7 @@ this.history = {
     this.teacher = new TeacherLLM();
     this.theoremDB = new TheoremDB();
     this.inductive = new InductiveReasoner(this.theoremDB);
+    this.modelMgr = new ModelManager();
     this.guardian = new FairyGuardian({
       myPort,
       childNames: ['仙女', '玉女', '素女', '青女', '玄女', '嫦娥'],
@@ -84,12 +86,36 @@ this.history = {
     this._initDirs();
     this._loadProblemPool();
     this._loadStats();
+    this._bootstrapModels();
   }
 
   _initDirs() {
     for (const dir of [KB_DIR, PROBLEM_POOL_DIR, EXPERIENCE_DIR]) {
       if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
     }
+  }
+
+  /** 用已有经验数据喂养领域分模型 */
+  _bootstrapModels() {
+    try {
+      const all = [];
+      // 经验目录
+      if (existsSync(EXPERIENCE_DIR)) {
+        for (const f of readdirSync(EXPERIENCE_DIR).filter(f => f.endsWith('.json'))) {
+          try { all.push(JSON.parse(readFileSync(join(EXPERIENCE_DIR, f), 'utf8'))); } catch {}
+        }
+      }
+      // 问题池中已答的题
+      for (const p of this.problemPool) {
+        if (p.answer != null && p.answer !== undefined && !all.find(e => e.problemId === p.id)) {
+          all.push({ problemId: p.id, question: p.question, domain: p.domain, answer: p.answer, solver: 'offline' });
+        }
+      }
+      if (all.length > 0) {
+        this.modelMgr.trainBatch(all);
+        console.log('[LC] 领域分模型已从', all.length, '条经验初始化');
+      }
+    } catch {}
   }
 
   _loadProblemPool() {
@@ -492,6 +518,7 @@ ${problem.context ? '背景：' + JSON.stringify(problem.context) : ''}
 
     this.solvedCount++;
     this.evolution.recordSolve(problem, answer, 0, true, 'agent', solver);
+    this.modelMgr.train(problem, answer, solver);
 
     if (this.solvedCount <= 3) {
       this.iq = 100 + this.solvedCount * 2;

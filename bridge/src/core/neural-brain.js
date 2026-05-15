@@ -18,15 +18,16 @@ const WEIGHTS_FILE = join(BRAIN_DIR, 'weights.json');
 const TRAINING_LOG = join(BRAIN_DIR, 'training-log.json');
 
 export class NeuralBrain {
-  constructor(inputSize = 64, hiddenSize = 32, outputSize = 8) {
+  constructor(inputSize = 64, hiddenSize = 32, outputSize = 8, modelFile = null) {
     this.inputSize = inputSize;
     this.hiddenSize = hiddenSize;
     this.outputSize = outputSize;
+    this._modelFile = modelFile;   // 自主模型文件路径，null = 用默认
 
     // 权重矩阵
-    this.W1 = this._initMatrix(inputSize, hiddenSize);   // input → hidden
+    this.W1 = this._initMatrix(inputSize, hiddenSize);
     this.b1 = new Array(hiddenSize).fill(0);
-    this.W2 = this._initMatrix(hiddenSize, outputSize);  // hidden → output
+    this.W2 = this._initMatrix(hiddenSize, outputSize);
     this.b2 = new Array(outputSize).fill(0);
 
     this.trainingSamples = 0;
@@ -254,7 +255,8 @@ export class NeuralBrain {
 
   _saveWeights() {
     try {
-      writeFileSync(WEIGHTS_FILE, JSON.stringify({
+      const file = this._modelFile || WEIGHTS_FILE;
+      writeFileSync(file, JSON.stringify({
         W1: this.W1, b1: this.b1,
         W2: this.W2, b2: this.b2,
         samples: this.trainingSamples,
@@ -266,16 +268,16 @@ export class NeuralBrain {
 
   _loadWeights() {
     try {
-      if (existsSync(WEIGHTS_FILE)) {
-        const data = JSON.parse(readFileSync(WEIGHTS_FILE, 'utf8'));
-        if (data.W1 && data.W1.length === this.inputSize) {
-          this.W1 = data.W1; this.b1 = data.b1;
-          this.W2 = data.W2; this.b2 = data.b2;
-          this.trainingSamples = data.samples || 0;
-          this.epochs = data.epochs || 0;
-          this.accuracy = data.accuracy || 0;
-          return true;
-        }
+      const file = this._modelFile || WEIGHTS_FILE;
+      if (!existsSync(file)) return;
+      const data = JSON.parse(readFileSync(file, 'utf8'));
+      if (data.W1 && data.W1.length === this.inputSize) {
+        this.W1 = data.W1; this.b1 = data.b1;
+        this.W2 = data.W2; this.b2 = data.b2;
+        this.trainingSamples = data.samples || 0;
+        this.epochs = data.epochs || 0;
+        this.accuracy = data.accuracy || 0;
+        return true;
       }
     } catch {}
     return false;
