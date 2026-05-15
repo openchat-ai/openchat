@@ -339,8 +339,8 @@ class Bridge {
       console.log(`[P2P] 启动跳过: ${p2pErr.message}`);
     }
 
-    // 自动构建 deploy/（静默执行，仅失败时显示错误摘要）
-    if (deployServerEnabled) {
+    // 自动构建 deploy/（仅主 Bridge，静默执行）
+    if (deployServerEnabled && isMain) {
       try {
         const { execSync } = await import('child_process');
         const bridgeRoot = path.resolve(import.meta.filename ? path.dirname(import.meta.filename) : __dirname, '..');
@@ -858,6 +858,12 @@ class Bridge {
             data.knowledge = await this._kbCache.data;
           } catch { data.knowledge = { domains: {}, recent: [], total: 0, evoCount: 0, offlineCount: 0 }; }
 
+          // 神经网络：缓存 120s
+          if (!this._neuralCache || Date.now() - this._neuralCache.ts > 120000) {
+            this._neuralCache = { ts: Date.now(), data: this._buildNeural() };
+          }
+          try { data.neural = await this._neuralCache.data; } catch { data.neural = null; }
+
           res.end(JSON.stringify(data));
         } else if (pathname === '/api/dashboard' && req.method === 'POST') {
           let body = '';
@@ -1099,6 +1105,27 @@ header .subtitle{
 .kr-domain.ai{background:rgba(124,138,255,.15);color:#7c8aff}
 .kr-domain.solve{background:rgba(46,213,115,.15);color:#2ed573}
 .kr-domain.general{background:rgba(255,165,2,.15);color:#ffa502}
+.neural-card{
+  background:linear-gradient(135deg, #0f1425 0%, #141a30 100%);
+  border:1px solid #1e2540;
+  border-radius:12px;
+  padding:18px 16px;
+  margin:12px 0;
+}
+.neural-card .label{
+  font-size:11px;
+  color:#6b7394;
+  text-transform:uppercase;
+  letter-spacing:1px;
+  margin-bottom:10px;
+}
+.neural-stats{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+.neural-stat{flex:1;min-width:70px;text-align:center}
+.neural-stat .ns-val{font-size:18px;font-weight:700}
+.neural-stat .ns-label{font-size:10px;color:#5a6080;margin-top:2px}
+.ns-up{color:#2ed573}.ns-warn{color:#ffa502}.ns-info{color:#7c8aff}
+.neural-chart{height:40px;background:#1a1f35;border-radius:6px;position:relative;overflow:hidden}
+.neural-chart svg{width:100%;height:100%}
 .bar-fill.code{background:linear-gradient(180deg,#ff6b7a,#d94a5a)}
 .bar-fill.visual{background:linear-gradient(180deg,#4fc3f7,#0288d1)}
 .bar-fill.network{background:linear-gradient(180deg,#00d2ff,#0091ea)}
@@ -1156,6 +1183,11 @@ header .subtitle{
   <div class="knowledge-bars" id="kb-bars"></div>
   <div class="knowledge-recent" id="kb-recent"></div>
 </div>
+<div class="neural-card">
+  <div class="label">Neural Network · 神经网络</div>
+  <div class="neural-stats" id="neural-stats"></div>
+  <div class="neural-chart" id="neural-chart"></div>
+</div>
 <div class="footer"><span class="dot-refresh"></span>Live · Auto Refresh 3s &nbsp; <button class="btn-shutdown" onclick="S()">Shutdown All</button></div>
 </div>
 <script>
@@ -1201,6 +1233,28 @@ async function R(){
         rec+='<div class=kr-item><span>'+src+' '+h(r.task,36)+'</span><span><span class=\"kr-domain '+r.domain+'\">'+r.domain+'</span> '+fmt(t)+'</span></div>';
       }
       document.getElementById('kb-recent').innerHTML=rec;
+    }
+    if(d.neural){
+      const n=d.neural;
+      document.getElementById('neural-stats').innerHTML=
+        '<div class=neural-stat><div class=\"ns-val ns-up\">'+n.samples+'</div><div class=ns-label>Samples / 样本</div></div>'+
+        '<div class=neural-stat><div class=\"ns-val '+(n.accNow>=60?'ns-up':'ns-warn')+'\">'+n.accNow+'%</div><div class=ns-label>Accuracy / 准确率</div></div>'+
+        '<div class=neural-stat><div class=\"ns-val ns-info\">'+n.durH+'h</div><div class=ns-label>Training / 训练时长</div></div>'+
+        '<div class=neural-stat><div class=\"ns-val ns-info\">'+n.entries+'</div><div class=ns-label>Rounds / 轮次</div></div>'+
+        (n.weightsSize?'<div class=neural-stat><div class=\"ns-val ns-info\">'+(n.weightsSize/1024).toFixed(0)+'KB</div><div class=ns-label>Weights / 权重</div></div>':'');
+      const t=n.trend||[];
+      if(t.length>1){
+        const maxA=Math.max(...t.map(p=>p.a));
+        const minA=Math.min(...t.map(p=>p.a));
+        const range=maxA-minA||1;
+        let pts='';
+        for(let i=0;i<t.length;i++){
+          const x=i/(t.length-1)*100;
+          const y=100-(t[i].a-minA)/range*90;
+          pts+=x+','+y+' ';
+        }
+        document.getElementById('neural-chart').innerHTML='<svg viewBox="0 0 100 100" preserveAspectRatio=none><polyline points=\"'+pts+'\" fill=none stroke=#7c8aff stroke-width=2 vector-effect=non-scaling-stroke></polyline></svg>';
+      }
     }
   }catch(e){}
 }
@@ -2123,6 +2177,37 @@ R();setInterval(R,3000);
     } catch {}
     recent.sort((a, b) => (b.solvedAt || 0) - (a.solvedAt || 0));
     return { domains, recent: recent.slice(0, 8), total: evoCount + offlineCount, evoCount, offlineCount };
+  }
+
+  async _buildNeural() {
+    try {
+      const { readFile } = await import('fs/promises');
+      const { homedir } = await import('os');
+      const { join } = await import('path');
+      const logFile = join(homedir(), '.openchat', 'brain', 'training-log.json');
+      const weightsFile = join(homedir(), '.openchat', 'brain', 'weights.json');
+
+      const log = JSON.parse(await readFile(logFile, 'utf8'));
+      const first = log[0], last = log[log.length - 1];
+      const durH = ((last.time - first.time) / 3600000).toFixed(1);
+      const samples = last.samples;
+      const samplesGrowth = last.samples - first.samples;
+      const accNow = (last.accuracy * 100).toFixed(1);
+      const accFirst = (first.accuracy * 100).toFixed(1);
+      const accDelta = ((last.accuracy - first.accuracy) * 100).toFixed(1);
+
+      let weightsSize = 0;
+      try { const stat = await import('fs/promises').then(m => m.stat(weightsFile)); weightsSize = stat.size; } catch {}
+
+      const trend = [];
+      const step = Math.max(1, Math.floor(log.length / 20));
+      for (let i = 0; i < log.length; i += step) {
+        trend.push({ s: log[i].samples, a: +(log[i].accuracy * 100).toFixed(1), t: log[i].time });
+      }
+      trend.push({ s: last.samples, a: +(last.accuracy * 100).toFixed(1), t: last.time });
+
+      return { entries: log.length, samples, samplesGrowth, accNow, accFirst, accDelta, durH, weightsSize, trend };
+    } catch { return null; }
   }
 
   async shutdown() {

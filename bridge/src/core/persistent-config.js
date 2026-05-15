@@ -49,7 +49,7 @@ const DEFAULT_CONFIG = {
     advertiseHost: '',
     qiniuEnabled: true,
     cores: [],
-    deployServerEnabled: true,
+    deployServerEnabled: false,
     deployServerPort: 8080,
     llmDailyTokenBudget: 1000000,
     llmCacheEnabled: true,

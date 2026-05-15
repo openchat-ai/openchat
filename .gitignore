@@ -27,6 +27,9 @@ plan.md
 research.md
 
 # Other temporary documentation and test files
+tmp/
+*.bat
+*.ps1
 AI_CONSTRAINTS_*.md
 AI_QUALITY_CHECK_SYSTEM.md
 AI_DEVELOPER_GUIDE.md
