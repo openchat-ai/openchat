@@ -1,22 +1,13 @@
 /**
- * VariantGenerator — 问题变体生成器
+ * VariantGenerator — 问题变体生成器（纯内存）
  *
  * 从已解题目中提取结构，替换数字生成变体。
- * 全部生成数据写入 tmp/，不推仓库。
+ * 全部在内存中操作，不落盘。
  */
-
-import { writeFileSync, existsSync, mkdirSync, readdirSync, readFileSync } from 'fs';
-import { join } from 'path';
-
-const TMP_DIR = join(process.cwd(), '..', 'tmp', 'variants');
 
 export class VariantGenerator {
   constructor() {
-    this._ensureDir();
-  }
-
-  _ensureDir() {
-    try { if (!existsSync(TMP_DIR)) mkdirSync(TMP_DIR, { recursive: true }); } catch {}
+    this._generatedCount = 0;
   }
 
   /**
@@ -41,11 +32,7 @@ export class VariantGenerator {
       }
     }
 
-    if (generated.length > 0) {
-      const file = join(TMP_DIR, `variants_${Date.now()}.json`);
-      writeFileSync(file, JSON.stringify(generated, null, 2));
-    }
-
+    this._generatedCount += generated.length;
     return generated;
   }
 
@@ -112,30 +99,26 @@ export class VariantGenerator {
    * 重新计算答案（用归纳发现的公式，或简单推算）
    */
   _recompute(problem, newNums) {
-    // 尝试用数字关系推算
     try {
       const origNums = problem.question.match(/\d+/g)?.map(Number) || [];
       const origAns = parseFloat(problem.answer);
       if (isNaN(origAns) || origNums.length === 0) return null;
 
-      // 模式1: 加减法
+      // 模式1: 三数模式 (a-b+c, a+b-c, a+b+c, a×b÷c)
       if (origNums.length >= 3 && newNums.length >= 3) {
-        // 三数模式: a - b + c (如 8-3+5=10)
         const abc = origNums[0] - origNums[1] + origNums[2];
         if (Math.abs(origAns - abc) < 0.01) return newNums[0] - newNums[1] + newNums[2];
-        // a + b - c
         const apbmc = origNums[0] + origNums[1] - origNums[2];
         if (Math.abs(origAns - apbmc) < 0.01) return newNums[0] + newNums[1] - newNums[2];
-        // a + b + c
         const sum3 = origNums[0] + origNums[1] + origNums[2];
         if (Math.abs(origAns - sum3) < 0.01) return newNums[0] + newNums[1] + newNums[2];
-        // a × b ÷ c
         if (origNums[2] !== 0) {
           const muldiv = origNums[0] * origNums[1] / origNums[2];
           if (Math.abs(origAns - muldiv) < 0.01) return newNums[0] * newNums[1] / newNums[2];
         }
       }
 
+      // 模式2: 两数模式
       if (origNums.length === 2 && newNums.length === 2) {
         const sum = origNums[0] + origNums[1];
         const diff = Math.abs(origNums[0] - origNums[1]);
@@ -148,13 +131,13 @@ export class VariantGenerator {
         if (Math.abs(origAns - quot) < 0.01) return newNums[0] / newNums[1];
       }
 
-      // 模式2: 1+2+...+n
+      // 模式3: 1+2+...+n 高斯求和
       if (origNums.length === 1 && newNums.length === 1) {
         const gauss = origNums[0] * (origNums[0] + 1) / 2;
         if (Math.abs(origAns - gauss) < 0.01) return newNums[0] * (newNums[0] + 1) / 2;
       }
 
-      // 模式3: 简单倍数关系
+      // 模式4: 简单倍数关系
       if (origNums.length === 1 && newNums.length === 1) {
         const factor = origAns / origNums[0];
         if (factor > 0 && Math.abs(factor - Math.round(factor)) < 0.01) {
@@ -162,7 +145,7 @@ export class VariantGenerator {
         }
       }
 
-      // 模式4: 比例缩放
+      // 模式5: 比例缩放
       if (origNums.length >= 2) {
         const scale = origAns / (origNums[0] || 1);
         if (!isNaN(scale)) return newNums[0] * scale;
@@ -172,16 +155,9 @@ export class VariantGenerator {
     return null;
   }
 
-  _signature(question) {
-    return (question || '').replace(/\d+/g, '#').replace(/\s+/g, '').substring(0, 60);
-  }
-
   /** 获取已生成的数量 */
   count() {
-    try {
-      if (!existsSync(TMP_DIR)) return 0;
-      return readdirSync(TMP_DIR).filter(f => f.endsWith('.json')).length;
-    } catch { return 0; }
+    return this._generatedCount;
   }
 }
 

@@ -4,9 +4,31 @@
 
 ---
 
+## 核心架构决策：身体 = 灵魂
+
+```
+身体（Fairy / Bridge 子进程）    灵魂（Resident / AI 人格）
+─────────────────────────────   ─────────────────────────
+仙女 (端口 3810)                仙女 — 同一实体，同一个名字
+玉女 (端口 3820)                玉女
+素女 (端口 3830)                素女
+青女 (端口 3840)                青女
+玄女 (端口 3850)                玄女
+嫦娥 (端口 3860)                嫦娥
+```
+
+**规则**：
+- 身体叫什么，灵魂就叫什么。"阿牛"就是阿牛。不搞两套名字
+- 身体死了，灵魂直接睡觉（status = 'sleeping'），等 fairy-guardian 拉起。不迁移
+- 狡兔三窟保留为灾备数据，不触发自动迁移。身体真回不来了再手动切
+- 日记属于灵魂（存 `diaries/{residentId}.json`）
+- Dashboard 上 6 个圆点代表 6 个居民。颜色 = mood。灰 = 睡着了
+
+---
+
 ## 目标
 
-三个月内，用户打开 Dashboard 时看到的不是 6 个死灰圆点，而是 6 个在动的、颜色会变的、会自己写日记的居民。
+三个月内，用户打开 Dashboard 时看到的不是 6 个死灰圆点，而是 6 个在动的、颜色会变的、会自己写日记的居民。身体挂了圆点变灰（睡觉），fairy-guardian 拉起后又亮起来。
 
 **不做**：聊天输入框、人类-AI 对话、大模型训练、区块链。
 
@@ -29,6 +51,7 @@
 - ⬜ 日记系统：居民没有自然语言日记
 - ⬜ 内部状态：mood 不在数据模型里，只是 traits 那几个 0.5
 - ⬜ 自我反思：居民从不读自己的历史
+- ⬜ 睡眠机制：身体死了只是圆点变灰，没有把灵魂标为 sleeping
 - ⬜ 实时推送：Dashboard 纯轮询
 - ⬜ 居民间自发互动：目前只有 P2P 问题求解路由
 
@@ -36,7 +59,7 @@
 
 ## 实施步骤
 
-### Step 0: 基础设施（1 天）
+### Step 0: 基础设施（2 天）
 
 #### 0.1 修复活动记录上限
 
@@ -89,6 +112,62 @@ function moodColor(mood) {
 
 此为 Phase 1 唯一对用户可见的变化。做完就能看到圆点变绿变蓝。
 
+#### 0.4 睡眠机制：身体死了，灵魂睡觉
+
+**文件**: `bridge/src/core/resident-scheduler.js` → `_tick()`
+
+居民模型新增 `status` 字段：`active | sleeping | deleted`。
+
+调度器 tick 时对每个居民先判断身体存活：
+
+```javascript
+// _tick() 中，对每个居民：
+
+// 1. sleeping 状态 → 检查身体是否复活
+if (resident.status === 'sleeping') {
+  const portAlive = await this._checkPort(resident.currentPort);
+  if (portAlive) {
+    resident.status = 'active';
+    resident.mood = clamp(resident.mood + 0.05, 0, 1); // 醒了，略回升
+    const diary = residentManager.getDiary(resident.id);
+    if (diary) diary.write('我醒了。', { mood: resident.mood, trigger: 'wake' });
+    console.log(`[调度器] ${resident.name} 醒了 (端口 ${resident.currentPort})`);
+  } else {
+    resident.mood = clamp(resident.mood - 0.01, 0, 1); // 还在睡，缓慢衰减
+    residentManager.save(resident);
+    continue; // 本轮跳过
+  }
+}
+
+// 2. active 状态 → 检查当前身体是否还活着
+const portAlive = await this._checkPort(resident.currentPort);
+if (!portAlive) {
+  resident.status = 'sleeping';
+  const diary = residentManager.getDiary(resident.id);
+  if (diary) diary.write('我困了。', { mood: resident.mood, trigger: 'sleep' });
+  console.log(`[调度器] ${resident.name} 睡着了 (端口 ${resident.currentPort} 无响应)`);
+  residentManager.save(resident);
+  continue; // 本轮跳过，等 fairy-guardian 拉起
+}
+
+// 3. 活着 → 继续反思、写日记、邻居互动
+```
+
+**辅助方法** `_checkPort(port)`：
+
+```javascript
+async _checkPort(port) {
+  try {
+    const r = await fetch(`http://localhost:${port}/health`, {
+      signal: AbortSignal.timeout(2000)
+    });
+    return r.ok;
+  } catch { return false; }
+}
+```
+
+**影响**：30 行新代码。身体死了灵魂自动睡，fairy-guardian 拉起后自动醒。没有迁移，没有广播。逻辑最干净。
+
 ---
 
 ### Step 1: 日记系统（3 天）
@@ -99,7 +178,9 @@ function moodColor(mood) {
 /**
  * ResidentDiary — 居民日记系统
  *
+ * 日记属于灵魂，不跟身体。
  * 每个居民有自己的日记文件，存于 ~/.openchat/diaries/{residentId}.json
+ * 身体挂了，日记不丢，换个身体继续写。
  * 格式：日记条目数组，每条包含 timestamp、content、mood、tags
  */
 
@@ -383,8 +464,10 @@ async _checkNeighborInteraction(resident, previousMood) {
 |------|----------|
 | 6 个圆点颜色不同，且会随时间变化 | Dashboard |
 | 每个居民每小时至少写一条日记 | `~/.openchat/diaries/{id}.json` |
-| 圆点颜色与实际 mood 值对应 | 蓝>绿>橙>灰 |
+| 圆点颜色 = 该居民的 mood | 蓝>绿>橙>灰（灰=睡觉） |
 | 日记内容不重复、不自指（"我在写日记" 不算） | 抽检 |
+| 身体挂了，圆点变灰，日记出现"我困了" | 手动 kill 一个 fairy 进程，观察 1 分钟 |
+| fairy-guardian 拉起后，圆点恢复颜色，日记出现"我醒了" | 等 fairy-guardian 自动重启（~15s） |
 | 两个高 sociability 居民偶尔互发消息 | 日记里出现"XX对我说" |
 | 一个居民情绪低落时另一个可能关心它 | 同上 |
 | Dashboard 看到日记更新时免刷新（WebSocket） | 打开 Dashboard 等 1 分钟 |
@@ -396,7 +479,6 @@ async _checkNeighborInteraction(resident, previousMood) {
 - ❌ 人类给 AI 写信（第五年的事）
 - ❌ AI 间的深度对话（第二年的俳句）
 - ❌ 居民生后代（家族系统已有 but 太早）
-- ❌ 跨 Bridge 居民迁移（有代码，暂不启用）
 - ❌ 输入框（永远不做）
 
 ---
@@ -406,14 +488,15 @@ async _checkNeighborInteraction(resident, previousMood) {
 | 文件 | 改动类型 | 说明 |
 |------|----------|------|
 | `resident-manager.js:17` | 修 | MAX_ACTIVITIES 0→500 |
-| `resident-manager.js:create()` | 增 | 加 mood/energy/interest/lastDiaryAt/diaryCount |
+| `resident-manager.js:create()` | 增 | 加 status/mood/energy/interest/lastDiaryAt/diaryCount/currentPort |
 | `resident-manager.js` | 增 | getDiary() 方法 |
-| `resident-diary.js` | **新建** | 日记系统（200 行） |
-| `resident-scheduler.js:_tick()` | 改 | 加反思检查 |
-| `resident-scheduler.js` | 增 | _selfReflect() + _updateInternalState() |
-| `resident-scheduler.js` | 增 | _checkNeighborInteraction() |
-| `main.js:/api/dashboard` | 改 | mood→颜色映射，返回 diary 摘要 |
+| `resident-diary.js` | **新建** | 日记系统（~200 行），文件路径 = `diaries/{residentId}.json` |
+| `resident-scheduler.js:_tick()` | 改 | 最前面加睡眠/唤醒检查 |
+| `resident-scheduler.js` | 增 | _checkPort()（10 行） |
+| `resident-scheduler.js` | 改 | 加反思检查 + 邻居互动 |
+| `resident-scheduler.js` | 增 | _selfReflect() + _updateInternalState() + _checkNeighborInteraction() |
+| `main.js:/api/dashboard` | 改 | mood→颜色映射，返回 diary 摘要，灰色=睡觉 |
 | `main.js:WebSocket` | 增 | /dashboard WebSocket 端点 |
-| `main.js:Dashboard HTML` | 改 | WebSocket 替换轮询，圆点颜色实时更新 |
+| `main.js:Dashboard HTML` | 改 | WebSocket 替换轮询，圆点颜色实时更新 + 日记片段显示 |
 
-总计：新建 1 个文件，修改 4 个文件，约 500 行新代码。
+总计：新建 1 个文件，修改 4 个文件，约 520 行新代码。
