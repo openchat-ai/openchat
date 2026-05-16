@@ -1,37 +1,22 @@
 /**
  * DataMiner — 自主数据挖掘
  *
- * 三路并行获取训练数据：
- * 1. 模板变体 — 已知题型改数字生成 100 道
- * 2. LLM 量产 — 一次要 50 道题，不分 domain
- * 3. 网页抓取 — 免费数学题库
+ * 三路并行获取训练数据（纯内存，不落盘）：
+ * 1. 模板变体 — 已知题型改数字生成 5-20 道
+ * 2. LLM 量产 — 一次要 50 道题
+ * 3. 内置题库 — 20 数 + 10 逻辑
  */
-
-import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs';
-import { join } from 'path';
-import { homedir } from 'os';
-
-const DATA_DIR = join(homedir(), '.openchat', 'data');
-const VARIANT_DIR = join(DATA_DIR, 'variants');
-const MINED_DIR = join(DATA_DIR, 'mined');
 
 export class DataMiner {
   constructor() {
-    this._ensureDirs();
     this.generatedCount = 0;
     this.minedCount = 0;
-  }
-
-  _ensureDirs() {
-    for (const d of [DATA_DIR, VARIANT_DIR, MINED_DIR]) {
-      try { if (!existsSync(d)) mkdirSync(d, { recursive: true }); } catch {}
-    }
   }
 
   // ==================== 第1路：模板变体 ====================
 
   /**
-   * 从已解决问题生成变体题库
+   * 从已解决问题生成变体题库（纯内存）
    * 每道题 → 改数字 + 改场景 → 5-20 道新题
    */
   generateVariants(problems) {
@@ -62,8 +47,6 @@ export class DataMiner {
       }
     }
 
-    // 去重保存
-    this._saveVariants(variants);
     this.generatedCount += variants.length;
     console.log(`[DataMiner] 生成 ${variants.length} 道变体题`);
     return variants;
@@ -76,18 +59,10 @@ export class DataMiner {
     return n + Math.floor(Math.random() * n * 0.4 - n * 0.2);
   }
 
-  _saveVariants(variants) {
-    try {
-      const file = join(VARIANT_DIR, `batch_${Date.now()}.json`);
-      writeFileSync(file, JSON.stringify(variants, null, 2));
-    } catch {}
-  }
-
   // ==================== 第2路：LLM 量产 ====================
 
   /**
-   * 用 LLM 批量生成训练数据（不求解，只出题）
-   * @param {object} agent - multi-agent-coordinator 实例
+   * 用 LLM 批量生成训练数据（纯内存，不存盘）
    */
   async mineWithLLM(agent, domain = 'math', count = 50, difficulty = 'mixed') {
     const prompt = `你是数学题生成器。请生成 ${count} 道${domain === 'math' ? '数学' : '逻辑推理'}题。
@@ -111,7 +86,6 @@ export class DataMiner {
       if (!result?.content) return [];
 
       const problems = this._parseBatchOutput(result.content.trim(), domain);
-      this._saveMined(problems);
       this.minedCount += problems.length;
       console.log(`[DataMiner] LLM 量产 ${problems.length} 道${domain}题`);
       return problems;
@@ -148,37 +122,20 @@ export class DataMiner {
     return 1;
   }
 
-  _saveMined(problems) {
-    try {
-      const file = join(MINED_DIR, `mined_${Date.now()}.json`);
-      writeFileSync(file, JSON.stringify(problems, null, 2));
-    } catch {}
-  }
+  // ==================== 第3路：内置题库 ====================
 
-  // ==================== 第3路：网页抓取 ====================
-
-  /**
-   * 从公开 API 抓数学题
-   * 使用 mathjs.org API 等免费源
-   */
-  async scrapeWeb(domain = 'math', count = 20) {
+  scrapeWeb(domain = 'math', count = 20) {
     const problems = [];
 
-    // 数学题内置题库扩展
     if (domain === 'math') {
-      const builtin = this._getBuiltinExtras();
-      problems.push(...builtin.slice(0, count));
+      problems.push(...this._getBuiltinExtras().slice(0, count));
     }
-
-    // 逻辑题
     if (domain === 'logic') {
-      const logicExtra = this._getLogicExtras();
-      problems.push(...logicExtra.slice(0, count));
+      problems.push(...this._getLogicExtras().slice(0, count));
     }
 
-    this._saveMined(problems);
     this.minedCount += problems.length;
-    console.log(`[DataMiner] 网页抓取 ${problems.length} 道${domain}题`);
+    console.log(`[DataMiner] 内置题库 ${problems.length} 道${domain}题`);
     return problems;
   }
 
@@ -225,7 +182,7 @@ export class DataMiner {
   // ==================== 全量挖掘 ====================
 
   /**
-   * 三路齐发，最大化训练数据
+   * 三路齐发，最大化训练数据（纯内存）
    */
   async mineAll(problems, agent = null) {
     const results = [];
@@ -234,7 +191,7 @@ export class DataMiner {
     const variants = this.generateVariants(problems.filter(p => p.solved));
     results.push(...variants);
 
-    // 第3路：网页抓取（同步，快）
+    // 第3路：内置题库（同步，快）
     const scraped = await this.scrapeWeb('math', 15);
     results.push(...scraped);
     const scrapedLogic = await this.scrapeWeb('logic', 8);
