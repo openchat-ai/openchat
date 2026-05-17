@@ -1,29 +1,49 @@
-# @openchat/provider-kit
+# provider-kit
 
-**One API for 42 LLM providers.** OpenAI, Anthropic, Ollama, OpenRouter, Google Gemini, Azure, AWS Bedrock, Cohere — same interface, built-in retry and timeout.
+**One API for 42 LLM providers.** OpenAI, Anthropic, Ollama, OpenRouter, Google Gemini, Azure, AWS Bedrock, Cohere �?same interface, built-in retry and timeout.
+
+```bash
+npm install provider-kit
+```
+
+## Quickstart �?first response in under 60 seconds
 
 ```js
-import { createProvider } from '@openchat/provider-kit'
+import { createProvider } from 'provider-kit'
 
-const provider = await createProvider('openai', { apiKey: 'sk-...' })
-const reply = await provider.chat('gpt-4', [
-  { role: 'user', content: 'Hello' }
+const client = await createProvider('openai', { apiKey: process.env.OPENAI_API_KEY })
+
+const stream = client.chatStream('gpt-4o-mini', [
+  { role: 'user', content: 'Say hello in one sentence' },
 ])
-// { content: '...', model: 'gpt-4', usage: { prompt_tokens: 10, completion_tokens: 20 } }
+
+for await (const chunk of stream) {
+  if (chunk.type === 'content') process.stdout.write(chunk.content)
+}
+```
+
+Run it:
+
+```bash
+export OPENAI_API_KEY=sk-...
+node quickstart.mjs
+# �?Hello! I'm an AI assistant ready to help you.
 ```
 
 ## Install
 
 ```bash
-npm install @openchat/provider-kit
+npm install provider-kit
 ```
+
+## Usage
 
 ## Usage
 
 ### Basic chat
 
 ```js
-import { createProvider } from '@openchat/provider-kit'
+import { createProvider } from 'provider-kit'
 
 const provider = await createProvider('openai', { apiKey: process.env.OPENAI_API_KEY })
 const reply = await provider.chat('gpt-4o-mini', [
@@ -36,7 +56,7 @@ console.log(reply.content)
 ### With retry and timeout
 
 ```js
-import { safeProviderCall } from '@openchat/provider-kit'
+import { safeProviderCall } from 'provider-kit'
 
 const reply = await safeProviderCall(
   () => provider.chat('gpt-4', messages),
@@ -68,10 +88,10 @@ for await (const chunk of stream) {
 
 ### Error handling
 
-`createProvider`, `.chat()`, `.chatStream()` — all throw `ProviderError` with consistent fields:
+`createProvider`, `.chat()`, `.chatStream()` �?all throw `ProviderError` with consistent fields:
 
 ```js
-import { ProviderError } from '@openchat/provider-kit'
+import { ProviderError } from 'provider-kit'
 
 try { /* ... */ } catch (e) {
   if (e instanceof ProviderError) {
@@ -104,7 +124,7 @@ if (reply.toolCalls) {
 Manage multiple providers with a registry:
 
 ```js
-import { providerRegistry, createProvider } from '@openchat/provider-kit'
+import { providerRegistry, createProvider } from 'provider-kit'
 
 await providerRegistry.configure('openai', { apiKey: 'sk-...' })
 await providerRegistry.configure('ollama', { baseUrl: 'http://localhost:11434' })
@@ -115,12 +135,10 @@ const reply = await provider.chat('gpt-4', messages)
 
 ## Known Limitations (v0.1.0)
 
-- **No config persistence by default.** API keys must be passed on every `createProvider()` call. Use `createStore()` for persistent config.
 - **10 adapters implemented out of 42 presets.** The remaining 32 use OpenAI-compatible fallback. Contributions welcome.
 - **No TypeScript types.** Planned for v0.2.0.
 - **Not for production.** API keys are stored in memory. No OS keychain integration.
-- **`.provider-kit.json` should be added to `.gitignore`** if you choose to use file persistence via `createStore()`.
 
 ## Related
 
-- `@openchat/fairy-guardian` — self-healing process cluster for AI model servers
+- `@openchat/fairy-guardian` �?self-healing process cluster for AI model servers
