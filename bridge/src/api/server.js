@@ -39,7 +39,7 @@ class APIServer {
     this.swarm = options.swarm || null;
     this.deployEnabled = options.deployEnabled !== false;
     this.app = express();
-    this.server = null;
+    this.server = options.httpServer || null;
 
     this.setupMiddlewares();
     this.setupRoutes();
@@ -201,6 +201,10 @@ class APIServer {
   }
 
   async start() {
+    if (this.server) {
+      console.log(`[API] Mounted on existing server, port ${this.port}`);
+      return Promise.resolve(this.server);
+    }
     return new Promise((resolve, reject) => {
       try {
         this.server = this.app.listen(this.port, () => {
