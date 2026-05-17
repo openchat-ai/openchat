@@ -222,21 +222,45 @@ class Bridge {
       // �� Express app ��Ϊ http.Server �� handler
       this.httpServer = http.createServer(this.apiServer.app);
       this.apiServer.server = this.httpServer;
-      // WS ����
-      this.wss = new WebSocketServer({ server: this.httpServer, path: '/ws' });
-      this.wss.on('connection', (ws) => {
+      // WS token 鉴权 + 速率限制
+      const wsRateLimit = new Map();
+      const validWsToken = (req) => {
+        if (process.env.DISABLE_API_AUTH === 'true' || process.env.NODE_ENV === 'test') return true;
+        const token = process.env.API_KEYS || process.env.API_KEY || '';
+        if (!token) return true;
+        const validTokens = token.split(',').map(t => t.trim()).filter(Boolean);
+        const url = new URL(req.url || '', `http://${req.headers.host || 'localhost'}`);
+        const provided = url.searchParams.get('token') || req.headers['sec-websocket-protocol'];
+        const actual = Array.isArray(provided) ? provided[0] : provided;
+        return validTokens.includes(actual);
+      };
+      this.wss = new WebSocketServer({
+        server: this.httpServer,
+        path: '/ws',
+        verifyClient: (info, cb) => {
+          cb(validWsToken(info.req));
+        },
+      });
+      this.wss.on('connection', (ws, req) => {
         console.log('[WS] 客户端已连接');
         this.clients.add(ws);
         ws._peerId = `client-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+        ws._msgCount = 0;
+        ws._lastReset = Date.now();
         ws.send(JSON.stringify({ type: MessageType.BRIDGE_HANDSHAKE, data: { clientId: this.clientId, version: 2, peerId: ws._peerId } }));
         ws.on('message', async (data) => {
+          // 速率限制：每秒最多 20 条
+          const now = Date.now();
+          if (now - ws._lastReset > 1000) { ws._msgCount = 0; ws._lastReset = now; }
+          ws._msgCount++;
+          if (ws._msgCount > 20) {
+            ws.send(JSON.stringify({ type: 'error', data: { message: '速率限制：每秒最多 20 条消息' } }));
+            return;
+          }
           try { const msg = JSON.parse(data.toString()); await this.h.handleWSMessage(ws, msg); }
           catch (e) { ws.send(JSON.stringify({ type: 'error', data: { message: e.message } })); }
         });
         ws.on('close', () => { this.clients.delete(ws); });
-      });
-        ws.on('close', () => { this.clients.delete(ws); });
-        ws.send(JSON.stringify({ type: MessageType.BRIDGE_HANDSHAKE, data: { clientId: this.clientId, version: 2 } }));
       });
       // WebRTC ����
       this.signalingWss = new WebSocketServer({ server: this.httpServer, path: '/signaling' });

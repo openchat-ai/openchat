@@ -48,7 +48,9 @@ class BridgeWsClient {
 
   Future<void> _doConnect() async {
     try {
-      final uri = Uri.parse('ws://$_host:$_port/ws');
+      var uriStr = 'ws://$_host:$_port/ws';
+      if (_token != null && _token!.isNotEmpty) uriStr += '?token=$_token';
+      final uri = Uri.parse(uriStr);
       _channel = WebSocketChannel.connect(uri);
       await _channel!.ready;
       _connected = true;
