@@ -342,26 +342,31 @@ export class ResidentManager extends EventEmitter {
   /**
    * 初始化 — Bridge 启动时调用，确保至少有一个居民
    */
-  initialize() {
+  initialize(bodyName) {
     const residents = readAll();
-    const hasActive = residents.some(r => r.status === 'active');
-    if (!hasActive) {
-      console.log('[居民] 首次启动，创建首批居民');
-      const dominants = ['diligence', 'curiosity', 'courage', 'creativity'];
-      const butler = this.create('管家', { traits: createTraits('diligence') });
-      // 陆续出生（父母=管家），每个有不同的主导特质
-      const firstGen = [
-        { name: '小明', trait: 'courage' },
-        { name: '小红', trait: 'creativity' },
-        { name: '小刚', trait: 'sociability' },
-      ];
-      for (const p of firstGen) {
-        this.create(p.name, { parentId: butler.id, traits: createTraits(p.trait) });
-      }
-      console.log(`[居民] 已创建 ${1 + firstGen.length} 人 (管家 + ${firstGen.map(p => p.name).join(', ')})`);
-      return butler;
+    const active = residents.filter(r => r.status === 'active');
+
+    if (active.length > 0) {
+      // 已有居民，复用第一个作为本 Bridge 的身份
+      return active[0];
     }
-    return null;
+
+    // 首次启动：创建一个固定居民，ID=1，名字等于 bodyName
+    console.log(`[居民] 首次启动，创建居民: ${bodyName}`);
+    const resident = this.create(bodyName || '素女', {
+      traits: { diligence: 0.8, curiosity: 0.9, creativity: 0.7, sociability: 0.8 }
+    });
+    // 固定 ID=1（如果还没有任何居民）
+    if (resident.id !== 1) {
+      resident.id = 1;
+      const all = readAll();
+      const idx = all.findIndex(r => r.id === resident.id);
+      if (idx !== -1) all[idx] = resident;
+      else all.push(resident);
+      writeAll(all);
+    }
+    console.log(`[居民] ${bodyName} (ID=${resident.id}) 已创建`);
+    return resident;
   }
 
   /**

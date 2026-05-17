@@ -14,8 +14,9 @@ import { residentManager } from '../../core/resident-manager.js';
 
 const router = express.Router();
 
-// Bridge 启动时自动初始化：如无居民则创建「管家」
-residentManager.initialize();
+// Bridge 启动时自动初始化：创建或复用本 Bridge 的居民身份
+const bodyName = process.env.BRIDGE_NAME || '素女';
+residentManager.initialize(bodyName);
 
 // POST /api/v1/residents — 出生（可选 parentId）
 router.post('/', async (req, res, next) => {
