@@ -238,6 +238,18 @@ export class ResidentManager extends EventEmitter {
       throw new Error('think() 缺少 messages');
     }
 
+    // 注入居民身份 → 不再是口水话
+    const resident = residentId != null ? this.get(residentId) : null;
+    if (resident && messages.length > 0 && messages[0].role !== 'system') {
+      const traitDesc = resident.traits
+        ? Object.entries(resident.traits).map(([k, v]) => `${k}: ${v}`).join(', ')
+        : '';
+      messages.unshift({
+        role: 'system',
+        content: `你是 ${resident.name}。你的性格：${traitDesc}。请用你的身份回答问题，不要说套话。`
+      });
+    }
+
     const bridgeConfig = persistentConfig.getBridgeConfig();
     const llmMode = bridgeConfig?.llmMode || 'local';
 

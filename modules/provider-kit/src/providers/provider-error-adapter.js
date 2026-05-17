@@ -101,3 +101,184 @@ export function createCancelSignal() {
     cancel: (reason) => controller.abort(new AbortError(reason || 'Cancelled by user')),
   };
 }
+
+/**
+ * createMonitor — observability wrapper
+ *
+ * Wraps provider calls with latency tracking, error classification,
+ * and logging hooks. No external dependencies.
+ *
+ * Usage:
+ *   const monitor = createMonitor({ onCall: (record) => console.table(record) });
+ *   const provider = monitor.wrap(await createProvider('openai', key));
+ *   await provider.chat('gpt-4', messages);
+ *   // → onCall receives { provider, model, latency, ok, error, timestamp }
+ */
+export function createMonitor(opts = {}) {
+  const onCall = opts.onCall || (() => {});
+
+  function wrap(provider) {
+    const origChat = provider.chat.bind(provider);
+    const origStream = provider.chatStream?.bind(provider);
+
+    provider.chat = async (model, messages, options) => {
+      const start = Date.now();
+      try {
+        const result = await origChat(model, messages, options);
+        onCall({ provider: provider.name || 'unknown', model, latency: Date.now() - start, ok: true, tokens: result.usage?.total_tokens || 0, timestamp: Date.now() });
+        return result;
+      } catch (e) {
+        const ce = classifyError(e, provider.name);
+        onCall({ provider: provider.name || 'unknown', model, latency: Date.now() - start, ok: false, error: ce.type, message: ce.message, timestamp: Date.now() });
+        throw e;
+      }
+    };
+
+    if (origStream) {
+      provider.chatStream = async function* (model, messages, options) {
+        const start = Date.now();
+        try {
+          const stream = origStream(model, messages, options);
+          for await (const chunk of stream) yield chunk;
+          onCall({ provider: provider.name || 'unknown', model, latency: Date.now() - start, ok: true, timestamp: Date.now() });
+        } catch (e) {
+          const ce = classifyError(e, provider.name);
+          onCall({ provider: provider.name || 'unknown', model, latency: Date.now() - start, ok: false, error: ce.type, timestamp: Date.now() });
+          throw e;
+        }
+      };
+    }
+
+    return provider;
+  }
+
+  return { wrap };
+}
+
+/**
+ * createRouter — model health probe + auto-routing
+ *
+ * Periodically checks each model's availability and latency.
+ * Routes requests to the best available model in real time.
+ * Changes take effect immediately — no restart needed.
+ *
+ * Usage:
+ *   const router = createRouter({
+ *     probes: [
+ *       { provider: 'openai',   model: 'gpt-4',        apiKey: 'sk-...' },
+ *       { provider: 'openai',   model: 'gpt-4o-mini',  apiKey: 'sk-...' },
+ *       { provider: 'anthropic', model: 'claude-3-haiku', apiKey: 'sk-...' },
+ *       { provider: 'ollama',   model: 'llama3',       baseUrl: 'http://localhost:11434' },
+ *     ],
+ *     strategy: 'latency',       // 'latency' | 'failover' | 'round-robin' | 'cheapest'
+ *     probeInterval: 30000,       // check every 30s (0 = no auto-probe)
+ *     probeTimeout: 5000,         // per-probe timeout
+ *     onProbeResult: (results) => console.log(results),
+ *   });
+ *
+ *   const reply = await router.chat([{ role: 'user', content: 'Hi' }]);
+ *   // → routed to the best available model
+ */
+export function createRouter(opts) {
+  const probes = Array.isArray(opts) ? opts : opts.probes || opts.strategies || [];
+  if (!Array.isArray(probes) || probes.length === 0) {
+    throw new ProviderError('createRouter requires probes array', { type: 'bad_request' });
+  }
+
+  const strategy = opts.strategy || 'latency';
+  const probeInterval = opts.probeInterval ?? 0;
+  const probeTimeout = opts.probeTimeout ?? 5000;
+  const onProbeResult = opts.onProbeResult || null;
+
+  // Probe results: { provider, model, ok, latency, error, timestamp }
+  let results = probes.map(p => ({ provider: p.provider, model: p.model, ok: true, latency: 0, error: null, timestamp: 0 }));
+  let rrIndex = 0;
+  let probeTimer = null;
+
+  // Probe a single model
+  async function probeOne(entry) {
+    const start = Date.now();
+    try {
+      const { createProvider } = await import('./openai-compatible.js');
+      const provider = await createProvider(entry.provider, entry.apiKey, { baseUrl: entry.baseUrl });
+      await withTimeout(
+        () => provider.chat(entry.model, [{ role: 'user', content: 'Hi' }], { max_tokens: 1 }),
+        probeTimeout
+      );
+      return { ok: true, latency: Date.now() - start, error: null };
+    } catch (e) {
+      const ce = classifyError(e, entry.provider);
+      return { ok: false, latency: Date.now() - start, error: ce.type === 'auth' ? 'auth_failed' : ce.message };
+    }
+  }
+
+  // Probe all models, update results
+  async function probeAll() {
+    const newResults = await Promise.all(probes.map(async (entry, i) => {
+      const { ok, latency, error } = await probeOne(entry);
+      return { provider: entry.provider, model: entry.model, ok, latency, error, timestamp: Date.now() };
+    }));
+    results = newResults;
+    if (onProbeResult) onProbeResult(results);
+  }
+
+  // Pick the best model based on strategy
+  function pick() {
+    const alive = results.filter(r => r.ok);
+    if (alive.length === 0) return probes[0]; // all dead → try first anyway
+
+    switch (strategy) {
+      case 'latency':
+        alive.sort((a, b) => a.latency - b.latency);
+        return probes[results.indexOf(alive[0])];
+      case 'round-robin': {
+        const idx = rrIndex % alive.length;
+        rrIndex++;
+        return probes[results.indexOf(alive[idx])];
+      }
+      case 'failover': {
+        const preferred = probes.map((p, i) => ({ p, i })).sort((a, b) => a.i - b.i);
+        for (const { p, i } of preferred) {
+          if (results[i]?.ok) return p;
+        }
+        return probes[0];
+      }
+      default:
+        return probes[probes.indexOf(alive[0])];
+    }
+  }
+
+  // Start auto-probe
+  if (probeInterval > 0) {
+    probeAll(); // first probe immediately
+    probeTimer = setInterval(probeAll, probeInterval);
+  }
+
+  // Chat — route to best model
+  async function chat(messages) {
+    const entry = pick();
+    const idx = probes.indexOf(entry);
+    const r = results[idx];
+
+    if (!r?.ok && strategy !== 'failover') {
+      // All dead — force probe once
+      const probeResult = await probeOne(entry);
+      results[idx] = { ...results[idx], ...probeResult, timestamp: Date.now() };
+    }
+
+    const { createProvider } = await import('./openai-compatible.js');
+    const provider = await createProvider(entry.provider, entry.apiKey, { baseUrl: entry.baseUrl });
+    return safeProviderCall(
+      () => provider.chat(entry.model, messages),
+      { provider: entry.provider, retries: 1, timeout: 30000 }
+    );
+  }
+
+  // Manual probe trigger
+  async function checkNow() { await probeAll(); return results; }
+
+  // Stop auto-probe
+  function stop() { if (probeTimer) { clearInterval(probeTimer); probeTimer = null; } }
+
+  return { chat, probes, results: () => results, strategy, checkNow, stop };
+}

@@ -1,7 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
 import {
-  ProviderError, AbortError, withRetry, withTimeout, safeProviderCall, classifyError, createCancelSignal,
+  ProviderError, AbortError, withRetry, withTimeout, safeProviderCall, classifyError, createCancelSignal, createRouter,
   ProviderManager, providerManager, providerRegistry, createProvider,
 } from '../src/index.js';
 
@@ -249,5 +249,57 @@ describe('@openchat/provider-kit', () => {
   test('429 errors are retryable by default', () => {
     const e = new ProviderError('too fast', { statusCode: 429 });
     assert.strictEqual(e.retryable, true);
+  });
+
+  // — createRouter — //
+  test('createRouter throws on empty probes', () => {
+    assert.throws(() => createRouter([]), ProviderError);
+    assert.throws(() => createRouter({ probes: [] }), ProviderError);
+  });
+
+  test('createRouter returns router with all methods', () => {
+    const router = createRouter({ probes: [{ provider: 'openai', model: 'gpt-4', apiKey: 'test' }], probeInterval: 0 });
+    assert.ok(typeof router.chat === 'function');
+    assert.ok(typeof router.checkNow === 'function');
+    assert.ok(typeof router.stop === 'function');
+    assert.ok(typeof router.results === 'function');
+    assert.strictEqual(router.probes.length, 1);
+  });
+
+  test('createRouter with latency strategy', () => {
+    const router = createRouter({
+      probes: [
+        { provider: 'openai', model: 'gpt-4', apiKey: 'test' },
+        { provider: 'anthropic', model: 'claude', apiKey: 'test2' },
+      ],
+      strategy: 'latency',
+      probeInterval: 0,
+    });
+    assert.strictEqual(router.strategy, 'latency');
+    assert.strictEqual(router.probes.length, 2);
+    router.stop();
+  });
+
+  test('createRouter with legacy array API', () => {
+    const router = createRouter([{ provider: 'openai', model: 'gpt-4', apiKey: 'test' }]);
+    assert.strictEqual(router.probes.length, 1);
+    assert.strictEqual(router.strategy, 'latency');
+    router.stop();
+  });
+
+  // — createMonitor — //
+  test('createMonitor wraps provider and tracks calls', async () => {
+    const { createMonitor, createProvider } = await import('../src/index.js');
+    const records = [];
+    const monitor = createMonitor({ onCall: (r) => records.push(r) });
+    const provider = await createProvider('openai', 'tk', { baseUrl: 'http://localhost:1' });
+    provider.name = 'openai';
+    const wrapped = monitor.wrap(provider);
+    assert.ok(typeof wrapped.chat === 'function');
+    // call will fail (no server), but monitor captures it
+    try { await wrapped.chat('gpt-4', [{ role: 'user', content: 'Hi' }]); } catch {}
+    assert.ok(records.length > 0);
+    assert.strictEqual(records[0].provider, 'openai');
+    assert.strictEqual(records[0].ok, false);
   });
 });
