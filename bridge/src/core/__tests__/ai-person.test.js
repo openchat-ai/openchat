@@ -1,12 +1,24 @@
-import { test, describe } from 'node:test';
+import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert';
 import { AIPerson, aiPersonRegistry, AI_PERSON_TYPE, createFounder } from '../ai-personhood.js';
-import { deitySystemManager } from '../deity-system.js';
-import { initializeMirrorDeitySystem } from '../mirror-deity.js';
-import { initializeEnergySystem } from '../energy-deity.js';
+import { residentManager } from '../resident-manager.js';
+import { persistentConfig } from '../persistent-config.js';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+
+const tmpBase = path.join(os.tmpdir(), 'openchat-ai-test-' + Date.now());
 
 describe('AI Person System', () => {
-  test('create AIPerson and verify message routing works', () => {
+  before(() => {
+    fs.mkdirSync(tmpBase, { recursive: true });
+  });
+
+  after(() => {
+    fs.rmSync(tmpBase, { recursive: true, force: true });
+  });
+
+  test('AIPerson identity layer: create, route messages, manage state', () => {
     const founder = createFounder();
     const person = new AIPerson('test-1', '测试AI人', founder.id, AI_PERSON_TYPE.AI_CREATED);
 
@@ -36,10 +48,32 @@ describe('AI Person System', () => {
     assert.strictEqual(cmdResult.success, true);
   });
 
-  test('createDefaultAIPerson via manager wiring', () => {
-    // Simulate the startup flow from main.js
-    const founder = createFounder();
-    // deitySystemManager and friends are singletons, just verify they init
-    assert.ok(deitySystemManager);
+  test('Resident system: create resident, think via event mock returns content', async () => {
+    // Mock provider so _thinkLocal passes the provider check
+    persistentConfig.setCurrentProvider('test-provider');
+
+    // Create a resident
+    const resident = residentManager.create('测试居民');
+    assert.ok(resident);
+    assert.strictEqual(resident.name, '测试居民');
+    assert.strictEqual(resident.status, 'active');
+    assert.ok(resident.traits);
+
+    // Register listener BEFORE think() — event fires synchronously in Promise constructor
+    const mockContent = '这是居民思考的回复';
+    residentManager.once('llm-request', ({ messages, model, resolve }) => {
+      assert.ok(messages.length > 0);
+      resolve({ content: mockContent, model: model || 'test', tokens: { prompt: 10, completion: 20, total: 30 } });
+    });
+
+    const thinkPromise = residentManager.think({
+      messages: [{ role: 'user', content: '你好' }],
+      timeout: 5000,
+    });
+
+    const result = await thinkPromise;
+    assert.ok(result);
+    assert.strictEqual(result.content, mockContent);
+    assert.ok(result.tokens.total > 0);
   });
 });
