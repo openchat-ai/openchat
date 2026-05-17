@@ -78,7 +78,7 @@ export function classifyError(error, provider) {
       : msg.includes('4') || msg.includes('bad') || msg.includes('invalid') ? 'bad_request'
       : msg.includes('econnrefused') || msg.includes('enotfound') || msg.includes('network') ? 'network'
       : 'unknown';
-    return new ProviderError(error.message, { provider, type, retryable: type === 'timeout' || type === 'server_error' || type === 'network' });
+    return new ProviderError(error.message, { provider, type, retryable: type === 'timeout' || type === 'server_error' || type === 'network' || type === 'rate_limit' });
   }
   return new ProviderError(String(error), { provider, type: 'unknown' });
 }

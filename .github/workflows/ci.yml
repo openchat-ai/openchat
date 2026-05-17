@@ -1,7 +1,7 @@
 name: CI
 on: [push, pull_request]
 jobs:
-  test:
+  bridge-test:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -14,8 +14,21 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npm test
+  kit-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: modules/provider-kit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+      - run: npm ci
+      - run: npm test
   docker:
-    needs: test
+    needs: bridge-test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
