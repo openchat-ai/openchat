@@ -18,7 +18,7 @@ class BridgeSpawn {
     this._guardian = new FairyGuardian({
       myPort,
       childCount: MAX_CHILDREN,
-      childNames: Array.from({ length: MAX_CHILDREN }, (_, i) => `fairy-${i + 1}`),
+      childNames: Array.from({ length: MAX_CHILDREN }, (_, i) => `仙女${i + 1}`),
       childPort: (i) => myPort + 2 + i,
       spawnCmd: (port) => [
         process.execPath, 'src/main.js',
@@ -36,7 +36,7 @@ class BridgeSpawn {
     const children = [];
     for (let i = 0; i < MAX_CHILDREN; i++) {
       const port = this._myPort + 2 + i;
-      const name = `fairy-${i + 1}`;
+      const name = `仙女${i + 1}`;
       const childId = `body_${Date.now()}_${Math.random().toString(36).slice(2, 6)}_${i}`;
       this._children.set(childId, { port, name });
       children.push({ childId, port, name });

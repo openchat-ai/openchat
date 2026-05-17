@@ -81,7 +81,7 @@ this.history = {
     this.generator = new VariantGenerator();
     this.guardian = new FairyGuardian({
       myPort,
-      childNames: ['fairy-1', 'fairy-2', 'fairy-3', 'fairy-4', 'fairy-5', 'fairy-6'],
+      childNames: ['仙女', '玉女', '素女', '青女', '玄女', '嫦娥'],
       portOffset: 10,
       spawnCmd: (port) => [process.execPath, 'src/main.js', `--port=${port}`, '--fairy', `--mainPort=${myPort}`],
       cwd: process.cwd(),
