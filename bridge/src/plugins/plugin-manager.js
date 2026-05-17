@@ -317,6 +317,23 @@ export class PluginManager {
 
     return `[${toolName} result] ${String(result)}`;
   }
+
+  /**
+   * execHook — 执行所有注册的 hook 回调
+   * agent-engine 在 Think/Act/Verify 阶段调用
+   * 插件通过 execHook 拦截各阶段做自定义处理（日志、中断、改写）
+   */
+  async execHook(hookName, context = {}) {
+    for (const [, plugin] of this.plugins) {
+      if (typeof plugin[hookName] === 'function') {
+        try {
+          await plugin[hookName](context);
+        } catch (e) {
+          console.warn(`[Plugin] hook ${hookName} error:`, e.message);
+        }
+      }
+    }
+  }
 }
 
 export const pluginManager = new PluginManager();

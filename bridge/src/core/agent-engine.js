@@ -3,7 +3,31 @@ import { memoryManager } from '../memory/memory-manager.js';
 import { sessionManager } from '../session/session-manager.js';
 import { PromptBuilder } from './prompt-builder.js';
 import { agentMonitor } from './agent-monitor.js';
-import { QualityChecker, Corrector } from './quality-check-system.js';
+import { QualityChecker, Corrector, ValidatorRegistry, globalValidatorRegistry } from './quality-check-system.js';
+
+/**
+ * AgentEngine — Think-Act-Verify loop
+ *
+ * Interface:
+ *   processStream(sessionId, userId, userMessage, onEvent)  → 流式主入口
+ *   process(sessionId, userId, userMessage)                  → 非流式主入口
+ *
+ * Plugin hooks (扩展点):
+ *   pluginManager.execHook('beforeThink', { sessionId, messages })
+ *   pluginManager.execHook('afterThink', { sessionId, content })
+ *   pluginManager.execHook('beforeAct', { sessionId, toolName, args })
+ *   pluginManager.execHook('afterAct', { sessionId, toolName, result })
+ *   pluginManager.execHook('beforeVerify', { sessionId, response })
+ *   pluginManager.execHook('afterVerify', { sessionId, check })
+ *
+ * Quality check (可插拔):
+ *   this.validators = new ValidatorRegistry()
+ *   this.validators.register('my_check', async (response) => ({ passed, score, reason }))
+ *   this.qualityChecker.validators = this.validators  // 注入自定义验证器
+ *
+ * Agent 事件 (onEvent 回调):
+ *   THINKING, CONTENT, TOOL_CALL, TOOL_RESULT, ITERATION, COMPLETE, ERROR
+ */
 
 /**
  * Agent 事件类型
@@ -114,6 +138,9 @@ export class AgentEngine {
         chatOptions.tool_choice = 'auto';
       }
 
+      // Plugin hook: beforeThink
+      await pluginManager.execHook?.('beforeThink', { sessionId, messages, iteration });
+
       // 发送思考事件
       onEvent({ type: AgentEvents.THINKING, iteration });
 
@@ -167,6 +194,9 @@ export class AgentEngine {
         }
       }
 
+      // Plugin hook: afterThink
+      await pluginManager.execHook?.('afterThink', { sessionId, content, iteration, toolCalls });
+
       // 检查是否完成
       if (content && content.startsWith('FINAL:')) {
         finalizedResponse = content.replace('FINAL:', '').trim();
@@ -180,6 +210,9 @@ export class AgentEngine {
           const toolName = tc.name;
           const args = typeof tc.arguments === 'string' ? JSON.parse(tc.arguments) : tc.arguments;
 
+          // Plugin hook: beforeAct
+          await pluginManager.execHook?.('beforeAct', { sessionId, toolName, args, iteration });
+
           // 发送工具调用事件
           onEvent({ type: AgentEvents.TOOL_CALL, tool: toolName, args, iteration });
 
@@ -190,6 +223,9 @@ export class AgentEngine {
 
             // 记录工具调用到监控
             agentMonitor.recordToolCall(agentId, toolName, args, toolResult);
+
+            // Plugin hook: afterAct
+            await pluginManager.execHook?.('afterAct', { sessionId, toolName, args, result: toolResult, iteration });
 
             // 发送工具结果事件
             onEvent({ type: AgentEvents.TOOL_RESULT, tool: toolName, result: toolResult, iteration });
@@ -263,6 +299,9 @@ export class AgentEngine {
 
     // ✨ 质量检查与纠偏
     if (this.enableQualityCheck && finalizedResponse) {
+      // Plugin hook: beforeVerify
+      await pluginManager.execHook?.('beforeVerify', { sessionId, response: finalizedResponse });
+
       const qualityResult = await this._checkAndCorrectResponse(
         finalizedResponse,
         sessionId,
@@ -270,6 +309,9 @@ export class AgentEngine {
         onEvent
       );
       finalizedResponse = qualityResult;
+
+      // Plugin hook: afterVerify
+      await pluginManager.execHook?.('afterVerify', { sessionId, response: finalizedResponse });
     }
 
     await memoryManager.addMessage(sessionId, 'assistant', finalizedResponse);
