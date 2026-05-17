@@ -22,12 +22,14 @@ class BridgeWsClient {
   bool _connected = false;
   bool _reconnect = true;
   Timer? _reconnectTimer;
+  String? _peerId;
   final _messageController = StreamController<BridgeWsMessage>.broadcast();
   final _statusController = StreamController<bool>.broadcast();
 
   Stream<BridgeWsMessage> get messages => _messageController.stream;
   Stream<bool> get connectionStatus => _statusController.stream;
   bool get isConnected => _connected;
+  String? get peerId => _peerId;
 
   BridgeWsClient({String host = 'localhost', int port = 3800, String? token})
       : _host = host, _port = port, _token = token;
@@ -63,7 +65,10 @@ class BridgeWsClient {
     try {
       final json = jsonDecode(data as String) as Map<String, dynamic>;
       final msg = BridgeWsMessage.fromJson(json);
-      if (msg.type == 'bridge_handshake') return;
+      if (msg.type == 'bridge_handshake') {
+        _peerId = msg.data['peerId'] as String?;
+        return;
+      }
       _messageController.add(msg);
     } catch (_) {}
   }
@@ -92,6 +97,14 @@ class BridgeWsClient {
       'type': 'chat',
       'data': {'message': text, 'sessionId': sessionId},
       'sessionId': sessionId,
+    }));
+  }
+
+  void sendToPeer(String targetPeerId, String text, {String? sessionId}) {
+    if (_channel == null || !_connected) return;
+    _channel!.sink.add(jsonEncode({
+      'type': 'message',
+      'data': {'message': text, 'to': targetPeerId},
     }));
   }
 

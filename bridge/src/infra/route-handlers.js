@@ -484,16 +484,30 @@ export function createHandlers(bridge, CONFIG, crypto) {
     }
 
     // 处理聊天消息 — 通过 agent-engine 处理
-    if (type === 'chat' || type === MessageType.CHAT) {
-      try {
-        const { message, sessionId: sid } = data;
-        if (!message) {
-          ws.send(JSON.stringify({ type: 'error', data: { message: '消息不能为空' }, sessionId }));
-          return;
+    if (type === 'chat' || type === MessageType.CHAT || type === 'message') {
+      const { message, sessionId: sid, to } = data || {};
+
+      // P2P 消息：有 to 字段则转发给指定客户端
+      if (to) {
+        let sent = false;
+        for (const client of bridge.clients) {
+          if (client.readyState === 1 && client._peerId === to) {
+            client.send(JSON.stringify({ type: 'message', data: { from: ws._peerId, message, time: Date.now() }, sessionId }));
+            sent = true;
+            break;
+          }
         }
-        const { agentEngine } = await import('../core/agent-engine.js');
-        const session = sessionId || crypto.randomUUID();
-        ws.send(JSON.stringify({ type: 'chat_ack', data: { sessionId: session }, sessionId }));
+        ws.send(JSON.stringify({ type: 'message_ack', data: { sent, to, message }, sessionId }));
+        return;
+      }
+
+      if (!message) {
+        ws.send(JSON.stringify({ type: 'error', data: { message: '消息不能为空' }, sessionId }));
+        return;
+      }
+      const { agentEngine } = await import('../core/agent-engine.js');
+      const session = sessionId || crypto.randomUUID();
+      ws.send(JSON.stringify({ type: 'chat_ack', data: { sessionId: session }, sessionId }));
 
         let fullContent = '';
         await agentEngine.processStream(session, 'ws-user', message, (event) => {

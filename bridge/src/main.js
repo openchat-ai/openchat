@@ -225,12 +225,16 @@ class Bridge {
       // WS ����
       this.wss = new WebSocketServer({ server: this.httpServer, path: '/ws' });
       this.wss.on('connection', (ws) => {
-        console.log('[WS] �ͻ���������');
+        console.log('[WS] 客户端已连接');
         this.clients.add(ws);
+        ws._peerId = `client-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+        ws.send(JSON.stringify({ type: MessageType.BRIDGE_HANDSHAKE, data: { clientId: this.clientId, version: 2, peerId: ws._peerId } }));
         ws.on('message', async (data) => {
           try { const msg = JSON.parse(data.toString()); await this.h.handleWSMessage(ws, msg); }
           catch (e) { ws.send(JSON.stringify({ type: 'error', data: { message: e.message } })); }
         });
+        ws.on('close', () => { this.clients.delete(ws); });
+      });
         ws.on('close', () => { this.clients.delete(ws); });
         ws.send(JSON.stringify({ type: MessageType.BRIDGE_HANDSHAKE, data: { clientId: this.clientId, version: 2 } }));
       });
