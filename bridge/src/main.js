@@ -264,7 +264,6 @@ class Bridge {
         try {
         const { SafeEvolution } = await import('./core/safe-evolution.js');
         const { BridgeSpawn } = await import('./core/bridge-spawn.js');
-        const { detectBestStrategy } = await import('./core/launch-strategies.js');
         const { House } = await import('./core/house.js');
         const { LLMProxyAgent } = await import('./core/llm-proxy-agent.js');
 
@@ -277,15 +276,13 @@ class Bridge {
           await this.house.init();
         }
 
-        const detectedStrategy = detectBestStrategy();
-        console.log(`[Launch] 启动策略: ${detectedStrategy}`);
-        const bridgeSpawn = new BridgeSpawn(this.p2p, hostId, this.house, detectedStrategy);
+        const bridgeSpawn = new BridgeSpawn(this.p2p, hostId, this.house, CONFIG.port);
 
-        // Fairy spawn：必须在 HouseOrchestrator 前（避免其报错阻止）
+        // Fairy spawn — FairyGuardian 管理 spawn + health check + revive
         if (isMain) {
-          for (let i = 0; i < 6; i++) {
-            const c = bridgeSpawn.spawnNesting({ name: `仙女${i+1}` });
-            if (c) console.log(`[P2R] 仙女${i+1} port=${c.port}`);
+          const children = await bridgeSpawn.start();
+          for (const c of children) {
+            console.log(`[P2R] ${c.name} port=${c.port}`);
           }
         }
 
@@ -300,13 +297,6 @@ class Bridge {
         this.llmProxy.start();
         console.log('[P2R] HouseOrchestrator + SafeEvolution + BridgeSpawn + LLMProxy 已启动');
 
-        // Fairy spawn：端口 3002-3007
-        if (isMain) {
-          for (let i = 0; i < 6; i++) {
-            const c = bridgeSpawn.spawnNesting({ name: `仙女${i+1}` });
-            if (c) console.log(`[P2R] 仙女${i+1} port=${c.port}`);
-          }
-        }
         } catch (e) { console.log(`[启动] P2R 初始化失败: ${e.message}`); }
 
         // P2R-K: 收敛引擎 — 问题分解→竞标→求解→择优
@@ -323,7 +313,7 @@ class Bridge {
           // 注入收敛系统到居民调度器
           const { residentScheduler } = await import('./core/resident-scheduler.js');
           residentScheduler.setConvergenceSystem(
-            this.knowledgeBase,
+            null, // knowledgeBase 已移除
             this.problemDecomposer,
             this.convergenceEngine,
             this.solutionEngine,
@@ -336,7 +326,7 @@ class Bridge {
         }
 
         // 启动学习核心
-        this.learningCore = new LearningCore(this.knowledgeBase, this.p2p, port, residentScheduler);
+        this.learningCore = new LearningCore(null, this.p2p, port, residentScheduler);
         if (isMain) {
           startLearningCore(this);
           console.log(`[学习核心]  主模式 IQ=${this.learningCore.iq} Age=${this.learningCore.age} Solved=${this.learningCore.solvedCount}`);
@@ -352,14 +342,8 @@ class Bridge {
           try {
             const domain = p.domain || 'general';
 
-            // 1. 先查知识库
+            // 1. 先查知识库（已移除）
             let kbHit = false;
-            if (this.knowledgeBase && p.question) {
-              const kbAns = this.knowledgeBase.answer(domain, p.question);
-              if (kbAns && kbAns.verified) {
-                kbHit = true;
-              }
-            }
 
             // 2. 加入调度器队列（让居民按 traits 分角色求解）
             try {

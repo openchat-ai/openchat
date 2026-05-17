@@ -20,7 +20,7 @@ import { TheoremDB } from './theorem-db.js';
 import { ModelManager } from './model-manager.js';
 import { ReasoningChain } from './reasoning-chain.js';
 import { VariantGenerator } from './variant-generator.js';
-import { FairyGuardian } from '../../../modules/fairy-guardian/index.js';
+import { FairyGuardian } from 'fairy-guardian';
 import { readdirSync, readFileSync, existsSync, writeFileSync, mkdirSync, statSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
