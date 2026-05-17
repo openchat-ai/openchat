@@ -1,0 +1,10 @@
+{
+  "name": "@openchat/agent-kit",
+  "version": "0.1.0",
+  "description": "42 LLM provider unified API + Think-Act-Verify agent loop",
+  "type": "module",
+  "main": "./src/index.js",
+  "files": ["src/"],
+  "license": "MIT",
+  "engines": { "node": ">=18" }
+}
