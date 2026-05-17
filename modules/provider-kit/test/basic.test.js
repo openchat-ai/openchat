@@ -1,7 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
 import {
-  ProviderError, withRetry, withTimeout, safeProviderCall,
+  ProviderError, AbortError, withRetry, withTimeout, safeProviderCall, classifyError, createCancelSignal,
   ProviderManager, providerManager, providerRegistry, createProvider,
 } from '../src/index.js';
 
@@ -190,5 +190,64 @@ describe('@openchat/provider-kit', () => {
     assert.ok(!err.message.includes('sk-'));
     assert.ok(!err.provider.includes('sk-'));
     assert.strictEqual(err.type, 'unknown');
+  });
+
+  // — Error taxonomy — //
+  test('ProviderError type has friendly default message', () => {
+    const e1 = new ProviderError(undefined, { type: 'rate_limit' });
+    assert.ok(e1.message.includes('Rate limit'));
+    const e2 = new ProviderError(undefined, { type: 'auth' });
+    assert.ok(e2.message.includes('API key'));
+    const e3 = new ProviderError(undefined, { type: 'timeout' });
+    assert.ok(e3.message.includes('timed out'));
+  });
+
+  test('classifyError maps common error messages', () => {
+    const r = classifyError(new Error('Rate limit: 429 too many requests'), 'openai');
+    assert.strictEqual(r.type, 'rate_limit');
+    const a = classifyError(new Error('401 Invalid API key'), 'openai');
+    assert.strictEqual(a.type, 'auth');
+    const n = classifyError(new Error('ECONNREFUSED'), 'ollama');
+    assert.strictEqual(n.type, 'network');
+  });
+
+  test('classifyError preserves ProviderError', () => {
+    const pe = new ProviderError('custom', { type: 'quota' });
+    assert.strictEqual(classifyError(pe), pe);
+  });
+
+  // — AbortError — //
+  test('AbortError carries type', () => {
+    const e = new AbortError('Cancelled');
+    assert.strictEqual(e.name, 'AbortError');
+    assert.strictEqual(e.message, 'Cancelled');
+  });
+
+  test('withRetry does not retry AbortError', async () => {
+    let calls = 0;
+    await assert.rejects(() => withRetry(async () => {
+      calls++;
+      throw new AbortError('stop');
+    }, { retries: 3 }), AbortError);
+    assert.strictEqual(calls, 1); // no retry
+  });
+
+  // — createCancelSignal — //
+  test('createCancelSignal returns signal and cancel', () => {
+    const { signal, cancel } = createCancelSignal();
+    assert.ok(signal instanceof AbortSignal);
+    assert.ok(typeof cancel === 'function');
+  });
+
+  test('createCancelSignal aborts on cancel', () => {
+    const { signal, cancel } = createCancelSignal();
+    cancel('User pressed stop');
+    assert.ok(signal.aborted);
+  });
+
+  // — retryable logic — //
+  test('429 errors are retryable by default', () => {
+    const e = new ProviderError('too fast', { statusCode: 429 });
+    assert.strictEqual(e.retryable, true);
   });
 });

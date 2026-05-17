@@ -113,6 +113,14 @@ const provider = providerRegistry.get('openai')
 const reply = await provider.chat('gpt-4', messages)
 ```
 
+## Known Limitations (v0.1.0)
+
+- **No config persistence by default.** API keys must be passed on every `createProvider()` call. Use `createStore()` for persistent config.
+- **10 adapters implemented out of 42 presets.** The remaining 32 use OpenAI-compatible fallback. Contributions welcome.
+- **No TypeScript types.** Planned for v0.2.0.
+- **Not for production.** API keys are stored in memory. No OS keychain integration.
+- **`.provider-kit.json` should be added to `.gitignore`** if you choose to use file persistence via `createStore()`.
+
 ## Related
 
 - `@openchat/fairy-guardian` — self-healing process cluster for AI model servers
