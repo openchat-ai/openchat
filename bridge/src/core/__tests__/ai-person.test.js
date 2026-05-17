@@ -3,6 +3,7 @@ import assert from 'node:assert';
 import { AIPerson, aiPersonRegistry, AI_PERSON_TYPE, createFounder } from '../ai-personhood.js';
 import { residentManager } from '../resident-manager.js';
 import { persistentConfig } from '../persistent-config.js';
+import { ValidatorRegistry, QualityChecker, Corrector, globalValidatorRegistry } from '../quality-check-system.js';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -75,5 +76,50 @@ describe('AI Person System', () => {
     assert.ok(result);
     assert.strictEqual(result.content, mockContent);
     assert.ok(result.tokens.total > 0);
+  });
+
+  test('ValidatorRegistry: register, run, unregister custom validators', async () => {
+    const vr = new ValidatorRegistry();
+    assert.ok(vr.list().length >= 3); // builtins: json_schema, min_length, pattern
+
+    // Builtin: min_length with explicit context
+    const minLen = (await vr.runAll('', { min_length: { min: 5 } })).find(r => r.name === 'min_length');
+    assert.ok(minLen);
+    assert.strictEqual(minLen.passed, false);
+
+    // Builtin: json_schema
+    const schemaResult = await vr.runAll('```json\n{"a":1}\n```', { json_schema: { schema: { required: ['a'] } } });
+    const jsonCheck = schemaResult.find(r => r.name === 'json_schema');
+    assert.ok(jsonCheck.passed);
+
+    // Register custom validator
+    vr.register('contains_hello', async (response) => ({
+      passed: response.includes('hello'),
+      score: response.includes('hello') ? 100 : 0,
+      reason: response.includes('hello') ? 'OK' : '缺少 hello',
+    }));
+    assert.ok(vr.list().includes('contains_hello'));
+
+    const customResult = await vr.runAll('hello world');
+    const customCheck = customResult.find(r => r.name === 'contains_hello');
+    assert.ok(customCheck.passed);
+
+    // Unregister
+    vr.unregister('contains_hello');
+    assert.ok(!vr.list().includes('contains_hello'));
+  });
+
+  test('QualityChecker integrates external validators', async () => {
+    const vr = new ValidatorRegistry();
+    vr.register('must_exclaim', async (response) => ({
+      passed: response.includes('!'),
+      score: response.includes('!') ? 100 : 0,
+      reason: response.includes('!') ? 'OK' : '缺少感叹号',
+    }));
+    const qc = new QualityChecker({ validators: vr });
+    const result = await qc.check('Hello world!');
+    const extCheck = result.details.find(d => d.name === 'must_exclaim');
+    assert.ok(extCheck);
+    assert.ok(extCheck.passed);
   });
 });

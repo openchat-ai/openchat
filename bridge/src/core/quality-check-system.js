@@ -62,6 +62,8 @@ class QualityChecker {
       correction_max_retries: 2,
       timeout_ms: 30000
     };
+    // 可插拔验证器
+    this.validators = config?.validators || globalValidatorRegistry;
   }
 
   /**
@@ -73,7 +75,15 @@ class QualityChecker {
       this.checkCodeQuality(response),
       this.checkSecurity(response),
       this.checkFormatCompliance(response),
-      this.checkCompleteness(response)
+      this.checkCompleteness(response),
+      // 可插拔外部验证器
+      ...(await this.validators.runAll(response)).map(v => ({
+        id: `ext_${v.name}`,
+        name: v.name,
+        score: v.score,
+        passed: v.passed,
+        reason: v.reason,
+      })),
     ]);
 
     // 计算加权总分
@@ -503,11 +513,100 @@ class SessionManager {
   }
 }
 
+// ==================== 可插拔验证器注册表 ====================
+
+/**
+ * ValidatorRegistry — 可插拔的外部验证器接口
+ *
+ * 允许注册任意外部检查器，打破 LLM 自我验证的幻觉闭环。
+ *
+ * 验证器签名：
+ *   async function(response, context = {}) => { passed: boolean, score: number (0-100), reason: string }
+ *
+ * 内置：JSON schema 验证器、长度验证器、正则验证器
+ */
+class ValidatorRegistry {
+  constructor() {
+    this._validators = new Map();
+    this._registerBuiltins();
+  }
+
+  _registerBuiltins() {
+    this.register('json_schema', async (response, { schema } = {}) => {
+      if (!schema) return { passed: true, score: 100, reason: 'N/A (无 schema)' };
+      const match = response.match(/```(?:json)?\n([\s\S]*?)\n```/);
+      const target = match ? match[1] : response;
+      try {
+        const parsed = JSON.parse(target);
+        if (schema.required) {
+          for (const key of schema.required) {
+            if (!(key in parsed)) {
+              return { passed: false, score: 0, reason: `缺少必需字段: ${key}` };
+            }
+          }
+        }
+        return { passed: true, score: 100, reason: 'JSON schema 验证通过' };
+      } catch (e) {
+        return { passed: false, score: 30, reason: `JSON 解析失败: ${e.message}` };
+      }
+    });
+
+    this.register('min_length', async (response, { min = 1 } = {}) => {
+      if (!response || response.trim().length < min) {
+        return { passed: false, score: 0, reason: `响应长度不足 ${min} 字符` };
+      }
+      return { passed: true, score: 100, reason: 'OK' };
+    });
+
+    this.register('pattern', async (response, { pattern, name = 'pattern' } = {}) => {
+      if (!pattern) return { passed: true, score: 100, reason: 'N/A (无 pattern)' };
+      const passed = pattern.test(response);
+      return {
+        passed,
+        score: passed ? 100 : 0,
+        reason: passed ? 'OK' : `未匹配 ${name} 模式`,
+      };
+    });
+  }
+
+  register(name, fn) {
+    if (typeof fn !== 'function') throw new Error(`Validator ${name} must be a function`);
+    this._validators.set(name, fn);
+    return this;
+  }
+
+  unregister(name) {
+    this._validators.delete(name);
+    return this;
+  }
+
+  list() {
+    return [...this._validators.keys()];
+  }
+
+  async runAll(response, context = {}) {
+    const results = [];
+    for (const [name, fn] of this._validators) {
+      try {
+        results.push({ name, ...(await fn(response, context[name])) });
+      } catch (e) {
+        results.push({ name, passed: false, score: 0, reason: `Validator error: ${e.message}` });
+      }
+    }
+    return results;
+  }
+}
+
+// 共享实例
+const globalValidatorRegistry = new ValidatorRegistry();
+
 // ==================== 导出 ====================
 
 export {
   QualityChecker,
   Corrector,
   MessageHandler,
-  SessionManager
+  SessionManager,
+  ValidatorRegistry,
+  globalValidatorRegistry,
 };

@@ -568,9 +568,21 @@ class Bridge {
     const app = this.apiServer?.app;
     if (!app) return;
     // Dashboard ��ҳ
-    app.get('/', (req, res) => {
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(dashboardHTML());
+app.get('/', async (req, res) => {
+      try {
+        const url = `http://localhost:${CONFIG.port}/api/v1/characters`;
+        const chars = await (await fetch(url)).json();
+        const list = (chars.characters || []).map(c =>
+          `<li>${c.name} &mdash; ${c.status} (能量: ${c.energy})</li>`
+        ).join('');
+        res.type('html').end(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>OpenChat</title></head><body>
+<h1>AI 居民</h1><ul>${list || '<li>暂无居民</li>'}</ul>
+<hr><small><a href="/dashboard">旧版 Dashboard</a></small>
+</body></html>`);
+      } catch { res.redirect('/dashboard'); }
+    });
+    app.get('/dashboard', (req, res) => {
+      res.type('html').end(dashboardHTML());
     });
     // �������
     app.get('/health', (req, res) => {
@@ -584,23 +596,14 @@ class Bridge {
       res.json({ peers });
     });
     // Dashboard ����
-    app.get('/api/dashboard', async (req, res) => {
-      const lc = this.learningCore;
-      let pool = 0, s = 0, iq = 0, age = 0;
-      if (lc) {
-        pool = lc.problemPool?.length || 0;
-        s = lc.solvedCount || 0;
-        iq = lc.iq || 0;
-        age = lc.age || 0;
-      }
-      const fairyPorts = [CONFIG.port + 2, CONFIG.port + 3, CONFIG.port + 4, CONFIG.port + 5, CONFIG.port + 6, CONFIG.port + 7];
-      const fairies = Object.fromEntries(fairyPorts.map(p => [p, 0]));
-      for (const port of fairyPorts) {
-        try { const r = await fetch(`http://localhost:${port}/api/status`, { signal: AbortSignal.timeout(1000) });
-          fairies[port] = r.ok ? 1 : 0;
-        } catch { fairies[port] = 0; }
-      }
-      res.json({ iq: iq || 100, age: age || pool, solved: s, poolSize: pool, pending: Math.max(0, pool - s), fairies });
+app.get('/api/dashboard', async (req, res) => {
+      res.json({
+        uptime: Math.floor((Date.now() - this.startTime) / 1000),
+        sessions: sessionManager.listSessions().length,
+        wsClients: this.clients.size,
+        providers: sessionManager?.providers?.size || 0,
+        residents: residentManager.list(null).length,
+      });
     });
     // Fairy ����
     app.post('/api/heartbeat', (req, res) => {
