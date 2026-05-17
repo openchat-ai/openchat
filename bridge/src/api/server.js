@@ -160,6 +160,21 @@ class APIServer {
       } catch (e) { next(e); }
     });
 
+    // AI 居民 MVP: 可对话角色列表
+    this.app.get('/api/v1/characters', authMiddleware, async (req, res, next) => {
+      try {
+        const residents = residentManager.list(null);
+        const characters = residents.map(r => ({
+          id: r.id,
+          name: r.name,
+          status: r.status,
+          traits: r.traits,
+          energy: r.energy,
+        }));
+        res.json({ characters, total: characters.length });
+      } catch (e) { next(e); }
+    });
+
     // Metrics API
     this.app.use('/api/v1/metrics', authMiddleware, metricsRouter);
 

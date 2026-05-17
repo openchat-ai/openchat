@@ -483,6 +483,39 @@ export function createHandlers(bridge, CONFIG, crypto) {
       return;
     }
 
+    // 处理聊天消息 — 通过 agent-engine 处理
+    if (type === 'chat' || type === MessageType.CHAT) {
+      try {
+        const { message, sessionId: sid } = data;
+        if (!message) {
+          ws.send(JSON.stringify({ type: 'error', data: { message: '消息不能为空' }, sessionId }));
+          return;
+        }
+        const { agentEngine } = await import('../core/agent-engine.js');
+        const session = sessionId || crypto.randomUUID();
+        ws.send(JSON.stringify({ type: 'chat_ack', data: { sessionId: session }, sessionId }));
+
+        let fullContent = '';
+        await agentEngine.processStream(session, 'ws-user', message, (event) => {
+          switch (event.type) {
+            case 'content':
+              fullContent += event.content;
+              ws.send(JSON.stringify({ type: 'chat_chunk', data: { content: event.content }, sessionId }));
+              break;
+            case 'thinking':
+              ws.send(JSON.stringify({ type: 'chat_thinking', data: { iteration: event.iteration }, sessionId }));
+              break;
+            case 'complete':
+              ws.send(JSON.stringify({ type: 'chat_response', data: { content: fullContent, sessionId }, sessionId }));
+              break;
+          }
+        });
+      } catch (e) {
+        ws.send(JSON.stringify({ type: 'error', data: { message: e.message }, sessionId }));
+      }
+      return;
+    }
+
     // 其他消息通过 Router 处理
     const gatewayId = `ws-${sessionId || crypto.randomUUID()}`;
     const wsGateway = new WSGateway(gatewayId, router, ws);
