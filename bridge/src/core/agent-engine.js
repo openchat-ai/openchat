@@ -108,9 +108,7 @@ export class AgentEngine {
       if (!session) throw new Error(`Session ${sessionId} not found`);
       const provider = sessionManager.getProvider(session.providerType);
 
-      const chatOptions = {
-        signal: AbortSignal.timeout(30000),
-      };
+      const chatOptions = {};
       if (tools && tools.length > 0) {
         chatOptions.tools = tools;
         chatOptions.tool_choice = 'auto';
@@ -125,17 +123,28 @@ export class AgentEngine {
 
       try {
         // 使用流式 API
+        const ac = new AbortController();
+        const resetTimeout = () => {
+          clearTimeout(chatOptions._timeoutId);
+          chatOptions._timeoutId = setTimeout(() => ac.abort(), 15000);
+        };
+        chatOptions.signal = ac.signal;
+        resetTimeout();
+
         const stream = provider.chatStream(session.model, messages, chatOptions);
 
         for await (const chunk of stream) {
           if (chunk.type === 'content') {
             content += chunk.content;
+            resetTimeout();
             // 实时推送内容
             onEvent({ type: AgentEvents.CONTENT, content: chunk.content, iteration });
           } else if (chunk.type === 'tool_calls') {
             toolCalls = chunk.toolCalls;
+            resetTimeout();
           }
         }
+        clearTimeout(chatOptions._timeoutId);
       } catch (e) {
         if (e.name === 'AbortError' || e.name === 'TimeoutError') {
           content = '[请求超时，请稍后重试]';
@@ -145,7 +154,7 @@ export class AgentEngine {
         }
         // 流式不支持，降级到非流式
         try {
-          const response = await provider.chat(session.model, messages, chatOptions);
+          const response = await provider.chat(session.model, messages, { ...chatOptions, signal: AbortSignal.timeout(15000) });
           content = response.content;
           toolCalls = response.toolCalls;
         } catch (e2) {
@@ -332,7 +341,7 @@ export class AgentEngine {
 
     // [优化] 预构建请求选项
     const chatOptions = {
-      signal: AbortSignal.timeout(30000),
+      signal: AbortSignal.timeout(15000),
     };
     if (tools && tools.length > 0) {
       chatOptions.tools = tools;
