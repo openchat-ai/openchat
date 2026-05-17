@@ -13,3 +13,4 @@
 export { ProviderError, withRetry, withTimeout, safeProviderCall } from './providers/provider-error-adapter.js';
 export { ProviderManager, providerManager } from './providers/provider-manager.js';
 export { providerRegistry, createProvider, listPresetProviders, PRESET_PROVIDERS } from './providers/provider-registry.js';
+export { persistentConfig, createStore } from './core/persistent-config.js';
