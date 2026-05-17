@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:async';
 import '../../core/theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
+import '../../providers/bridge_provider.dart';
 import '../../core/api/bridge_ws_client.dart';
 
 final bridgeWsProvider = Provider<BridgeWsClient>((ref) {

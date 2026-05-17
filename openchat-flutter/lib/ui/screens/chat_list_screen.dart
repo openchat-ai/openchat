@@ -1,15 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:async';
 import '../../core/theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
-import '../components/cards/app_cards.dart';
+import '../../providers/bridge_provider.dart';
+import '../../core/api/bridge_ws_client.dart';
+import 'chat_screen.dart';
 
-class ChatListScreen extends ConsumerWidget {
+class ChatListScreen extends ConsumerStatefulWidget {
   const ChatListScreen({super.key});
+  @override
+  ConsumerState<ChatListScreen> createState() => _ChatListScreenState();
+}
+
+class _ChatListScreenState extends ConsumerState<ChatListScreen> {
+  StreamSubscription? _wsSub;
+  final List<Map<String, dynamic>> _messages = [];
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  void initState() {
+    super.initState();
+    _wsSub = ref.read(bridgeWsProvider).messages.listen((msg) {
+      if (msg.type == 'message' && msg.data['message'] != null) {
+        setState(() => _messages.insert(0, {'text': msg.data['message'], 'from': msg.data['from'] ?? 'peer'}));
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _wsSub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = ref.watch(currentThemeProvider);
+    final bridge = ref.watch(bridgeWsProvider);
+    final connection = ref.watch(bridgeConnectionProvider);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -17,105 +45,59 @@ class ChatListScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Text(
-          'MESSAGES',
-          style: TextStyle(
-            color: theme.textPrimary,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            letterSpacing: theme.style == ThemeStyle.retroWave ? 4 : 2,
-          ),
-        ),
+        title: Text('MESSAGES', style: TextStyle(color: theme.textPrimary, fontSize: 24, fontWeight: FontWeight.bold)),
         actions: [
-          _buildActionButton(Icons.edit_square, theme),
-          const SizedBox(width: 8),
+          connection.when(
+            data: (connected) => Container(
+              margin: const EdgeInsets.only(right: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: connected ? Colors.green.withValues(alpha: 0.2) : Colors.red.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.circle, size: 8, color: connected ? Colors.green : Colors.red),
+                const SizedBox(width: 4),
+                Text(connected ? 'Connected' : 'Offline', style: TextStyle(fontSize: 11, color: connected ? Colors.green : Colors.red)),
+              ]),
+            ),
+            error: (e, _) => const Text('!'),
+            loading: () => const SizedBox(),
+          ),
         ],
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [theme.background, theme.surface],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: SafeArea(
-          child: ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: 12,
-            itemBuilder: (context, index) => _buildMessageCard(index, theme),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActionButton(IconData icon, AppTheme theme) {
-    return Container(
-      margin: const EdgeInsets.only(right: 8),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: theme.surface.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(theme.radiusMedium),
-        border: Border.all(
-          color: theme.textTertiary.withValues(alpha: 0.1),
-          width: 1,
-        ),
-      ),
-      child: Icon(icon, color: theme.textSecondary, size: 20),
-    );
-  }
-
-  Widget _buildMessageCard(int index, AppTheme theme) {
-    final isUnread = index % 3 == 0;
-    final time = '${10 + index}:${(index * 7) % 60}'.padLeft(5, '0');
-
-    return ListCard(
-      leading: const Icon(Icons.person, color: Colors.white, size: 24),
-      leadingColor: theme.gradientPrimary[0],
-      title: '用户 ${index + 1}',
-      subtitle: '这是最新消息的内容预览，显示最近的一条消息..',
-      onTap: () {},
-      showDivider: index < 11,
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            time,
-            style: TextStyle(
-              color: theme.textTertiary,
-              fontSize: 11,
-            ),
-          ),
-          if (isUnread) ...[
-            const SizedBox(width: 10),
-            Container(
-              width: 20,
-              height: 20,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: theme.gradientAccent),
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: theme.useGlow ? [
-                  BoxShadow(
-                    color: theme.accent.withValues(alpha: 0.5),
-                    blurRadius: 10,
-                    spreadRadius: 1,
-                  ),
-                ] : null,
+      body: SafeArea(
+        child: Column(children: [
+          // Peer ID display
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: theme.surface, borderRadius: BorderRadius.circular(12)),
+            child: Row(children: [
+              Icon(Icons.wifi, color: theme.textSecondary, size: 18),
+              const SizedBox(width: 8),
+              Expanded(child: Text('Peer: ${bridge.peerId ?? "connecting..."}', style: TextStyle(color: theme.textSecondary, fontSize: 12))),
+              IconButton(
+                icon: Icon(Icons.send, color: theme.primary, size: 20),
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(chatId: 'bridge', title: 'AI Chat'))),
               ),
-              child: const Center(
-                child: Text(
-                  '2',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
+            ]),
+          ),
+          // Chat messages
+          Expanded(
+            child: _messages.isEmpty
+              ? Center(child: Text('No messages yet\nSend a message to start', textAlign: TextAlign.center, style: TextStyle(color: theme.textTertiary)))
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _messages.length,
+                  itemBuilder: (_, i) => ListTile(
+                    leading: Icon(Icons.person, color: theme.primary),
+                    title: Text(_messages[i]['text'] ?? '', style: TextStyle(color: theme.textPrimary)),
+                    subtitle: Text(_messages[i]['from'] ?? '', style: TextStyle(color: theme.textTertiary, fontSize: 11)),
                   ),
                 ),
-              ),
-            ),
-          ],
-        ],
+          ),
+        ]),
       ),
     );
   }
