@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 (unreleased)
+## 0.1.0 (2026-05-17)
 
 - 42 LLM provider unified API via `createProvider(type, config)`
 - Adapters: OpenAI, Anthropic, Azure, Bedrock, Cohere, Gemini, Ollama, Local, OpenAI-compatible
