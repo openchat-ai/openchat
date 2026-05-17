@@ -1,74 +1,27 @@
-# @openchat/agent-kit
+# @openchat/provider-kit
 
-**One API, 42 LLM providers, built-in agent loop.**
+**One API for 42 LLM providers.** No agent loop, no framework — just a unified interface for OpenAI, Anthropic, Ollama, OpenRouter, and 38 more.
 
 ```js
-import { createAgent } from '@openchat/agent-kit';
-
-const agent = createAgent({
-  providers: { openai: { apiKey: 'sk-...' } },
-});
-
-const reply = await agent.processStream('session-1', 'user-1', 'Hello', (event) => {
-  if (event.type === 'content') console.log(event.content);
-});
+import { createProvider } from '@openchat/provider-kit';
+const client = await createProvider('openai', { apiKey: 'sk-...' });
+const reply = await client.chat('gpt-4', [
+  { role: 'user', content: 'Hello' }
+]);
 ```
-
-## What
-
-A Node.js library that wraps 42 LLM providers (OpenAI, Anthropic, Ollama, OpenRouter, etc.) behind a single API, with a Think-Act-Verify agent loop that supports Function Calling, quality checks, and plugin hooks.
 
 ## Why
 
-Every LLM provider has its own SDK, error format, and capabilities. This package gives you one consistent interface:
+Every LLM provider has its own SDK, error format, and auth method. This package gives you one `chat()` function that works across all of them, with built-in retry and timeout.
 
-- **42 providers** — OpenAI, Anthropic, Google, Ollama, OpenRouter, and 38 more
-- **Think-Act-Verify loop** — built-in agent with tool calling, streaming, quality checks, and self-correction
-- **Pluggable validators** — register custom checkers (JSON schema, length, regex, or anything)
-- **Provider error handling** — unified retry, timeout, and error format via `ProviderErrorAdapter`
-- **Plugin hooks** — intercept every phase (beforeThink, afterThink, beforeAct, afterAct, beforeVerify, afterVerify)
+## Providers
 
-## Quick start
+OpenAI, Anthropic Claude, Google Gemini, Ollama, OpenRouter, Azure OpenAI, AWS Bedrock, Cohere, and 34 more via the OpenAI-compatible adapter.
 
-```bash
-npm install @openchat/agent-kit
-```
+## Error handling
 
-```js
-import { createAgent } from '@openchat/agent-kit';
+All providers throw `ProviderError` with consistent `{ provider, statusCode, retryable, type }` fields. Use `withRetry()` or `safeProviderCall()` for automatic retry with exponential backoff.
 
-const agent = createAgent({
-  providers: {
-    openai: { apiKey: process.env.OPENAI_API_KEY },
-    ollama: { baseUrl: 'http://localhost:11434' },
-  },
-  pluginManager: { /* your tools */ },
-  memory: { /* your context store */ },
-  session: { /* your session store */ },
-});
+## Not included
 
-const stream = agent.processStream('sid', 'uid', '写一首诗', (event) => {
-  if (event.type === 'content') process.stdout.write(event.content);
-});
-```
-
-## API
-
-### `createAgent(options)`
-
-| Option | Type | Description |
-|--------|------|-------------|
-| `config` | object | AgentEngine config (maxIterations, qualityThreshold, etc.) |
-| `pluginManager` | object | Optional. Must provide `getToolsForFunctionCalling()`, `executeTool()`, `formatToolResult()`, `execHook()` |
-| `memory` | object | Optional. Must provide `getContext()`, `addMessage()`, `initialize()`, `retrieveRelevantContext()` |
-| `session` | object | Optional. Must provide `getSession()` and `getProvider()` |
-
-Returns `{ engine, processStream, process, AgentEvents }`.
-
-## Relationship to @openchat/bridge
-
-Bridge is a full application (HTTP server, WebSocket, P2P network, WebRTC signaling) that **uses** agent-kit internally. agent-kit is the core LLM + agent library without the networking layer — usable standalone in any Node.js project.
-
-## License
-
-MIT
+This is a thin provider layer — no agent loop, no tool calling, no memory. Pair it with `@openchat/agent-kit` (coming soon) or use it standalone.

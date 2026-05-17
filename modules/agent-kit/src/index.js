@@ -1,32 +1,26 @@
-import { AgentEngine, AgentEvents } from './agent-engine.js';
-import { QualityChecker, Corrector, ValidatorRegistry, globalValidatorRegistry } from './quality-check-system.js';
-import { PromptBuilder } from './prompt-builder.js';
-import { agentMonitor } from './agent-monitor.js';
+/**
+ * @openchat/provider-kit
+ *
+ * 42 LLM provider unified API — one interface for OpenAI, Anthropic,
+ * Ollama, OpenRouter, and 38 more.
+ *
+ * Usage:
+ *   import { createProvider } from '@openchat/provider-kit';
+ *   const provider = createProvider('openai', { apiKey: 'sk-...' });
+ *   const reply = await provider.chat('gpt-4', [{ role: 'user', content: 'Hi' }]);
+ */
 
-export function createAgent(options = {}) {
-  const engine = new AgentEngine(options.config || {});
+import { ProviderError, withRetry, withTimeout, safeProviderCall } from './providers/provider-error-adapter.js';
 
-  engine._pluginManager = options.pluginManager || null;
-  engine._memoryManager = options.memory || null;
-  engine._sessionManager = options.session || null;
-
-  return {
-    engine,
-    processStream: (sessionId, userId, message, onEvent) =>
-      engine.processStream(sessionId, userId, message, onEvent),
-    process: (sessionId, userId, message) =>
-      engine.process(sessionId, userId, message),
-    AgentEvents,
+export function createProvider(type, config) {
+  const adapters = {
+    openai: () => import('./providers/openai-compatible.js').then(m => new m.default({ ...config, provider: 'openai' })),
+    anthropic: () => import('./providers/anthropic-adapter.js').then(m => new m.default(config)),
+    ollama: () => import('./providers/openai-compatible.js').then(m => new m.default({ ...config, provider: 'ollama', baseUrl: config.baseUrl || 'http://localhost:11434' })),
   };
+  const loader = adapters[type];
+  if (!loader) throw new ProviderError(`Unknown provider: ${type}`, { provider: type, type: 'config' });
+  return loader();
 }
 
-export {
-  AgentEngine,
-  AgentEvents,
-  QualityChecker,
-  Corrector,
-  ValidatorRegistry,
-  globalValidatorRegistry,
-  PromptBuilder,
-  agentMonitor,
-};
+export { ProviderError, withRetry, withTimeout, safeProviderCall };

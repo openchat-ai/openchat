@@ -40,7 +40,6 @@
     "dotenv": "^17.4.1",
     "express": "^4.22.1",
     "fairy-guardian": "file:../modules/fairy-guardian",
-    "@openchat/agent-kit": "file:../modules/agent-kit",
     "helmet": "^7.2.0",
     "hyperswarm": "^4.17.0",
     "joi": "^17.13.3",

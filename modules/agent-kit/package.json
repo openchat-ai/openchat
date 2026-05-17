@@ -1,7 +1,7 @@
 {
-  "name": "@openchat/agent-kit",
+  "name": "@openchat/provider-kit",
   "version": "0.1.0",
-  "description": "42 LLM provider unified API + Think-Act-Verify agent loop",
+  "description": "42 LLM provider unified API — one interface for OpenAI, Anthropic, Ollama, OpenRouter, and 38 more",
   "type": "module",
   "main": "./src/index.js",
   "files": ["src/"],
