@@ -7,7 +7,10 @@
   "exports": { ".": "./src/index.js" },
   "files": ["src/", "README.md"],
   "scripts": {
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "prepublishOnly": "npm test && npm audit --omit=dev",
+    "version": "git add -A src/ CHANGELOG.md",
+    "postversion": "git push && git push --tags"
   },
   "keywords": ["llm", "openai", "anthropic", "ollama", "provider", "api"],
   "license": "MIT",
