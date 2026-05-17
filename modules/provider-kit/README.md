@@ -106,8 +106,8 @@ Manage multiple providers with a registry:
 ```js
 import { providerRegistry, createProvider } from '@openchat/provider-kit'
 
-await providerRegistry.register('openai', { apiKey: 'sk-...' })
-await providerRegistry.register('ollama', { baseUrl: 'http://localhost:11434' })
+await providerRegistry.configure('openai', { apiKey: 'sk-...' })
+await providerRegistry.configure('ollama', { baseUrl: 'http://localhost:11434' })
 
 const provider = providerRegistry.get('openai')
 const reply = await provider.chat('gpt-4', messages)

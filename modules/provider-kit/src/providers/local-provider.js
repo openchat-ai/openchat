@@ -57,7 +57,7 @@ export class LocalAiProvider {
     if (this.mode === 'command') {
       return this.chatViaCommand(messages);
     } else {
-      return this.chatViaApi(messages);
+      return this.chatViaApi(model, messages);
     }
   }
 
@@ -121,7 +121,7 @@ export class LocalAiProvider {
     });
   }
 
-  async chatViaApi(messages) {
+  async chatViaApi(model, messages) {
     const systemPrompt = messages.find(m => m.role === 'system')?.content;
     const filteredMessages = messages.filter(m => m.role !== 'system');
 
