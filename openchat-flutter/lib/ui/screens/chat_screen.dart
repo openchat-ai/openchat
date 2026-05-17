@@ -1,7 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:async';
 import '../../core/theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
+import '../../core/api/bridge_ws_client.dart';
+
+final bridgeWsProvider = Provider<BridgeWsClient>((ref) {
+  final client = BridgeWsClient(port: 3800);
+  client.connect();
+  ref.onDispose(() => client.dispose());
+  return client;
+});
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String chatId;
@@ -17,6 +26,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final List<Map<String, dynamic>> _messages = [];
   final ScrollController _scrollController = ScrollController();
+  StreamSubscription? _wsSub;
 
   @override
   void initState() {
@@ -24,10 +34,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _messages.addAll([
       {'sender': 'ai', 'text': '你好！有什么可以帮助你的？', 'time': '10:00'},
     ]);
+    _wsSub = ref.read(bridgeWsProvider).messages.listen((msg) {
+      if (msg.type == 'chat_chunk' || msg.type == 'chat_response') {
+        setState(() {
+          final content = msg.data['content'] as String? ?? msg.data['text'] as String? ?? '';
+          if (content.isNotEmpty) {
+            _messages.add({'sender': 'ai', 'text': content, 'time': DateTime.now().toString().substring(11, 16)});
+          }
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
+    _wsSub?.cancel();
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -205,6 +226,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       });
     });
     _controller.clear();
+
+    // 通过 WebSocket 发送到 Bridge
+    ref.read(bridgeWsProvider).sendMessage(text, sessionId: widget.chatId);
 
     // Scroll to bottom
     Future.delayed(const Duration(milliseconds: 100), () {
