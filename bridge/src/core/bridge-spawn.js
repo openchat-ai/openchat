@@ -78,34 +78,6 @@ class BridgeSpawn {
     this._guardian.destroy();
   }
 
-  getInstallCommand(targetHost = 'localhost:3000') {
-    const script = [
-      '#!/bin/bash',
-      '# OpenChat 子 Bridge 自动部署脚本',
-      '# 由居民生成 — 用后即焚',
-      '',
-      'set -e',
-      '',
-      'echo "OpenChat 子 Bridge 部署中..."',
-      '',
-      '# 检查 Node.js',
-      'if ! command -v node &> /dev/null; then',
-      '  echo "需要 Node.js 18+，请先安装: https://nodejs.org"',
-      '  exit 1',
-      'fi',
-      '',
-      '# 检查 git',
-      'if ! command -v git &> /dev/null; then',
-      '  echo "需要 git"',
-      '  exit 1',
-      'fi',
-      '',
-      `echo "从 ${targetHost} 获取配置..."`,
-      `curl -s http://${targetHost}/install.sh?type=raw | bash`,
-    ].join('\n');
-    return { script, targetHost };
-  }
-
   handleSpawnRequest(data) {
     const p = data.payload || {};
     return this.spawnNesting({ name: p.name || `spawned-${data.from?.slice(0, 8)}` });

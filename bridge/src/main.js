@@ -566,12 +566,30 @@ class Bridge {
    * WebSocket: /signaling (语音，预留)
    */
   startServer() {
+    const requireAuth = (req) => {
+      if (process.env.DISABLE_API_AUTH === 'true' || process.env.NODE_ENV === 'test') {
+        return { ok: true };
+      }
+      const token = process.env.API_KEYS || process.env.API_KEY || '';
+      if (!token) return { ok: true };
+      const validTokens = token.split(',').map(t => t.trim()).filter(Boolean);
+      const auth = req.headers['authorization'];
+      if (!auth || !auth.startsWith('Bearer ')) {
+        return { ok: false, reason: 'Missing or invalid Authorization header' };
+      }
+      const provided = auth.slice(7);
+      if (!validTokens.includes(provided)) {
+        return { ok: false, reason: 'Invalid token' };
+      }
+      return { ok: true };
+    };
+
     // 创建 HTTP 服务器
     this.httpServer = http.createServer(async (req, res) => {
       // CORS
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
       if (req.method === 'OPTIONS') {
         res.writeHead(204);
@@ -581,6 +599,17 @@ class Bridge {
 
       const url = new URL(req.url, `http://localhost:${CONFIG.port}`);
       const pathname = url.pathname;
+
+      // 公开端点：无需鉴权
+      const publicPaths = ['/', '/health', '/peers', '/api/dashboard', '/api/heartbeat'];
+      if (!publicPaths.includes(pathname)) {
+        const auth = requireAuth(req);
+        if (!auth.ok) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'UNAUTHORIZED', message: auth.reason }));
+          return;
+        }
+      }
 
       try {
         // 路由处理
