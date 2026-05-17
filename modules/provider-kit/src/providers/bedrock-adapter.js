@@ -1,3 +1,4 @@
+import { ProviderError } from './provider-error-adapter.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -63,7 +64,7 @@ export class BedrockAdapter {
     }
 
     if (!this.accessKeyId || !this.secretAccessKey) {
-      throw new Error('AWS credentials required for Bedrock');
+      throw new ProviderError('AWS credentials required for Bedrock');
     }
 
     this.connected = true;
@@ -159,7 +160,7 @@ export class BedrockAdapter {
    */
   async chat(model, messages, options = {}) {
     if (!this.connected) {
-      throw new Error('Bedrock provider not connected');
+      throw new ProviderError('Bedrock provider not connected');
     }
 
     // 注意：实际使用需要实现 AWS Signature V4
@@ -176,14 +177,14 @@ export class BedrockAdapter {
 
     // 这里需要实现 AWS SigV4 签名
     // 建议使用 AWS SDK 或第三方库
-    throw new Error('Bedrock requires AWS SDK for signing. Please use AWS SDK integration.');
+    throw new ProviderError('Bedrock requires AWS SDK for signing. Please use AWS SDK integration.');
   }
 
   /**
    * 流式聊天
    */
   async *chatStream(model, messages, options = {}) {
-    throw new Error('Bedrock streaming requires AWS SDK. Please use AWS SDK integration.');
+    throw new ProviderError('Bedrock streaming requires AWS SDK. Please use AWS SDK integration.');
   }
 
   /**
@@ -271,7 +272,7 @@ export class BedrockProxyAdapter {
     });
 
     if (!response.ok) {
-      throw new Error(`Bedrock Proxy error: ${response.status}`);
+      throw new ProviderError(`Bedrock Proxy error: ${response.status}`);
     }
 
     const data = await response.json();
@@ -306,7 +307,7 @@ export class BedrockProxyAdapter {
     });
 
     if (!response.ok) {
-      throw new Error(`Bedrock Proxy error: ${response.status}`);
+      throw new ProviderError(`Bedrock Proxy error: ${response.status}`);
     }
 
     const reader = response.body.getReader();

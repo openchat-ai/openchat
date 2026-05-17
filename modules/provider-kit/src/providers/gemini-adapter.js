@@ -1,3 +1,4 @@
+import { ProviderError } from './provider-error-adapter.js';
 /**
  * Google Gemini API 适配器
  *
@@ -38,7 +39,7 @@ export class GeminiAdapter {
     if (apiKey) this.apiKey = apiKey;
 
     if (!this.apiKey) {
-      throw new Error('API Key required for Google Gemini');
+      throw new ProviderError('API Key required for Google Gemini');
     }
 
     this.connected = true;
@@ -107,7 +108,7 @@ export class GeminiAdapter {
    */
   async chat(model, messages, options = {}) {
     if (!this.connected) {
-      throw new Error('Gemini provider not connected');
+      throw new ProviderError('Gemini provider not connected');
     }
 
     const modelName = model || this.defaultModel;
@@ -144,7 +145,7 @@ export class GeminiAdapter {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(
+      throw new ProviderError(
         error.error?.message ||
         `Gemini API error: ${response.status} ${response.statusText}`
       );
@@ -159,7 +160,7 @@ export class GeminiAdapter {
    */
   async *chatStream(model, messages, options = {}) {
     if (!this.connected) {
-      throw new Error('Gemini provider not connected');
+      throw new ProviderError('Gemini provider not connected');
     }
 
     const modelName = model || this.defaultModel;
@@ -196,7 +197,7 @@ export class GeminiAdapter {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(
+      throw new ProviderError(
         error.error?.message ||
         `Gemini API error: ${response.status} ${response.statusText}`
       );

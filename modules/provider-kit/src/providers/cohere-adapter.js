@@ -1,3 +1,4 @@
+import { ProviderError } from './provider-error-adapter.js';
 /**
  * Cohere API 适配器
  *
@@ -39,7 +40,7 @@ export class CohereAdapter {
     if (apiKey) this.apiKey = apiKey;
 
     if (!this.apiKey) {
-      throw new Error('API Key required for Cohere');
+      throw new ProviderError('API Key required for Cohere');
     }
 
     this.connected = true;
@@ -113,7 +114,7 @@ export class CohereAdapter {
    */
   async chat(model, messages, options = {}) {
     if (!this.connected) {
-      throw new Error('Cohere provider not connected');
+      throw new ProviderError('Cohere provider not connected');
     }
 
     const url = `${this.baseUrl}/chat`;
@@ -147,7 +148,7 @@ export class CohereAdapter {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(
+      throw new ProviderError(
         error.message ||
         `Cohere API error: ${response.status} ${response.statusText}`
       );
@@ -162,7 +163,7 @@ export class CohereAdapter {
    */
   async *chatStream(model, messages, options = {}) {
     if (!this.connected) {
-      throw new Error('Cohere provider not connected');
+      throw new ProviderError('Cohere provider not connected');
     }
 
     const url = `${this.baseUrl}/chat`;
@@ -196,7 +197,7 @@ export class CohereAdapter {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(
+      throw new ProviderError(
         error.message ||
         `Cohere API error: ${response.status} ${response.statusText}`
       );
@@ -240,7 +241,7 @@ export class CohereAdapter {
    */
   async embeddings(texts, model = 'embed-english-v3.0') {
     if (!this.connected) {
-      throw new Error('Cohere provider not connected');
+      throw new ProviderError('Cohere provider not connected');
     }
 
     const url = `${this.baseUrl}/embed`;
@@ -265,7 +266,7 @@ export class CohereAdapter {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || `Embedding API error: ${response.status}`);
+      throw new ProviderError(error.message || `Embedding API error: ${response.status}`);
     }
 
     const data = await response.json();

@@ -1,3 +1,4 @@
+import { ProviderError } from './provider-error-adapter.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -62,7 +63,7 @@ export class AnthropicAdapter {
     if (apiKey) this.apiKey = apiKey;
 
     if (!this.apiKey) {
-      throw new Error('API Key required for Anthropic Claude');
+      throw new ProviderError('API Key required for Anthropic Claude');
     }
 
     // Anthropic 没有 /models 端点，直接测试连接
@@ -147,7 +148,7 @@ export class AnthropicAdapter {
    */
   async chat(model, messages, options = {}) {
     if (!this.connected) {
-      throw new Error('Anthropic provider not connected');
+      throw new ProviderError('Anthropic provider not connected');
     }
 
     const url = `${this.baseUrl}/v1/messages`;
@@ -198,7 +199,7 @@ export class AnthropicAdapter {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(
+      throw new ProviderError(
         error.error?.message ||
         `Anthropic API error: ${response.status} ${response.statusText}`
       );
@@ -213,7 +214,7 @@ export class AnthropicAdapter {
    */
   async *chatStream(model, messages, options = {}) {
     if (!this.connected) {
-      throw new Error('Anthropic provider not connected');
+      throw new ProviderError('Anthropic provider not connected');
     }
 
     const url = `${this.baseUrl}/v1/messages`;
@@ -258,7 +259,7 @@ export class AnthropicAdapter {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(
+      throw new ProviderError(
         error.error?.message ||
         `Anthropic API error: ${response.status} ${response.statusText}`
       );

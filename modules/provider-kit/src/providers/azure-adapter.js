@@ -1,3 +1,4 @@
+import { ProviderError } from './provider-error-adapter.js';
 /**
  * Azure OpenAI API 适配器
  *
@@ -34,11 +35,11 @@ export class AzureOpenAIAdapter {
     if (apiKey) this.apiKey = apiKey;
 
     if (!this.apiKey) {
-      throw new Error('API Key required for Azure OpenAI');
+      throw new ProviderError('API Key required for Azure OpenAI');
     }
 
     if (!this.resourceName) {
-      throw new Error('Resource name required for Azure OpenAI');
+      throw new ProviderError('Resource name required for Azure OpenAI');
     }
 
     this.connected = true;
@@ -64,7 +65,7 @@ export class AzureOpenAIAdapter {
    */
   async chat(model, messages, options = {}) {
     if (!this.connected) {
-      throw new Error('Azure OpenAI provider not connected');
+      throw new ProviderError('Azure OpenAI provider not connected');
     }
 
     // Azure 使用 deployment ID 而不是 model
@@ -103,7 +104,7 @@ export class AzureOpenAIAdapter {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(
+      throw new ProviderError(
         error.error?.message ||
         `Azure OpenAI API error: ${response.status} ${response.statusText}`
       );
@@ -136,7 +137,7 @@ export class AzureOpenAIAdapter {
    */
   async *chatStream(model, messages, options = {}) {
     if (!this.connected) {
-      throw new Error('Azure OpenAI provider not connected');
+      throw new ProviderError('Azure OpenAI provider not connected');
     }
 
     const deploymentId = model || this.deploymentId || this.defaultModel;
@@ -173,7 +174,7 @@ export class AzureOpenAIAdapter {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(
+      throw new ProviderError(
         error.error?.message ||
         `Azure OpenAI API error: ${response.status} ${response.statusText}`
       );
@@ -259,7 +260,7 @@ export class AzureOpenAIAdapter {
    */
   async embeddings(input, model = 'text-embedding-ada-002') {
     if (!this.connected) {
-      throw new Error('Azure OpenAI provider not connected');
+      throw new ProviderError('Azure OpenAI provider not connected');
     }
 
     const deploymentId = model;
@@ -283,7 +284,7 @@ export class AzureOpenAIAdapter {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(error.error?.message || `Embedding API error: ${response.status}`);
+      throw new ProviderError(error.error?.message || `Embedding API error: ${response.status}`);
     }
 
     const data = await response.json();

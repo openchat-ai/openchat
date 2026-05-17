@@ -1,3 +1,4 @@
+import { ProviderError } from './provider-error-adapter.js';
 import { spawn } from 'child_process';
 import { Readable } from 'stream';
 
@@ -20,12 +21,12 @@ export class LocalAiProvider {
     
     if (this.mode === 'command') {
       if (!this.command) {
-        throw new Error('Command is required for command mode');
+        throw new ProviderError('Command is required for command mode');
       }
       this.connected = true;
     } else {
       if (!this.endpoint) {
-        throw new Error('Endpoint is required for API mode');
+        throw new ProviderError('Endpoint is required for API mode');
       }
       await this.verifyApiConnection();
       this.connected = true;
@@ -45,10 +46,10 @@ export class LocalAiProvider {
         headers: { 'Content-Type': 'application/json' }
       });
       if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
+        throw new ProviderError(`API error: ${response.status}`);
       }
     } catch (e) {
-      throw new Error(`Cannot connect to ${this.endpoint}: ${e.message}`);
+      throw new ProviderError(`Cannot connect to ${this.endpoint}: ${e.message}`);
     }
   }
 
@@ -93,7 +94,7 @@ export class LocalAiProvider {
       }
 
       child.on('error', (error) => {
-        reject(new Error(`Failed to start ${this.command}: ${error.message}`));
+        reject(new ProviderError(`Failed to start ${this.command}: ${error.message}`));
       });
 
       child.on('close', (code) => {
@@ -115,7 +116,7 @@ export class LocalAiProvider {
 
       setTimeout(() => {
         child.kill();
-        reject(new Error('Command timed out after 120 seconds'));
+        reject(new ProviderError('Command timed out after 120 seconds'));
       }, 120000);
     });
   }
@@ -143,7 +144,7 @@ export class LocalAiProvider {
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
-        throw new Error(error.error?.message || `API error: ${response.status}`);
+        throw new ProviderError(error.error?.message || `API error: ${response.status}`);
       }
 
       const data = await response.json();
@@ -156,7 +157,7 @@ export class LocalAiProvider {
         created: Date.now()
       };
     } catch (e) {
-      throw new Error(`Chat failed: ${e.message}`);
+      throw new ProviderError(`Chat failed: ${e.message}`);
     }
   }
 
