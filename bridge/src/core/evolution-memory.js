@@ -41,18 +41,21 @@ export class EvolutionMemory {
     }
   }
 
-  // 记住一条信息
+  // 记住一条信息（scope 可选，用于隔离不同场景的记忆）
   remember(key, value, metadata = {}) {
+    const scope = metadata.scope || '_default';
+    const scopedKey = `${scope}:${key}`;
     const memoryEntry = {
       value,
       timestamp: Date.now(),
+      scope,
       metadata: {
         ...metadata,
         lastUpdated: Date.now()
       }
     };
 
-    this.memory.set(key, memoryEntry);
+    this.memory.set(scopedKey, memoryEntry);
     this.saveToConfig();
 
     return true;
@@ -67,12 +70,15 @@ export class EvolutionMemory {
     return null;
   }
 
-  // 搜索相关的记忆
+  // 搜索相关的记忆（options.scope 可选，只搜该 scope 内的记忆）
   search(query, options = {}) {
     const results = [];
     const queryLower = query.toLowerCase();
+    const scopeFilter = options.scope ? `${options.scope}:` : null;
     
     for (const [key, entry] of this.memory) {
+      // scope 过滤：指定 scope 时只搜该 scope 内
+      if (scopeFilter && !key.startsWith(scopeFilter)) continue;
       // 检查键是否匹配
       if (key.toLowerCase().includes(queryLower)) {
         results.push({ key, ...entry });

@@ -109,7 +109,7 @@ export class AgentEngine {
       currentContext = [...ragMessages, ...currentContext];
     }
 
-    // 注入长期记忆 — 居民记得什么
+    // 注入长期记忆 — 居民记得什么（scope = userId 隔离）
     const identity = residentMemory.recall(`resident_${userId}_identity`);
     if (identity) {
       currentContext.unshift({
@@ -117,10 +117,10 @@ export class AgentEngine {
         content: `你的身份：${identity.value}`
       });
     }
-    const memories = residentMemory.search(userMessage, { limit: 3 });
+    const memories = residentMemory.search(userMessage, { limit: 3, scope: userId });
     if (memories.length > 0) {
       const memoryBlock = memories.map(m =>
-        `[记忆] ${m.key}: ${typeof m.value === 'string' ? m.value : JSON.stringify(m.value)}`
+        `[记忆] ${m.key.split(':').pop()}: ${typeof m.value === 'string' ? m.value : JSON.stringify(m.value)}`
       ).join('\n');
       currentContext.unshift({
         role: 'system',
@@ -322,13 +322,13 @@ export class AgentEngine {
       iterations: iteration
     });
 
-    // 存长期记忆
+    // 存长期记忆（scope = userId，不同居民互不干扰）
     if (finalizedResponse) {
       residentMemory.remember(userMessage, {
         response: finalizedResponse,
         userId,
         sessionId,
-      }, { type: 'conversation', userId });
+      }, { type: 'conversation', userId, scope: userId });
     }
 
     // ✨ 质量检查与纠偏
