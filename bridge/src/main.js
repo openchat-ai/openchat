@@ -675,8 +675,9 @@ class Bridge {
             } catch (e) {}
           }
           iq = iq || 100;
-          let fairies = { 3002:0,3003:0,3004:0,3005:0,3006:0,3007:0 };
-          for (const port of [3002,3003,3004,3005,3006,3007]) {
+          const fairyPorts = [CONFIG.port + 2, CONFIG.port + 3, CONFIG.port + 4, CONFIG.port + 5, CONFIG.port + 6, CONFIG.port + 7];
+          let fairies = Object.fromEntries(fairyPorts.map(p => [p, 0]));
+          for (const port of fairyPorts) {
             try { 
               const r = await fetch(`http://localhost:${port}/api/status`, { signal: AbortSignal.timeout(1000) });
               fairies[port] = r.ok ? 1 : 0;
