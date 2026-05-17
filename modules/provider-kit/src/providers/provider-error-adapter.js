@@ -47,7 +47,10 @@ export async function withRetry(fn, { retries = 2, baseDelay = 1000, provider } 
       if (i === retries) throw e;
       const isRetryable = e instanceof ProviderError ? e.retryable : true;
       if (!isRetryable) throw e;
-      await new Promise(r => setTimeout(r, baseDelay * Math.pow(2, i)));
+      // Exponential backoff with jitter (±25%) to prevent thundering herd
+      const delay = baseDelay * Math.pow(2, i);
+      const jitter = delay * (0.75 + Math.random() * 0.5);
+      await new Promise(r => setTimeout(r, jitter));
     }
   }
 }
