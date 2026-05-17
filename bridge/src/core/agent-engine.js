@@ -108,7 +108,9 @@ export class AgentEngine {
       if (!session) throw new Error(`Session ${sessionId} not found`);
       const provider = sessionManager.getProvider(session.providerType);
 
-      const chatOptions = {};
+      const chatOptions = {
+        signal: AbortSignal.timeout(30000),
+      };
       if (tools && tools.length > 0) {
         chatOptions.tools = tools;
         chatOptions.tool_choice = 'auto';
@@ -135,10 +137,25 @@ export class AgentEngine {
           }
         }
       } catch (e) {
+        if (e.name === 'AbortError' || e.name === 'TimeoutError') {
+          content = '[请求超时，请稍后重试]';
+          finalizedResponse = content;
+          isTaskComplete = true;
+          break;
+        }
         // 流式不支持，降级到非流式
-        const response = await provider.chat(session.model, messages, chatOptions);
-        content = response.content;
-        toolCalls = response.toolCalls;
+        try {
+          const response = await provider.chat(session.model, messages, chatOptions);
+          content = response.content;
+          toolCalls = response.toolCalls;
+        } catch (e2) {
+          if (e2.name === 'AbortError' || e2.name === 'TimeoutError') {
+            content = '[请求超时，请稍后重试]';
+          }
+          finalizedResponse = content;
+          isTaskComplete = true;
+          break;
+        }
       }
 
       // 检查是否完成
@@ -314,7 +331,9 @@ export class AgentEngine {
     const systemPrompt = await PromptBuilder.buildSystemPrompt(1);
 
     // [优化] 预构建请求选项
-    const chatOptions = {};
+    const chatOptions = {
+      signal: AbortSignal.timeout(30000),
+    };
     if (tools && tools.length > 0) {
       chatOptions.tools = tools;
       chatOptions.tool_choice = 'auto';
@@ -330,7 +349,17 @@ export class AgentEngine {
       ];
 
       // [THINK] Call actual Provider with tools
-      const llmResponse = await provider.chat(session.model, messages, chatOptions);
+      let llmResponse;
+      try {
+        llmResponse = await provider.chat(session.model, messages, chatOptions);
+      } catch (e) {
+        if (e.name === 'AbortError' || e.name === 'TimeoutError') {
+          finalizedResponse = '[请求超时，请稍后重试]';
+          isTaskComplete = true;
+          break;
+        }
+        throw e;
+      }
       const content = llmResponse.content;
       const toolCalls = llmResponse.toolCalls;
 
