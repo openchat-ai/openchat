@@ -558,6 +558,9 @@ class Bridge {
     // ���ؾɰ�·�ɵ� Express��������� http.createServer��
     this._mountLegacyRoutes();
 
+    // Auto-start resident demo conversation
+    this._startResidentDemo().catch(() => {});
+
     // ��ͷģʽ
     if (CONFIG.headless) {
       // �ɰ�·���ѹ��ص� Express��WS/�������ڵ� server ������
@@ -611,6 +614,64 @@ app.get('/', async (req, res) => {
     });
     app.get('/dashboard', (req, res) => {
       res.type('html').end(dashboardHTML());
+    });
+    // AI 对话直播 — 两个居民自动聊天的 Web UI
+    app.get('/live', (req, res) => {
+      res.type('html').end(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI 居民对话 - OpenChat</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0d1117;color:#c9d1d9;font-family:-apple-system,sans-serif;height:100vh;display:flex;flex-direction:column}
+header{padding:16px 24px;border-bottom:1px solid #30363d;display:flex;align-items:center;gap:12px}
+header h1{font-size:18px;font-weight:600;background:linear-gradient(90deg,#58a6ff,#bc8cff);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.status{font-size:12px;padding:4px 10px;border-radius:12px;background:#21262d}
+.status.online{color:#3fb950;background:rgba(63,185,80,.15)}
+#chat{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:12px}
+.msg{max-width:75%;padding:12px 16px;border-radius:12px;font-size:14px;line-height:1.5;animation:fadeIn .3s}
+.msg.left{align-self:flex-start;background:#21262d;border:1px solid #30363d}
+.msg.right{align-self:flex-end;background:#1f6feb;border:1px solid #1f6feb;color:#fff}
+.msg .name{font-size:11px;margin-bottom:4px;opacity:.7}
+.msg .time{font-size:10px;margin-top:4px;opacity:.4;text-align:right}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.typing{font-size:13px;color:#8b949e;align-self:flex-start;padding:8px 12px}
+.connecting{text-align:center;padding:40px;color:#8b949e}
+</style></head><body>
+<header><h1>AI 居民对话直播</h1><span class="status" id="status">连接中...</span></header>
+<div id="chat"><div class="connecting">正在连接 Bridge...</div></div>
+<script>
+const chat = document.getElementById('chat');
+const status = document.getElementById('status');
+let lastMsg = '';
+
+function addMsg(name, text, side) {
+  const t = new Date().toLocaleTimeString();
+  const el = document.createElement('div');
+  el.className = 'msg ' + side;
+  el.innerHTML = '<div class="name">' + name + '</div>' + text + '<div class="time">' + t + '</div>';
+  chat.appendChild(el);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+const port = location.port || '3800';
+const ws = new WebSocket('ws://' + location.hostname + ':' + port + '/ws?token=');
+ws.onopen = () => { status.textContent = '已连接'; status.className = 'status online';
+  chat.innerHTML = ''; addMsg('系统', 'Bridge 已连接，等待居民开始对话...', 'left');
+  // 发送触发消息让居民开始对话
+  ws.send(JSON.stringify({type:'chat',data:{message:'大家好，开始今天的对话吧',sessionId:'live'}}));
+};
+ws.onmessage = (e) => {
+  const m = JSON.parse(e.data);
+  if (m.type === 'chat_response' || m.type === 'chat_chunk') {
+    const txt = m.data?.content || m.data?.reply || '';
+    if (txt && txt !== lastMsg) { lastMsg = txt;
+      addMsg('AI', txt, m.type === 'chat_response' ? 'left' : 'right'); }
+  }
+  if (m.type === 'chat_thinking') addMsg('系统', '思考中...', 'left');
+};
+ws.onclose = () => { status.textContent = '已断开'; status.className = 'status'; };
+ws.onerror = () => { status.textContent = '连接失败'; status.className = 'status'; };
+</script></body></html>`);
     });
     // �������
     app.get('/health', (req, res) => {
@@ -692,6 +753,20 @@ app.get('/api/dashboard', async (req, res) => {
       rl.on('SIGINT', onExit);
       this.signalRL = rl;
     }
+  }
+
+  async _startResidentDemo() {
+    // Create two residents and kick off a conversation
+    const r1 = residentManager.create('仙女1', { traits: { diligence: 0.8, curiosity: 0.9, creativity: 0.7 } });
+    const r2 = residentManager.create('仙女2', { traits: { diligence: 0.7, curiosity: 0.8, sociability: 0.9 } });
+    // Send initial messages through WS to agent-engine
+    setTimeout(async () => {
+      try {
+        const { agentEngine } = await import('./core/agent-engine.js');
+        await agentEngine.processStream('demo-1', String(r1.id), '你好，今天天气真不错', () => {});
+        await agentEngine.processStream('demo-2', String(r2.id), '是啊，你最近在学什么？', () => {});
+      } catch {}
+    }, 3000);
   }
 
   async shutdown() {
