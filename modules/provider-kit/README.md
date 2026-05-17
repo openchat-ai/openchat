@@ -1,0 +1,118 @@
+# @openchat/provider-kit
+
+**One API for 42 LLM providers.** OpenAI, Anthropic, Ollama, OpenRouter, Google Gemini, Azure, AWS Bedrock, Cohere — same interface, built-in retry and timeout.
+
+```js
+import { createProvider } from '@openchat/provider-kit'
+
+const provider = await createProvider('openai', { apiKey: 'sk-...' })
+const reply = await provider.chat('gpt-4', [
+  { role: 'user', content: 'Hello' }
+])
+// { content: '...', model: 'gpt-4', usage: { prompt_tokens: 10, completion_tokens: 20 } }
+```
+
+## Install
+
+```bash
+npm install @openchat/provider-kit
+```
+
+## Usage
+
+### Basic chat
+
+```js
+import { createProvider } from '@openchat/provider-kit'
+
+const provider = await createProvider('openai', { apiKey: process.env.OPENAI_API_KEY })
+const reply = await provider.chat('gpt-4o-mini', [
+  { role: 'system', content: 'You are a poet' },
+  { role: 'user', content: 'Write a haiku' },
+])
+console.log(reply.content)
+```
+
+### With retry and timeout
+
+```js
+import { safeProviderCall } from '@openchat/provider-kit'
+
+const reply = await safeProviderCall(
+  () => provider.chat('gpt-4', messages),
+  { provider: 'openai', retries: 3, timeout: 30000 }
+)
+```
+
+### Available providers
+
+| Provider | `type` | Requires |
+|----------|--------|----------|
+| OpenAI | `openai` | `OPENAI_API_KEY` |
+| Anthropic | `anthropic` | `ANTHROPIC_API_KEY` |
+| Ollama | `ollama` | local server at `http://localhost:11434` |
+| Azure OpenAI | `azure` | Azure credentials |
+| AWS Bedrock | `bedrock` | AWS credentials |
+| Cohere | `cohere` | `COHERE_API_KEY` |
+| Google Gemini | `gemini` | `GEMINI_API_KEY` |
+| OpenAI-compatible | `openai` with custom `baseUrl` | Any OpenAI-compatible API |
+
+### Streaming
+
+```js
+const stream = await provider.chatStream('gpt-4', messages)
+for await (const chunk of stream) {
+  if (chunk.type === 'content') process.stdout.write(chunk.content)
+}
+```
+
+### Error handling
+
+`createProvider`, `.chat()`, `.chatStream()` — all throw `ProviderError` with consistent fields:
+
+```js
+import { ProviderError } from '@openchat/provider-kit'
+
+try { /* ... */ } catch (e) {
+  if (e instanceof ProviderError) {
+    console.log(e.provider, e.statusCode, e.retryable, e.type)
+    // e.g. 'openai', 429, true, 'rate_limit'
+  }
+}
+```
+
+### Function Calling
+
+```js
+const reply = await provider.chat('gpt-4', messages, {
+  tools: [{
+    type: 'function',
+    function: {
+      name: 'get_weather',
+      description: 'Get weather for a city',
+      parameters: { type: 'object', properties: { city: { type: 'string' } } }
+    }
+  }]
+})
+if (reply.toolCalls) {
+  // [{ id, name, arguments: { city: 'Tokyo' } }]
+}
+```
+
+## ProviderRegistry
+
+Manage multiple providers with a registry:
+
+```js
+import { providerRegistry, createProvider } from '@openchat/provider-kit'
+
+await providerRegistry.register('openai', { apiKey: 'sk-...' })
+await providerRegistry.register('ollama', { baseUrl: 'http://localhost:11434' })
+
+const provider = providerRegistry.get('openai')
+const reply = await provider.chat('gpt-4', messages)
+```
+
+## Related
+
+- `@openchat/fairy-guardian` — self-healing process cluster for AI model servers
