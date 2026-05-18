@@ -34,9 +34,8 @@
 
 ## 开放线程
 
-- [2026-05-18] AI 居民内部循环 — 已实现状态机(active/thinking/responding/sleeping) + 多路径 LLM 推理 + 能量系统。think() 不再是裸调用 LLM。但仍依赖外部 provider，无内部模型推理。
-- [2026-05-18] 跨居民知识共享 — **已实现**。vector-memory.js (TF-IDF + 中文 bigram + 余弦相似度)，think() 自动搜索其他居民相关经验注入 prompt。跨 Bridge 待 gossip 通过。
-- [2026-05-18] gossip 跨 Bridge 知识同步 — **已实现**。gossip-manager.js (60s 周期摘要交换 + 增量拉取 + 冲突解决)，P2P KNOWLEDGE_SYNC 消息类型。每周期的 sync 自动传播新知识到全网。
+- [2026-05-18] **泛化引擎已实现** — generalization.js (300行) + 集成到 resident-manager think() 流程。当用户提问时：vector memory 搜相关经验 → generalization 分析模式 → LLM 生成多解法 → 回存知识库 → gossip 同步全网。实现了"一次查询，所有居民复用"的闭环。
+- [2026-05-18] AI 居民内部循环 — 已完整链路：状态机 + 能量系统 + vector memory + generalization + gossip。think() 不再是裸 LLM 调用。
 - [2026-05-16] Dashboard 实时推送 — 后端状态变化需要通过 WebSocket 推送到前端，而非前端轮询。
 - [2026-05-18] `bridge/src/main.js` 已从 ~1900 行拆至 26 行（死代码清理后），但 MEMORY.md 和 MAINJS_REFACTOR_PLAN.md 保留旧数据导致专家评审反复吃假粮。**教训：文档中的数字指标必须在代码变更后立即同步更新，否则自动摘要工具会重复传播过期信息。**
 - [2026-05-18] `protocol/README.md` 存在（265 行协议文档），之前误记为空目录。已保留。
