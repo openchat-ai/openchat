@@ -7,6 +7,8 @@ const MEMORY_FILE = path.join(os.homedir(), '.openchat', 'memory', 'evolution-me
 export class EvolutionMemory {
   constructor() {
     this.memory = new Map(); // 临时内存存储
+    this._maxEntries = 1000; // 最多保留 1000 条
+    this._ttlMs = 7 * 24 * 60 * 60 * 1000; // 7 天过期
     this._ensureDir();
     this.loadFromConfig(); // 从文件加载持久化记忆
   }
@@ -19,6 +21,7 @@ export class EvolutionMemory {
   // 保存记忆到独立文件（不再塞进 config.json）
   saveToConfig() {
     try {
+      this._cleanup();
       this._ensureDir();
       const memoryArray = Array.from(this.memory.entries());
       fs.writeFileSync(MEMORY_FILE, JSON.stringify(memoryArray, null, 2));
@@ -41,7 +44,26 @@ export class EvolutionMemory {
     }
   }
 
-  // 记住一条信息（scope 可选，用于隔离不同场景的记忆）
+  // 删除过期记忆 + 限制条目数
+  _cleanup() {
+    const now = Date.now();
+    let deleted = 0;
+    for (const [key, entry] of this.memory) {
+      if (now - entry.timestamp > this._ttlMs) {
+        this.memory.delete(key);
+        deleted++;
+      }
+    }
+    if (this.memory.size > this._maxEntries) {
+      const sorted = [...this.memory.entries()].sort((a, b) => b[1].timestamp - a[1].timestamp);
+      const keep = sorted.slice(0, this._maxEntries);
+      this.memory = new Map(keep);
+      deleted += sorted.length - keep.length;
+    }
+    if (deleted > 0) console.log(`[EvolutionMemory] cleaned ${deleted} expired entries`);
+  }
+
+  // 记住一条信息（scope 可选）
   remember(key, value, metadata = {}) {
     const scope = metadata.scope || '_default';
     const scopedKey = `${scope}:${key}`;

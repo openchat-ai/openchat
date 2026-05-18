@@ -63,6 +63,8 @@ export const AgentEvents = {
 export class AgentEngine {
   constructor(options = {}) {
     this.maxIterations = 10;
+    this._lastContent = '';
+    this._stuckCount = 0;
     this.qualityThreshold = 4; // 低于这个分数会自动优化
     this.useRAG = options.useRAG !== false; // 默认启用 RAG
     this.useFunctionCalling = options.useFunctionCalling !== false; // 默认启用 FC
@@ -221,6 +223,22 @@ export class AgentEngine {
 
       // Plugin hook: afterThink
       await pluginManager.execHook?.('afterThink', { sessionId, content, iteration, toolCalls });
+
+      // 检查是否卡住（连续 3 次输出相同内容）
+      if (content && content === this._lastContent) {
+        this._stuckCount++;
+        if (this._stuckCount >= 3) {
+          console.log('[Agent] 卡住检测: 连续3次输出相同, 提前结束');
+          finalizedResponse = content;
+          isTaskComplete = true;
+          break;
+        }
+      } else {
+        this._lastContent = content || '';
+        this._stuckCount = 0;
+      }
+
+      // 检查是否完成
 
       // 检查是否完成
       if (content && content.startsWith('FINAL:')) {

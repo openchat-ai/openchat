@@ -674,8 +674,8 @@ ws.onerror = () => { status.textContent = '连接失败'; status.className = 'st
 </script></body></html>`);
     });
     // �������
-    app.get('/health', (req, res) => {
-      res.json({ status: 'ok', uptime: Date.now() - this.startTime });
+app.get('/health', (req, res) => {
+      res.json({ status: 'ok', uptime: Math.floor((Date.now() - this.startTime) / 1000), wsClients: this.clients?.size || 0, residents: residentManager.list(null).length });
     });
     // P2P �ԵȽڵ�
     app.get('/peers', (req, res) => {
