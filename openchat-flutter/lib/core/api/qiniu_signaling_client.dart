@@ -19,7 +19,7 @@ class QiniuSignalingClient {
   Function(Map<String, dynamic>)? onDataReceived;
 
   QiniuSignalingClient({
-    this.bridgeUrl = 'http://localhost:3001',
+    this.bridgeUrl = 'http://localhost:3800',
     String? peerId,
   }) : peerId = peerId ?? 'phone_${DateTime.now().millisecondsSinceEpoch}';
 
@@ -57,12 +57,12 @@ class QiniuSignalingClient {
 
   /// 读取 Answer (SDP)
   Future<Map<String, dynamic>?> readAnswer() async {
-    if (currentRoomId == null) return null;
+    if (currentRoomId == null) throw Exception('Not in a room');
 
     final dio = Dio(BaseOptions(baseUrl: bridgeUrl));
     try {
       final response = await dio.get(
-        '/api/v1/signaling/room/$currentRoomId/data',
+        '/api/v1/signaling/room/$currentRoomId',
         queryParameters: {'lastTimestamp': ''}
       );
 
