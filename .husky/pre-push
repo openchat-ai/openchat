@@ -1,22 +1,10 @@
 #!/bin/sh
-# OpenChat 推送前自动测试（更全面）
+echo "Running pre-push checks..."
 
-echo "🚀 运行推送前测试套件..."
+echo "  -> Bridge tests"
+cd bridge && npm test --silent 2>/dev/null || exit 1
 
-cd bridge
+echo "  -> provider-kit tests"
+cd ../modules/provider-kit && npm test --silent 2>/dev/null || exit 1
 
-# 1. 完整单元测试
-echo "📦 运行 Bridge 完整单元测试..."
-node test-agent-session.js || exit 1
-node test-agent-monitor.js || exit 1
-
-# 2. 混沌测试
-echo "🌀 运行混沌工程测试..."
-node test-utils/chaos-test.js || exit 1
-
-# 3. 属性测试
-echo "🔬 运行属性测试..."
-node test-utils/property-test.js || exit 1
-
-echo ""
-echo "✅ 所有测试通过！可以推送。"
+echo "All checks passed!"
