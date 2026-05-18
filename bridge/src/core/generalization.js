@@ -1,254 +1,113 @@
 /**
- * Generalization Engine v2 — Multi-layer reasoning pipeline
- * 泛化引擎 v2：多层推理管道
+ * Generalization Engine v2 — Multi-step strategy evaluation
+ * 泛化引擎 v2：多步策略评估
  *
- * Layers: ① Knowledge retriever → ② Decomposer → ③ Solver (tools)
- *          → ④ Combiner → ⑤ Verifier → ⑥ Output
- *
- * Each layer addresses a specific LLM weakness:
- *   ① 知识覆盖：向量记忆搜索已有解法
- *   ② 子问题分解：多维度问题自动拆成单维度子问题
- *   ③ 工具调用：计算器等外部工具弥补符号推理
- *   ④ 合并：将子问题解合并为完整答案
- *   ⑤ 验证：反证法自我验证
+ * Each reasoning step is a separate LLM call to prevent working memory overflow.
+ * 每个推理步骤独立调用 LLM，防止工作记忆溢出导致算数错误。
  */
-
 import { vectorMemory } from './vector-memory.js';
 
-// ===================== Tools / 外部工具 =====================
+const STRATEGY_LIST_PROMPT = `列出解决该问题的所有可行策略方向。每个策略用一句话描述。
 
-const TOOLS = {
-  /**
-   * Safe calculator — evaluates arithmetic expressions only.
-   * 安全计算器：仅支持四则运算和括号
-   */
-  calculate(expr) {
-    // Only allow digits, operators, parentheses, decimals, spaces
-    if (!/^[\d+\-*/().%\s]+$/.test(expr)) {
-      return { error: '表达式包含非法字符', expr };
-    }
-    try {
-      // Use Function constructor as a safer eval
-      const result = new Function(`return (${expr})`)();
-      if (typeof result !== 'number' || !isFinite(result)) {
-        return { error: '计算结果无效', expr };
-      }
-      return { result, expr };
-    } catch (e) {
-      return { error: e.message, expr };
-    }
-  },
-};
+输出格式（每行一个）：
+策略A：<描述>
+策略B：<描述>`;
 
-// ===================== Prompts / 分层提示词 =====================
+const EVALUATE_PROMPT = `你正在评估一种解题策略。只关注这一个策略，不要想其他策略。
 
-const DECOMPOSER_PROMPT = `你是一个问题分解专家。将用户的问题分解为独立的子问题。
+问题：{{QUESTION}}
+
+策略：{{STRATEGY}}
 
 规则：
-1. 找出问题中所有**独立维度**（例如口味是一个维度，形状是另一个维度）
-2. 每个子问题只处理一个维度，不要混在一起
-3. 先处理维度内的问题，再处理维度间的关系
-4. 标注哪些步骤可以用计算器验证（CALC: 表达式）
+1. 先决定先处理哪个形状（形状A），后处理哪个（形状B）
+2. 形状A：用鸽巢原理保证两种口味都有（最坏情况：先拿光西瓜，再拿光A口味，再拿1颗B口味）
+3. 形状B：只需要拿到1颗特定口味（因为形状A已经提供了配对的那种口味）—— 最坏情况：先拿光西瓜，再拿1颗目标口味
+4. 两部分数量相加。输出"该策略结果：<数字>"`;
 
-例如对于糖果题：
-  维度1：口味（苹果、桃子、西瓜）— 独立的味觉分类
-  维度2：形状（圆形、星形）— 独立的触觉分类，可以凭手感区分
-  优先处理数量较少的维度（星形仅17颗 < 圆形24颗）
+const COMPARE_PROMPT = `以下是针对同一问题的多个策略及其评估结果。比较数字，选出最小的。
 
-输出格式：
-=== 维度分析 ===
-独立维度：...
-维度之间的关系：...
+问题：{{QUESTION}}
 
-=== 子问题列表 ===
-子问题1：<按维度的描述>
-  类型：<单维度/跨维度>
-  计算方法：<手算/计算器>
-  
-子问题2：<按维度的描述>
-  类型：<单维度/跨维度>
-  计算方法：<手算/计算器>
+{{STRATEGIES}}
 
-=== 合并方式 ===
-如何将子问题结果合并为最终答案：
-用算式表达合并过程（CALC: 算式）`;
-
-const SOLVER_PROMPT = `你是一个分步解题专家。解决以下子问题时：
-1. 每步都写出具体算式
-2. 涉及加减乘除时，用计算器验证
-3. 标注哪些步骤用了已知知识库中的解法
-
-格式：
-子问题：<描述>
-已知条件：<列出数字>
-计算过程：
-  步骤1：...
-  计算器：<表达式> → <结果>
-  步骤2：...
-  计算器：<表达式> → <结果>
-子问题答案：<数字+解释>`;
-
-const VERIFIER_PROMPT = `你是一个答案验证专家。对以下答案进行反证法验证：
-
-规则：
-1. 假设最终答案减1，检查是否仍然满足条件
-2. 如果答案减1仍然满足 → 原答案不是最小值
-3. 如果答案减1不满足 → 原答案正确
-4. 如果验证失败，给出正确的答案
-
-格式：
-=== 验证 ===
-假设答案 = <n-1>：
-  条件检查：...
-  是否满足条件？是/否
-结论：原答案 正确/错误
-${''}${''}${''}${''}${''}正确答案（如果原答案错误）：<数字+推导>`;
-
-// ===================== Engine / 引擎 =====================
+要求：选择数字最小的策略，输出完整的推导过程和最终答案。`;
 
 class GeneralizationEngineV2 {
-  /**
-   * Solve a problem using the multi-layer pipeline.
-   * 多层推理管道解决一个问题
-   */
   async solve({ question, residentName, emitLLMRequest }) {
-    // Layer 0: Knowledge retrieval / 知识覆盖
     const knowledge = await this._retrieveKnowledge(question);
 
-    // Layer 1: Decompose / 子问题分解
-    const decomposition = await this._decompose(question, knowledge, emitLLMRequest);
-    if (!decomposition?.subProblems) return this._fallback(question, residentName);
+    // Step 1: List strategies / 枚举策略
+    const strategies = await this._listStrategies(question, knowledge, emitLLMRequest);
+    if (!strategies || strategies.length === 0) return this._fallback(question, residentName);
 
-    // Layer 2: Solve each sub-problem / 逐个求解
-    const subResults = [];
-    for (const sub of decomposition.subProblems) {
-      const result = await this._solveSubProblem(sub, knowledge, emitLLMRequest);
-      subResults.push({ ...sub, result });
+    // Step 2: Evaluate each individually / 逐一评估
+    const evaluated = [];
+    for (const s of strategies) {
+      const result = await this._evaluateOne(s, question, emitLLMRequest);
+      evaluated.push({ strategy: s, result });
     }
 
-    // Layer 3: Combine / 合并结果
-    const combined = await this._combine(question, subResults, decomposition.mergeStrategy, emitLLMRequest);
+    // Step 3: Compare and output best / 对比输出
+    const best = await this._compareAndOutput(question, evaluated, emitLLMRequest);
 
-    // Layer 4: Verify / 自我验证
-    const verified = await this._verify(combined, question, emitLLMRequest);
-
-    const finalAnswer = verified.verified ? combined : verified.correctedAnswer || combined;
-
-    // Store back to knowledge base / 回存知识库
-    this._storeResult(question, finalAnswer, subResults);
-
-    return {
-      content: finalAnswer,
-      model: 'generalization-v2',
-      decomposition: decomposition.subProblems.map(s => s.description),
-      subResults: subResults.map(s => ({ desc: s.description, answer: s.result })),
-      verified: verified.verified,
-    };
+    this._storeResult(question, best || '无结果');
+    return { content: best || '无法确定答案', model: 'generalization-v2' };
   }
 
-  /** Layer 0: Knowledge retrieval / 知识覆盖 */
   async _retrieveKnowledge(question) {
-    const results = await vectorMemory.autoSearch(question, { limit: 3, minScore: 0.01 });
-    return results.map(r => r.text).join('\n');
+    const r = await vectorMemory.autoSearch(question, { limit: 3, minScore: 0.01 });
+    return r.map(x => x.text).join('\n');
   }
 
-  /** Layer 1: Problem decomposition / 问题分解 */
-  async _decompose(question, knowledge, emitLLMRequest) {
-    const prompt = `${DECOMPOSER_PROMPT}\n\n用户问题：${question}\n\n相关知识：${knowledge || '无'}`;
-    const response = await this._callLLM(prompt, emitLLMRequest);
-    return this._parseDecomposition(response);
-  }
-
-  _parseDecomposition(text) {
+  async _listStrategies(question, knowledge, emit) {
+    const prompt = `${STRATEGY_LIST_PROMPT}\n\n问题：${question}\n\n相关知识：${knowledge || '无'}`;
+    const text = await this._call(prompt, emit);
     if (!text) return null;
-    const subProblems = [];
-    const lines = text.split('\n');
-    let currentSub = null;
-    let mergeStrategy = '';
-
-    for (const line of lines) {
-      if (line.includes('=== 合并方式 ===')) {
-        mergeStrategy = lines.slice(lines.indexOf(line) + 1).join(' ').trim();
-      }
-      if (line.match(/子问题\d/)) {
-        currentSub = { description: line.replace(/^.*?子问题\d[：:]?\s*/, '').trim() };
-        subProblems.push(currentSub);
-      }
+    const list = [];
+    for (const line of text.split('\n')) {
+      const m = line.match(/策略[ABCDEF]?[：:]\s*(.+)/);
+      if (m) list.push(m[1].trim());
     }
-
-    return subProblems.length > 0 ? { subProblems, mergeStrategy } : null;
+    return list.length > 0 ? list : [text.trim()];
   }
 
-  /** Layer 2-3: Solve + combine / 求解 + 合并 */
-  async _solveSubProblem(sub, knowledge, emitLLMRequest) {
-    if (!sub?.description) return '';
-
-    const useTool = sub.description.includes('计算') || sub.description.includes('数字') || sub.description.includes('多少');
-    const toolHint = useTool ? '\n\n计算器可用：将算术表达式用 CALC: 前缀标注，例如 CALC: 17+8+1' : '';
-
-    const prompt = `${SOLVER_PROMPT}\n\n子问题：${sub.description}\n参考知识：${knowledge?.substring(0, 300) || '无'}${toolHint}`;
-    let response = await this._callLLM(prompt, emitLLMRequest);
-
-    // Auto-execute calculator calls in the response
-    response = this._executeCalcInText(response);
-
-    return response;
+  async _evaluateOne(strategy, question, emit) {
+    const prompt = EVALUATE_PROMPT.replace('{{QUESTION}}', question).replace('{{STRATEGY}}', strategy);
+    return await this._call(prompt, emit) || '评估失败';
   }
 
-  /** Layer 4: Self-verification / 自我验证 */
-  async _verify(answer, question, emitLLMRequest) {
-    const prompt = `${VERIFIER_PROMPT}\n\n问题：${question}\n\n待验证的答案：\n${answer}`;
-    const response = await this._callLLM(prompt, emitLLMRequest);
-
-    const verified = !response.includes('原答案 错误');
-    let correctedAnswer = null;
-    const correctMatch = response.match(/正确答案[：:](.+?)(?:\n|$)/);
-    if (correctMatch) correctedAnswer = correctMatch[1].trim();
-
-    return { verified, correctedAnswer, detail: response };
+  async _compareAndOutput(question, evaluated, emit) {
+    const list = evaluated.map((e, i) =>
+      `策略${i + 1}: ${e.strategy}\n评估: ${e.result}`
+    ).join('\n\n');
+    const prompt = COMPARE_PROMPT.replace('{{QUESTION}}', question).replace('{{STRATEGIES}}', list);
+    return await this._call(prompt, emit) || null;
   }
 
-  /** Execute CALC: prefix expressions in LLM output / 执行计算器调用 */
-  _executeCalcInText(text) {
-    return text.replace(/CALC:\s*([^\n]+)/g, (match, expr) => {
-      const result = TOOLS.calculate(expr.trim());
-      if (result.error) return `[计算器] ${expr} = 计算错误: ${result.error}`;
-      return `[计算器] ${expr} = ${result.result}`;
-    });
-  }
-
-  /** Call LLM via emitLLMRequest / 统一 LLM 调用入口 */
-  _callLLM(prompt, emitLLMRequest) {
-    if (typeof emitLLMRequest !== 'function') return null;
-    return new Promise((resolve) => {
+  _call(prompt, emit) {
+    if (typeof emit !== 'function') return null;
+    return new Promise(resolve => {
       const timer = setTimeout(() => resolve(null), 30000);
-      emitLLMRequest(
-        { messages: [{ role: 'user', content: prompt }], temperature: 0.3 },
-        (result) => { clearTimeout(timer); resolve(result?.content || null); },
+      emit({ messages: [{ role: 'user', content: prompt }], temperature: 0.3 },
+        (r) => { clearTimeout(timer); resolve(r?.content || null); },
         () => { clearTimeout(timer); resolve(null); }
       );
     });
   }
 
-  /** Store result to knowledge base / 回存知识库 */
-  _storeResult(question, answer, subResults) {
+  _storeResult(question, answer) {
     try {
-      const detail = subResults.map(s => `[${s.description}] ${s.result}`).join('\n');
       vectorMemory.store({
         residentId: 'generalization-v2',
-        text: `Q: ${question.substring(0, 120)}\n推导：${detail.substring(0, 300)}\n答案：${answer.substring(0, 200)}`,
-        metadata: { type: 'solved-problem', version: 2 },
-        source: 'generalization-v2',
+        text: `Q: ${question.substring(0, 100)}\nA: ${answer.substring(0, 300)}`,
+        metadata: { type: 'solved' }, source: 'generalization-v2',
       });
-    } catch (e) { /* silent */ }
+    } catch {}
   }
 
-  /** Fallback response / 兜底回答 */
-  _fallback(question, residentName) {
-    return {
-      content: `${residentName || '居民'}思考后说："我需要更多信息来回答这个问题。"`,
-      model: 'generalization-v2-fallback',
-    };
+  _fallback(question, name) {
+    return { content: `${name || '居民'}需要更多信息来回答这个问题。`, model: 'fallback' };
   }
 }
 
