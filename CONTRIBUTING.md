@@ -1,36 +1,35 @@
 # Contributing
 
-## Quick Start
+## Quick start
+
 ```bash
-git clone https://github.com/your/repo.git
+git clone https://github.com/openchat-ai/openchat.git
 cd bridge
-cp .env.example .env   # Configure LLM API keys
 npm install
-npm start              # Opens CLI mode
+npm test    # 40 tests should pass
+npm start   # Start Bridge locally
 ```
 
-## Directory Structure
+## Where to contribute
+
+| Area | Files | Good for |
+|------|-------|----------|
+| LLM providers | `modules/provider-kit/src/providers/` | Adding new provider adapters |
+| Agent loop | `bridge/src/core/agent-engine.js` | Improving Think-Act-Verify |
+| Memory | `bridge/src/core/evolution-memory.js` | Memory recall/search strategies |
+| Web UI | `bridge/src/main.js` (_mountLegacyRoutes) | Dashboard / live chat |
+| Flutter | `openchat-flutter/` | Mobile client |
+
+## Commit format
+
 ```
-bridge/src/            # Backend (Node.js 24, ESM)
-  api/                 # Express REST API
-  core/                # Agent engine, residents, learning
-  providers/           # 42 LLM provider adapters
-  p2p/                 # Hyperswarm DHT + messaging
-  monitoring/          # Health check
-openchat-flutter/      # Mobile client (Dart/Flutter)
-modules/               # Published npm packages
+type: short description (English + Chinese)
+
+type: feat / fix / refactor / test / docs / chore
 ```
 
-## Workflow
-1. Fork + branch (`feat/`, `fix/`, `chore/`)
-2. Write code + tests
-3. `npm test` passes
-4. PR to master
-5. Squash merge
+## Before submitting
 
-## Commit Format
-```
-type: short description
-
-type: feat / fix / refactor / chore / test / docs
-```
+- `npm test` passes (bridge)
+- `npm test` passes (modules/provider-kit)
+- `npm audit` passes
