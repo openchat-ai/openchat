@@ -13,7 +13,7 @@ import { EventEmitter } from 'events';
 import { persistentConfig } from './persistent-config.js';
 import { MessageType, createLLMProxyRequest } from '../p2p/messages.js';
 import { vectorMemory } from './vector-memory.js';
-import { generalizationEngine } from './generalization.js';
+import { generalizationEngineV2 } from './generalization.js';
 
 const DATA_FILE = path.join(os.homedir(), '.openchat', 'residents.json');
 const MAX_ACTIVITIES = 0;
@@ -284,6 +284,18 @@ export class ResidentManager extends EventEmitter {
     if (resident && messages.length > 0 && messages[0].role === 'user') {
       const userMsg = messages[0].content || '';
       relatedExperiences = vectorMemory.search(userMsg, { limit: 3, minScore: 0.05 });
+      // Also try embedding search asynchronously to augment
+      vectorMemory.embedSearch(userMsg, { limit: 2, minScore: 0.3 }).then(embedResults => {
+        if (embedResults && embedResults.length > 0) {
+          // Merge unique embed results into relatedExperiences
+          const existingIds = new Set(relatedExperiences.map(r => r.id));
+          for (const er of embedResults) {
+            if (!existingIds.has(er.id) && !relatedExperiences.find(r => r.id === er.id)) {
+              relatedExperiences.push(er);
+            }
+          }
+        }
+      }).catch(() => {});
       if (relatedExperiences.length > 0) {
         const ctxLines = relatedExperiences.map(r =>
           `[${r.residentId === String(resident.id) ? '自己' : '居民'}的经验] ${r.text}`
@@ -871,16 +883,12 @@ export class ResidentManager extends EventEmitter {
         });
       };
 
-      const result = await generalizationEngine.generalize({
-        userMessage,
+      const result = await generalizationEngineV2.solve({
+        question: userMessage,
         residentName: name,
-        residentId: resident.id,
-        relatedExperiences,
         emitLLMRequest: (llmOpts, resolve, reject) => {
           emitFn(llmOpts, resolve, reject);
         },
-        model: options.model || persistentConfig.getCurrentModel() || '',
-        temperature: options.temperature ?? 0.7,
       });
 
       if (result && result.content) {

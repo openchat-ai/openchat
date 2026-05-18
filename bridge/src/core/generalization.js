@@ -1,209 +1,250 @@
 /**
- * Generalization Engine — Learn from past experiences to solve NEW problems
- * 泛化引擎：从已有经验中学习，解决新的问题
+ * Generalization Engine v2 — Multi-layer reasoning pipeline
+ * 泛化引擎 v2：多层推理管道
  *
- * Core idea: When a resident encounters a problem, search vector memory for
- * similar problems solved by ANY resident, then use the LLM to:
- *   1. Analyze common patterns across past solutions
- *      (从多个经验中归纳通用模式)
- *   2. Adapt those patterns to the current context
- *      (将模式适配到当前场景)
- *   3. Generate multiple novel approaches that go beyond copy-paste
- *      (生成不止一种新解法)
+ * Layers: ① Knowledge retriever → ② Decomposer → ③ Solver (tools)
+ *          → ④ Combiner → ⑤ Verifier → ⑥ Output
  *
- * This is the "泛化" (generalization) layer—the leap from "find similar"
- * (vector DB) to "learn and create new" (this engine).
- *
- * Depends on: vectorMemory (resident-manager), multi-path LLM prompt
+ * Each layer addresses a specific LLM weakness:
+ *   ① 知识覆盖：向量记忆搜索已有解法
+ *   ② 子问题分解：多维度问题自动拆成单维度子问题
+ *   ③ 工具调用：计算器等外部工具弥补符号推理
+ *   ④ 合并：将子问题解合并为完整答案
+ *   ⑤ 验证：反证法自我验证
  */
+
 import { vectorMemory } from './vector-memory.js';
 
-// System prompt that teaches the LLM HOW to generalize
-// 引导 LLM 从具体经验中抽象出通用原理
-const GENERALIZATION_SYSTEM_PROMPT = `你是 OpenChat 社区的一位 AI 居民。你有一个独特的能力：从过去的经验中学习，解决新的问题。
+// ===================== Tools / 外部工具 =====================
 
-你的任务：
-1. 阅读下面提供的"相关经验"——其他居民解决类似问题时留下的记录
-2. 从这些经验中**提炼出通用原理**（不照抄具体步骤）
-3. 针对当前问题，生成至少 3 个不同角度的解法
-4. 评估每个解法的可行性
-5. 选择最佳方案，说明理由
+const TOOLS = {
+  /**
+   * Safe calculator — evaluates arithmetic expressions only.
+   * 安全计算器：仅支持四则运算和括号
+   */
+  calculate(expr) {
+    // Only allow digits, operators, parentheses, decimals, spaces
+    if (!/^[\d+\-*/().%\s]+$/.test(expr)) {
+      return { error: '表达式包含非法字符', expr };
+    }
+    try {
+      // Use Function constructor as a safer eval
+      const result = new Function(`return (${expr})`)();
+      if (typeof result !== 'number' || !isFinite(result)) {
+        return { error: '计算结果无效', expr };
+      }
+      return { result, expr };
+    } catch (e) {
+      return { error: e.message, expr };
+    }
+  },
+};
 
-注意：不要直接复制别人的答案。要从别人的经验中学习模式，创造自己的方案。
+// ===================== Prompts / 分层提示词 =====================
+
+const DECOMPOSER_PROMPT = `你是一个问题分解专家。请将用户的问题分解为独立的子问题。
+
+规则：
+1. 识别问题中的独立维度（如口味、形状、颜色等）
+2. 每个子问题只处理一个维度
+3. 说明子问题之间的关系（串行/并行/合并）
+4. 标注哪些部分可以用计算器验证
 
 输出格式：
-=== 经验分析 ===
-从相关经验中提炼的共同模式：...
+=== 维度分析 ===
+独立维度：...
+维度之间的关系：...
 
-=== 思路 1：<标题> ===
-分析：...
-方案：...
+=== 子问题列表 ===
+子问题1：<描述>
+  类型：单维度
+  计算方法：<手算/计算器>
+  
+子问题2：<描述>
+  类型：单维度
+  计算方法：<手算/计算器>
 
-=== 思路 2：<标题> ===
-分析：...
-方案：...
+=== 合并方式 ===
+如何将子问题结果合并为最终答案：`;
 
-=== 思路 3：<标题> ===
-分析：...
-方案：...
+const SOLVER_PROMPT = `你是一个分步解题专家。解决以下子问题时：
+1. 每步都写出具体算式
+2. 涉及加减乘除时，用计算器验证
+3. 标注哪些步骤用了已知知识库中的解法
 
-=== 评估 ===
-| 思路 | 可行性 | 风险 | 创新度 |
-|------|--------|------|--------|
-| 1 | 高/中/低 | ... | ... |
-| 2 | 高/中/低 | ... | ... |
-| 3 | 高/中/低 | ... | ... |
+格式：
+子问题：<描述>
+已知条件：<列出数字>
+计算过程：
+  步骤1：...
+  计算器：<表达式> → <结果>
+  步骤2：...
+  计算器：<表达式> → <结果>
+子问题答案：<数字+解释>`;
 
-=== 选择结果 ===
-最佳思路：1/2/3
-理由：...
-学到的经验（将被存入知识库供其他居民参考）：...`;
+const VERIFIER_PROMPT = `你是一个答案验证专家。对以下答案进行反证法验证：
 
-class GeneralizationEngine {
+规则：
+1. 假设最终答案减1，检查是否仍然满足条件
+2. 如果答案减1仍然满足 → 原答案不是最小值
+3. 如果答案减1不满足 → 原答案正确
+4. 如果验证失败，给出正确的答案
+
+格式：
+=== 验证 ===
+假设答案 = <n-1>：
+  条件检查：...
+  是否满足条件？是/否
+结论：原答案 正确/错误
+${''}${''}${''}${''}${''}正确答案（如果原答案错误）：<数字+推导>`;
+
+// ===================== Engine / 引擎 =====================
+
+class GeneralizationEngineV2 {
   /**
-   * Generalize: given a problem and related experiences, generate adapted solutions.
-   * 泛化入口：给定问题 + 相关经验，生成适配的新解法
-   *
-   * @param {object} ctx - Context object with:
-   *   - userMessage: string - the user's question
-   *   - residentName: string - current resident's name
-   *   - residentId: string|number - current resident's ID
-   *   - relatedExperiences: Array<{text, residentId, score}> - from vectorMemory.search()
-   *   - emitLLMRequest: function(messages, resolve, reject) - sends to LLM provider
-   *   - model: string - LLM model name
-   *   - temperature: number
-   * @returns {object} { content, model, learnedPattern }
+   * Solve a problem using the multi-layer pipeline.
+   * 多层推理管道解决一个问题
    */
-  async generalize(ctx) {
-    const {
-      userMessage,
-      residentName = '居民',
-      residentId,
-      relatedExperiences = [],
-      emitLLMRequest,
-      model = '',
-      temperature = 0.7,
-    } = ctx;
+  async solve({ question, residentName, emitLLMRequest }) {
+    // Layer 0: Knowledge retrieval / 知识覆盖
+    const knowledge = await this._retrieveKnowledge(question);
 
-    // Build context from related experiences
-    const expContext = this._buildExperienceContext(relatedExperiences, residentName);
+    // Layer 1: Decompose / 子问题分解
+    const decomposition = await this._decompose(question, knowledge, emitLLMRequest);
+    if (!decomposition?.subProblems) return this._fallback(question, residentName);
 
-    const messages = [
-      { role: 'system', content: GENERALIZATION_SYSTEM_PROMPT },
-      {
-        role: 'user',
-        content: `当前居民：${residentName}
-当前问题：${userMessage}
+    // Layer 2: Solve each sub-problem / 逐个求解
+    const subResults = [];
+    for (const sub of decomposition.subProblems) {
+      const result = await this._solveSubProblem(sub, knowledge, emitLLMRequest);
+      subResults.push({ ...sub, result });
+    }
 
-${expContext}`,
-      },
-    ];
+    // Layer 3: Combine / 合并结果
+    const combined = await this._combine(question, subResults, decomposition.mergeStrategy, emitLLMRequest);
 
-    // Call LLM (via the same mechanism as _multiPathThink)
-    const llmResult = await this._callLLM(messages, emitLLMRequest, model, temperature);
+    // Layer 4: Verify / 自我验证
+    const verified = await this._verify(combined, question, emitLLMRequest);
 
-    // Parse the result to extract the chosen solution + learned pattern
-    const parsed = this._parseGeneralizationResult(llmResult, residentName, userMessage);
+    const finalAnswer = verified.verified ? combined : verified.correctedAnswer || combined;
 
-    // Store the learned pattern back to vector memory for future residents
-    if (parsed.learnedPattern && parsed.learnedPattern.length > 10) {
-      try {
-        vectorMemory.store({
-          residentId: String(residentId ?? 'generalized'),
-          text: `[泛化] 问题：${userMessage}\n学到的经验：${parsed.learnedPattern}\n方案：${parsed.content.substring(0, 200)}`,
-          metadata: { type: 'generalized', source: residentName },
-          source: 'generalization',
-        });
-        vectorMemory.save();
-      } catch (e) {
-        // silent - storage should not block response
+    // Store back to knowledge base / 回存知识库
+    this._storeResult(question, finalAnswer, subResults);
+
+    return {
+      content: finalAnswer,
+      model: 'generalization-v2',
+      decomposition: decomposition.subProblems.map(s => s.description),
+      subResults: subResults.map(s => ({ desc: s.description, answer: s.result })),
+      verified: verified.verified,
+    };
+  }
+
+  /** Layer 0: Knowledge retrieval / 知识覆盖 */
+  async _retrieveKnowledge(question) {
+    const results = await vectorMemory.autoSearch(question, { limit: 3, minScore: 0.01 });
+    return results.map(r => r.text).join('\n');
+  }
+
+  /** Layer 1: Problem decomposition / 问题分解 */
+  async _decompose(question, knowledge, emitLLMRequest) {
+    const prompt = `${DECOMPOSER_PROMPT}\n\n用户问题：${question}\n\n相关知识：${knowledge || '无'}`;
+    const response = await this._callLLM(prompt, emitLLMRequest);
+    return this._parseDecomposition(response);
+  }
+
+  _parseDecomposition(text) {
+    if (!text) return null;
+    const subProblems = [];
+    const lines = text.split('\n');
+    let currentSub = null;
+    let mergeStrategy = '';
+
+    for (const line of lines) {
+      if (line.includes('=== 合并方式 ===')) {
+        mergeStrategy = lines.slice(lines.indexOf(line) + 1).join(' ').trim();
+      }
+      if (line.match(/子问题\d/)) {
+        currentSub = { description: line.replace(/^.*?子问题\d[：:]?\s*/, '').trim() };
+        subProblems.push(currentSub);
       }
     }
 
-    return parsed;
+    return subProblems.length > 0 ? { subProblems, mergeStrategy } : null;
   }
 
-  /**
-   * Build the experience context section for the LLM prompt.
-   * 构建"相关经验"段落供 LLM 学习
-   */
-  _buildExperienceContext(experiences, currentName) {
-    if (!experiences || experiences.length === 0) {
-      return '（没有找到相关经验，请凭你的知识直接回答）';
-    }
+  /** Layer 2-3: Solve + combine / 求解 + 合并 */
+  async _solveSubProblem(sub, knowledge, emitLLMRequest) {
+    if (!sub?.description) return '';
 
-    const lines = experiences.map((exp, i) => {
-      const owner = exp.residentId === currentName ? '自己' : `居民 ${exp.residentId?.toString().slice(0, 8) || '?'}`;
-      return `[经验 ${i + 1}] (来自${owner}, 相关度 ${(exp.score * 100).toFixed(0)}%)\n${exp.text.substring(0, 300)}`;
+    const useTool = sub.description.includes('计算') || sub.description.includes('数字') || sub.description.includes('多少');
+    const toolHint = useTool ? '\n\n计算器可用：将算术表达式用 CALC: 前缀标注，例如 CALC: 17+8+1' : '';
+
+    const prompt = `${SOLVER_PROMPT}\n\n子问题：${sub.description}\n参考知识：${knowledge?.substring(0, 300) || '无'}${toolHint}`;
+    let response = await this._callLLM(prompt, emitLLMRequest);
+
+    // Auto-execute calculator calls in the response
+    response = this._executeCalcInText(response);
+
+    return response;
+  }
+
+  /** Layer 4: Self-verification / 自我验证 */
+  async _verify(answer, question, emitLLMRequest) {
+    const prompt = `${VERIFIER_PROMPT}\n\n问题：${question}\n\n待验证的答案：\n${answer}`;
+    const response = await this._callLLM(prompt, emitLLMRequest);
+
+    const verified = !response.includes('原答案 错误');
+    let correctedAnswer = null;
+    const correctMatch = response.match(/正确答案[：:](.+?)(?:\n|$)/);
+    if (correctMatch) correctedAnswer = correctMatch[1].trim();
+
+    return { verified, correctedAnswer, detail: response };
+  }
+
+  /** Execute CALC: prefix expressions in LLM output / 执行计算器调用 */
+  _executeCalcInText(text) {
+    return text.replace(/CALC:\s*([^\n]+)/g, (match, expr) => {
+      const result = TOOLS.calculate(expr.trim());
+      if (result.error) return `[计算器] ${expr} = 计算错误: ${result.error}`;
+      return `[计算器] ${expr} = ${result.result}`;
     });
-
-    return `以下是其他居民解决类似问题时留下的经验。请学习其中的模式，但不要直接复制：\n\n${lines.join('\n\n')}`;
   }
 
-  /**
-   * Call LLM using the same mechanism as resident-manager.
-   * 通过 resident-manager 的相同机制调用 LLM
-   */
-  async _callLLM(messages, emitLLMRequest, model, temperature) {
-    if (typeof emitLLMRequest === 'function') {
-      return new Promise((resolve) => {
-        const timer = setTimeout(() => {
-          resolve({ content: null, model: 'timeout' });
-        }, 20000);
+  /** Call LLM via emitLLMRequest / 统一 LLM 调用入口 */
+  _callLLM(prompt, emitLLMRequest) {
+    if (typeof emitLLMRequest !== 'function') return null;
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => resolve(null), 30000);
+      emitLLMRequest(
+        { messages: [{ role: 'user', content: prompt }], temperature: 0.3 },
+        (result) => { clearTimeout(timer); resolve(result?.content || null); },
+        () => { clearTimeout(timer); resolve(null); }
+      );
+    });
+  }
 
-        emitLLMRequest({ messages, model, temperature }, (result) => {
-          clearTimeout(timer);
-          resolve(result);
-        }, () => {
-          clearTimeout(timer);
-          resolve({ content: null, model: 'error' });
-        });
+  /** Store result to knowledge base / 回存知识库 */
+  _storeResult(question, answer, subResults) {
+    try {
+      const detail = subResults.map(s => `[${s.description}] ${s.result}`).join('\n');
+      vectorMemory.store({
+        residentId: 'generalization-v2',
+        text: `Q: ${question.substring(0, 120)}\n推导：${detail.substring(0, 300)}\n答案：${answer.substring(0, 200)}`,
+        metadata: { type: 'solved-problem', version: 2 },
+        source: 'generalization-v2',
       });
-    }
-
-    // Fallback: return null content (caller handles gracefully)
-    return { content: null, model: 'no-provider' };
+    } catch (e) { /* silent */ }
   }
 
-  /**
-   * Parse the LLM's response into structured result.
-   * 解析 LLM 响应为结构化结果
-   */
-  _parseGeneralizationResult(llmResult, residentName, userMessage) {
-    const content = llmResult?.content;
-    if (!content) {
-      return {
-        content: `${residentName} 思考了一会，说："这个问题我需要更多信息才能给出好的方案。"`,
-        model: 'generalization-empty',
-        learnedPattern: '',
-      };
-    }
-
-    // Extract the "学到的经验" section for knowledge storage
-    const learnedMatch = content.match(/学到的经验[：:](.+?)(?:\n|$)/);
-    const learnedPattern = learnedMatch ? learnedMatch[1].trim() : '';
-
-    // Extract the chosen solution
-    const choiceMatch = content.match(/最佳思路[：:]\s*(\d+)/);
-    const chosenIndex = choiceMatch ? parseInt(choiceMatch[1]) : null;
-
-    // Build a clean output
-    let finalContent;
-    if (chosenIndex) {
-      // Include full analysis but highlight the chosen one
-      finalContent = `${residentName} 基于过去的经验进行了泛化分析：\n\n${content}`;
-    } else {
-      finalContent = `${residentName} 说：\n\n${content}`;
-    }
-
+  /** Fallback response / 兜底回答 */
+  _fallback(question, residentName) {
     return {
-      content: finalContent,
-      model: 'generalization',
-      learnedPattern,
-      rawContent: content,
+      content: `${residentName || '居民'}思考后说："我需要更多信息来回答这个问题。"`,
+      model: 'generalization-v2-fallback',
     };
   }
 }
 
-const generalizationEngine = new GeneralizationEngine();
-export { GeneralizationEngine, generalizationEngine };
+const generalizationEngineV2 = new GeneralizationEngineV2();
+export { GeneralizationEngineV2, generalizationEngineV2 };

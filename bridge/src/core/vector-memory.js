@@ -1,12 +1,11 @@
 /**
  * Vector Memory — Semantic search across resident knowledge
- * 向量记忆：跨居民的语义检索，不用关键词硬匹配
+ * 向量记忆：跨居民的语义检索
  *
- * Uses TF-IDF + cosine similarity for lightweight semantic search.
- * Future: swap in real embeddings (OpenAI/text-embedding-3-small) via provider-kit.
+ * Primary: TF-IDF + cosine similarity (fast, local, always works)
+ * Enhanced: Real embeddings via SiliconFlow API (semantic, needs API key)
  *
- * TF-IDF + 余弦相似度实现轻量语义检索。
- * 未来可替换为真实 embedding 模型（通过 provider-kit 调用）。
+ * TF-IDF 快速检索的主路径，embedding 增强检索的副路径。
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -14,77 +13,66 @@ import * as os from 'os';
 
 const DATA_DIR = path.join(os.homedir(), '.openchat', 'vector-memory');
 const DATA_FILE = path.join(DATA_DIR, 'vectors.json');
+const EMBED_API = process.env.SILICONFLOW_API_BASE || 'https://api.siliconflow.cn/v1';
+const EMBED_MODEL = 'BAAI/bge-m3'; // Good Chinese+English embedding model
+const EMBED_DIM = 1024; // bge-m3 output dimension
+
 const STOP_WORDS = new Set([
-  'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
-  'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
-  'should', 'may', 'might', 'shall', 'can', 'need', 'dare', 'ought',
-  'used', 'to', 'of', 'in', 'for', 'on', 'with', 'at', 'by', 'from',
-  'as', 'into', 'through', 'during', 'before', 'after', 'above', 'below',
-  'between', 'out', 'off', 'over', 'under', 'again', 'further', 'then',
-  'once', 'here', 'there', 'when', 'where', 'why', 'how', 'all', 'each',
-  'every', 'both', 'few', 'more', 'most', 'other', 'some', 'such', 'no',
-  'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very',
-  'and', 'but', 'or', 'if', 'while', 'that', 'this', 'these', 'those',
-  'i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves',
-  'you', 'your', 'yours', 'yourself', 'yourselves',
-  'he', 'him', 'his', 'himself', 'she', 'her', 'hers', 'herself',
-  'it', 'its', 'itself', 'they', 'them', 'their', 'theirs', 'themselves',
-  'what', 'which', 'who', 'whom', 'this', 'that', 'these', 'those',
-  'am', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
-  '的', '了', '在', '是', '我', '有', '和', '就', '不', '人', '都', '一',
-  '一个', '上', '也', '很', '到', '说', '要', '去', '你', '会', '着',
-  '没有', '看', '好', '自己', '这', '他', '她', '它', '们',
+  'a','an','the','is','are','was','were','be','been','being',
+  'have','has','had','do','does','did','will','would','could',
+  'should','may','might','shall','can','need','dare','ought',
+  'used','to','of','in','for','on','with','at','by','from',
+  'as','into','through','during','before','after','above','below',
+  'between','out','off','over','under','again','further','then',
+  'once','here','there','when','where','why','how','all','each',
+  'every','both','few','more','most','other','some','such','no',
+  'nor','not','only','own','same','so','than','too','very',
+  'and','but','or','if','while','that','this','these','those',
+  'i','me','my','myself','we','our','ours','ourselves',
+  'you','your','yours','yourself','yourselves',
+  'he','him','his','himself','she','her','hers','herself',
+  'it','its','itself','they','them','their','theirs','themselves',
+  'what','which','who','whom','this','that','these','those',
+  'am','is','are','was','were','be','been','being',
+  '的','了','在','是','我','有','和','就','不','人','都','一',
+  '一个','上','也','很','到','说','要','去','你','会','着',
+  '没有','看','好','自己','这','他','她','它','们',
 ]);
+
+// ---- TF-IDF utilities (fast path / fallback) ----
 
 function tokenize(text) {
   const cleaned = text.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff\s]/g, ' ');
   const tokens = [];
-
-  // Split into Latin/ASCII words and Chinese character n-grams
   let buf = '';
   for (const ch of cleaned) {
     if (/[\u4e00-\u9fff]/.test(ch)) {
-      // Chinese character: flush latin buffer, add char
       if (buf) { tokens.push(buf); buf = ''; }
       tokens.push(ch);
     } else if (/[a-z0-9]/.test(ch)) {
       buf += ch;
     } else {
-      // whitespace: flush latin buffer
       if (buf) { tokens.push(buf); buf = ''; }
     }
   }
   if (buf) tokens.push(buf);
-
-  // Build character bigrams for Chinese text
   const result = [];
   const chChars = tokens.filter(t => /[\u4e00-\u9fff]/.test(t) && t.length === 1);
   for (let i = 0; i < chChars.length; i++) {
-    result.push(chChars[i]); // unigram
-    if (i + 1 < chChars.length) {
-      result.push(chChars[i] + chChars[i + 1]); // bigram
-    }
+    result.push(chChars[i]);
+    if (i + 1 < chChars.length) result.push(chChars[i] + chChars[i + 1]);
   }
-
-  // Latin words
   for (const t of tokens) {
-    if (/^[a-z0-9]+$/.test(t) && t.length > 1 && !STOP_WORDS.has(t)) {
-      result.push(t);
-    }
+    if (/^[a-z0-9]+$/.test(t) && t.length > 1 && !STOP_WORDS.has(t)) result.push(t);
   }
-
   return result;
 }
 
 function computeTF(tokens) {
   const tf = {};
-  for (const t of tokens) {
-    tf[t] = (tf[t] || 0) + 1;
-  }
+  for (const t of tokens) tf[t] = (tf[t] || 0) + 1;
   const len = tokens.length || 1;
-  for (const k in tf) {
-    tf[k] /= len;
-  }
+  for (const k in tf) tf[k] /= len;
   return tf;
 }
 
@@ -102,6 +90,58 @@ function cosineSimilarity(a, b) {
   return denom === 0 ? 0 : dot / denom;
 }
 
+/** Cosine similarity for float arrays (embedding vectors) */
+function vectorCosineSim(a, b) {
+  let dot = 0, n1 = 0, n2 = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    n1 += a[i] * a[i];
+    n2 += b[i] * b[i];
+  }
+  const d = Math.sqrt(n1) * Math.sqrt(n2);
+  return d === 0 ? 0 : dot / d;
+}
+
+// ---- Embedding API ----
+
+let _embedApiKey = process.env.SILICONFLOW_API_KEY || '';
+let _embedCache = new Map(); // text hash → vector
+let _embedInflight = new Map(); // dedup concurrent requests
+
+async function _callEmbedAPI(texts) {
+  if (!_embedApiKey) return null;
+  const res = await fetch(`${EMBED_API}/embeddings`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${_embedApiKey}` },
+    body: JSON.stringify({ model: EMBED_MODEL, input: texts, encoding_format: 'float' }),
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.data?.map(d => d.embedding) || null;
+}
+
+async function getEmbedding(text) {
+  if (!_embedApiKey) return null;
+  const key = text.substring(0, 200);
+  if (_embedCache.has(key)) return _embedCache.get(key);
+
+  // Dedup concurrent requests for the same text
+  if (_embedInflight.has(key)) return _embedInflight.get(key);
+
+  const promise = _callEmbedAPI([text]).then(vecs => {
+    const vec = vecs?.[0] || null;
+    if (vec) _embedCache.set(key, vec);
+    _embedInflight.delete(key);
+    return vec;
+  }).catch(() => {
+    _embedInflight.delete(key);
+    return null;
+  });
+
+  _embedInflight.set(key, promise);
+  return promise;
+}
+
 // ==============================
 
 class VectorMemory {
@@ -115,9 +155,7 @@ class VectorMemory {
   // ---- persistence ----
 
   _ensureDir() {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   }
 
   _load() {
@@ -129,84 +167,108 @@ class VectorMemory {
         this._idf = data.idf || {};
       }
     } catch (e) {
-      console.warn('[VectorMemory] load failed, starting fresh:', e.message);
+      console.warn('[VectorMemory] load failed:', e.message);
     }
   }
 
   _save() {
     try {
       this._ensureDir();
-      fs.writeFileSync(DATA_FILE, JSON.stringify({ entries: this._entries, idf: this._idf }, null, 2));
+      // Don't persist raw embedding arrays (too large, recompute on restart)
+      const stripped = this._entries.map(e => ({ ...e, _embed: undefined }));
+      fs.writeFileSync(DATA_FILE, JSON.stringify({ entries: stripped, idf: this._idf }, null, 2));
       this._dirty = false;
     } catch (e) {
       console.error('[VectorMemory] save failed:', e.message);
     }
   }
 
-  save() {
-    if (this._dirty) this._save();
-  }
+  save() { if (this._dirty) this._save(); }
 
   // ---- core operations ----
 
   /**
-   * Store a memory entry with vectorized text.
-   * 存储一条记忆并生成向量
+   * Store a memory entry.
+   * 存储一条记忆
    */
   store({ residentId, text, metadata = {}, source = 'conversation' }) {
     const tokens = tokenize(text);
     const tf = computeTF(tokens);
     const id = `${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
 
-    // Update IDF with new tokens
-    for (const t of tokens) {
-      this._idf[t] = (this._idf[t] || 0) + 1;
-    }
+    for (const t of tokens) this._idf[t] = (this._idf[t] || 0) + 1;
 
     const entry = {
-      id,
-      residentId,
-      text,
+      id, residentId, text,
       tokens: Object.keys(tf),
       vector: tf,
-      metadata,
-      source,
+      metadata, source,
       timestamp: Date.now(),
+      _embed: null, // placeholder for real embedding
     };
 
     this._entries.push(entry);
     this._dirty = true;
+
+    // Async: compute embedding in background
+    getEmbedding(text).then(vec => {
+      if (vec) { entry._embed = vec; }
+    }).catch(() => {});
+
     return id;
   }
 
   /**
-   * Semantic search across ALL residents' memories.
-   * 跨所有居民的语义搜索
+   * Semantic search via TF-IDF (fast, always works).
+   * TF-IDF 快速搜索（主路径）
    */
   search(query, { limit = 5, minScore = 0.05 } = {}) {
     const queryTokens = tokenize(query);
     if (queryTokens.length === 0) return [];
     const queryVector = computeTF(queryTokens);
-
-    // Apply IDF weighting to all vectors
     const totalDocs = this._entries.length || 1;
-    const weightedQuery = {};
-    for (const k in queryVector) {
-      const idf = Math.log(1 + totalDocs / (1 + (this._idf[k] || 0)));
-      weightedQuery[k] = queryVector[k] * idf;
-    }
 
     const scored = [];
     for (const entry of this._entries) {
+      const weightedQuery = {};
+      for (const k in queryVector) {
+        const idf = Math.log(1 + totalDocs / (1 + (this._idf[k] || 0)));
+        weightedQuery[k] = queryVector[k] * idf;
+      }
       const weightedEntry = {};
       for (const k in entry.vector) {
         const idf = Math.log(1 + totalDocs / (1 + (this._idf[k] || 0)));
         weightedEntry[k] = entry.vector[k] * idf;
       }
-
       const score = cosineSimilarity(weightedQuery, weightedEntry);
-      if (score >= minScore) {
-        scored.push({ ...entry, score });
+      if (score >= minScore) scored.push({ ...entry, score, _embed: undefined });
+    }
+
+    scored.sort((a, b) => b.score - a.score);
+    return scored.slice(0, limit);
+  }
+
+  /**
+   * Semantic search via real embeddings (accurate, needs API key).
+   * Returns null if embedding fails → caller should fall back to search().
+   * Embedding 语义搜索（增强路径，需 API key）
+   */
+  async embedSearch(query, { limit = 5, minScore = 0.3 } = {}) {
+    const qVec = await getEmbedding(query);
+    if (!qVec) return null; // embedding unavailable
+
+    const scored = [];
+    for (const entry of this._entries) {
+      if (!entry._embed) continue; // not yet embedded
+      const score = vectorCosineSim(qVec, entry._embed);
+      if (score >= minScore) scored.push({ ...entry, score, _embed: undefined });
+    }
+
+    // If too few embedding results, augment with TF-IDF
+    if (scored.length < 3) {
+      const tfidf = this.search(query, { limit: limit - scored.length, minScore: 0.01 });
+      for (const t of tfidf) {
+        if (!scored.find(s => s.id === t.id)) scored.push(t);
       }
     }
 
@@ -215,39 +277,63 @@ class VectorMemory {
   }
 
   /**
-   * Search within a specific resident's memories.
-   * 在指定居民的记忆中搜索
+   * Auto search: try embedding first, fall back to TF-IDF.
+   * 自动选择：优先 embedding，不可用时降级 TF-IDF
    */
+  async autoSearch(query, opts = {}) {
+    const embed = await this.embedSearch(query, opts);
+    if (embed) return embed;
+    return this.search(query, opts);
+  }
+
+  /**
+   * Batch compute missing embeddings for all entries.
+   * 批量补齐缺失的 embedding 向量
+   */
+  async reembedAll() {
+    const todo = this._entries.filter(e => !e._embed);
+    if (todo.length === 0) return;
+    console.log(`[VectorMemory] Computing ${todo.length} embeddings...`);
+
+    // Batch in groups of 10
+    for (let i = 0; i < todo.length; i += 10) {
+      const batch = todo.slice(i, i + 10);
+      const texts = batch.map(e => e.text);
+      const vecs = await _callEmbedAPI(texts);
+      if (vecs) {
+        for (let j = 0; j < batch.length; j++) {
+          if (vecs[j]) batch[j]._embed = vecs[j];
+        }
+      }
+      await new Promise(r => setTimeout(r, 200)); // rate limit
+    }
+    console.log(`[VectorMemory] Embedding done for ${todo.length} entries`);
+  }
+
   searchByResident(residentId, query, opts = {}) {
     const results = this.search(query, opts);
     return results.filter(r => r.residentId === residentId);
   }
 
-  /**
-   * Get all entries for a resident.
-   * 获取某个居民的所有记忆
-   */
   getResidentEntries(residentId) {
     return this._entries.filter(e => e.residentId === residentId);
   }
 
-  /**
-   * Get memory stats.
-   * 统计信息
-   */
   getStats() {
     const residents = new Set(this._entries.map(e => e.residentId));
+    const embedded = this._entries.filter(e => e._embed).length;
     return {
       totalEntries: this._entries.length,
       totalResidents: residents.size,
       uniqueTokens: Object.keys(this._idf).length,
+      embedded,
     };
   }
 }
 
 const vectorMemory = new VectorMemory();
 
-// Auto-save every 30 seconds if dirty
+// Auto-save every 30s
 setInterval(() => vectorMemory.save(), 30_000).unref();
 
 export { VectorMemory, vectorMemory };
