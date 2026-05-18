@@ -40,6 +40,7 @@ class APIServer {
     this.deployEnabled = options.deployEnabled !== false;
     this.app = express();
     this.server = options.httpServer || null;
+    this.legacyRouter = options.legacyRouter || null;
 
     this.setupMiddlewares();
     this.setupRoutes();
@@ -188,6 +189,11 @@ class APIServer {
           if (filePath.endsWith('.tar.gz')) res.set('Content-Type', 'application/gzip');
         }
       }));
+    }
+
+    // Legacy web routes (/, /live, /dashboard, /metrics)
+    if (this.legacyRouter) {
+      this.app.use(this.legacyRouter);
     }
 
     // 404 处理

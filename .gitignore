@@ -69,3 +69,9 @@ bridge/src/core/my_app.js
 bridge/src/core/state_log.txt
 bridge/src/core/time_capsule.json
 bridge/src/core/age_increment*.js
+
+# Research/debug auto-generated files
+*.cjs
+research-*
+analysis-*
+*_detect_*.log

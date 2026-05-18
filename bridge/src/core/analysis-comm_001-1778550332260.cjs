@@ -1,6 +1,0 @@
-// Analysis by 管家
-// Problem: 实例间通讯方式研究：除了HTTP ping，还有哪些方式可以检测姐妹状态？
-// Time: 2026-05-12T01:45:32.260Z
-
-console.log("=== 管家的分析 ===");
-console.log("javascript\nconst net = require('net');\nconst dns = require('dns');\nconst { exec } = require('child_process');\nconst redis = require('redis');\nconst http = require('http');\n\n// 模拟姐妹服务实例\nclass SisterInstance {\n  constructor(id, port) {\n    this.id = id;\n    this.port = port;\n    this.status = 'running");

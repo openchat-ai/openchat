@@ -17,11 +17,12 @@
     "test": "node --test src/core/__tests__/*.test.mjs src/core/__tests__/*.test.js",
     "test:watch": "node --test --watch src/core/__tests__/*.test.mjs src/core/__tests__/*.test.js",
     "test:integration": "node --test test/integration/*.test.js",
+    "test:e2e": "node --test test/e2e/*.test.js",
     "test:llm-judge": "node test-utils/llm-judge.js",
     "test:property": "node test-utils/property-test.js",
     "test:replay": "node test-utils/replay-test.js",
     "test:chaos": "node test-utils/chaos-test.js",
-    "test:all": "npm test && npm run test:llm-judge && npm run test:chaos",
+    "test:all": "npm test && npm run test:e2e && npm run test:llm-judge && npm run test:chaos",
     "prepare": "husky"
   },
   "keywords": [

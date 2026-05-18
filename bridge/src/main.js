@@ -3,6 +3,7 @@ import * as readline from 'readline';
 import crypto from 'crypto';
 import path from 'path';
 import http from 'http';
+import { Router } from 'express';
 import { sessionManager } from './session/session-manager.js';
 import { parseCliArgs } from './config/cli-args.js';
 import { setupCLI } from './cli/bridge-cli.js';
@@ -66,6 +67,7 @@ class Bridge {
     this.clients = new Set();
     this.rl = null;
     this.startTime = Date.now();
+    this.legacyRouter = Router();
     this.stabilitySystem = getEnhancedStabilitySystem({
       enableErrorHandling: true,
       enableMemoryManagement: true,
@@ -217,6 +219,7 @@ class Bridge {
         port: CONFIG.port,
         swarm: this.p2p,
         deployEnabled: deployServerEnabled,
+        legacyRouter: this.legacyRouter,
       });
       // �� Express app ��Ϊ http.Server �� handler
       this.httpServer = http.createServer(this.apiServer.app);
@@ -587,10 +590,9 @@ class Bridge {
   }
 
   _mountLegacyRoutes() {
-    const app = this.apiServer?.app;
-    if (!app) return;
-    // Dashboard ��ҳ
-app.get('/', async (req, res) => {
+    const router = this.legacyRouter;
+    // Dashboard 首页
+router.get('/', async (req, res) => {
       try {
         const url = `http://localhost:${CONFIG.port}/api/v1/characters`;
         const chars = await (await fetch(url)).json();
@@ -603,11 +605,11 @@ app.get('/', async (req, res) => {
 </body></html>`);
       } catch { res.redirect('/dashboard'); }
     });
-    app.get('/dashboard', (req, res) => {
+    router.get('/dashboard', (req, res) => {
       res.type('html').end(dashboardHTML());
     });
     // AI 对话直播 — 两个居民自动聊天的 Web UI
-    app.get('/live', (req, res) => {
+    router.get('/live', (req, res) => {
       res.type('html').end(`<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AI 居民对话 - OpenChat</title>
@@ -665,18 +667,14 @@ ws.onerror = () => { status.textContent = '连接失败'; status.className = 'st
 </script></body></html>`);
     });
     // �������
-app.get('/health', (req, res) => {
-      res.json({ status: 'ok', uptime: Math.floor((Date.now() - this.startTime) / 1000), wsClients: this.clients?.size || 0, residents: residentManager.list(null).length });
-    });
-    // P2P �ԵȽڵ�
-    app.get('/peers', (req, res) => {
+    router.get('/peers', (req, res) => {
       const peers = this.p2p ? [...this.p2p.connectedPeers.keys()].map(id => ({
         peerId: id.slice(0, 8), info: this.p2p.peerInfo.get(id) || {}
       })) : [];
       res.json({ peers });
     });
     // Dashboard ����
-app.get('/api/dashboard', async (req, res) => {
+    router.get('/api/dashboard', async (req, res) => {
       res.json({
         uptime: Math.floor((Date.now() - this.startTime) / 1000),
         sessions: sessionManager.listSessions().length,
@@ -686,7 +684,7 @@ app.get('/api/dashboard', async (req, res) => {
       });
     });
     // Fairy ����
-    app.post('/api/heartbeat', (req, res) => {
+    router.post('/api/heartbeat', (req, res) => {
       let body = '';
       req.on('data', c => body += c);
       req.on('end', () => {
@@ -694,7 +692,7 @@ app.get('/api/dashboard', async (req, res) => {
         res.json({ ok: true });
       });
     });
-    app.get('/metrics', (req, res) => {
+    router.get('/metrics', (req, res) => {
       res.json({
         uptime: Math.floor((Date.now() - this.startTime) / 1000),
         wsClients: this.clients?.size || 0,

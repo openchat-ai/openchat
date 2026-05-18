@@ -509,6 +509,7 @@ export function createHandlers(bridge, CONFIG, crypto) {
       const session = sessionId || crypto.randomUUID();
       ws.send(JSON.stringify({ type: 'chat_ack', data: { sessionId: session }, sessionId }));
 
+      try {
         let fullContent = '';
         await agentEngine.processStream(session, 'ws-user', message, (event) => {
           switch (event.type) {
