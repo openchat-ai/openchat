@@ -1,13 +1,17 @@
-FROM node:24-alpine AS builder
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-
 FROM node:24-alpine
-RUN apk add --no-cache tini
+RUN apk add --no-cache tini wget
 WORKDIR /app
-COPY --from=builder /app/node_modules ./node_modules
-COPY . .
+
+# Copy all monorepo files (needed for file: dependencies)
+COPY bridge/package*.json ./bridge/
+COPY modules/ ./modules/
+COPY bridge/src/ ./bridge/src/
+COPY bridge/test/ ./bridge/test/
+COPY .github/ ./.github/
+
+# Install bridge dependencies (resolves file: links to modules/)
+RUN cd bridge && npm ci --only=production 2>/dev/null || npm install --production
+
 EXPOSE 3800
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["node", "src/main.js", "--headless", "--port=3800"]
+CMD ["node", "bridge/src/main.js", "--headless", "--port=3800"]

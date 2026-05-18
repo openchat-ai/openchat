@@ -1,13 +1,16 @@
 version: '3.8'
 services:
   bridge:
-    build: ./bridge
+    build:
+      context: .
+      dockerfile: bridge/Dockerfile
     ports:
       - "3800:3800"
     environment:
       - NODE_ENV=production
       - PORT=3800
-      - DISABLE_API_AUTH=false
+      - DISABLE_API_AUTH=true
+      - BRIDGE_NAME=素女
     env_file:
       - ./bridge/.env
     healthcheck:
