@@ -700,7 +700,17 @@ app.get('/api/dashboard', async (req, res) => {
       req.on('data', c => body += c);
       req.on('end', () => {
         try { const p = JSON.parse(body); if (this.learningCore?.guardian && p.port) this.learningCore.guardian.receiveHeartbeat(p.port); } catch {}
-        res.json({ ok: true });
+          res.json({ ok: true });
+        });
+      });
+    });
+    app.get('/metrics', (req, res) => {
+      res.json({
+        uptime: Math.floor((Date.now() - this.startTime) / 1000),
+        wsClients: this.clients?.size || 0,
+        sessions: sessionManager.listSessions().length,
+        residents: residentManager.list(null).length,
+        providers: sessionManager?.providers?.size || 0,
       });
     });
   }

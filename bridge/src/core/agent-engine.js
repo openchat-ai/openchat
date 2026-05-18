@@ -65,6 +65,8 @@ export class AgentEngine {
     this.maxIterations = 10;
     this._lastContent = '';
     this._stuckCount = 0;
+    this._errorCount = 0;
+    this._maxErrors = 3;
     this.qualityThreshold = 4; // 低于这个分数会自动优化
     this.useRAG = options.useRAG !== false; // 默认启用 RAG
     this.useFunctionCalling = options.useFunctionCalling !== false; // 默认启用 FC
@@ -200,6 +202,13 @@ export class AgentEngine {
         }
         clearTimeout(chatOptions._timeoutId);
       } catch (e) {
+        this._errorCount++;
+        if (this._errorCount >= this._maxErrors) {
+          console.log('[Agent] 熔断: 连续 ' + this._maxErrors + ' 次错误, 停止循环');
+          finalizedResponse = '系统暂时无法响应，请稍后再试';
+          isTaskComplete = true;
+          break;
+        }
         if (e.name === 'AbortError' || e.name === 'TimeoutError') {
           content = '[请求超时，请稍后重试]';
           finalizedResponse = content;
@@ -211,6 +220,7 @@ export class AgentEngine {
           const response = await provider.chat(session.model, messages, { ...chatOptions, signal: AbortSignal.timeout(15000) });
           content = response.content;
           toolCalls = response.toolCalls;
+          this._errorCount = 0;
         } catch (e2) {
           if (e2.name === 'AbortError' || e2.name === 'TimeoutError') {
             content = '[请求超时，请稍后重试]';
@@ -220,6 +230,8 @@ export class AgentEngine {
           break;
         }
       }
+
+      this._errorCount = 0; // 成功完成一次迭代，重置错误计数
 
       // Plugin hook: afterThink
       await pluginManager.execHook?.('afterThink', { sessionId, content, iteration, toolCalls });
