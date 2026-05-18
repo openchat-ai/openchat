@@ -6,7 +6,7 @@ import http from 'http';
 import { sessionManager } from './session/session-manager.js';
 import { parseCliArgs } from './config/cli-args.js';
 import { setupCLI } from './cli/bridge-cli.js';
-import { startLearningCore, startFairyMonitor, startHeartbeat } from './core/learning-loop.js';
+import { startFairyMonitor, startHeartbeat } from './core/learning-loop.js';
 import { dashboardHTML } from './infra/dashboard-html.js';
 import { createHandlers } from './infra/route-handlers.js';
 
@@ -30,7 +30,6 @@ import { getEnhancedStabilitySystem } from './core/enhanced-stability-system.js'
 import { CollaborationEngine } from './core/collaboration-engine.js';
 import { residentManager } from './core/resident-manager.js';
 import { residentScheduler } from './core/resident-scheduler.js';
-import { LearningCore } from './core/learning-core.js';
 import P2PSwarm, { getPublicIPv4 } from './p2p/swarm.js';
 import { MessageType as P2PMessageType } from './p2p/messages.js';
 import { PeerRegistry } from './p2p/peer-registry.js';
@@ -377,13 +376,8 @@ class Bridge {
           console.log(`[P2R-K] ������������ʧ��: ${e.message}`);
         }
 
-        // ����ѧϰ����
-        this.learningCore = new LearningCore(null, this.p2p, port, residentScheduler);
-        if (isMain) {
-          startLearningCore(this);
-          console.log(`[ѧϰ����]  ��ģʽ IQ=${this.learningCore.iq} Age=${this.learningCore.age} Solved=${this.learningCore.solvedCount}`);
-        } else {
-          console.log(`[ѧϰ����]  ��Ůģʽ`);
+        // Fairy monitor
+        if (!isMain) {
           startFairyMonitor(this, CONFIG.mainPort);
           startHeartbeat(this, port, CONFIG.mainPort);
         }
@@ -545,10 +539,7 @@ class Bridge {
         // �ֲ�ʽ Fairy Gossip
         this.p2p.on('fairy_gossip', (data) => {
           const p = data.payload || {};
-          if (this.learningCore?.reasoning) {
-            this.learningCore.reasoning.experienceCount = (this.learningCore.reasoning.experienceCount || 0) + 1;
-            console.log(`[Gossip] �յ� ${p.port} ���⾭��: ${p.problemId}`);
-          }
+          console.log('[Gossip] received from ' + (p.port || '?'));
         });
       }
     } catch (e) {
@@ -699,9 +690,8 @@ app.get('/api/dashboard', async (req, res) => {
       let body = '';
       req.on('data', c => body += c);
       req.on('end', () => {
-        try { const p = JSON.parse(body); if (this.learningCore?.guardian && p.port) this.learningCore.guardian.receiveHeartbeat(p.port); } catch {}
-          res.json({ ok: true });
-        });
+        try { JSON.parse(body); } catch {}
+        res.json({ ok: true });
       });
     });
     app.get('/metrics', (req, res) => {
