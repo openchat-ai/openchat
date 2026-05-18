@@ -1,88 +1,61 @@
 /**
  * Generalization Engine v2 — Multi-step strategy evaluation
- * 泛化引擎 v2：多步策略评估
- *
- * Each reasoning step is a separate LLM call to prevent working memory overflow.
- * 每个推理步骤独立调用 LLM，防止工作记忆溢出导致算数错误。
+ * 泛化引擎 v2：多步策略评估，带中间状态传递
  */
 import { vectorMemory } from './vector-memory.js';
 
-const STRATEGY_LIST_PROMPT = `列出解决该问题的所有可行策略方向。每个策略用一句话描述。
-
-输出格式（每行一个）：
-策略A：<描述>
-策略B：<描述>`;
-
-const EVALUATE_PROMPT = `你正在评估一种解题策略。只关注这一个策略，不要想其他策略。
-
-问题：{{QUESTION}}
-
-策略：{{STRATEGY}}
-
-规则：
-1. 先决定先处理哪个形状（形状A），后处理哪个（形状B）
-2. 形状A：用鸽巢原理保证两种口味都有（最坏情况：先拿光西瓜，再拿光A口味，再拿1颗B口味）
-3. 形状B：只需要拿到1颗特定口味（因为形状A已经提供了配对的那种口味）—— 最坏情况：先拿光西瓜，再拿1颗目标口味
-4. 两部分数量相加。输出"该策略结果：<数字>"`;
-
-const COMPARE_PROMPT = `以下是针对同一问题的多个策略及其评估结果。比较数字，选出最小的。
-
-问题：{{QUESTION}}
-
-{{STRATEGIES}}
-
-要求：选择数字最小的策略，输出完整的推导过程和最终答案。`;
-
 class GeneralizationEngineV2 {
   async solve({ question, residentName, emitLLMRequest }) {
-    const knowledge = await this._retrieveKnowledge(question);
+    const knowledge = await this._retrieve(question);
 
-    // Step 1: List strategies / 枚举策略
-    const strategies = await this._listStrategies(question, knowledge, emitLLMRequest);
+    // Step 1: List strategies
+    const strategies = await this._list(question, knowledge, emitLLMRequest);
     if (!strategies || strategies.length === 0) return this._fallback(question, residentName);
 
-    // Step 2: Evaluate each individually / 逐一评估
-    const evaluated = [];
+    // Step 2-3: Evaluate each strategy, passing previous results forward
+    const results = [];
+    let context = '';
+
     for (const s of strategies) {
-      const result = await this._evaluateOne(s, question, emitLLMRequest);
-      evaluated.push({ strategy: s, result });
+      const result = await this._evaluate(s, question, context, emitLLMRequest);
+      const number = this._extractNumber(result);
+      results.push({ strategy: s, result, number });
+      context += `\n策略「${s}」的结果是 ${number !== null ? number + '颗' : '未知'}。`;
     }
 
-    // Step 3: Compare and output best / 对比输出
-    const best = await this._compareAndOutput(question, evaluated, emitLLMRequest);
-
-    this._storeResult(question, best || '无结果');
-    return { content: best || '无法确定答案', model: 'generalization-v2' };
+    // Step 4: Compare
+    const best = results.reduce((a, b) => (a.number ?? 999) < (b.number ?? 999) ? a : b);
+    return {
+      content: `经过比较各策略：\n${results.map(r => `- ${r.strategy}: ${r.number !== null ? r.number + '颗' : '评估失败'}`).join('\n')}\n\n最优策略：${best.strategy}\n结果：${best.number}颗\n\n推导：${best.result}`,
+      model: 'generalization-v2',
+    };
   }
 
-  async _retrieveKnowledge(question) {
-    const r = await vectorMemory.autoSearch(question, { limit: 3, minScore: 0.01 });
+  async _retrieve(q) {
+    const r = await vectorMemory.autoSearch(q, { limit: 3, minScore: 0.01 }) || vectorMemory.search(q, { limit: 3, minScore: 0.01 });
     return r.map(x => x.text).join('\n');
   }
 
-  async _listStrategies(question, knowledge, emit) {
-    const prompt = `${STRATEGY_LIST_PROMPT}\n\n问题：${question}\n\n相关知识：${knowledge || '无'}`;
-    const text = await this._call(prompt, emit);
-    if (!text) return null;
+  async _list(question, knowledge, emit) {
+    const p = `列出解决该问题的所有可行策略方向。每行一个"策略X：<描述>"。\n\n问题：${question}\n\n相关知识：\n${knowledge}`;
+    const text = await this._call(p, emit);
     const list = [];
-    for (const line of text.split('\n')) {
-      const m = line.match(/策略[ABCDEF]?[：:]\s*(.+)/);
+    for (const line of (text || '').split('\n')) {
+      const m = line.match(/策略\w[：:]\s*(.+)/);
       if (m) list.push(m[1].trim());
     }
-    return list.length > 0 ? list : [text.trim()];
+    return list.length > 0 ? list : null;
   }
 
-  async _evaluateOne(strategy, question, emit) {
-    const prompt = EVALUATE_PROMPT.replace('{{QUESTION}}', question).replace('{{STRATEGY}}', strategy);
-    return await this._call(prompt, emit) || '评估失败';
+  async _evaluate(strategy, question, previousContext, emit) {
+    const p = `评估一种策略。只算这一个。\n\n问题：${question}\n\n策略：${strategy}\n\n之前策略的评估结果：${previousContext || '无'}\n\n要求：\n1. 这个策略分几步？\n2. 每步多少颗？\n3. 最后输出"结果：<数字>"`;
+    return await this._call(p, emit) || '评估失败';
   }
 
-  async _compareAndOutput(question, evaluated, emit) {
-    const list = evaluated.map((e, i) =>
-      `策略${i + 1}: ${e.strategy}\n评估: ${e.result}`
-    ).join('\n\n');
-    const prompt = COMPARE_PROMPT.replace('{{QUESTION}}', question).replace('{{STRATEGIES}}', list);
-    return await this._call(prompt, emit) || null;
+  _extractNumber(text) {
+    if (!text) return null;
+    const m = text.match(/结果[：:]\s*(\d+)/);
+    return m ? parseInt(m[1]) : null;
   }
 
   _call(prompt, emit) {
@@ -96,18 +69,8 @@ class GeneralizationEngineV2 {
     });
   }
 
-  _storeResult(question, answer) {
-    try {
-      vectorMemory.store({
-        residentId: 'generalization-v2',
-        text: `Q: ${question.substring(0, 100)}\nA: ${answer.substring(0, 300)}`,
-        metadata: { type: 'solved' }, source: 'generalization-v2',
-      });
-    } catch {}
-  }
-
   _fallback(question, name) {
-    return { content: `${name || '居民'}需要更多信息来回答这个问题。`, model: 'fallback' };
+    return { content: `${name || '居民'}需要更多信息。`, model: 'fallback' };
   }
 }
 
