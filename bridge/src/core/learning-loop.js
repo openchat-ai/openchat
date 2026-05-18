@@ -1,18 +1,5 @@
-export function startFairyMonitor(bridge, mainPort) {
-  let cycle = 0;
-  const check = async () => {
-    cycle++;
-    try {
-      const guardian = bridge.learningCore?.guardian;
-      if (guardian) {
-        await guardian.checkAll();
-        if (cycle % 10 === 0) {
-          console.log('[FairyMonitor] checked ' + cycle + ' times');
-        }
-      }
-    } catch {}
-  };
-  setInterval(check, 60000);
+export function startFairyMonitor() {
+  // Fairy monitoring handled by BridgeSpawn + fairy-guardian
 }
 
 export function startHeartbeat(bridge, myPort, mainPort) {
