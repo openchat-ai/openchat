@@ -2,6 +2,13 @@ import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert';
 import { VectorMemory } from '../vector-memory.js';
 
+// Clear any persisted state between runs
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import * as os from 'node:os';
+const DATA_FILE = path.join(os.homedir(), '.openchat', 'vector-memory', 'vectors.json');
+try { fs.rmSync(path.dirname(DATA_FILE), { recursive: true, force: true }); } catch {}
+
 describe('VectorMemory', () => {
   const vm = new VectorMemory();
 

@@ -13,6 +13,7 @@ import { EventEmitter } from 'events';
 import { persistentConfig } from './persistent-config.js';
 import { MessageType, createLLMProxyRequest } from '../p2p/messages.js';
 import { vectorMemory } from './vector-memory.js';
+import { generalizationEngine } from './generalization.js';
 
 const DATA_FILE = path.join(os.homedir(), '.openchat', 'residents.json');
 const MAX_ACTIVITIES = 0;
@@ -279,12 +280,13 @@ export class ResidentManager extends EventEmitter {
 
     // Vector memory: search relevant context from ALL residents
     // 向量记忆：搜索所有居民的相关经验作为上下文注入
+    let relatedExperiences = [];
     if (resident && messages.length > 0 && messages[0].role === 'user') {
       const userMsg = messages[0].content || '';
-      const related = vectorMemory.search(userMsg, { limit: 3, minScore: 0.05 });
-      if (related.length > 0) {
-        const ctxLines = related.map(r =>
-          `[${r.residentId === residentId ? '自己' : '居民'}的经验] ${r.text}`
+      relatedExperiences = vectorMemory.search(userMsg, { limit: 3, minScore: 0.05 });
+      if (relatedExperiences.length > 0) {
+        const ctxLines = relatedExperiences.map(r =>
+          `[${r.residentId === String(resident.id) ? '自己' : '居民'}的经验] ${r.text}`
         );
         messages.unshift({
           role: 'system',
@@ -293,13 +295,23 @@ export class ResidentManager extends EventEmitter {
       }
     }
 
-    // State check: cannot think while sleeping
-    if (resident && resident.status === RESIDENT_STATES.SLEEPING) {
-      throw new Error(`${resident.name} 正在休息中 (sleeping)`);
-    }
+    // Generalization or multi-path: generate adapted solutions
+    if (options.useGeneralization !== false && options.useMultiPath !== false && resident && messages.length > 0 && messages[0].role === 'user') {
+      const userMsg = messages[0].content || '';
 
-    // Multi-path reasoning: generate multiple solution approaches
-    if (options.useMultiPath !== false && resident && messages.length > 0 && messages[0].role === 'user') {
+      // Use generalization when there are related experiences; fall back to multi-path
+      if (relatedExperiences.length > 0) {
+        const genResult = await this._generalizeThink(userMsg, resident, options, relatedExperiences);
+        if (genResult) {
+          this.transitionState(residentId, RESIDENT_STATES.RESPONDING);
+          setTimeout(() => {
+            if (residentId != null) this.transitionState(residentId, RESIDENT_STATES.ACTIVE);
+          }, 2000);
+          return genResult;
+        }
+      }
+
+      // Fall back to multi-path reasoning
       const multi = await this._multiPathThink(messages[0], resident, options);
       if (multi) {
         this.transitionState(residentId, RESIDENT_STATES.RESPONDING);
@@ -835,6 +847,61 @@ export class ResidentManager extends EventEmitter {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Generalization thinking: learn from past experiences to generate adapted solutions
+   * 泛化思考：从其他居民的经验中学习，生成适配当前问题的新解法
+   */
+  async _generalizeThink(userMessage, resident, options, relatedExperiences) {
+    const name = resident?.name || '居民';
+    try {
+      const emitFn = (llmOpts, resolve, reject) => {
+        const timer = setTimeout(() => {
+          resolve({ content: null, model: 'timeout' });
+        }, 20000);
+
+        this.emit('llm-request', {
+          messages: llmOpts.messages,
+          model: llmOpts.model || persistentConfig.getCurrentModel() || '',
+          temperature: llmOpts.temperature ?? 0.7,
+          maxTokens: options.maxTokens || 2048,
+          resolve: (result) => { clearTimeout(timer); resolve(result); },
+          reject: () => { clearTimeout(timer); reject(); },
+        });
+      };
+
+      const result = await generalizationEngine.generalize({
+        userMessage,
+        residentName: name,
+        residentId: resident.id,
+        relatedExperiences,
+        emitLLMRequest: (llmOpts, resolve, reject) => {
+          emitFn(llmOpts, resolve, reject);
+        },
+        model: options.model || persistentConfig.getCurrentModel() || '',
+        temperature: options.temperature ?? 0.7,
+      });
+
+      if (result && result.content) {
+        // Store the Q&A to vector memory for future residents
+        try {
+          const userMsg = userMessage;
+          vectorMemory.store({
+            residentId: String(resident.id),
+            text: `Q: ${userMsg}\nA: ${result.content}`,
+            metadata: { model: result.model },
+            source: 'generalization',
+          });
+          vectorMemory.save();
+        } catch (e) { /* silent */ }
+
+        return { content: result.content, model: result.model || 'generalization', tokens: { prompt: 0, completion: 0, total: 0 } };
+      }
+    } catch (e) {
+      console.warn('[Resident] generalization failed, falling back:', e.message);
+    }
+    return null;
   }
 
   /** Parse multi-path LLM response into final answer
