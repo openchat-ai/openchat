@@ -57,6 +57,9 @@ const MessageType = {
   // P2R-D: Fairy 分布式大脑
   FAIRY_GOSSIP:         'fairy_gossip',          // Fairy 广播最近求解经验（策略+答案+耗时）
   FAIRY_CONSENSUS:      'fairy_consensus',       // 多个 Fairy 对同一问题投票共识
+
+  // Knowledge sync (gossip protocol)
+  KNOWLEDGE_SYNC:       'knowledge_sync',         // 知识同步：摘要交换 + 增量拉取
 };
 
 // 消息类型验证

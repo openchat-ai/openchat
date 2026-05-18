@@ -8,6 +8,7 @@ import { sessionManager } from '../session/session-manager.js';
 import { startFairyMonitor, startHeartbeat } from './learning-loop.js';
 import { dashboardHTML } from '../infra/dashboard-html.js';
 import { createHandlers } from '../infra/route-handlers.js';
+import { GossipManager } from '../p2p/gossip-manager.js';
 import { MessageType } from '../protocol/message.js';
 import { WebSocketServer } from 'ws';
 import { router } from './router.js';
@@ -153,6 +154,16 @@ class Bridge {
         this.p2p.listenDirect(CONFIG.directListen);
       }
       console.log(`[P2P] Hyperswarm network ready`);
+
+      // Start gossip protocol for cross-Bridge knowledge sync
+      try {
+        this.gossip = new GossipManager();
+        this.gossip.start(this.p2p);
+        console.log('[Gossip] cross-Bridge knowledge sync active');
+      } catch (gossipErr) {
+        console.log(`[Gossip] init error: ${gossipErr.message}`);
+      }
+
     } catch (p2pErr) {
       console.log(`[P2P] init error: ${p2pErr.message}`);
     }

@@ -12,6 +12,7 @@ import * as os from 'os';
 import { EventEmitter } from 'events';
 import { persistentConfig } from './persistent-config.js';
 import { MessageType, createLLMProxyRequest } from '../p2p/messages.js';
+import { vectorMemory } from './vector-memory.js';
 
 const DATA_FILE = path.join(os.homedir(), '.openchat', 'residents.json');
 const MAX_ACTIVITIES = 0;
@@ -276,6 +277,22 @@ export class ResidentManager extends EventEmitter {
 
     const resident = residentId != null ? this.get(residentId) : null;
 
+    // Vector memory: search relevant context from ALL residents
+    // 向量记忆：搜索所有居民的相关经验作为上下文注入
+    if (resident && messages.length > 0 && messages[0].role === 'user') {
+      const userMsg = messages[0].content || '';
+      const related = vectorMemory.search(userMsg, { limit: 3, minScore: 0.05 });
+      if (related.length > 0) {
+        const ctxLines = related.map(r =>
+          `[${r.residentId === residentId ? '自己' : '居民'}的经验] ${r.text}`
+        );
+        messages.unshift({
+          role: 'system',
+          content: `相关经验参考：\n${ctxLines.join('\n')}\n\n参考以上经验来回答问题。`
+        });
+      }
+    }
+
     // State check: cannot think while sleeping
     if (resident && resident.status === RESIDENT_STATES.SLEEPING) {
       throw new Error(`${resident.name} 正在休息中 (sleeping)`);
@@ -289,6 +306,21 @@ export class ResidentManager extends EventEmitter {
         setTimeout(() => {
           if (residentId != null) this.transitionState(residentId, RESIDENT_STATES.ACTIVE);
         }, 2000);
+
+        // Store to vector memory for cross-resident sharing
+        try {
+          const userMsg = messages[0]?.content || '';
+          vectorMemory.store({
+            residentId: String(resident?.id || 'unknown'),
+            text: `Q: ${userMsg}\nA: ${multi.content}`,
+            metadata: { model: multi.model },
+            source: 'multi-path-think',
+          });
+          vectorMemory.save();
+        } catch (e) {
+          // silent
+        }
+
         return { content: multi.content, model: multi.model || 'multi-path', tokens: { prompt: 0, completion: 0, total: 0 } };
       }
     }
