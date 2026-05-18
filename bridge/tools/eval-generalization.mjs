@@ -4,22 +4,21 @@
  * 泛化效果评估工具
  *
  * Compares responses WITH vs WITHOUT generalization using LLM-as-judge.
- * Uses OpenRouter free models (via provider-kit openai-compatible adapter).
- *
- * 对比有泛化和无泛化的回答质量，用 LLM 打分。
- * 通过 OpenRouter 免费模型运行。
+ * Uses SiliconFlow API (China-friendly, free Qwen models) or OpenRouter.
+ * 通过 SiliconFlow 或 OpenRouter 运行。支持国产模型。
  *
  * Usage: node tools/eval-generalization.mjs [--questions N]
  *   --questions: how many test questions to run (default 5, max 10)
  *
- * Requires: OPENROUTER_API_KEY env var (get from https://openrouter.ai/keys)
- * 需要设置环境变量 OPENROUTER_API_KEY
+ * Requires: SILICONFLOW_API_KEY or OPENROUTER_API_KEY env var
+ * 需要设置环境变量 SILICONFLOW_API_KEY 或 OPENROUTER_API_KEY
  */
 
 // ---- Configuration / 配置 ----
-const EVAL_MODEL = 'openai/gpt-4o-mini';       // Judge model / 打分模型
-const GENERATE_MODEL = 'mistralai/mistral-7b-instruct'; // Response model / 回答模型 (free)
-const OPENROUTER_BASE = 'https://openrouter.ai/api/v1';
+const GENERATE_MODEL = 'Qwen/Qwen2.5-72B-Instruct'; // Response model / 回答模型 (strong)
+const EVAL_MODEL = 'Qwen/Qwen2.5-72B-Instruct';    // Judge model / 打分模型
+const API_BASE = process.env.SILICONFLOW_API_BASE || 'https://api.siliconflow.cn/v1';
+const API_KEY = process.env.SILICONFLOW_API_KEY || process.env.OPENROUTER_API_KEY || '';
 
 const QUESTIONS = [
   '冰箱里只剩鸡蛋、番茄和葱，晚餐做什么？',
@@ -50,17 +49,14 @@ B 总分：<1-5>
 
 // ---- Core / 核心逻辑 ----
 
-async function callOpenRouter(messages, model = GENERATE_MODEL, temperature = 0.7) {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) throw new Error('OPENROUTER_API_KEY not set');
+async function callLLM(messages, model = GENERATE_MODEL, temperature = 0.7) {
+  if (!API_KEY) throw new Error('No API key configured. Set SILICONFLOW_API_KEY or OPENROUTER_API_KEY');
 
-  const response = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
+  const response = await fetch(`${API_BASE}/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-      'HTTP-Referer': 'https://github.com/openchat-ai/openchat',
-      'X-Title': 'OpenChat Eval',
+      'Authorization': `Bearer ${API_KEY}`,
     },
     body: JSON.stringify({
       model,
@@ -72,7 +68,7 @@ async function callOpenRouter(messages, model = GENERATE_MODEL, temperature = 0.
 
   if (!response.ok) {
     const err = await response.text();
-    throw new Error(`OpenRouter ${response.status}: ${err}`);
+    throw new Error(`API ${response.status}: ${err}`);
   }
 
   const data = await response.json();
@@ -84,7 +80,7 @@ async function callOpenRouter(messages, model = GENERATE_MODEL, temperature = 0.
  * 无泛化的基准回答：直接调 LLM
  */
 async function generateBaseline(question) {
-  return await callOpenRouter([
+  return await callLLM([
     { role: 'system', content: '你是一个 AI 居民，请回答问题。' },
     { role: 'user', content: question },
   ]);
@@ -109,7 +105,7 @@ ${mockExperiences.join('\n\n')}
 
 请从多个角度分析，给出至少 3 种不同的解法，最后推荐一个。`;
 
-  return await callOpenRouter([
+  return await callLLM([
     { role: 'system', content: '你是一个善于从经验中学习的 AI 居民。面对问题，你会参考过去的经验，从多个角度思考，给出多种解法。' },
     { role: 'user', content: contextPrompt },
   ]);
@@ -130,7 +126,7 @@ ${responseB}
 
 ${JUDGE_PROMPT}`;
 
-  const result = await callOpenRouter(
+  const result = await callLLM(
     [{ role: 'user', content: judgeInput }],
     EVAL_MODEL,
     0.3,  // Low temperature for consistent judging
