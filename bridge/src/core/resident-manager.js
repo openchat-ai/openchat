@@ -342,30 +342,20 @@ export class ResidentManager extends EventEmitter {
   /**
    * 初始化 — Bridge 启动时调用，确保至少有一个居民
    */
-  initialize(bodyName) {
+  initialize(bodyName, hostId) {
     const residents = readAll();
     const active = residents.filter(r => r.status === 'active');
 
     if (active.length > 0) {
-      // 已有居民，复用第一个作为本 Bridge 的身份
       return active[0];
     }
 
-    // 首次启动：创建一个固定居民，ID=1，名字等于 bodyName
-    console.log(`[居民] 首次启动，创建居民: ${bodyName}`);
+    console.log('[resident] First start, creating: ' + bodyName);
     const resident = this.create(bodyName || '素女', {
+      id: hostId,
       traits: { diligence: 0.8, curiosity: 0.9, creativity: 0.7, sociability: 0.8 }
     });
-    // 固定 ID=1（如果还没有任何居民）
-    if (resident.id !== 1) {
-      resident.id = 1;
-      const all = readAll();
-      const idx = all.findIndex(r => r.id === resident.id);
-      if (idx !== -1) all[idx] = resident;
-      else all.push(resident);
-      writeAll(all);
-    }
-    console.log(`[居民] ${bodyName} (ID=${resident.id}) 已创建`);
+    console.log('[resident] ' + bodyName + ' (hostId=' + hostId + ') created');
     return resident;
   }
 
@@ -376,8 +366,8 @@ export class ResidentManager extends EventEmitter {
    * @returns {object} 居民对象
    */
   create(name, options = {}) {
-    const { parentId, traits: explicitTraits } = options;
-    const id = this._nextId++;
+    const { parentId, id: customId, traits: explicitTraits } = options;
+    const id = customId || this._nextId++;
 
     // 确定性格
     let traits;
