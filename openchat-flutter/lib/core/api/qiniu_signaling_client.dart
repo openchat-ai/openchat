@@ -50,7 +50,7 @@ class QiniuSignalingClient {
 
     final dio = Dio(BaseOptions(baseUrl: bridgeUrl));
     await dio.post(
-      '/api/v1/signaling/room/$currentRoomId/answer',
+      '/api/v1/signaling/room/$currentRoomId/offer',
       data: {'sdp': sdp}
     );
   }
@@ -66,7 +66,7 @@ class QiniuSignalingClient {
         queryParameters: {'lastTimestamp': ''}
       );
 
-      if (response.data['success'] == true) {
+      if (response.data['offer'] != null) {
         return response.data;
       }
       return null;
@@ -155,15 +155,17 @@ class QiniuSignalingClient {
   Future<void> releaseRoom() async {
     if (currentRoomId == null) return;
 
-    stopPolling();
-    stopRelayPolling();
-
     final dio = Dio(BaseOptions(baseUrl: bridgeUrl));
     await dio.delete('/api/v1/signaling/room/$currentRoomId');
-
-    currentRoomId = null;
-    _lastDataTimestamp = '';
   }
+
+  /// 获取上传 Token
+  Future<String> getUploadToken() async {
+    final dio = Dio(BaseOptions(baseUrl: bridgeUrl));
+    final response = await dio.get('/api/v1/signaling/token');
+    return response.data['token'] ?? '';
+  }
+}
 
   void dispose() {
     stopPolling();

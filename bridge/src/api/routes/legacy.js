@@ -1,7 +1,6 @@
 /**
- * Legacy Compatibility Layer
- * 旧版 App 请求兼容层
- * 已认证: 使用 Bearer Token
+ * Legacy API Routes — 仅做向后兼容，新客户端请使用 WebSocket (/ws) 或 /api/v1/*
+ * @deprecated 将在 v2.0 移除
  */
 
 import express from 'express';
