@@ -647,6 +647,8 @@ class P2PSwarm extends EventEmitter {
       peers,
       topic: this.topic.toString('hex').slice(0, 8) + '...'
     };
+  }
+
   getConnectedPeers() {
     return Array.from(this.connectedPeers.keys());
   }
