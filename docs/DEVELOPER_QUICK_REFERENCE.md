@@ -6,7 +6,7 @@
 
 ## 📦 新增模块
 
-### 1. REST API (31 端点)
+### 1. REST API (15 路由模块)
 ```
 位置: bridge/src/api/
 启动: const api = new APIServer({port: 3001})
@@ -195,13 +195,13 @@ ENABLE_METRICS=true # 启用指标
 # 测试 API 服务器
 cd bridge
 npm install
-node -e "const s=require('./src/api/server.js');new s().start()"
+node --input-type=module -e "import { APIServer } from './src/api/server.js'; new APIServer({port:3001}).start()"
 
 # 测试 Agent 创建
-node -e "
-const f=require('./src/agents/agent-role-factory.js');
-const a=f.create('security_auditor');
-a.initialize().then(()=>console.log('OK'));
+node --input-type=module -e "
+import { createAgent } from './src/agents/agent-role-factory.js';
+const a = createAgent('security_auditor');
+a.initialize().then(() => console.log('OK'));
 "
 ```
 

@@ -14,7 +14,7 @@
     "pm2:start": "node --input-type=module -e \"import {createLaunchStrategy,detectBestStrategy} from './src/core/launch-strategies.js';const s=createLaunchStrategy(detectBestStrategy(),{name:'openchat-bridge',script:'src/main.js'});await s.launch()\"",
     "pm2:stop": "pm2 delete openchat-bridge 2>/dev/null; exit 0",
     "pm2:status": "pm2 status",
-    "test": "node --test src/core/__tests__/*.test.mjs src/core/__tests__/*.test.js",
+    "test": "node --experimental-test-module-mocks --test src/core/__tests__/*.test.mjs src/core/__tests__/*.test.js",
     "test:watch": "node --test --watch src/core/__tests__/*.test.mjs src/core/__tests__/*.test.js",
     "test:integration": "node --test test/integration/*.test.js",
     "test:e2e": "node --test test/e2e/*.test.js",
@@ -22,6 +22,7 @@
     "test:property": "node test-utils/property-test.js",
     "test:replay": "node test-utils/replay-test.js",
     "test:chaos": "node test-utils/chaos-test.js",
+    "test:coverage": "node --experimental-test-module-mocks --experimental-test-coverage --test src/core/__tests__/*.test.mjs src/core/__tests__/*.test.js",
     "test:all": "npm test && npm run test:e2e && npm run test:llm-judge && npm run test:chaos",
     "prepare": "husky"
   },

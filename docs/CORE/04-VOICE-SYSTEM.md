@@ -290,8 +290,8 @@ openchat-flutter/lib/ui/
 
 ```bash
 cd bridge
-node -e "
-const { AudioPipeline } = require('./src/core/audio-pipeline.js');
+node --input-type=module -e "
+import { AudioPipeline } from './src/core/audio-pipeline.js';
 const pipeline = new AudioPipeline({ sampleRate: 16000 });
 
 // 模拟 20ms 音频帧 (320 samples @ 16kHz = 640 bytes for 16-bit PCM)
@@ -312,8 +312,8 @@ pipeline.processFrame(testFrame).then(frame => {
 
 ```bash
 cd bridge
-node -e "
-const { NeuralAudioCodec } = require('./src/core/neural-audio-codec.js');
+node --input-type=module -e "
+import { NeuralAudioCodec } from './src/core/neural-audio-codec.js';
 
 (async () => {
   const codec = new NeuralAudioCodec({ targetBitrate: 32 });
@@ -344,8 +344,8 @@ const { NeuralAudioCodec } = require('./src/core/neural-audio-codec.js');
 
 ```bash
 cd bridge
-node -e "
-const { DeviceCapabilityManager } = require('./src/core/device-capability-manager.js');
+node --input-type=module -e "
+import { DeviceCapabilityManager } from './src/core/device-capability-manager.js';
 
 (async () => {
   const manager = new DeviceCapabilityManager();
@@ -375,8 +375,8 @@ const { DeviceCapabilityManager } = require('./src/core/device-capability-manage
 
 ```bash
 cd bridge
-node -e "
-const { AdaptiveAudioTransport } = require('./src/core/adaptive-audio-transport.js');
+node --input-type=module -e "
+import { AdaptiveAudioTransport } from './src/core/adaptive-audio-transport.js';
 
 const transport = new AdaptiveAudioTransport();
 
@@ -403,8 +403,8 @@ console.log('新配置:', transport.getCurrentConfig());
 ```bash
 # 测试音频处理管道
 cd bridge
-node -e "
-const { AudioPipeline } = require('./src/core/audio-pipeline.js');
+node --input-type=module -e "
+import { AudioPipeline } from './src/core/audio-pipeline.js';
 const pipeline = new AudioPipeline({ sampleRate: 16000 });
 
 // 模拟 20ms 音频帧 (320 samples)

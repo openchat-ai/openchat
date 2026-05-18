@@ -6,8 +6,36 @@
 git clone https://github.com/openchat-ai/openchat.git
 cd bridge
 npm install
-npm test    # 40 tests should pass
+npm test    # 60+ tests should pass
 npm start   # Start Bridge locally
+```
+
+## First time? Start here
+
+- Browse **good first issue** labeled issues on GitHub
+- Read the [ARCHITECTURE-OVERVIEW](docs/ARCHITECTURE/ARCHITECTURE-OVERVIEW.md) for system design
+- Join the discussion in existing PRs before opening a new one
+- Have a question? Open a Discussion, not an Issue
+
+## Git workflow
+
+```bash
+# Start a new feature
+git checkout master
+git pull
+git checkout -b feat/your-feature
+
+# Work on it, commit often
+git add .
+git commit -m "feat: your change description"
+
+# Push opens a PR (direct push to master is blocked by pre-push hook)
+git push origin feat/your-feature
+
+# After PR review and merge, delete local branch
+git checkout master
+git pull
+git branch -d feat/your-feature
 ```
 
 ## Where to contribute
@@ -20,10 +48,25 @@ npm start   # Start Bridge locally
 | Web UI | `bridge/src/main.js` (_mountLegacyRoutes) | Dashboard / live chat |
 | Flutter | `openchat-flutter/` | Mobile client |
 
+## Branch strategy
+
+- `master` — stable release branch. Protected, requires PR review to merge.
+- `feat/*` — feature branches. Naming: `feat/short-description`.
+- `fix/*` — bug fix branches. Naming: `fix/short-description`.
+- `release/*` — release preparation branches.
+- Direct pushes to `master` are disabled. All changes go through PRs.
+
+## Release process
+
+1. Branch `release/vX.Y.Z` from `master`
+2. Bump version in `bridge/package.json`, update `CHANGELOG.md`
+3. Create tag `vX.Y.Z` on `master` after merge
+4. Github Actions builds artifacts automatically
+
 ## Commit format
 
 ```
-type: short description (English + Chinese)
+type: short description (English)
 
 type: feat / fix / refactor / test / docs / chore
 ```

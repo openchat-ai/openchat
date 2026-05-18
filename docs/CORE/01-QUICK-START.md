@@ -1,10 +1,10 @@
 # 🚀 5分钟快速开始
 
-> **版本**: 2.1 | **最后更新**: 2026-04-29 | **难度**: ⭐ 初级
+> **版本**: 2.1 | **最后更新**: 2026-05-18 | **难度**: ⭐ 初级 | **⚠️ 部分描述与实际代码成熟度不符 (EvolutionEngine 为实验状态)**
 
 ## 什么是 OpenChat？
 
-OpenChat 是一个**完全自主的 AI 开发平台**，能够自我管理、自我改进、自我演进，100% 不需要人工干预。
+OpenChat 是一个**去中心化 AI 居民平台**，包含 P2P 语音通讯、多 Agent 协作、WebRTC 实时音视频。
 
 **核心特点：**
 - ✅ **完全自主** - AI 做所有决策，不需要人工指导
@@ -221,11 +221,11 @@ OpenChat 能精确判断什么时候做什么：
 👨‍💻 **开发者**
 → 阅读 [03-DEVELOPMENT-PRACTICES.md](03-DEVELOPMENT-PRACTICES.md) 掌握开发规范
 
-🔒 **安全工程师**
-→ 阅读 [04-SECURITY-SYSTEM.md](04-SECURITY-SYSTEM.md) 了解安全机制
+🛡️ **想了解安全机制**
+→ 阅读 [04-VOICE-SYSTEM.md](04-VOICE-SYSTEM.md) | [05-P2P-SIGNALING.md](05-P2P-SIGNALING.md)
 
 👨‍🔧 **系统管理员**
-→ 阅读 [06-HOT-UPDATE-SYSTEM.md](06-HOT-UPDATE-SYSTEM.md) 了解部署方式
+→ 阅读 [PLANNING/DEPLOYMENT-PLAN.md](../PLANNING/DEPLOYMENT-PLAN.md) 了解部署方式
 
 ❓ **遇到不懂的词**
 → 查看 [GLOSSARY.md](GLOSSARY.md) 术语表

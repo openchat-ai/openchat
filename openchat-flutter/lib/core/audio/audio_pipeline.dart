@@ -1,8 +1,6 @@
 /**
- * 音频处理管道 - Flutter 移植�? *
- * 集成:
- * - RNNOISE 深度学习降噪
- * - VAD 语音活动检�? * - AGC 自动增益控制
+ * Audio Processing Pipeline - Flutter port
+ * Integration: RNNOISE denoising, VAD, AGC
  */
 
 import 'dart:async';
@@ -33,23 +31,25 @@ class AudioPipeline {
   });
 
   Future<void> initialize() async {
-    // RNNOISE 初始�?- 实际项目中需�?flutter_rnnoise �?    // 这里使用模拟模式作为回退
+    // RNNOISE initialization - using mock mode as fallback
     _rnnoiseReady = true;
   }
 
   bool get rnnoiseReady => _rnnoiseReady;
 
-  /// 处理音频�?  Future<ProcessedFrame> processFrame(Uint8List pcmData) async {
+  /// Process audio frame
+  Future<ProcessedFrame> processFrame(Uint8List pcmData) async {
     final frame = ProcessedFrame(
       data: Uint8List.fromList(pcmData),
       timestamp: DateTime.now().millisecondsSinceEpoch,
     );
 
-    // 1. 高通滤�?    if (_enabledHighPass) {
+    // 1. High-pass filter
+    if (_enabledHighPass) {
       frame.data = _applyHighPass(frame.data);
     }
 
-    // 2. RNNOISE 降噪 (或模拟模�?
+    // 2. RNNOISE denoising (or mock mode)
     if (_enabledRNNOISE) {
       final rnnoiseResult = await _applyRNNoise(frame.data);
       frame.data = rnnoiseResult.data;
@@ -61,7 +61,8 @@ class AudioPipeline {
       frame.data = _applyAGC(frame.data);
     }
 
-    // 4. VAD 语音活动检�?    if (frame.vad == null) {
+    // 4. VAD speech detection
+    if (frame.vad == null) {
       final vadResult = _detectSpeech(frame.data);
       frame.isSpeech = vadResult.isSpeech;
       frame.speechProbability = vadResult.probability;
@@ -78,7 +79,7 @@ class AudioPipeline {
 
   /// RNNOISE 降噪 (模拟模式)
   Future<_RNNoiseResult> _applyRNNoise(Uint8List pcmData) async {
-    // 模拟: 基于能量估算噪声水平并降�?    final noiseLevel = _estimateNoiseLevel(pcmData);
+    final noiseLevel = _estimateNoiseLevel(pcmData);
     double vad = 0;
 
     if (noiseLevel > 0.1) {
@@ -90,7 +91,7 @@ class AudioPipeline {
     return _RNNoiseResult(data: pcmData, vad: vad);
   }
 
-  /// 高通滤�?- 去除低频噪声
+  /// High-pass filter
   Uint8List _applyHighPass(Uint8List pcmData) {
     const fc = 80;
     final dt = 1 / sampleRate;
@@ -161,7 +162,8 @@ class AudioPipeline {
     return output;
   }
 
-  /// VAD 语音活动检�?  _VADResult _detectSpeech(Uint8List pcmData) {
+  /// VAD speech detection
+  _VADResult _detectSpeech(Uint8List pcmData) {
     final energy = _calculateEnergy(pcmData);
     final zeroCrossings = _calculateZeroCrossings(pcmData);
 

@@ -43,7 +43,7 @@ OpenChat 有两个目标，一个正在交付，一个仍在实验：
 │  │   └─ LLM 代理 (调用外部模型)          │
 │  │                                       │
 │  ├─ REST API (Express, 端口 3001)        │
-│  │   └─ 42 个端点，Bearer Token 认证     │
+│  │   └─ 15+ 路由模块，Bearer Token 认证  │
 │  │                                       │
 │  └─ HTTP 服务 (端口 3000)                │
 │      ├─ Dashboard (七仙女面板)           │

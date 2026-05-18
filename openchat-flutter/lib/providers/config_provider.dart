@@ -6,7 +6,7 @@ class AppConfig {
   final bool isDev;
 
   AppConfig({
-    this.baseUrl = 'http://localhost:3800',
+    this.baseUrl = 'http://localhost:3000',
     this.token,
     this.isDev = true,
   });

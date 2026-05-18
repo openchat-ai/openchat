@@ -5,7 +5,8 @@ import 'package:openchat_flutter/core/api/agent_client.dart';
 import 'package:openchat_flutter/core/models/agent_model.dart';
 import 'client_providers.dart';
 
-/// Agent 状态管理提供�?/// 管理当前活跃�?Agents 列表及其状态同�?class AgentNotifier extends StateNotifier<AsyncValue<List<Agent>>> {
+/// Agent state management
+class AgentNotifier extends StateNotifier<AsyncValue<List<Agent>>> {
   final AgentClient _client;
   Timer? _pollTimer;
 
@@ -13,7 +14,7 @@ import 'client_providers.dart';
     refreshAgents();
   }
 
-  /// 刷新所�?Agent 列表
+  /// Refresh agent list
   Future<void> refreshAgents() async {
     state = const AsyncValue.loading();
     try {
@@ -24,7 +25,8 @@ import 'client_providers.dart';
     }
   }
 
-  /// 创建一个新�?Agent 并开始追踪其状�?  Future<void> spawnAgent({
+  /// Create a new agent and start tracking
+  Future<void> spawnAgent({
     required String role,
     String? name,
     String? task,
@@ -54,7 +56,8 @@ import 'client_providers.dart';
     }
   }
 
-  /// 状态追踪轮询机�?  void _startPolling(String agentId) {
+  /// Status tracking polling
+  void _startPolling(String agentId) {
     _pollTimer?.cancel();
     _pollTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
       try {
@@ -66,7 +69,7 @@ import 'client_providers.dart';
           timer.cancel();
         }
 
-        // 更新状态列表中对应�?Agent
+        // Update corresponding agent in list
         final currentAgents = state.value ?? [];
         final updatedList = currentAgents.map((a) => a.id == agentId ? updatedAgent : a).toList();
         state = AsyncValue.data(updatedList);

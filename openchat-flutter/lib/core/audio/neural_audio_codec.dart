@@ -1,6 +1,6 @@
 /**
- * Neural Audio Codec - Flutter 移植�? *
- * 轻量级神经音频编解码�? * 目标: 手机上能实时运行
+ * Neural Audio Codec - Flutter port
+ * Lightweight neural audio codec for mobile real-time
  */
 
 import 'dart:typed_data';
@@ -38,7 +38,7 @@ class NeuralAudioCodec {
     _isReady = true;
   }
 
-  /// 编码: PCM �?compressed bytes
+  /// Encode: PCM -> compressed bytes
   Future<EncodedFrame> encode(Uint8List pcmData) async {
     if (!_isReady) throw Exception('Codec not initialized');
 
@@ -53,7 +53,7 @@ class NeuralAudioCodec {
       encodedFrames.add(encodedFrame);
     }
 
-    // 合并帧数�?    final output = _combineFrames(encodedFrames, pcmData.length);
+    final output = _combineFrames(encodedFrames, pcmData.length);
 
     stopwatch.stop();
 
@@ -74,13 +74,13 @@ class NeuralAudioCodec {
     );
   }
 
-  /// 解码: compressed bytes �?PCM
+  /// Decode: compressed bytes -> PCM
   Future<DecodedFrame> decode(Uint8List encodedData) async {
     if (!_isReady) throw Exception('Codec not initialized');
 
     final stopwatch = Stopwatch()..start();
 
-    // 解析�?    final parsed = _parseFrames(encodedData);
+    final parsed = _parseFrames(encodedData);
     final decodedFrames = <Uint8List>[];
 
     for (final frame in parsed.frames) {
@@ -88,7 +88,7 @@ class NeuralAudioCodec {
       decodedFrames.add(decoded);
     }
 
-    // 合并�?    final output = Uint8List.fromList(decodedFrames.expand((f) => f).toList());
+    final output = Uint8List.fromList(decodedFrames.expand((f) => f).toList());
 
     stopwatch.stop();
 
@@ -136,7 +136,8 @@ class NeuralAudioCodec {
     }
     final spectralCentroid = spectralSum / n;
 
-    // 3. 过零�?    int zeroCrossings = 0;
+    // 3. Zero crossings
+    int zeroCrossings = 0;
     for (int i = 1; i < n; i++) {
       if ((samples[i] >= 0 && samples[i - 1] < 0) ||
           (samples[i] < 0 && samples[i - 1] >= 0)) {
@@ -209,10 +210,11 @@ class NeuralAudioCodec {
           .toList(),
     };
 
-    // 从特征合成音�?    return _synthesizeFromFeatures(features);
+    return _synthesizeFromFeatures(features);
   }
 
-  /// 从特征合成音�?  Uint8List _synthesizeFromFeatures(Map<String, dynamic> features) {
+  /// Synthesize from features
+  Uint8List _synthesizeFromFeatures(Map<String, dynamic> features) {
     final n = _samplesPerFrame;
     final output = Uint8List(n * 2);
 
@@ -253,7 +255,8 @@ class NeuralAudioCodec {
     return frames;
   }
 
-  /// 合并帧数�?  Uint8List _combineFrames(List<Map<String, dynamic>> frames, int originalLength) {
+  /// Combine frames
+  Uint8List _combineFrames(List<Map<String, dynamic>> frames, int originalLength) {
     const headerSize = 8;
     final frameDataSize = frames.length * 9;
     final output = Uint8List(headerSize + frameDataSize);
@@ -263,7 +266,7 @@ class NeuralAudioCodec {
     _writeUint16LE(output, 4, frames.length);
     _writeUint16LE(output, 6, quantizationBits);
 
-    // 写入帧数�?    int offset = headerSize;
+    int offset = headerSize;
     for (final frame in frames) {
       output[offset++] = frame['rms']!;
       output[offset++] = frame['peak']!;
@@ -278,7 +281,8 @@ class NeuralAudioCodec {
     return output;
   }
 
-  /// 解析帧数�?  _ParsedFrames _parseFrames(Uint8List data) {
+  /// Parse frames
+  _ParsedFrames _parseFrames(Uint8List data) {
     int offset = 0;
 
     final originalLength = _readUint32LE(data, offset); offset += 4;

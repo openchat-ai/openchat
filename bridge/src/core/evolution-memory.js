@@ -180,8 +180,7 @@ export class EvolutionMemory {
 
   // 查询进度
   getProgress(task) {
-    const progressKey = `progress:${task}`;
-    return this.recall(progressKey);
+    return this.recall(`_default:progress:${task}`);
   }
 
   // 更新进度

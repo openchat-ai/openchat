@@ -59,7 +59,7 @@ P2P 网络中的临时标识。格式：`bridge_<ts>_<rand>`，每次启动重�
 ## API
 
 ### Express API
-端口 3001 的 REST 服务。42 个端点，Bearer Token 认证。覆盖 agents、p2p、skills、updates、voice 等。
+端口 3001 的 REST 服务。15+ 路由模块，Bearer Token 认证。覆盖 agents、p2p、skills、updates、voice 等。
 
 ### 旧 HTTP API
 端口 3000 的 HTTP 服务。Dashboard、WebSocket 聊天、信令、旧版兼容端点。已加鉴权。

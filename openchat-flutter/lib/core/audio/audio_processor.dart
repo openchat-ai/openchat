@@ -1,8 +1,6 @@
 /**
- * Audio Processor - 统一音频处理�? *
- * 整合 Neural Codec + Audio Pipeline + RNNOISE
- * 负责:
- * - 麦克风音频采�?�?降噪 �?编码 �?发�? * - 接收 �?解码 �?播放
+ * Audio Processor
+ * Neural Codec + Audio Pipeline + RNNOISE integration
  */
 
 import 'dart:async';
@@ -25,7 +23,7 @@ class AudioProcessor {
   AudioMode _mode = AudioMode.neural;
   bool _isProcessing = false;
 
-  // �?  final _speakingController = StreamController<bool>.broadcast();
+  final _speakingController = StreamController<bool>.broadcast();
   final _audioLevelController = StreamController<double>.broadcast();
 
   // 配置
@@ -44,7 +42,7 @@ class AudioProcessor {
   AudioMode get mode => _mode;
 
   Future<void> initialize() async {
-    // 初始�?Neural Codec
+    // Initialize Neural Codec
     if (enableCodec) {
       _codec = NeuralAudioCodec(
         sampleRate: sampleRate,
@@ -53,7 +51,7 @@ class AudioProcessor {
       await _codec!.initialize();
     }
 
-    // 初始化音频处理管�?    if (enableDenoise) {
+    if (enableDenoise) {
       _pipeline = AudioPipeline(
         sampleRate: sampleRate,
         frameSize: 480,
@@ -64,7 +62,7 @@ class AudioProcessor {
     _isProcessing = true;
   }
 
-  /// 处理麦克风输�?(编码后发�?
+  /// Process microphone input (encode before sending)
   Future<Uint8List?> processMicrophoneInput(Uint8List pcmData) async {
     if (!_isProcessing) return null;
 
@@ -72,7 +70,7 @@ class AudioProcessor {
     if (_pipeline != null) {
       final processed = await _pipeline!.processFrame(pcmData);
 
-      // 通知语音活动状�?      _speakingController.add(processed.isSpeech ?? false);
+      _speakingController.add(processed.isSpeech ?? false);
 
       // 计算音频级别
       final level = _calculateAudioLevel(processed.data);
@@ -91,7 +89,7 @@ class AudioProcessor {
     return pcmData;
   }
 
-  /// 处理接收到的音频 (解码后播�?
+  /// Process received audio (decode before playing)
   Future<Uint8List?> processReceivedAudio(Uint8List data) async {
     if (!_isProcessing) return null;
 

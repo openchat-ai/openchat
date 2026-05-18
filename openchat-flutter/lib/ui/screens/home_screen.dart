@@ -123,6 +123,12 @@ class HomeScreen extends ConsumerWidget {
                   Icon(Icons.error_outline, color: theme.error, size: 48),
                   const SizedBox(height: 16),
                   Text('加载失败', style: TextStyle(color: theme.textSecondary)),
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    onPressed: () => ref.read(feedProvider.notifier).refresh(),
+                    icon: const Icon(Icons.refresh, size: 16),
+                    label: const Text('重试'),
+                  ),
                 ],
               ),
             ),

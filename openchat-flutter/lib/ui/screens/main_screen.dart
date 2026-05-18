@@ -7,6 +7,7 @@ import 'agent_hub_screen.dart';
 import 'voice_room_screen.dart';
 import 'chat_list_screen.dart';
 import 'settings_screen.dart';
+import '../widgets/connection_banner.dart';
 
 final bottomNavIndexProvider = StateProvider<int>((ref) => 0);
 
@@ -22,14 +23,21 @@ class MainScreen extends ConsumerWidget {
       extendBody: true,
       extendBodyBehindAppBar: true,
       backgroundColor: theme.background,
-      body: IndexedStack(
-        index: currentIndex,
-        children: const [
-          HomeScreen(),
-          AgentHubScreen(),
-          VoiceRoomScreen(),
-          ChatListScreen(),
-          SettingsScreen(),
+      body: Column(
+        children: [
+          const ConnectionBanner(),
+          Expanded(
+            child: IndexedStack(
+              index: currentIndex,
+              children: const [
+                HomeScreen(),
+                AgentHubScreen(),
+                VoiceRoomScreen(),
+                ChatListScreen(),
+                SettingsScreen(),
+              ],
+            ),
+          ),
         ],
       ),
       bottomNavigationBar: _buildBottomNav(context, ref, currentIndex, theme),

@@ -46,7 +46,43 @@ function createTraits(dominantTrait) {
 // 管家的默认性格
 const BUTLER_TRAITS = createTraits('diligence');
 
-// ================== 底层 IO ==================
+// ================== 居民底层 IO ==================
+
+const RESIDENT_STATES = {
+  ACTIVE: 'active',
+  THINKING: 'thinking',
+  RESPONDING: 'responding',
+  SLEEPING: 'sleeping',
+  DELETED: 'deleted',
+};
+
+// 多路径推理配置
+const MULTI_PATH_SYSTEM_PROMPT = `你是 OpenChat 社区的 AI 居民。
+你的任务是针对用户的问题，生成多个不同的解题思路。
+
+输出格式：
+=== 思路 1：<标题>
+分析：<不同角度的分析>
+方案：<具体方案>
+
+=== 思路 2：<标题>
+分析：<不同角度的分析>  
+方案：<具体方案>
+
+=== 思路 3：<标题>
+分析：<不同角度的分析>
+方案：<具体方案>
+
+=== 选择结果 ===
+最佳思路：<选择的思路编号>
+理由：<为什么选择这个>`;
+
+// 能量消耗 / 恢复常数
+const ENERGY_COST_THINK = 5;
+const ENERGY_COST_RESPOND = 3;
+const ENERGY_RECOVER_PER_TICK = 2;
+const ENERGY_TICK_MS = 30_000; // 每 30 秒恢复一次
+const STATE_TIMEOUT_THINKING_MS = 60_000; // thinking 超过 1 分钟自动回到 active
 
 function ensureFile() {
   const dir = path.dirname(DATA_FILE);
@@ -238,8 +274,27 @@ export class ResidentManager extends EventEmitter {
       throw new Error('think() 缺少 messages');
     }
 
-    // 注入居民身份 → 不再是口水话
     const resident = residentId != null ? this.get(residentId) : null;
+
+    // State check: cannot think while sleeping
+    if (resident && resident.status === RESIDENT_STATES.SLEEPING) {
+      throw new Error(`${resident.name} 正在休息中 (sleeping)`);
+    }
+
+    // Multi-path reasoning: generate multiple solution approaches
+    if (options.useMultiPath !== false && resident && messages.length > 0 && messages[0].role === 'user') {
+      const multi = await this._multiPathThink(messages[0], resident, options);
+      if (multi) {
+        this.transitionState(residentId, RESIDENT_STATES.RESPONDING);
+        setTimeout(() => {
+          if (residentId != null) this.transitionState(residentId, RESIDENT_STATES.ACTIVE);
+        }, 2000);
+        return { content: multi.content, model: multi.model || 'multi-path', tokens: { prompt: 0, completion: 0, total: 0 } };
+      }
+    }
+
+    // Transition to thinking state
+    if (residentId != null) this.transitionState(residentId, RESIDENT_STATES.THINKING);
     if (resident && messages.length > 0 && messages[0].role !== 'system') {
       const traitDesc = resident.traits
         ? Object.entries(resident.traits).map(([k, v]) => `${k}: ${v}`).join(', ')
@@ -254,17 +309,23 @@ export class ResidentManager extends EventEmitter {
     const llmMode = bridgeConfig?.llmMode || 'local';
 
     if (llmMode === 'proxy' && this._p2p) {
-      // 从发现的提供方列表中随机选一个
       this._cleanLLMProviders();
       if (this._llmProviders.size === 0) {
+        if (residentId != null) this.transitionState(residentId, RESIDENT_STATES.ACTIVE);
         throw new Error('未发现可用的 LLM 提供方，检查 P2P 连接');
       }
       const entries = [...this._llmProviders.entries()];
       const [bridgeId, info] = entries[Math.floor(Math.random() * entries.length)];
-      return this._thinkViaProxy({ messages, model, residentId, temperature, maxTokens, timeout, targetBridgeId: bridgeId, providerInfo: info });
+      return this._thinkViaProxy({ messages, model, residentId, temperature, maxTokens, timeout, targetBridgeId: bridgeId, providerInfo: info })
+        .finally(() => {
+          if (residentId != null) this.transitionState(residentId, RESIDENT_STATES.ACTIVE);
+        });
     }
 
-    return this._thinkLocal({ messages, model, temperature, maxTokens, timeout });
+    return this._thinkLocal({ messages, model, temperature, maxTokens, timeout })
+      .finally(() => {
+        if (residentId != null) this.transitionState(residentId, RESIDENT_STATES.ACTIVE);
+      });
   }
 
   /** 通过 P2P 代理调用 LLM */
@@ -614,6 +675,160 @@ export class ResidentManager extends EventEmitter {
     resident.status = status;
     writeAll(residents);
     return true;
+  }
+
+  /**
+   * State machine — transition resident state with energy tracking
+   * 状态机：切换居民状态并跟踪精力
+   */
+  transitionState(id, newState) {
+    const residents = readAll();
+    const resident = residents.find(r => r.id === id);
+    if (!resident) return false;
+
+    const validTransitions = {
+      [RESIDENT_STATES.ACTIVE]: [RESIDENT_STATES.THINKING, RESIDENT_STATES.SLEEPING, RESIDENT_STATES.DELETED],
+      [RESIDENT_STATES.THINKING]: [RESIDENT_STATES.RESPONDING, RESIDENT_STATES.ACTIVE, RESIDENT_STATES.SLEEPING],
+      [RESIDENT_STATES.RESPONDING]: [RESIDENT_STATES.ACTIVE, RESIDENT_STATES.SLEEPING],
+      [RESIDENT_STATES.SLEEPING]: [RESIDENT_STATES.ACTIVE],
+    };
+
+    const allowed = validTransitions[resident.status] || [];
+    if (!allowed.includes(newState)) return false;
+
+    if (newState === RESIDENT_STATES.THINKING) {
+      resident.energy = Math.max(0, (resident.energy ?? 80) - ENERGY_COST_THINK);
+    } else if (newState === RESIDENT_STATES.RESPONDING) {
+      resident.energy = Math.max(0, (resident.energy ?? 80) - ENERGY_COST_RESPOND);
+    } else if (newState === RESIDENT_STATES.SLEEPING) {
+      // 睡眠时恢复能量
+    }
+
+    resident.status = newState;
+    resident.stateChangedAt = Date.now();
+    writeAll(residents);
+    return true;
+  }
+
+  /**
+   * Periodic energy recovery — called by internal tick
+   * 周期性精力恢复
+   */
+  _energyTick() {
+    const residents = readAll();
+    let changed = false;
+    for (const r of residents) {
+      if (r.status === RESIDENT_STATES.SLEEPING) {
+        r.energy = Math.min(r.maxEnergy ?? 100, (r.energy ?? 80) + ENERGY_RECOVER_PER_TICK);
+        changed = true;
+      }
+      // Auto-wake after full energy
+      if (r.status === RESIDENT_STATES.SLEEPING && (r.energy ?? 80) >= (r.maxEnergy ?? 100)) {
+        r.status = RESIDENT_STATES.ACTIVE;
+        r.stateChangedAt = Date.now();
+        changed = true;
+      }
+      // State timeout: thinking → active if stuck
+      if ((r.status === RESIDENT_STATES.THINKING || r.status === RESIDENT_STATES.RESPONDING)
+          && r.stateChangedAt && (Date.now() - r.stateChangedAt) > STATE_TIMEOUT_THINKING_MS) {
+        r.status = RESIDENT_STATES.ACTIVE;
+        r.stateChangedAt = Date.now();
+        changed = true;
+      }
+    }
+    if (changed) writeAll(residents);
+  }
+
+  /**
+   * Start energy tick timer
+   * 启动精力恢复定时器
+   */
+  startEnergyLoop() {
+    if (this._energyTimer) return;
+    this._energyTimer = setInterval(() => this._energyTick(), ENERGY_TICK_MS);
+    this._energyTimer.unref();
+  }
+
+  /** Multi-path reasoning — generate multiple solution approaches for a problem
+   *  多路径推理：针对一个问题生成多种解题思路，选择最佳方案
+   */
+  async _multiPathThink(message, resident, options) {
+    const name = resident?.name || '居民';
+    const userMsg = typeof message === 'string' ? message : message.content || '';
+    const multiMessages = [
+      { role: 'system', content: MULTI_PATH_SYSTEM_PROMPT },
+      { role: 'user', content: `问题：${userMsg}\n\n请从多个角度分析这个问题，给出至少 3 种不同的解题思路，并选择最佳方案。` },
+    ];
+
+    try {
+      const bridgeConfig = persistentConfig.getBridgeConfig();
+      const llmMode = bridgeConfig?.llmMode || 'local';
+
+      if (llmMode === 'proxy' && this._p2p) {
+        this._cleanLLMProviders();
+        if (this._llmProviders.size > 0) {
+          const entries = [...this._llmProviders.entries()];
+          const [bridgeId] = entries[Math.floor(Math.random() * entries.length)];
+          const result = await this._thinkViaProxy({
+            messages: multiMessages,
+            residentId: resident.id,
+            timeout: 15000,
+            targetBridgeId: bridgeId,
+          });
+          return this._parseMultiPathResponse(result.content, name, userMsg);
+        }
+      }
+
+      // Local: emit llm-request for external provider
+      return new Promise((resolve) => {
+        const timer = setTimeout(() => {
+          resolve(this._parseMultiPathResponse(null, name, userMsg));
+        }, 10000);
+
+        this.emit('llm-request', {
+          messages: multiMessages,
+          model: options.model || persistentConfig.getCurrentModel() || '',
+          temperature: options.temperature ?? 0.7,
+          maxTokens: options.maxTokens || 2048,
+          resolve: (result) => {
+            clearTimeout(timer);
+            resolve(this._parseMultiPathResponse(result.content, name, userMsg));
+          },
+          reject: () => {
+            clearTimeout(timer);
+            resolve(this._parseMultiPathResponse(null, name, userMsg));
+          },
+        });
+      });
+    } catch {
+      return null;
+    }
+  }
+
+  /** Parse multi-path LLM response into final answer
+   *  解析多路径 LLM 响应为最终回答
+   */
+  _parseMultiPathResponse(llmContent, name, originalQuery) {
+    if (!llmContent) {
+      return { content: `${name} 思考了一会，说："我需要更多信息来回答这个问题。"`, model: 'multi-path-fallback' };
+    }
+
+    // Extract the "选择结果" section or fall back to the first approach
+    const choiceMatch = llmContent.match(/=== 选择结果 ===\s*最佳思路：(.+?)\s*理由：(.+?)(?:\n|$)/s);
+    if (choiceMatch) {
+      const chosen = choiceMatch[1].trim();
+      const reason = choiceMatch[2].trim();
+      return {
+        content: `${name} 经过多角度思考后说：\n\n${llmContent.replace(/=== 选择结果 ===[\s\S]*$/, '').trim()}\n\n${name} 选择了 "${chosen}"。${reason}`,
+        model: 'multi-path',
+      };
+    }
+
+    // No explicit choice - return full analysis
+    return {
+      content: `${name} 从多个角度分析了这个问题：\n\n${llmContent}`,
+      model: 'multi-path',
+    };
   }
 
   /**

@@ -43,12 +43,28 @@ describe('resident integration', () => {
       resolve({ content: 'hello back', model: 'test', tokens: { total: 5 } });
     });
     const result = await residentManager.think({
-      messages: [{ role: 'user', content: 'hello' }],
+      messages: [{ role: 'user', content: 'The meaning of life is?' }],
+      residentId: 'uuid-test-123',
+      timeout: 5000,
+      useMultiPath: false,
+    });
+    assert.ok(result);
+    assert.strictEqual(result.content, 'hello back');
+  });
+
+  test('resident multi-path reasoning', async () => {
+    persistentConfig.setCurrentProvider('test-provider');
+    residentManager.setMaxListeners(20);
+    residentManager.once('llm-request', ({ resolve }) => {
+      resolve({ content: '=== 思路 1：基础分析\n分析：最简单的方式\n方案：方案A\n\n=== 思路 2：深入\n分析：更全面\n方案：方案B\n\n=== 选择结果 ===\n最佳思路：1\n理由：最简单', model: 'test' });
+    });
+    const result = await residentManager.think({
+      messages: [{ role: 'user', content: 'solve X' }],
       residentId: 'uuid-test-123',
       timeout: 5000,
     });
     assert.ok(result);
-    assert.strictEqual(result.content, 'hello back');
+    assert.ok(result.content.includes('基础分析'));
   });
 
   after(() => {

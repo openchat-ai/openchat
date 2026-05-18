@@ -3,6 +3,13 @@
 
 echo "🔍 运行提交前检查..."
 
+# 0. Commit message lint
+echo "📝 检查 Commit message..."
+npx --no -- commitlint --edit $1 2>/dev/null || {
+  echo "❌ Commit message 格式错误，使用: feat/fix/refactor/test/docs/chore: description"
+  exit 1
+}
+
 # 1. Bridge 语法检查（秒级）
 echo "📦 检查 Bridge 语法..."
 cd bridge

@@ -1,12 +1,10 @@
 # 🧠 核心概念详解
 
-> **版本**: 2.1 | **最后更新**: 2026-04-29 | **难度**: ⭐⭐ 中级 | **阅读时间**: 20-30 分钟
+> **版本**: 2.1 | **最后更新**: 2026-05-18 | **难度**: ⭐⭐ 中级 | **阅读时间**: 20-30 分钟 | **⚠️ EvolutionEngine 为实验状态，本文档部分描述超前于当前代码实现**
 
-## 1️⃣ EvolutionEngine - 系统的心脏
+## 1️⃣ EvolutionEngine - 实验性进化系统
 
-EvolutionEngine 是一个自主进化系统，目标是实现**自举开发**——OpenChat 启动后能够自己给自己找开发方向，从外部获取灵感，主动升级自己的能力。
-
-这是 OpenChat 与普通代码工具**最根本的区别**。
+EvolutionEngine 是一个实验性的自主进化系统，目标是实现**自举开发**——当前实现为字符串匹配规则引擎，尚未达到真正的 AI 自进化。
 
 ### 自举开发的含义
 
@@ -388,6 +386,6 @@ OpenChat 拥有所有必需的权限：
 ## 下一步阅读
 
 - 🔧 想了解**开发流程**？→ [03-DEVELOPMENT-PRACTICES.md](03-DEVELOPMENT-PRACTICES.md)
-- 🛡️ 想了解**安全机制**？→ [04-SECURITY-SYSTEM.md](04-SECURITY-SYSTEM.md)
-- 📊 想了解**成功指标**？→ [10-METRICS-AND-SUCCESS.md](10-METRICS-AND-SUCCESS.md)
+- 🛡️ 想了解**安全机制**？→ [04-VOICE-SYSTEM.md](04-VOICE-SYSTEM.md) | [05-P2P-SIGNALING.md](05-P2P-SIGNALING.md)
+- 📊 想了解**成功指标**？→ [ARCHITECTURE-OVERVIEW.md](../ARCHITECTURE/ARCHITECTURE-OVERVIEW.md)
 - 🔍 遇到不懂的术语？ → [GLOSSARY.md](GLOSSARY.md)

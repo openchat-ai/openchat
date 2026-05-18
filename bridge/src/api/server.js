@@ -94,6 +94,13 @@ class APIServer {
       maxAge: 86400 // 24 hours
     }));
 
+    // 请求追踪 ID
+    this.app.use((req, res, next) => {
+      req.id = crypto.randomUUID();
+      res.setHeader('X-Request-Id', req.id);
+      next();
+    });
+
     // 请求日志
     this.app.use(morgan('combined'));
 

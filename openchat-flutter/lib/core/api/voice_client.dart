@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'base_client.dart';
 import '../audio/audio_processor.dart';
+import 'ws_signaling_client.dart';
 
 class VoiceRoom {
   final String id;
@@ -77,6 +78,8 @@ class VoiceClient extends BaseClient {
   String? _currentRoomId;
   String? _participantId;
   List<Participant> _participants = [];
+  WsSignalingClient? _wsSignaling;
+  StreamSubscription? _wsSignalingSub;
 
   VoiceClient({required super.baseUrl, super.token});
 
@@ -187,7 +190,7 @@ class VoiceClient extends BaseClient {
 
     _peerConnection!.onTrack = (event) async {
       if (event.track.kind == 'audio') {
-        // 接收到的音频�?WebRTC 自动播放
+        // Audio tracks play automatically via WebRTC
         // 如需处理（解码），可以通过 DataChannel 接收
       }
     };
@@ -206,7 +209,86 @@ class VoiceClient extends BaseClient {
     });
   }
 
-  /// 发送处理后的音�?(通过 Neural Codec 编码)
+  /// Join room via WebSocket signaling (P2P direct)
+  Future<void> joinRoomViaWs({
+    required String roomId,
+    required String targetPeerId,
+    required WsSignalingClient wsSignaling,
+    required String myPeerId,
+    bool isCaller = false,
+  }) async {
+    _currentRoomId = roomId;
+    _wsSignaling = wsSignaling;
+
+    await _initWebRTC([]);
+
+    _localStream = await navigator.mediaDevices.getUserMedia({'audio': true});
+    for (final track in _localStream!.getAudioTracks()) {
+      _peerConnection!.addTrack(track, _localStream!);
+    }
+
+    _dataChannel = await _peerConnection!.createDataChannel('voice', RTCDataChannelInit()..ordered = true);
+
+    _peerConnection!.onIceCandidate = (candidate) {
+      wsSignaling.sendIceCandidate(targetPeerId, candidate.toMap());
+    };
+
+    _peerConnection!.onTrack = (event) {};
+
+    _peerConnection!.onDataChannel = (channel) {
+      _setupDataChannel(channel);
+    };
+
+    _wsSignalingSub = wsSignaling.events.listen((event) {
+      _handleSignalingEvent(event, targetPeerId, isCaller);
+    });
+
+    if (isCaller) {
+      final offer = await _peerConnection!.createOffer();
+      await _peerConnection!.setLocalDescription(offer);
+      wsSignaling.sendOffer(targetPeerId, offer.toMap());
+    }
+  }
+
+  void _handleSignalingEvent(SignalingEvent event, String targetPeerId, bool isCaller) async {
+    if (_peerConnection == null) return;
+
+    if (event.action == 'offer' && !isCaller) {
+      final sdp = event.data['sdp'] as Map<String, dynamic>?;
+      if (sdp != null) {
+        await _peerConnection!.setRemoteDescription(
+          RTCSessionDescription(sdp['sdp'] as String, sdp['type'] as String),
+        );
+        final answer = await _peerConnection!.createAnswer();
+        await _peerConnection!.setLocalDescription(answer);
+        _wsSignaling?.sendAnswer(targetPeerId, answer.toMap());
+      }
+    }
+
+    if (event.action == 'answer' && isCaller) {
+      final sdp = event.data['sdp'] as Map<String, dynamic>?;
+      if (sdp != null) {
+        await _peerConnection!.setRemoteDescription(
+          RTCSessionDescription(sdp['sdp'] as String, sdp['type'] as String),
+        );
+      }
+    }
+
+    if (event.action == 'ice-candidate') {
+      final candidate = event.data['candidate'] as Map<String, dynamic>?;
+      if (candidate != null) {
+        await _peerConnection!.addCandidate(RTCIceCandidate(
+          candidate['candidate'] as String? ?? '',
+          candidate['sdpMid'] as String? ?? '',
+          candidate['sdpMLineIndex'] as int? ?? 0,
+        ));
+      }
+    }
+
+    if (event.action == 'call-end') {
+      await leaveRoom();
+    }
+  }
   Future<void> sendProcessedAudio(Uint8List pcmData) async {
     if (_audioProcessor == null || _dataChannel == null) return;
 
@@ -228,11 +310,12 @@ class VoiceClient extends BaseClient {
     try {
       final encodedData = base64Decode(base64Data);
       final decoded = await _audioProcessor!.processReceivedAudio(Uint8List.fromList(encodedData));
-      // 解码后的音频可以播放或进一步处�?      if (decoded != null) {
-        // 可以通过 WebRTC �?AudioPlayer 播放
+      if (decoded != null) {
+        // Decoded audio can be played via AudioPlayer
       }
     } catch (e) {
-      // 解码失败，忽�?    }
+      // Decode failed
+    }
   }
 
   Future<void> _initWebRTC(List<dynamic> iceServers) async {
@@ -336,6 +419,9 @@ class VoiceClient extends BaseClient {
 
   void dispose() {
     _cleanup();
+    _wsSignalingSub?.cancel();
+    _wsSignalingSub = null;
+    _wsSignaling = null;
     _audioProcessor?.dispose();
     _audioTracksController.close();
     _transcriptsController.close();

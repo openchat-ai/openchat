@@ -12,7 +12,7 @@ import 'package:openchat_flutter/core/api/resident_client.dart';
 import 'package:openchat_flutter/core/api/sage_client.dart';
 import 'config_provider.dart';
 
-// �?Client �?Provider（自动读取配置）
+// Client Providers（自动读取配置）
 final agentClientProvider = Provider<AgentClient>((ref) {
   final config = ref.watch(configProvider);
   return AgentClient(baseUrl: config.baseUrl, token: config.token);

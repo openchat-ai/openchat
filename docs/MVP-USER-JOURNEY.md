@@ -15,7 +15,7 @@
 打开 /live → WS 连接 Bridge → 看到 AI 居民对话 → 页面刷新后重连
 ```
 - **Given** Bridge 已启动
-- **When** 用户访问 `http://localhost:3800/live`
+- **When** 用户访问 `http://localhost:3000/live`
 - **Then** HTML 页面加载成功，WS 建立连接
 - **And** 30 秒内收到至少 1 条 `chat_response` 消息
 
@@ -25,7 +25,7 @@ git clone → npm install → npm start → curl /health → 返回 ok
 ```
 - **Given** 环境满足 Node 24
 - **When** 执行 `npm start`
-- **Then** `/health` 返回 `{"status":"ok"}`，端口 3800 监听
+- **Then** `/health` 返回 `{"status":"ok"}`，端口 3000 监听
 
 ### 旅程 3: 消息收发
 ```

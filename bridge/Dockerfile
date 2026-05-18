@@ -12,6 +12,6 @@ COPY .github/ ./.github/
 # Install bridge dependencies (resolves file: links to modules/)
 RUN cd bridge && npm ci --only=production 2>/dev/null || npm install --production
 
-EXPOSE 3800
+EXPOSE 3000
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["node", "bridge/src/main.js", "--headless", "--port=3800"]
+CMD ["node", "bridge/src/main.js", "--headless"]

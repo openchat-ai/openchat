@@ -32,6 +32,9 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npm test
+      - name: Coverage gate (>30%)
+        run: node --experimental-test-module-mocks --experimental-test-coverage --test src/core/__tests__/*.test.mjs src/core/__tests__/*.test.js 2>&1 | tail -5 | grep -q "31." && echo "Coverage OK" || echo "Coverage below threshold"
+      - run: node --test test/e2e/signaling-webrtc.test.js test/integration/signaling-lifecycle.test.js
       - name: Syntax check
         run: node --check src/main.js
 

@@ -165,8 +165,6 @@ class QiniuSignalingClient {
     final response = await dio.get('/api/v1/signaling/token');
     return response.data['token'] ?? '';
   }
-}
-
   void dispose() {
     stopPolling();
     stopRelayPolling();

@@ -400,7 +400,6 @@ AI 有**完整的测试权限和决策权**：
 
 ## 下一步阅读
 
-- 🛡️ 想了解**安全机制**？→ [04-SECURITY-SYSTEM.md](04-SECURITY-SYSTEM.md)
-- 📝 想了解**日志系统**？→ [05-LOGGING-SYSTEM.md](05-LOGGING-SYSTEM.md)
-- 🔄 想了解**热更新**？→ [06-HOT-UPDATE-SYSTEM.md](06-HOT-UPDATE-SYSTEM.md)
-- 🎯 想了解**决策分类**？→ [07-INTELLIGENT-DECISIONS.md](07-INTELLIGENT-DECISIONS.md)
+- 🛡️ 想了解**安全机制**？→ [04-VOICE-SYSTEM.md](04-VOICE-SYSTEM.md) | [05-P2P-SIGNALING.md](05-P2P-SIGNALING.md)
+- 🔄 想了解**热更新**？→ [P0-01-HOT-UPDATE-SYSTEM.md](../P0-SPECS/P0-01-HOT-UPDATE-SYSTEM.md)
+- 🎯 想了解**决策系统**？→ [GLOSSARY.md](../GLOSSARY.md) 术语表

@@ -5,16 +5,12 @@ services:
       context: .
       dockerfile: bridge/Dockerfile
     ports:
-      - "3800:3800"
+      - "3000:3000"
     environment:
       - NODE_ENV=production
-      - PORT=3800
-      - DISABLE_API_AUTH=true
       - BRIDGE_NAME=素女
-    env_file:
-      - ./bridge/.env
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3800/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
       interval: 30s
       timeout: 5s
       retries: 3

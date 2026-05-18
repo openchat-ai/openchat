@@ -22,6 +22,8 @@ class BridgeWsClient {
   bool _connected = false;
   bool _reconnect = true;
   Timer? _reconnectTimer;
+  int _reconnectAttempt = 0;
+  static const int _maxReconnectDelay = 30;
   String? _peerId;
   final _messageController = StreamController<BridgeWsMessage>.broadcast();
   final _statusController = StreamController<bool>.broadcast();
@@ -31,7 +33,7 @@ class BridgeWsClient {
   bool get isConnected => _connected;
   String? get peerId => _peerId;
 
-  BridgeWsClient({String host = 'localhost', int port = 3800, String? token})
+  BridgeWsClient({String host = 'localhost', int port = 3000, String? token})
       : _host = host, _port = port, _token = token;
 
   void configure({String? host, int? port, String? token}) {
@@ -42,6 +44,7 @@ class BridgeWsClient {
 
   Future<void> connect() async {
     _reconnect = true;
+    _reconnectAttempt = 0;
     _reconnectTimer?.cancel();
     await _doConnect();
   }
@@ -54,6 +57,7 @@ class BridgeWsClient {
       _channel = WebSocketChannel.connect(uri);
       await _channel!.ready;
       _connected = true;
+      _reconnectAttempt = 0;
       _statusController.add(true);
       _channel!.stream.listen(_onMessage, onError: _onError, onDone: _onDone);
     } catch (e) {
@@ -90,7 +94,9 @@ class BridgeWsClient {
   void _scheduleReconnect() {
     if (!_reconnect) return;
     _reconnectTimer?.cancel();
-    _reconnectTimer = Timer(const Duration(seconds: 3), _doConnect);
+    _reconnectAttempt++;
+    final delay = (_reconnectAttempt * 2).clamp(1, _maxReconnectDelay);
+    _reconnectTimer = Timer(Duration(seconds: delay), _doConnect);
   }
 
   void sendMessage(String text, {String? sessionId}) {

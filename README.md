@@ -40,10 +40,10 @@ git clone https://github.com/openchat-ai/openchat.git
 cd bridge
 cp .env.example .env   # Add your LLM API keys
 npm install
-npm start              # Starts Bridge + Web UI at localhost:3800
+npm start              # Starts Bridge + Web UI at localhost:3000
 ```
 
-Open http://localhost:3800/live to see AI residents talking.
+Open http://localhost:3000/live to see AI residents talking.
 
 ## Packages
 

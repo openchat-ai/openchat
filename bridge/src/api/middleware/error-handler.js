@@ -12,29 +12,41 @@ class APIError extends Error {
 }
 
 const errorHandler = (err, req, res, next) => {
-  console.error('[API Error]', err.message, err.stack)
+  const reqId = req?.id || 'unknown';
+  console.error(JSON.stringify({
+    level: 'error',
+    reqId,
+    path: req?.originalUrl,
+    method: req?.method,
+    message: err.message,
+    stack: err.stack?.split('\n').slice(0, 3).join(' | '),
+    timestamp: new Date().toISOString(),
+  }));
 
   // Joi 验证错误
   if (err.isJoi) {
     return res.status(400).json({
       error: 'Validation Error',
-      details: err.details.map(d => d.message)
-    })
+      details: err.details.map(d => d.message),
+      reqId,
+    });
   }
 
   // 操作错误（已知错误）
   if (err.isOperational) {
     return res.status(err.statusCode).json({
       error: err.code,
-      message: err.message
-    })
+      message: err.message,
+      reqId,
+    });
   }
 
   // 未知错误
   res.status(500).json({
     error: 'INTERNAL_ERROR',
-    message: 'An unexpected error occurred'
-  })
+    message: 'An unexpected error occurred',
+    reqId,
+  });
 }
 
 export { APIError, errorHandler }
