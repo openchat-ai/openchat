@@ -3,8 +3,8 @@
  * 监控模块入口
  */
 
-import healthCheck from './health-check.js';
-import metrics from '../api/middleware/metrics.js';
+const healthCheck = require('./health-check.js');
+const metrics = require('../api/middleware/metrics.js');
 
 /**
  * 获取完整系统状态
@@ -37,7 +37,7 @@ function getQuickStatus() {
   };
 }
 
-export {
+module.exports = {
   healthCheck,
   metrics,
   getSystemStatus,

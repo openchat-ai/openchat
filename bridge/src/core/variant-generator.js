@@ -1,9 +1,7 @@
 /**
- * VariantGenerator — 问题变体生成器（纯内存）
+ * VariantGenerator �?问题变体生成器（纯内存）
  *
- * 从已解题目中提取结构，替换数字生成变体。
- * 全部在内存中操作，不落盘。
- */
+ * 从已解题目中提取结构，替换数字生成变体�? * 全部在内存中操作，不落盘�? */
 
 export class VariantGenerator {
   constructor() {
@@ -11,11 +9,8 @@ export class VariantGenerator {
   }
 
   /**
-   * 从已解题目生成变体
-   * @param {Array} solved - [{question, answer, domain}, ...]
-   * @param {number} countPerType - 每类型生成几个变体
-   * @returns {Array} 生成的变体列表
-   */
+   * 从已解题目生成变�?   * @param {Array} solved - [{question, answer, domain}, ...]
+   * @param {number} countPerType - 每类型生成几个变�?   * @returns {Array} 生成的变体列�?   */
   generate(solved, countPerType = 3) {
     if (!solved || solved.length === 0) return [];
 
@@ -73,8 +68,7 @@ export class VariantGenerator {
   }
 
   /**
-   * 数字扰动：±50% 范围内随机
-   */
+   * 数字扰动：�?0% 范围内随�?   */
   _vary(n) {
     if (n === 0) return Math.floor(Math.random() * 5) + 1;
     const factor = 0.5 + Math.random() * 0.6; // 0.5 ~ 1.1

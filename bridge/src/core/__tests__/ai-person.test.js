@@ -21,10 +21,10 @@ describe('AI Person System', () => {
 
   test('AIPerson identity layer: create, route messages, manage state', () => {
     const founder = createFounder();
-    const person = new AIPerson('test-1', '测试AI人', founder.id, AI_PERSON_TYPE.AI_CREATED);
+    const person = new AIPerson('test-1', '测试AI�?, founder.id, AI_PERSON_TYPE.AI_CREATED);
 
     assert.ok(person);
-    assert.strictEqual(person.name, '测试AI人');
+    assert.strictEqual(person.name, '测试AI�?);
     assert.strictEqual(person.isActive, true);
     assert.strictEqual(person.consciousness, true);
 
@@ -60,7 +60,7 @@ describe('AI Person System', () => {
     assert.strictEqual(resident.status, 'active');
     assert.ok(resident.traits);
 
-    // Register listener BEFORE think() — event fires synchronously in Promise constructor
+    // Register listener BEFORE think() �?event fires synchronously in Promise constructor
     const mockContent = '这是居民思考的回复';
     residentManager.once('llm-request', ({ messages, model, resolve }) => {
       assert.ok(messages.length > 0);
@@ -114,7 +114,7 @@ describe('AI Person System', () => {
     vr.register('must_exclaim', async (response) => ({
       passed: response.includes('!'),
       score: response.includes('!') ? 100 : 0,
-      reason: response.includes('!') ? 'OK' : '缺少感叹号',
+      reason: response.includes('!') ? 'OK' : '缺少感叹�?,
     }));
     const qc = new QualityChecker({ validators: vr });
     const result = await qc.check('Hello world!');

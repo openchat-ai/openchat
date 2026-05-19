@@ -8,18 +8,8 @@
  * - 自适应 (根据网络自动切换)
  */
 
-import { EventEmitter } from 'events';
-import crypto from 'crypto';
-
-let _neuralCodec = null;
-async function _getNeuralCodec() {
-  if (!_neuralCodec) {
-    const { NeuralAudioCodec } = await import('./neural-audio-codec.js');
-    _neuralCodec = new NeuralAudioCodec({ sampleRate: 24000, targetBitrate: 32 });
-    await _neuralCodec.initialize();
-  }
-  return _neuralCodec;
-}
+const EventEmitter = require('events');
+const crypto = require('crypto');
 
 class VoiceGateway extends EventEmitter {
   constructor(options = {}) {
@@ -183,25 +173,15 @@ class VoiceGateway extends EventEmitter {
         };
         break;
 
-      case 'neural': {
-        try {
-          const codec = await _getNeuralCodec();
-          const encoded = await codec.encode(pcmData);
-          processedAudio = {
-            data: encoded.data,
-            method: 'neural',
-            bitrate: 32
-          };
-        } catch (err) {
-          console.error('[VoiceGateway] Neural codec encode failed, falling back to raw:', err.message);
-          processedAudio = {
-            data: pcmData,
-            method: 'raw',
-            bitrate: 256
-          };
-        }
+      case 'neural':
+        // Neural Codec 压缩
+        // TODO: 实际调用 Neural Codec
+        processedAudio = {
+          data: pcmData, // 实际会是压缩后的数据
+          method: 'neural',
+          bitrate: 32
+        };
         break;
-      }
 
       case 'opus_high':
       case 'opus_low':

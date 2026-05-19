@@ -175,20 +175,6 @@ class QiniuSignaling {
   }
 
   /**
-   * 写入 offer (手机端发起 WebRTC 连接)
-   */
-  async writeOffer(roomId, sdp, iceCandidates = []) {
-    await this._writeJson(`room-${roomId}/offer`, {
-      sdp,
-      iceCandidates,
-      phonePeerId: this.peerId,
-      timestamp: new Date().toISOString()
-    });
-
-    console.log(`[QiniuSignaling] Wrote offer for room-${roomId}`);
-  }
-
-  /**
    * 写入 answer (Bridge 回复手机)
    */
   async writeAnswer(roomId, sdp, iceCandidates = []) {

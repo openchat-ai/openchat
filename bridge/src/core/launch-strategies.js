@@ -1,14 +1,18 @@
 /**
- * LaunchStrategies 閳?閸氼垰濮╃粵鏍殣濡€崇础
+ * LaunchStrategies — 启动策略模式
  *
- * 缂佺喍绔?Body閿涘湐ridge 鐎圭偘绶ラ敍澶屾畱閸氼垰濮?閸嬫粍顒?缁狅紕鎮婇幒銉ュ經閿? *   - PM2Strategy:    闁俺绻?PM2 鐎瑰牊濮㈡潻娑氣柤
- *   - DockerStrategy:  Docker 鐎圭懓娅掗敍鍫ヮ暕閻ｆ瑦銆呴敍? *   - SystemdStrategy: systemd 閺堝秴濮熼敍鍫ヮ暕閻ｆ瑦銆呴敍? *
- * 濞夈劍鍓伴敍姝俹de 閻╂潙鎯庣粵鏍殣瀹歌尪绺肩粔璇插煂 fairy-guardian 閸? *
- * 娴ｈ法鏁ら弬鐟扮础閿? *   const strategy = createLaunchStrategy('pm2', { name: 'house-1', script: 'src/main.js' });
+ * 统一 House（Bridge 实例）的启动/停止/管理接口：
+ *   - NodeStrategy:   直接 child_process.spawn
+ *   - PM2Strategy:    通过 PM2 守护进程
+ *   - DockerStrategy:  Docker 容器（预留桩）
+ *   - SystemdStrategy: systemd 服务（预留桩）
+ *
+ * 使用方式：
+ *   const strategy = createLaunchStrategy('pm2', { name: 'house-1', script: 'src/main.js' });
  *   await strategy.launch();
  */
 
-import { execSync } from 'child_process';
+import { spawn, execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
@@ -16,7 +20,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
 
-// ================== 閸╄櫣琚?==================
+// ================== 基类 ==================
 
 class LaunchStrategy {
   constructor(options = {}) {
@@ -33,10 +37,162 @@ class LaunchStrategy {
   async shutdown() { throw new Error('Not implemented'); }
 }
 
-// ================== PM2 缁涙牜鏆?==================
+// ================== Node 直启策略 ==================
+
+class NodeStrategy extends LaunchStrategy {
+  constructor(options = {}) {
+    super(options);
+    this._process = null;
+    this._children = new Map();
+    this._nextPort = options.basePort || 3002;
+    this.maxChildren = options.maxChildren || 6;
+  }
+
+  /**
+   * 清理占用指定端口的旧进程
+   * 注意：仅在主 Bridge 启动时调用，Fairy 启动时不调用
+   */
+  _cleanupPort(port) {
+    // 临时禁用，避免误杀 Fairy
+    // 如果需要清理旧进程，应该在主 Bridge 启动时而非 spawn 时调用
+    return;
+  }
+
+  /**
+   * 启动主 Bridge 进程
+   */
+  async launch() {
+    if (this._process) {
+      console.log(`[NodeStrategy] ${this.name} 已在运行`);
+      return null;
+    }
+
+    const mainScript = path.resolve(this.cwd, this.script);
+    const child = spawn('node', [mainScript, ...this.args], {
+      cwd: this.cwd,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: this.env,
+    });
+
+    child.stdout.on('data', (chunk) => {
+      console.log(`[${this.name}] ${chunk.toString().trim()}`);
+    });
+    child.stderr.on('data', (chunk) => {
+      console.error(`[${this.name}] ${chunk.toString().trim()}`);
+    });
+    child.on('exit', (code) => {
+      console.log(`[${this.name}] 进程退出, code=${code}`);
+      this._process = null;
+    });
+    child.on('error', (err) => {
+      console.error(`[${this.name}] 启动失败: ${err.message}`);
+      this._process = null;
+    });
+
+    this._process = child;
+    console.log(`[NodeStrategy] ${this.name} 已启动 pid=${child.pid}`);
+    return { pid: child.pid, name: this.name };
+  }
+
+  /**
+   * 扩窟：启动子 House 进程（nesting 模式）
+   */
+  spawnHouse(options = {}) {
+    if (this._children.size >= this.maxChildren) {
+      console.log(`[NodeStrategy] 子 House 已达上限 ${this.maxChildren}`);
+      return null;
+    }
+
+    const port = this._nextPort;
+    // 临时禁用清理，避免误杀 Fairy
+    // this._cleanupPort(port);
+    this._nextPort++;
+    const name = options.name || `house-${port}`;
+    const id = `house_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+
+    const mainScript = path.resolve(this.cwd, this.script);
+    const childArgs = [
+      mainScript,
+      '--fairy',
+      `--port=${port}`,
+      `--name=${name}`,
+      ...this.args.filter(a => a.startsWith('--hostId=')),
+    ];
+
+    const child = spawn(process.execPath, childArgs, {
+      cwd: this.cwd,
+      stdio: 'ignore',
+      env: { ...this.env, NESTING_BRIDGE: '1' },
+      detached: true
+    });
+    child.unref();
+
+    child.on('exit', (code) => {
+      console.log(`[${name}] 进程退出, code=${code}`);
+      this._children.delete(id);
+    });
+    child.on('error', (err) => {
+      console.error(`[${name}] 启动失败: ${err.message}`);
+      this._children.delete(id);
+    });
+
+    this._children.set(id, { process: child, port, startTime: Date.now(), name });
+    console.log(`[NodeStrategy] 新窟已筑: ${name} pid=${child.pid} port=${port}`);
+    return { childId: id, port, name };
+  }
+
+  /**
+   * 停止主进程
+   */
+  async stop() {
+    if (this._process) {
+      this._process.kill('SIGTERM');
+      this._process = null;
+      console.log(`[NodeStrategy] ${this.name} 已停止`);
+    }
+  }
+
+  /**
+   * 列出所有进程
+   */
+  list() {
+    const result = [];
+    if (this._process) {
+      result.push({ name: this.name, pid: this._process.pid, type: 'main' });
+    }
+    for (const [id, info] of this._children) {
+      result.push({
+        id,
+        name: info.name,
+        port: info.port,
+        uptime: Date.now() - info.startTime,
+        pid: info.process?.pid,
+        type: 'house',
+      });
+    }
+    return result;
+  }
+
+  /**
+   * 全量关闭
+   */
+  async shutdown() {
+    await this.stop();
+    for (const [id] of this._children) {
+      try {
+        this._children.get(id).process.kill('SIGTERM');
+      } catch { /* ignore */ }
+      this._children.delete(id);
+    }
+    console.log('[NodeStrategy] 全部进程已关闭');
+  }
+}
+
+// ================== PM2 策略 ==================
 
 /**
- * PM2 閻㈢喐鈧焦鏋冩禒鑸的侀弶? */
+ * PM2 生态文件模板
+ */
 function generateEcosystem(name, script, args, env) {
   return `module.exports = {
   apps: [{
@@ -69,7 +225,7 @@ class PM2Strategy extends LaunchStrategy {
   }
 
   /**
-   * 濡偓閺?PM2 閺勵垰鎯侀崣顖滄暏
+   * 检查 PM2 是否可用
    */
   _checkPM2() {
     if (this._pm2Available !== null) return this._pm2Available;
@@ -83,7 +239,7 @@ class PM2Strategy extends LaunchStrategy {
   }
 
   /**
-   * 閻㈢喐鍨?ecosystem.config.cjs
+   * 生成 ecosystem.config.cjs
    */
   _writeEcosystem() {
     const dir = path.dirname(this.ecosystemPath);
@@ -92,15 +248,15 @@ class PM2Strategy extends LaunchStrategy {
     }
     const content = generateEcosystem(this.name, this.script, this.args, this.env);
     fs.writeFileSync(this.ecosystemPath, content, 'utf8');
-    console.log(`[PM2Strategy] 閻㈢喐鈧焦鏋冩禒璺哄嚒閸愭瑥鍙? ${this.ecosystemPath}`);
+    console.log(`[PM2Strategy] 生态文件已写入: ${this.ecosystemPath}`);
   }
 
   /**
-   * 閸氼垰濮?PM2 鏉╂稓鈻?
+   * 启动 PM2 进程
    */
   async launch() {
     if (!this._checkPM2()) {
-      console.log('[PM2Strategy] PM2 娑撳秴褰查悽顭掔礉鐠囧嘲鐣ㄧ憗? npm install -g pm2');
+      console.log('[PM2Strategy] PM2 不可用，请安装: npm install -g pm2');
       return null;
     }
 
@@ -111,29 +267,30 @@ class PM2Strategy extends LaunchStrategy {
         cwd: PROJECT_ROOT,
         stdio: 'pipe',
       });
-      console.log(`[PM2Strategy] ${this.name} 瀹告彃鎯庨崝鈺?;
+      console.log(`[PM2Strategy] ${this.name} 已启动`);
       return { name: this.name, strategy: 'pm2' };
     } catch (e) {
-      console.error(`[PM2Strategy] 閸氼垰濮╂径杈Е: ${e.message}`);
+      console.error(`[PM2Strategy] 启动失败: ${e.message}`);
       return null;
     }
   }
 
   /**
-   * 閸嬫粍顒?PM2 鏉╂稓鈻?
+   * 停止 PM2 进程
    */
   async stop() {
     if (!this._checkPM2()) return;
     try {
       execSync(`pm2 stop ${this.name}`, { stdio: 'pipe' });
-      console.log(`[PM2Strategy] ${this.name} 瀹告彃浠犲顣?;
+      console.log(`[PM2Strategy] ${this.name} 已停止`);
     } catch (e) {
-      console.error(`[PM2Strategy] 閸嬫粍顒涙径杈Е: ${e.message}`);
+      console.error(`[PM2Strategy] 停止失败: ${e.message}`);
     }
   }
 
   /**
-   * 閸掓鍤?PM2 閻樿埖鈧?   */
+   * 列出 PM2 状态
+   */
   list() {
     if (!this._checkPM2()) return [];
     try {
@@ -155,93 +312,97 @@ class PM2Strategy extends LaunchStrategy {
   }
 
   /**
-   * 閸掔娀娅?PM2 鏉╂稓鈻?
+   * 删除 PM2 进程
    */
   async shutdown() {
     if (!this._checkPM2()) return;
     try {
       execSync(`pm2 delete ${this.name}`, { stdio: 'pipe' });
-      console.log(`[PM2Strategy] ${this.name} 瀹告彃鍨归梽顦?;
+      console.log(`[PM2Strategy] ${this.name} 已删除`);
     } catch (e) {
-      console.error(`[PM2Strategy] 閸掔娀娅庢径杈Е: ${e.message}`);
+      console.error(`[PM2Strategy] 删除失败: ${e.message}`);
     }
   }
 }
 
-// ================== Docker 缁涙牜鏆愰敍鍫熴€呴敍?==================
+// ================== Docker 策略（桩） ==================
 
 class DockerStrategy extends LaunchStrategy {
   async launch() {
-    console.log('[DockerStrategy] Docker 濡€崇础妫板嫮鏆€閿涘苯绶熺€圭偟骞?);
+    console.log('[DockerStrategy] Docker 模式预留，待实现');
     return null;
   }
   async stop() {
-    console.log('[DockerStrategy] Docker 濡€崇础妫板嫮鏆€');
+    console.log('[DockerStrategy] Docker 模式预留');
   }
   list() { return []; }
   async shutdown() {
-    console.log('[DockerStrategy] Docker 濡€崇础妫板嫮鏆€');
+    console.log('[DockerStrategy] Docker 模式预留');
   }
 }
 
-// ================== Systemd 缁涙牜鏆愰敍鍫熴€呴敍?==================
+// ================== Systemd 策略（桩） ==================
 
 class SystemdStrategy extends LaunchStrategy {
   async launch() {
-    console.log('[SystemdStrategy] Systemd 濡€崇础妫板嫮鏆€閿涘苯绶熺€圭偟骞?);
+    console.log('[SystemdStrategy] Systemd 模式预留，待实现');
     return null;
   }
   async stop() {
-    console.log('[SystemdStrategy] Systemd 濡€崇础妫板嫮鏆€');
+    console.log('[SystemdStrategy] Systemd 模式预留');
   }
   list() { return []; }
   async shutdown() {
-    console.log('[SystemdStrategy] Systemd 濡€崇础妫板嫮鏆€');
+    console.log('[SystemdStrategy] Systemd 模式预留');
   }
 }
 
-// ================== 瀹搞儱宸?==================
+// ================== 工厂 ==================
 
 const STRATEGY_MAP = {
+  node:    NodeStrategy,
   pm2:     PM2Strategy,
   docker:  DockerStrategy,
   systemd: SystemdStrategy,
 };
 
 /**
- * 閸掓稑缂撻崥顖氬З缁涙牜鏆愮€圭偘绶?
- * @param {'pm2'|'docker'|'systemd'} type
+ * 创建启动策略实例
+ * @param {'node'|'pm2'|'docker'|'systemd'} type
  * @param {object} options
  * @returns {LaunchStrategy}
  */
 function createLaunchStrategy(type, options = {}) {
   const Klass = STRATEGY_MAP[type];
   if (!Klass) {
-    throw new Error(`閺堫亞鐓￠崥顖氬З缁涙牜鏆? ${type}閿涘苯褰查柅? ${Object.keys(STRATEGY_MAP).join(', ')}`);
+    throw new Error(`未知启动策略: ${type}，可选: ${Object.keys(STRATEGY_MAP).join(', ')}`);
   }
   return new Klass(options);
 }
 
 /**
- * 閼奉亜濮╁Λ鈧ù瀣付娴ｅ啿鎯庨崝銊х摜閻? * @param {object} options
- * @returns {string} 缁涙牜鏆愰崥宥囆?
+ * 自动检测最佳启动策略
+ * @param {object} options
+ * @returns {string} 策略名称
  */
 function detectBestStrategy(options = {}) {
-  // 1. 娴兼ê鍘?PM2閿涘牆顩ч弸婊冨弿鐏炩偓鐎瑰顥婇敍?  try {
+  // 1. 优先 PM2（如果全局安装）
+  try {
     execSync('pm2 --version', { stdio: 'ignore' });
-    console.log('[Launch] 濡偓濞村鍩?PM2閿涘奔濞囬悽?pm2 缁涙牜鏆?);
+    console.log('[Launch] 检测到 PM2，使用 pm2 策略');
     return 'pm2';
   } catch {
     // fall through
   }
 
-  // 2. 姒涙顓?PM2閿涘牆顩ч弸婊勭梾閺?PM2閿涘M2Strategy 娴兼俺鍤滈崝銊﹀絹缁€鍝勭暔鐟佸拑绱?
-  console.log('[Launch] 閺堫亝顥呭ù瀣煂 PM2閿涘矂妾风痪褎褰佺粈?);
-  return 'pm2';
+  // 2. 默认 Node 直启
+  console.log('[Launch] 未检测到 PM2，使用 node 策略');
+  return 'node';
 }
 
 export {
   LaunchStrategy,
+  NodeStrategy,
   PM2Strategy,
   DockerStrategy,
   SystemdStrategy,

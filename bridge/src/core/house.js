@@ -1,23 +1,23 @@
 /**
- * Body — 居民房间实体
+ * House — 居民房间实体
  *
- * 每个 Bridge 实例对应一个 Body（无论主 Bridge 还是子 Bridge）。
- * Body 负责管理居民的数据目录：
+ * 每个 Bridge 实例对应一个 House（无论主 Bridge 还是子 Bridge）。
+ * House 负责管理居民的数据目录：
  *   ~/.openchat/houses/{houseId}/
  *   ├── house.json       # 元数据
  *   ├── memory.json      # 居民记忆
  *   ├── skills/          # 个人技能库
- *   ├── config.json      # Body 本地配置
+ *   ├── config.json      # House 本地配置
  *   └── workspace/       # 工作文件
  *
- * 主 Bridge 启动时创建默认 Body，子 Bridge（nesting）各自创建独立 Body。
+ * 主 Bridge 启动时创建默认 House，子 Bridge（nesting）各自创建独立 House。
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
 import { HOUSES_DIR } from './persistent-config.js';
 
-class Body {
+class House {
   /**
    * @param {string} houseId  唯一标识（主 Bridge 用 hostId + '_default'）
    * @param {string} bridgeId  P2P 网络标识
@@ -186,5 +186,5 @@ class Body {
   }
 }
 
-export { Body };
-export default Body;
+export { House };
+export default House;

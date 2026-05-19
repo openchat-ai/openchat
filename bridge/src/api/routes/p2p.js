@@ -59,13 +59,7 @@ export function createP2PRouter(swarm) {
         type,
         status: 'SENT',
         peersDelivered: sentCount,
-        createdAt: new Date().toISOString(),
-        id: `msg_${Date.now()}`,
-        sourcePeerId: 'local',
-        targetPeerId: null,
-        payload: payload || {},
-        priority: priority,
-        deliveredAt: null
+        createdAt: new Date().toISOString()
       });
     } catch (error) {
       next(error);
@@ -116,9 +110,7 @@ export function createP2PRouter(swarm) {
           region: info.region || '?',
           residentCount: info.residentCount || 0,
           transport: 'hyperswarm',
-          status: 'CONNECTED',
-          address: info.host ? `${info.host}:${info.port}` : null,
-          connectedAt: new Date().toISOString()
+          status: 'CONNECTED'
         });
       }
       for (const peerId of swarm.directPeers.keys()) {
@@ -130,9 +122,7 @@ export function createP2PRouter(swarm) {
           region: info.region || '?',
           residentCount: info.residentCount || 0,
           transport: 'direct-tcp',
-          status: 'CONNECTED',
-          address: info.host ? `${info.host}:${info.port}` : null,
-          connectedAt: new Date().toISOString()
+          status: 'CONNECTED'
         });
       }
 
@@ -157,7 +147,6 @@ export function createP2PRouter(swarm) {
       }
       res.json({
         id,
-        address: req.body?.peerAddress || null,
         status: 'CONNECTED',
         connectedAt: new Date().toISOString()
       });
@@ -203,15 +192,11 @@ export function createP2PRouter(swarm) {
       const status = swarm.getStatus();
       res.json({
         peers: {
-          total: status.connectedCount || 0,
-          connected: status.connectedCount || 0,
-          connecting: 0
+          connected: status.connectedCount
         },
-        messages: {
-          total: status.messageCount || 0,
-          pending: 0,
-          delivered: status.messageCount || 0
-        },
+        peersInfo: status.peers,
+        identity: status.identity,
+        swarm: status,
         config: {
           encryption: 'TLS',
           discoveryEnabled: true,

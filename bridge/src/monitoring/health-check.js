@@ -3,7 +3,7 @@
  * 系统健康检查
  */
 
-import os from 'os';
+const os = require('os');
 
 class HealthCheck {
   constructor(options = {}) {
@@ -142,5 +142,5 @@ class HealthCheck {
 // 导出单例
 const healthCheck = new HealthCheck();
 
-export default healthCheck;
-export { HealthCheck };
+module.exports = healthCheck;
+module.exports.HealthCheck = HealthCheck;

@@ -7,16 +7,14 @@
 
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-let Hyperswarm;
-try { Hyperswarm = require('hyperswarm'); } catch { Hyperswarm = null; }
+const Hyperswarm = require('hyperswarm');
 const crypto = require('crypto');
 const net = require('net');
 const os = require('os');
 const EventEmitter = require('events');
 
 import { MessageType } from './messages.js';
-import NodeIdentity from './identity.js';
-import { detectNatType, getDefaultIceServers } from './nat-traversal.js';
+import TopicRegistry from './topic-registry.js';
 
 // --- 粘包处理：消息帧工具 ---
 
@@ -93,13 +91,12 @@ function getPublicIPv4() {
   return null;
 }
 
-class P2PSwarm extends EventEmitter {
+class P2PNet extends EventEmitter {
   constructor(options = {}) {
     super();
     this.swarm = null;
     this.topic = options.topic || Buffer.alloc(32).fill('openchat'); // 默认主题
-    this.nodeIdentity = options.nodeIdentity || new NodeIdentity();
-    this.peerId = this.nodeIdentity.peerId;
+    this.peerId = options.peerId || crypto.randomBytes(32).toString('hex');
     this.connectedPeers = new Map();    // Hyperswarm DHT connections
     this.directPeers = new Map();       // Direct TCP connections (bypass DHT)
     this.messageQueue = [];
@@ -112,8 +109,11 @@ class P2PSwarm extends EventEmitter {
     this.hostIsPublic = options.hostIsPublic || false;
     this.wsSignalingUrl = options.wsSignalingUrl || '';
     this.registry = options.registry || null;
-    this.stunServers = options.stunServers || getDefaultIceServers();
-    this.natType = 'unknown';
+    this.topicRegistry = new TopicRegistry();
+    this.topicRegistry.setP2PSend((msg) => {
+      this.broadcast(msg, 'topic_announce');
+      return msg.type === 'topic_query' ? this._queryTopicPeers(msg.topic, msg.excludePeerId) : null;
+    });
 
     console.log(`[P2P] 已初始化，节点ID: ${this.peerId.slice(0, 8)}...`);
   }
@@ -128,14 +128,7 @@ class P2PSwarm extends EventEmitter {
     }
 
     try {
-      // Detect NAT type on startup
-      detectNatType().then(type => {
-        this.natType = type;
-        console.log(`[P2P] NAT type: ${type}`);
-      }).catch(() => {});
-
-      if (Hyperswarm) {
-        const hyperswarmOpts = {
+      const hyperswarmOpts = {
         maxPeers: 50,
         cache: false,
         fastJoin: true,
@@ -197,9 +190,6 @@ class P2PSwarm extends EventEmitter {
         } catch (e) {
           console.log(`[P2P] 注册中心发现失败: ${e.message}`);
         }
-      }
-      } else {
-        console.log('[P2P] hyperswarm 不可用，仅使用直连模式');
       }
 
       this.isRunning = true;
@@ -340,11 +330,11 @@ class P2PSwarm extends EventEmitter {
     this.emit('peer-connected', peerKey);
 
     // 发送握手（带帧头）
-    const handshake = this.nodeIdentity.createHandshake();
     socket.write(createFrame({
       type: 'HANDSHAKE',
-      ...handshake,
-      version: '1.0'
+      peerId: this.peerId,
+      version: '1.0',
+      timestamp: Date.now()
     }));
 
     // 发送身份信息
@@ -362,11 +352,11 @@ class P2PSwarm extends EventEmitter {
       socket.setTimeout(10000);
 
       // 发送握手回复（带帧头）
-      const handshake = this.nodeIdentity.createHandshake();
       socket.write(createFrame({
         type: 'HANDSHAKE',
-        ...handshake,
-        version: '1.0'
+        peerId: this.peerId,
+        version: '1.0',
+        timestamp: Date.now()
       }));
 
       // 发送身份信息
@@ -406,18 +396,12 @@ class P2PSwarm extends EventEmitter {
       const message = JSON.parse(data.toString());
 
       if (message.type === 'HANDSHAKE') {
-        const result = NodeIdentity.verifyHandshake(message);
-        if (!result.valid) {
-          console.error(`[P2P] 握手验证失败: ${result.reason}`);
-          socket.end();
-          return;
-        }
-        console.log(`[P2P] 直连握手来自: ${result.peerId.slice(0, 8)}...`);
+        console.log(`[P2P] 直连握手来自: ${message.peerId.slice(0, 8)}...`);
         // 用对方 peerId 替换 key 以便识别
-        if (!this.directPeers.has(result.peerId)) {
-          this.directPeers.set(result.peerId, socket);
+        if (!this.directPeers.has(message.peerId)) {
+          this.directPeers.set(message.peerId, socket);
           this.directPeers.delete(peerKey);
-          socket._peerId = result.peerId;
+          socket._peerId = message.peerId; // 记在 socket 上供后续使用
         }
         return;
       }
@@ -436,11 +420,11 @@ class P2PSwarm extends EventEmitter {
    */
   sendHandshake(peerId, conn) {
     try {
-      const handshake = this.nodeIdentity.createHandshake();
       conn.write(createFrame({
         type: 'HANDSHAKE',
-        ...handshake,
-        version: '1.0'
+        peerId: this.peerId,
+        version: '1.0',
+        timestamp: Date.now()
       }));
     } catch (error) {
       console.error(`[P2P] 握手失败: ${error.message}`);
@@ -451,6 +435,13 @@ class P2PSwarm extends EventEmitter {
    * 发送身份信息给已连接的 peer
    */
   sendIdentity(peerId, conn) {
+    // Announce our peer via topic registry
+    const topicName = this.topic.toString('hex').substring(0, 16);
+    this.topicRegistry.announce(topicName, this.peerId, {
+      name: this.identity.name,
+      host: conn.remoteAddress || 'unknown',
+      port: conn.remotePort || 0,
+    });
     const isPublic = this.hostIsPublic || hasPublicAddress();
     const info = {
       type: 'IDENTITY',
@@ -479,22 +470,22 @@ class P2PSwarm extends EventEmitter {
       const message = JSON.parse(data.toString());
 
       switch (message.type) {
-        case 'HANDSHAKE': {
-          const result = NodeIdentity.verifyHandshake(message);
-          if (!result.valid) {
-            console.error(`[P2P] 握手验证失败 (${peerId.slice(0, 8)}...): ${result.reason}`);
-            // Replace peerId so connection gets cleaned up by next cleanup cycle
-            this.connectedPeers.delete(peerId);
-            return;
-          }
-          // Update peerId to the verified one
-          if (result.peerId !== peerId) {
-            this.connectedPeers.delete(peerId);
-            this.connectedPeers.set(result.peerId, this.connectedPeers.get(peerId));
-          }
-          console.log(`[P2P] 握手验证通过: ${result.peerId.slice(0, 8)}...`);
+        case 'HANDSHAKE':
+          console.log(`[P2P] 收到握手来自: ${message.peerId.slice(0, 8)}...`);
           break;
-        }
+
+        case 'topic_announce':
+          this.topicRegistry.handleMessage(message);
+          break;
+
+        case 'topic_query':
+          const result = this.topicRegistry.handleMessage(message);
+          if (result && this.sendTo(peerId, { type: 'topic_peers', topic: message.topic, peers: result, timestamp: Date.now() })) {}
+          break;
+
+        case 'topic_peers':
+          // handled by caller via Promise
+          break;
 
         case 'MESSAGE':
           this.emit('message', {
@@ -518,9 +509,6 @@ class P2PSwarm extends EventEmitter {
         case 'PONG':
           // 连接活跃
           break;
-
-        // 神经网格: 分布式权重共享
-        case 'neural_share':
 
         case MessageType.SKILL_PUBLISH:
         case MessageType.COLLABORATION_REQUEST:
@@ -653,11 +641,7 @@ class P2PSwarm extends EventEmitter {
       topic: this.topic.toString('hex').slice(0, 8) + '...'
     };
   }
-
-  getConnectedPeers() {
-    return Array.from(this.connectedPeers.keys());
-  }
 }
 
-export default P2PSwarm;
+export default P2PNet;
 export { hasPublicAddress, getPublicIPv4 };

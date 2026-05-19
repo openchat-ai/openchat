@@ -1,8 +1,7 @@
 /**
- * 泛化求解器 / Generalization Solver
+ * 泛化求解�?/ Generalization Solver
  *
- * 当前求解：两维度保证问题（鸽巢原理类）
- * 解法：CSP 分支定界搜索 + 结构指纹缓存
+ * 当前求解：两维度保证问题（鸽巢原理类�? * 解法：CSP 分支定界搜索 + 结构指纹缓存
  * 能力：自提取数字、触觉策略感知、跨形状数自动适配
  * 规划：扩展至更多问题类型
  */
@@ -13,7 +12,7 @@ class GeneralizationEngineV2 {
     // Parse (with input length guard)
     if (question.length > 10000) return { content: '输入过长', model: 'error' };
     const items = [];
-    const re = /([\u4e00-\u9fff]+?)味([\u4e00-\u9fff]+?)(\d+)/g;
+    const re = /([\u4e00-\u9fff]+?)�?[\u4e00-\u9fff]+?)(\d+)/g;
     let m;
     while ((m = re.exec(question)) !== null) items.push({ d1: m[1], d2: m[2], n: parseInt(m[3]) });
     if (items.length < 4) return { content: '无法解析', model: 'error' };
@@ -57,18 +56,18 @@ class GeneralizationEngineV2 {
     try {
       vectorMemory.store({
         residentId: 'solver',
-        text: `[求解缓存touch] ${fp} → ${answerTouch}`,
+        text: `[求解缓存touch] ${fp} �?${answerTouch}`,
         metadata: { fp, answer: answerTouch, ts: Date.now() },
         source: 'solved',
       });
     } catch (e) { console.error('[Generalization] cache write failed:', e.message); }
     const touchParts = dim2.map((s, i) => {
       if (i === dim2.indexOf(choice)) return `${s}双全(${irr(i)}+${Math.max(C[iA][i],C[iB][i])}+1)`;
-      return `${s}一类(${irr(i)}+1)`;
+      return `${s}一�?${irr(i)}+1)`;
     });
 
     return {
-      content: [`触觉（默认人手）：${touchParts.join('+')}`, `答案：${answerTouch}`].join('\n'),
+      content: [`触觉（默认人手）�?{touchParts.join('+')}`, `答案�?{answerTouch}`].join('\n'),
       model: 'solver',
     };
 

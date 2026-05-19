@@ -3,37 +3,7 @@ import { memoryManager } from '../memory/memory-manager.js';
 import { sessionManager } from '../session/session-manager.js';
 import { PromptBuilder } from './prompt-builder.js';
 import { agentMonitor } from './agent-monitor.js';
-import { QualityChecker, Corrector, ValidatorRegistry, globalValidatorRegistry } from './quality-check-system.js';
-import { EvolutionMemory } from './evolution-memory.js';
-
-/**
- * 居民长期记忆 — 注入身份 + 历史上下文
- */
-const residentMemory = new EvolutionMemory();
-
-/**
- * AgentEngine — Think-Act-Verify loop
- *
- * Interface:
- *   processStream(sessionId, userId, userMessage, onEvent)  → 流式主入口
- *   process(sessionId, userId, userMessage)                  → 非流式主入口
- *
- * Plugin hooks (扩展点):
- *   this.pluginManager.execHook('beforeThink', { sessionId, messages })
- *   this.pluginManager.execHook('afterThink', { sessionId, content })
- *   this.pluginManager.execHook('beforeAct', { sessionId, toolName, args })
- *   this.pluginManager.execHook('afterAct', { sessionId, toolName, result })
- *   this.pluginManager.execHook('beforeVerify', { sessionId, response })
- *   this.pluginManager.execHook('afterVerify', { sessionId, check })
- *
- * Quality check (可插拔):
- *   this.validators = new ValidatorRegistry()
- *   this.validators.register('my_check', async (response) => ({ passed, score, reason }))
- *   this.qualityChecker.validators = this.validators  // 注入自定义验证器
- *
- * Agent 事件 (onEvent 回调):
- *   THINKING, CONTENT, TOOL_CALL, TOOL_RESULT, ITERATION, COMPLETE, ERROR
- */
+import { QualityChecker, Corrector } from './quality-check-system.js';
 
 /**
  * Agent 事件类型
@@ -62,25 +32,15 @@ export const AgentEvents = {
  */
 export class AgentEngine {
   constructor(options = {}) {
-    this.memoryManager = options.memoryManager;
-    this.pluginManager = options.pluginManager;
-    this.sessionManager = options.sessionManager;
-    this.PromptBuilder = options.PromptBuilder;
-    this.agentMonitor = options.agentMonitor;
-    this.residentMemory = options.residentMemory;
-
     this.maxIterations = 10;
-    this._lastContent = '';
-    this._stuckCount = 0;
-    this._errorCount = 0;
-    this._maxErrors = 3;
-    this.qualityThreshold = 4;
-    this.useRAG = options.useRAG !== false;
-    this.useFunctionCalling = options.useFunctionCalling !== false;
+    this.qualityThreshold = 4; // 低于这个分数会自动优化
+    this.useRAG = options.useRAG !== false; // 默认启用 RAG
+    this.useFunctionCalling = options.useFunctionCalling !== false; // 默认启用 FC
 
-    this.qualityChecker = options.qualityChecker || new QualityChecker(options.config || {});
-    this.corrector = options.corrector || new Corrector(options.config || {});
-    this.enableQualityCheck = options.enableQualityCheck !== false;
+    // ✨ 集成质量检查系统
+    this.qualityChecker = new QualityChecker(options.config || {});
+    this.corrector = new Corrector(options.config || {});
+    this.enableQualityCheck = options.enableQualityCheck !== false; // 默认启用
   }
 
   /**
@@ -93,15 +53,15 @@ export class AgentEngine {
    */
   async processStream(sessionId, userId, userMessage, onEvent = () => {}) {
     // 初始化
-    if (this.useRAG && !this.memoryManager.initialized) {
-      await this.memoryManager.initialize();
+    if (this.useRAG && !memoryManager.initialized) {
+      await memoryManager.initialize();
     }
 
     // RAG 检索
     let ragContext = [];
-    if (this.useRAG && this.memoryManager.useRAG) {
+    if (this.useRAG && memoryManager.useRAG) {
       try {
-        ragContext = await this.memoryManager.retrieveRelevantContext(userMessage, {
+        ragContext = await memoryManager.retrieveRelevantContext(userMessage, {
           userId, sessionId, topK: 5
         });
       } catch (e) {
@@ -109,7 +69,7 @@ export class AgentEngine {
       }
     }
 
-    let currentContext = await this.memoryManager.getContext(sessionId);
+    let currentContext = await memoryManager.getContext(sessionId);
 
     if (ragContext.length > 0) {
       const ragMessages = ragContext.map(r => ({
@@ -119,37 +79,18 @@ export class AgentEngine {
       currentContext = [...ragMessages, ...currentContext];
     }
 
-    // 注入长期记忆 — 居民记得什么（scope = userId 隔离）
-    const identity = this.residentMemory.recall(`resident_${userId}_identity`);
-    if (identity) {
-      currentContext.unshift({
-        role: 'system',
-        content: `你的身份：${identity.value}`
-      });
-    }
-    const memories = this.residentMemory.search(userMessage, { limit: 3, scope: userId });
-    if (memories.length > 0) {
-      const memoryBlock = memories.map(m =>
-        `[记忆] ${m.key.split(':').pop()}: ${typeof m.value === 'string' ? m.value : JSON.stringify(m.value)}`
-      ).join('\n');
-      currentContext.unshift({
-        role: 'system',
-        content: `关于这个话题你记得：\n${memoryBlock}`
-      });
-    }
-
-    await this.memoryManager.addMessage(sessionId, 'user', userMessage);
+    await memoryManager.addMessage(sessionId, 'user', userMessage);
 
     const executionTrace = { actions: [], startTime: Date.now() };
     let iteration = 0;
     let finalizedResponse = null;
     let isTaskComplete = false;
 
-    const tools = this.useFunctionCalling ? this.pluginManager.getToolsForFunctionCalling() : null;
+    const tools = this.useFunctionCalling ? pluginManager.getToolsForFunctionCalling() : null;
 
     // 记录执行开始
     const agentId = `agent-${sessionId}`;
-    this.agentMonitor.recordExecutionStart(agentId, userMessage, { sessionId, userId });
+    agentMonitor.recordExecutionStart(agentId, userMessage, { sessionId, userId });
 
     while (iteration < this.maxIterations && !isTaskComplete) {
       iteration++;
@@ -157,24 +98,21 @@ export class AgentEngine {
       // 发送迭代事件
       onEvent({ type: AgentEvents.ITERATION, iteration, max: this.maxIterations });
 
-      const systemPrompt = await this.PromptBuilder.buildSystemPrompt(1);
+      const systemPrompt = await PromptBuilder.buildSystemPrompt(1);
       const messages = [
         { role: 'system', content: systemPrompt },
         ...currentContext
       ];
 
-      const session = this.sessionManager.getSession(sessionId);
+      const session = sessionManager.getSession(sessionId);
       if (!session) throw new Error(`Session ${sessionId} not found`);
-      const provider = this.sessionManager.getProvider(session.providerType);
+      const provider = sessionManager.getProvider(session.providerType);
 
       const chatOptions = {};
       if (tools && tools.length > 0) {
         chatOptions.tools = tools;
         chatOptions.tool_choice = 'auto';
       }
-
-      // Plugin hook: beforeThink
-      await this.pluginManager.execHook?.('beforeThink', { sessionId, messages, iteration });
 
       // 发送思考事件
       onEvent({ type: AgentEvents.THINKING, iteration });
@@ -185,78 +123,23 @@ export class AgentEngine {
 
       try {
         // 使用流式 API
-        const ac = new AbortController();
-        const resetTimeout = () => {
-          clearTimeout(chatOptions._timeoutId);
-          chatOptions._timeoutId = setTimeout(() => ac.abort(), 15000);
-        };
-        chatOptions.signal = ac.signal;
-        resetTimeout();
-
         const stream = provider.chatStream(session.model, messages, chatOptions);
 
         for await (const chunk of stream) {
           if (chunk.type === 'content') {
             content += chunk.content;
-            resetTimeout();
             // 实时推送内容
             onEvent({ type: AgentEvents.CONTENT, content: chunk.content, iteration });
           } else if (chunk.type === 'tool_calls') {
             toolCalls = chunk.toolCalls;
-            resetTimeout();
           }
         }
-        clearTimeout(chatOptions._timeoutId);
       } catch (e) {
-        this._errorCount++;
-        if (this._errorCount >= this._maxErrors) {
-          console.log('[Agent] 熔断: 连续 ' + this._maxErrors + ' 次错误, 停止循环');
-          finalizedResponse = '系统暂时无法响应，请稍后再试';
-          isTaskComplete = true;
-          break;
-        }
-        if (e.name === 'AbortError' || e.name === 'TimeoutError') {
-          content = '[请求超时，请稍后重试]';
-          finalizedResponse = content;
-          isTaskComplete = true;
-          break;
-        }
         // 流式不支持，降级到非流式
-        try {
-          const response = await provider.chat(session.model, messages, { ...chatOptions, signal: AbortSignal.timeout(15000) });
-          content = response.content;
-          toolCalls = response.toolCalls;
-          this._errorCount = 0;
-        } catch (e2) {
-          if (e2.name === 'AbortError' || e2.name === 'TimeoutError') {
-            content = '[请求超时，请稍后重试]';
-          }
-          finalizedResponse = content;
-          isTaskComplete = true;
-          break;
-        }
+        const response = await provider.chat(session.model, messages, chatOptions);
+        content = response.content;
+        toolCalls = response.toolCalls;
       }
-
-      this._errorCount = 0; // 成功完成一次迭代，重置错误计数
-
-      // Plugin hook: afterThink
-      await this.pluginManager.execHook?.('afterThink', { sessionId, content, iteration, toolCalls });
-
-      // 检查是否卡住（连续 3 次输出相同内容）
-      if (content && content === this._lastContent) {
-        this._stuckCount++;
-        if (this._stuckCount >= 3) {
-          console.log('[Agent] 卡住检测: 连续3次输出相同, 提前结束');
-          finalizedResponse = content;
-          isTaskComplete = true;
-          break;
-        }
-      } else {
-        this._lastContent = content || '';
-        this._stuckCount = 0;
-      }
-
-      // 检查是否完成
 
       // 检查是否完成
       if (content && content.startsWith('FINAL:')) {
@@ -271,37 +154,31 @@ export class AgentEngine {
           const toolName = tc.name;
           const args = typeof tc.arguments === 'string' ? JSON.parse(tc.arguments) : tc.arguments;
 
-          // Plugin hook: beforeAct
-          await this.pluginManager.execHook?.('beforeAct', { sessionId, toolName, args, iteration });
-
           // 发送工具调用事件
           onEvent({ type: AgentEvents.TOOL_CALL, tool: toolName, args, iteration });
 
           try {
-            const toolResult = await this.pluginManager.executeTool(toolName, args, { sessionId, userId });
+            const toolResult = await pluginManager.executeTool(toolName, args, { sessionId, userId });
 
             executionTrace.actions.push({ tool: toolName, args, result: toolResult, mode: 'fc' });
 
             // 记录工具调用到监控
-            this.agentMonitor.recordToolCall(agentId, toolName, args, toolResult);
-
-            // Plugin hook: afterAct
-            await this.pluginManager.execHook?.('afterAct', { sessionId, toolName, args, result: toolResult, iteration });
+            agentMonitor.recordToolCall(agentId, toolName, args, toolResult);
 
             // 发送工具结果事件
             onEvent({ type: AgentEvents.TOOL_RESULT, tool: toolName, result: toolResult, iteration });
 
             // 使用格式化后的结果
-            const formattedResult = this.pluginManager.formatToolResult(toolName, toolResult);
-            await this.memoryManager.addMessage(sessionId, 'assistant', `[Tool Call] ${toolName}`);
-            await this.memoryManager.addMessage(sessionId, 'system', formattedResult);
+            const formattedResult = pluginManager.formatToolResult(toolName, toolResult);
+            await memoryManager.addMessage(sessionId, 'assistant', `[Tool Call] ${toolName}`);
+            await memoryManager.addMessage(sessionId, 'system', formattedResult);
 
-            currentContext = await this.memoryManager.getContext(sessionId);
+            currentContext = await memoryManager.getContext(sessionId);
           } catch (error) {
             executionTrace.actions.push({ tool: toolName, args, error: error.message, mode: 'fc' });
             onEvent({ type: AgentEvents.ERROR, tool: toolName, error: error.message, iteration });
-            await this.memoryManager.addMessage(sessionId, 'system', `[Tool Error] ${toolName}: ${error.message}`);
-            currentContext = await this.memoryManager.getContext(sessionId);
+            await memoryManager.addMessage(sessionId, 'system', `[Tool Error] ${toolName}: ${error.message}`);
+            currentContext = await memoryManager.getContext(sessionId);
           }
         }
       } else if (content && content.includes('ACTION:')) {
@@ -314,22 +191,22 @@ export class AgentEngine {
 
             onEvent({ type: AgentEvents.TOOL_CALL, tool: toolName, args, iteration, mode: 'text' });
 
-            const toolResult = await this.pluginManager.executeTool(toolName, args, { sessionId, userId });
+            const toolResult = await pluginManager.executeTool(toolName, args, { sessionId, userId });
 
             executionTrace.actions.push({ tool: toolName, args, result: toolResult, mode: 'text' });
 
             onEvent({ type: AgentEvents.TOOL_RESULT, tool: toolName, result: toolResult, iteration });
 
             // 使用格式化后的结果
-            const formattedResult = this.pluginManager.formatToolResult(toolName, toolResult);
-            await this.memoryManager.addMessage(sessionId, 'assistant', `Action: ${toolName}`);
-            await this.memoryManager.addMessage(sessionId, 'system', formattedResult);
-            currentContext = await this.memoryManager.getContext(sessionId);
+            const formattedResult = pluginManager.formatToolResult(toolName, toolResult);
+            await memoryManager.addMessage(sessionId, 'assistant', `Action: ${toolName}`);
+            await memoryManager.addMessage(sessionId, 'system', formattedResult);
+            currentContext = await memoryManager.getContext(sessionId);
           } catch (error) {
             executionTrace.actions.push({ tool: toolName, args, error: error.message, mode: 'text' });
             onEvent({ type: AgentEvents.ERROR, tool: toolName, error: error.message, iteration });
-            await this.memoryManager.addMessage(sessionId, 'system', `Error executing ${toolName}: ${error.message}`);
-            currentContext = await this.memoryManager.getContext(sessionId);
+            await memoryManager.addMessage(sessionId, 'system', `Error executing ${toolName}: ${error.message}`);
+            currentContext = await memoryManager.getContext(sessionId);
           }
         }
       } else {
@@ -352,26 +229,14 @@ export class AgentEngine {
     });
 
     // 记录执行完成到监控
-    this.agentMonitor.recordExecutionComplete(agentId, {
+    agentMonitor.recordExecutionComplete(agentId, {
       success: isTaskComplete && iteration < this.maxIterations,
       response: finalizedResponse,
       iterations: iteration
     });
 
-    // 存长期记忆（scope = userId，不同居民互不干扰）
-    if (finalizedResponse) {
-      this.residentMemory.remember(userMessage, {
-        response: finalizedResponse,
-        userId,
-        sessionId,
-      }, { type: 'conversation', userId, scope: userId });
-    }
-
     // ✨ 质量检查与纠偏
     if (this.enableQualityCheck && finalizedResponse) {
-      // Plugin hook: beforeVerify
-      await this.pluginManager.execHook?.('beforeVerify', { sessionId, response: finalizedResponse });
-
       const qualityResult = await this._checkAndCorrectResponse(
         finalizedResponse,
         sessionId,
@@ -379,12 +244,9 @@ export class AgentEngine {
         onEvent
       );
       finalizedResponse = qualityResult;
-
-      // Plugin hook: afterVerify
-      await this.pluginManager.execHook?.('afterVerify', { sessionId, response: finalizedResponse });
     }
 
-    await this.memoryManager.addMessage(sessionId, 'assistant', finalizedResponse);
+    await memoryManager.addMessage(sessionId, 'assistant', finalizedResponse);
     return finalizedResponse;
   }
 
@@ -393,20 +255,20 @@ export class AgentEngine {
    */
   async process(sessionId, userId, userMessage) {
     // 初始化 RAG 系统
-    if (this.useRAG && !this.memoryManager.initialized) {
-      await this.memoryManager.initialize();
+    if (this.useRAG && !memoryManager.initialized) {
+      await memoryManager.initialize();
     }
 
     // [优化] 提前获取 session 和 provider，避免循环内重复获取
-    const session = this.sessionManager.getSession(sessionId);
+    const session = sessionManager.getSession(sessionId);
     if (!session) throw new Error(`Session ${sessionId} not found`);
-    const provider = this.sessionManager.getProvider(session.providerType);
+    const provider = sessionManager.getProvider(session.providerType);
 
     // [RAG] 检索相关历史上下文
     let ragContext = [];
-    if (this.useRAG && this.memoryManager.useRAG) {
+    if (this.useRAG && memoryManager.useRAG) {
       try {
-        ragContext = await this.memoryManager.retrieveRelevantContext(userMessage, {
+        ragContext = await memoryManager.retrieveRelevantContext(userMessage, {
           userId,
           sessionId,
           topK: 5
@@ -420,7 +282,7 @@ export class AgentEngine {
       }
     }
 
-    let currentContext = await this.memoryManager.getContext(sessionId);
+    let currentContext = await memoryManager.getContext(sessionId);
 
     // 如果有 RAG 上下文，构建增强上下文
     if (ragContext.length > 0) {
@@ -433,7 +295,7 @@ export class AgentEngine {
     }
 
     // 1. Append user message to memory
-    await this.memoryManager.addMessage(sessionId, 'user', userMessage);
+    await memoryManager.addMessage(sessionId, 'user', userMessage);
 
     // 记录执行轨迹用于最终自检
     const executionTrace = {
@@ -446,15 +308,13 @@ export class AgentEngine {
     let isTaskComplete = false;
 
     // 获取 Function Calling 工具定义（一次性）
-    const tools = this.useFunctionCalling ? this.pluginManager.getToolsForFunctionCalling() : null;
+    const tools = this.useFunctionCalling ? pluginManager.getToolsForFunctionCalling() : null;
 
     // [优化] 预构建系统提示
-    const systemPrompt = await this.PromptBuilder.buildSystemPrompt(1);
+    const systemPrompt = await PromptBuilder.buildSystemPrompt(1);
 
     // [优化] 预构建请求选项
-    const chatOptions = {
-      signal: AbortSignal.timeout(15000),
-    };
+    const chatOptions = {};
     if (tools && tools.length > 0) {
       chatOptions.tools = tools;
       chatOptions.tool_choice = 'auto';
@@ -470,17 +330,7 @@ export class AgentEngine {
       ];
 
       // [THINK] Call actual Provider with tools
-      let llmResponse;
-      try {
-        llmResponse = await provider.chat(session.model, messages, chatOptions);
-      } catch (e) {
-        if (e.name === 'AbortError' || e.name === 'TimeoutError') {
-          finalizedResponse = '[请求超时，请稍后重试]';
-          isTaskComplete = true;
-          break;
-        }
-        throw e;
-      }
+      const llmResponse = await provider.chat(session.model, messages, chatOptions);
       const content = llmResponse.content;
       const toolCalls = llmResponse.toolCalls;
 
@@ -500,14 +350,14 @@ export class AgentEngine {
 
           try {
             console.log(`[Agent] Function Calling: ${toolName}(${JSON.stringify(args)})`);
-            const toolResult = await this.pluginManager.executeTool(toolName, args, { sessionId, userId });
+            const toolResult = await pluginManager.executeTool(toolName, args, { sessionId, userId });
 
             executionTrace.actions.push({ tool: toolName, args, result: toolResult, mode: 'fc' });
 
             // 使用格式化后的结果
-            const formattedResult = this.pluginManager.formatToolResult(toolName, toolResult);
-            await this.memoryManager.addMessage(sessionId, 'assistant', `[Tool Call] ${toolName}`);
-            await this.memoryManager.addMessage(sessionId, 'system', formattedResult);
+            const formattedResult = pluginManager.formatToolResult(toolName, toolResult);
+            await memoryManager.addMessage(sessionId, 'assistant', `[Tool Call] ${toolName}`);
+            await memoryManager.addMessage(sessionId, 'system', formattedResult);
 
             // [优化] 增量更新上下文，而非重新获取全部
             currentContext.push(
@@ -516,7 +366,7 @@ export class AgentEngine {
             );
           } catch (error) {
             executionTrace.actions.push({ tool: toolName, args, error: error.message, mode: 'fc' });
-            await this.memoryManager.addMessage(sessionId, 'system', `[Tool Error] ${toolName}: ${error.message}`);
+            await memoryManager.addMessage(sessionId, 'system', `[Tool Error] ${toolName}: ${error.message}`);
             currentContext.push({ role: 'system', content: `[Tool Error] ${toolName}: ${error.message}` });
           }
         }
@@ -528,14 +378,14 @@ export class AgentEngine {
           try {
             const args = JSON.parse(argsJson);
             console.log(`[Agent] Text Parse: ${toolName}(${JSON.stringify(args)})`);
-            const toolResult = await this.pluginManager.executeTool(toolName, args, { sessionId, userId });
+            const toolResult = await pluginManager.executeTool(toolName, args, { sessionId, userId });
 
             executionTrace.actions.push({ tool: toolName, args, result: toolResult, mode: 'text' });
 
             // 使用格式化后的结果
-            const formattedResult = this.pluginManager.formatToolResult(toolName, toolResult);
-            await this.memoryManager.addMessage(sessionId, 'assistant', `Action: ${toolName}`);
-            await this.memoryManager.addMessage(sessionId, 'system', formattedResult);
+            const formattedResult = pluginManager.formatToolResult(toolName, toolResult);
+            await memoryManager.addMessage(sessionId, 'assistant', `Action: ${toolName}`);
+            await memoryManager.addMessage(sessionId, 'system', formattedResult);
 
             // [优化] 增量更新上下文
             currentContext.push(
@@ -544,7 +394,7 @@ export class AgentEngine {
             );
           } catch (error) {
             executionTrace.actions.push({ tool: toolName, args, error: error.message, mode: 'text' });
-            await this.memoryManager.addMessage(sessionId, 'system', `Error executing ${toolName}: ${error.message}`);
+            await memoryManager.addMessage(sessionId, 'system', `Error executing ${toolName}: ${error.message}`);
             currentContext.push({ role: 'system', content: `Error executing ${toolName}: ${error.message}` });
           }
         }
@@ -571,7 +421,7 @@ export class AgentEngine {
       finalizedResponse = await this.selfOptimize(sessionId, userId, userMessage, finalizedResponse, qualityReport);
     }
 
-    await this.memoryManager.addMessage(sessionId, 'assistant', finalizedResponse);
+    await memoryManager.addMessage(sessionId, 'assistant', finalizedResponse);
     return finalizedResponse;
   }
 
@@ -580,7 +430,7 @@ export class AgentEngine {
    */
   async performSelfVerification(trace) {
     try {
-      const judgeTool = this.pluginManager.skills.get('run_llm_judge');
+      const judgeTool = pluginManager.skills.get('run_llm_judge');
       if (!judgeTool) {
         console.log('[Agent] 自检工具不可用，跳过验证');
         return null;
@@ -631,13 +481,13 @@ export class AgentEngine {
     console.log('[Agent] 开始自我优化...');
     
     // 记录当前状态
-    await this.memoryManager.addMessage(sessionId, 'system', 
+    await memoryManager.addMessage(sessionId, 'system', 
       `【自我优化】质量报告: 得分 ${qualityReport.score}/5。需要改进的方面: ${qualityReport.feedback}`
     );
     
     // 提示LLM进行优化
-    const session = this.sessionManager.getSession(sessionId);
-    const provider = this.sessionManager.getProvider(session.providerType);
+    const session = sessionManager.getSession(sessionId);
+    const provider = sessionManager.getProvider(session.providerType);
     
     const optimizePrompt = `用户原始任务: ${originalTask}
     
@@ -654,7 +504,7 @@ export class AgentEngine {
 
     try {
       const messages = [
-        { role: 'system', content: await this.PromptBuilder.buildSystemPrompt(1) },
+        { role: 'system', content: await PromptBuilder.buildSystemPrompt(1) },
         { role: 'user', content: optimizePrompt }
       ];
       
@@ -697,15 +547,15 @@ export class AgentEngine {
       // ❌ 不合格，尝试纠偏
       console.log(`[QC] 检测到质量问题: ${check.issues.join('; ')}`);
 
-      const session = this.sessionManager.getSession(sessionId);
-      const provider = this.sessionManager.getProvider(session.providerType);
+      const session = sessionManager.getSession(sessionId);
+      const provider = sessionManager.getProvider(session.providerType);
 
       // 第 2 步: 生成纠偏反馈
       const feedback = this.corrector.generateFeedback(check.issues);
 
       // 第 3 步: 让大模型重新生成
       const messages = [
-        { role: 'system', content: await this.PromptBuilder.buildSystemPrompt(1) },
+        { role: 'system', content: await PromptBuilder.buildSystemPrompt(1) },
         { role: 'user', content: feedback }
       ];
 
@@ -746,14 +596,7 @@ export class AgentEngine {
   }
 }
 
-export const agentEngine = new AgentEngine({
-  memoryManager,
-  pluginManager,
-  sessionManager,
-  PromptBuilder,
-  agentMonitor,
-  residentMemory,
-});
+export const agentEngine = new AgentEngine();
 
 
 // 迭代1: 错误恢复增强

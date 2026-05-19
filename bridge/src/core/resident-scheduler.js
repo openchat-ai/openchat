@@ -172,10 +172,10 @@ class ResidentScheduler {
   _tick() {
     this._tickCount++;
 
-    // P2R: 身体健康检查 + 维护/备灾/找身体
+    // P2R: 房子健康检查 + 维护/备灾/找窟
     if (this.houseOrchestrator) {
       this.houseOrchestrator.tick().catch(e => {
-        console.log(`[调度器] BodyOrchestrator tick 失败: ${e.message}`);
+        console.log(`[调度器] HouseOrchestrator tick 失败: ${e.message}`);
       });
     }
 
@@ -231,7 +231,7 @@ const residents = residentManager.list(null);
       return;
     }
 
-    // Phase A: 身体健康分（用于 routine 决策）
+    // Phase A: 房子健康分（用于 routine 决策）
     const healthScore = this._getHealthScore();
 
     // Phase A: Routine 跳过 — 如果连续 N 次动作相同，跳过 LLM
@@ -249,7 +249,7 @@ const residents = residentManager.list(null);
     } else if (last?.action === topAction.action && routineCount > 1) {
       // Routine 跳过
       residentManager.addActivity(id, {
-        type: 'body_action',
+        type: 'house_action',
         message: `继续${topAction.desc}`,
         summary: `Routine #${routineCount}，跳过 LLM`,
       });
@@ -275,7 +275,7 @@ const residents = residentManager.list(null);
     }
   }
 
-  /** 快速获取身体健康分（不依赖 houseOrchestrator 的 await） */
+  /** 快速获取房子健康分（不依赖 houseOrchestrator 的 await） */
   _getHealthScore() {
     try {
       const baseline = this.houseOrchestrator?.stability?.getSystemStatus?.() || {};

@@ -27,7 +27,7 @@ import { getEnhancedStabilitySystem } from './enhanced-stability-system.js';
 import { CollaborationEngine } from './collaboration-engine.js';
 import { residentManager } from './resident-manager.js';
 import { residentScheduler } from './resident-scheduler.js';
-import { getPublicIPv4 } from '../p2p/swarm.js';
+import { getPublicIPv4 } from '../p2p/p2p-net.js';
 import { MessageType as P2PMessageType } from '../p2p/messages.js';
 import { PeerRegistry } from '../p2p/peer-registry.js';
 import { QiniuBackend } from '../p2p/peer-registry/qiniu-backend.js';
@@ -113,16 +113,16 @@ class Bridge {
       const registry = backends.length > 0 ? new PeerRegistry(backends, peerId) : null;
       this.registry = registry;
 
-      let P2PSwarm, getPublicIPv4;
+      let P2PNet, getPublicIPv4;
       try {
-        const swarmModule = await import('../p2p/swarm.js');
-        P2PSwarm = swarmModule.default;
+        const swarmModule = await import('../p2p/p2p-net.js');
+        P2PNet = swarmModule.default;
         getPublicIPv4 = swarmModule.getPublicIPv4;
       } catch (e) {
-        console.log('[P2P] swarm 模块加载失败（hyperswarm 不兼容），跳过 P2P：', e.message);
+        console.log('[P2P] swarm 濡€虫健閸旂姾娴囨径杈Е閿涘潝yperswarm 娑撳秴鍚嬬€圭櫢绱氶敍宀冪儲鏉?P2P閿?, e.message);
       }
 
-      if (P2PSwarm) {
+      if (P2PNet) {
         const p2pOpts = {
           topic: CONFIG.bridge?.topic
             ? Buffer.from(CONFIG.bridge.topic).slice(0, 32)
@@ -135,7 +135,7 @@ class Bridge {
         if (CONFIG.dhtPort) p2pOpts.dhtPort = CONFIG.dhtPort;
         if (CONFIG.localBootstrap.length > 0) p2pOpts.localBootstrap = CONFIG.localBootstrap;
         if (CONFIG.directConnect.length > 0) p2pOpts.knownPeers = CONFIG.directConnect;
-        this.p2p = new P2PSwarm(p2pOpts);
+        this.p2p = new P2PNet(p2pOpts);
         await this.p2p.start();
 
         if (CONFIG.isPublic && registry) {
@@ -160,7 +160,7 @@ class Bridge {
           }
         }
       } else {
-        console.log('[P2P] 直连模式（无 DHT，需手动配置 knownPeers）');
+        console.log('[P2P] 閻╃绻涘Ο鈥崇础閿涘牊妫?DHT閿涘矂娓堕幍瀣З闁板秶鐤?knownPeers閿?);
       }
 
     } catch (p2pErr) {

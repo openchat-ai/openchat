@@ -22,15 +22,15 @@ const MessageType = {
   PERFORMANCE_REPORT: 'performance_report',
 
   // P2R: 居民治家
-  BRIDGE_SPAWN:         'bridge_spawn',       // 请求邻居 spawn 子 Bridge 做身体
-  SAFE_HOUSE_VERIFY:    'safe_body_verify',  // 验证身体还活着
+  BRIDGE_SPAWN:         'bridge_spawn',       // 请求邻居 spawn 子 Bridge 做窟
+  SAFE_HOUSE_VERIFY:    'safe_house_verify',  // 验证窟还活着
   BRIDGE_UPGRADE:       'bridge_upgrade',     // 版本升级宣告
-  RESIDENT_TRANSFER:    'resident_transfer',  // 居民迁移（从一身体搬到另一身体）
+  RESIDENT_TRANSFER:    'resident_transfer',  // 居民迁移（从一窟搬到另一窟）
 
-  // P2R: 居民治家 — 身体管理
-  HOUSE_SEEK:           'body_seek',         // 找身体请求
-  HOUSE_OFFER:          'body_offer',        // 身体提供
-  HOUSE_NEED:           'body_need',         // 求助/需要身体
+  // P2R: 居民治家 — 窟管理
+  HOUSE_SEEK:           'house_seek',         // 找窟请求
+  HOUSE_OFFER:          'house_offer',        // 安全屋提供
+  HOUSE_NEED:           'house_need',         // 求助/需要窟
 
   // P2R-S: 安全自治 — 多方验证 + 热回滚
   PROPOSE_CHANGE:       'propose_change',     // 提案：请求修改代码
@@ -57,9 +57,6 @@ const MessageType = {
   // P2R-D: Fairy 分布式大脑
   FAIRY_GOSSIP:         'fairy_gossip',          // Fairy 广播最近求解经验（策略+答案+耗时）
   FAIRY_CONSENSUS:      'fairy_consensus',       // 多个 Fairy 对同一问题投票共识
-
-  // Knowledge sync (gossip protocol)
-  KNOWLEDGE_SYNC:       'knowledge_sync',         // 知识同步：摘要交换 + 增量拉取
 };
 
 // 消息类型验证
@@ -176,7 +173,7 @@ const createPerformanceReportMessage = (metrics, options = {}) => {
   );
 };
 
-// P2R: 请求邻居 spawn 子 Bridge 做身体
+// P2R: 请求邻居 spawn 子 Bridge 做窟
 const createBridgeSpawnRequest = (options = {}) => {
   return createMessage(
     MessageType.BRIDGE_SPAWN,
@@ -191,8 +188,8 @@ const createBridgeSpawnRequest = (options = {}) => {
   );
 };
 
-// P2R: 验证身体还活着
-const createSafeBodyVerify = (options = {}) => {
+// P2R: 验证窟还活着
+const createSafeHouseVerify = (options = {}) => {
   return createMessage(
     MessageType.SAFE_HOUSE_VERIFY,
     {
@@ -205,8 +202,8 @@ const createSafeBodyVerify = (options = {}) => {
   );
 };
 
-// P2R: 找身体
-const createBodySeekMessage = (options = {}) => {
+// P2R: 找窟
+const createHouseSeekMessage = (options = {}) => {
   return createMessage(
     MessageType.HOUSE_SEEK,
     {
@@ -220,8 +217,8 @@ const createBodySeekMessage = (options = {}) => {
   );
 };
 
-// P2R: 求助/需要身体
-const createBodyNeedMessage = (options = {}) => {
+// P2R: 求助/需要窟
+const createHouseNeedMessage = (options = {}) => {
   return createMessage(
     MessageType.HOUSE_NEED,
     {
@@ -259,7 +256,7 @@ const createResidentTransferMessage = (options = {}) => {
       targetHostId: options.targetHostId || '',
       sourceBridgeId: options.sourceBridgeId,
       sourceHostId: options.sourceHostId || '',
-      reason: options.reason || 'body_unhealthy'
+      reason: options.reason || 'house_unhealthy'
     },
     { priority: options.priority || 'HIGH', ...options }
   );
@@ -446,6 +443,26 @@ const validateMessage = (message) => {
   return { valid: true };
 };
 
+const createBodyNeedMessage = (options = {}) => {
+  return createMessage(MessageType.HOUSE_NEED, {
+    action: options.action, residentName: options.residentName,
+    residentId: options.residentId, hostId: options.hostId || '',
+    healthScore: options.healthScore, alerts: options.alerts || [],
+    source: options.source || ''
+  }, { priority: 'HIGH', ...options });
+};
+
+const createBodySeekMessage = (options = {}) => {
+  return createMessage(MessageType.HOUSE_SEEK, { ...options }, { ...options });
+};
+
+const createSafeBodyVerify = (options = {}) => {
+  return createMessage(MessageType.SAFE_HOUSE_VERIFY || 'safe_house_verify', {
+    houseId: options.houseId, health: options.health || 100,
+    hostId: options.hostId || '', lastActivity: options.lastActivity
+  }, { ...options });
+};
+
 export {
   MessageType,
   isValidMessageType,
@@ -457,11 +474,11 @@ export {
   createInsightShareMessage,
   createPerformanceReportMessage,
   createBridgeSpawnRequest,
-  createSafeBodyVerify,
+  createSafeHouseVerify,
   createBridgeUpgradeMessage,
   createResidentTransferMessage,
-  createBodySeekMessage,
-  createBodyNeedMessage,
+  createHouseSeekMessage,
+  createHouseNeedMessage,
   createProposeChangeMessage,
   createVerifyResultMessage,
   createChangeAppliedMessage,
@@ -471,6 +488,9 @@ export {
   createLLMProviderQueryMessage,
   createProblemSolveMessage,
   createProblemResultMessage,
+  createBodyNeedMessage,
+  createBodySeekMessage,
+  createSafeBodyVerify,
   serializeMessage,
   deserializeMessage,
   validateMessage

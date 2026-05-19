@@ -65,19 +65,6 @@ router.get('/room/:roomId', async (req, res) => {
   }
 });
 
-// POST /api/v1/signaling/room/:roomId/offer - 手机写入 Offer
-router.post('/room/:roomId/offer', async (req, res) => {
-  try {
-    const { roomId } = req.params;
-    const { sdp } = req.body;
-    if (!sdp) return res.status(400).json({ error: 'sdp is required' });
-    await qiniuSignaling.writeOffer(roomId, sdp);
-    res.json({ roomId, status: 'offer_stored' });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
 // POST /api/v1/signaling/room/:roomId/answer - Bridge 写入 answer
 router.post('/room/:roomId/answer', async (req, res) => {
   try {

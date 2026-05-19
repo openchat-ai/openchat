@@ -11,13 +11,11 @@
 
 import express from 'express';
 import { residentManager } from '../../core/resident-manager.js';
-import { persistentConfig } from '../../core/persistent-config.js';
 
 const router = express.Router();
 
-const bodyName = process.env.BRIDGE_NAME || '素女';
-const hostId = persistentConfig.getHostId();
-residentManager.initialize(bodyName, hostId);
+// Bridge 启动时自动初始化：如无居民则创建「管家」
+residentManager.initialize();
 
 // POST /api/v1/residents — 出生（可选 parentId）
 router.post('/', async (req, res, next) => {

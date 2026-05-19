@@ -245,16 +245,15 @@ class SafeEvolution {
     const { proposal } = entry;
     const filePath = path.resolve(proposal.file);
     const backupKey = `${proposalId}_${Date.now()}`;
-    const backupDir = path.join(path.dirname(require.resolve('./resident-manager.js')), '..', '..', 'data', 'safe-evo-backups');
-    const backupPath = path.join(backupDir, `${backupKey}.orig`);
 
     try {
       // ① 备份
       let originalContent = null;
       try {
         originalContent = fs.readFileSync(filePath, 'utf8');
+        const backupDir = path.join(path.dirname(require.resolve('./resident-manager.js')), '..', '..', 'data', 'safe-evo-backups');
         fs.mkdirSync(backupDir, { recursive: true });
-        fs.writeFileSync(backupPath, originalContent);
+        fs.writeFileSync(path.join(backupDir, `${backupKey}.orig`), originalContent);
       } catch (e) {
         // 文件不存在 = 新建，无需备份
       }
@@ -295,8 +294,6 @@ class SafeEvolution {
             console.log(`[SafeEvo] 变更应用成功: ${proposal.file}`);
             // 清除该文件的冷却状态
             this._cooldowns.delete(proposal.file);
-            // 删除备份文件（已通过深检，不再需要回滚）
-            try { fs.unlinkSync(backupPath); } catch {}
             // 广播成功
             this.p2p.broadcast({
               type: 'change_applied',

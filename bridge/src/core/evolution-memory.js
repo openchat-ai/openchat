@@ -7,8 +7,6 @@ const MEMORY_FILE = path.join(os.homedir(), '.openchat', 'memory', 'evolution-me
 export class EvolutionMemory {
   constructor() {
     this.memory = new Map(); // 临时内存存储
-    this._maxEntries = 1000; // 最多保留 1000 条
-    this._ttlMs = 7 * 24 * 60 * 60 * 1000; // 7 天过期
     this._ensureDir();
     this.loadFromConfig(); // 从文件加载持久化记忆
   }
@@ -21,7 +19,6 @@ export class EvolutionMemory {
   // 保存记忆到独立文件（不再塞进 config.json）
   saveToConfig() {
     try {
-      this._cleanup();
       this._ensureDir();
       const memoryArray = Array.from(this.memory.entries());
       fs.writeFileSync(MEMORY_FILE, JSON.stringify(memoryArray, null, 2));
@@ -44,40 +41,18 @@ export class EvolutionMemory {
     }
   }
 
-  // 删除过期记忆 + 限制条目数
-  _cleanup() {
-    const now = Date.now();
-    let deleted = 0;
-    for (const [key, entry] of this.memory) {
-      if (now - entry.timestamp > this._ttlMs) {
-        this.memory.delete(key);
-        deleted++;
-      }
-    }
-    if (this.memory.size > this._maxEntries) {
-      const sorted = [...this.memory.entries()].sort((a, b) => b[1].timestamp - a[1].timestamp);
-      const keep = sorted.slice(0, this._maxEntries);
-      this.memory = new Map(keep);
-      deleted += sorted.length - keep.length;
-    }
-    if (deleted > 0) console.log(`[EvolutionMemory] cleaned ${deleted} expired entries`);
-  }
-
-  // 记住一条信息（scope 可选）
+  // 记住一条信息
   remember(key, value, metadata = {}) {
-    const scope = metadata.scope || '_default';
-    const scopedKey = `${scope}:${key}`;
     const memoryEntry = {
       value,
       timestamp: Date.now(),
-      scope,
       metadata: {
         ...metadata,
         lastUpdated: Date.now()
       }
     };
 
-    this.memory.set(scopedKey, memoryEntry);
+    this.memory.set(key, memoryEntry);
     this.saveToConfig();
 
     return true;
@@ -92,15 +67,12 @@ export class EvolutionMemory {
     return null;
   }
 
-  // 搜索相关的记忆（options.scope 可选，只搜该 scope 内的记忆）
+  // 搜索相关的记忆
   search(query, options = {}) {
     const results = [];
     const queryLower = query.toLowerCase();
-    const scopeFilter = options.scope ? `${options.scope}:` : null;
     
     for (const [key, entry] of this.memory) {
-      // scope 过滤：指定 scope 时只搜该 scope 内
-      if (scopeFilter && !key.startsWith(scopeFilter)) continue;
       // 检查键是否匹配
       if (key.toLowerCase().includes(queryLower)) {
         results.push({ key, ...entry });
@@ -180,7 +152,8 @@ export class EvolutionMemory {
 
   // 查询进度
   getProgress(task) {
-    return this.recall(`_default:progress:${task}`);
+    const progressKey = `progress:${task}`;
+    return this.recall(progressKey);
   }
 
   // 更新进度

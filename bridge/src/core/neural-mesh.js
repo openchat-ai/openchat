@@ -8,48 +8,12 @@
  */
 
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs';
-import { join, resolve, sep } from 'path';
+import { join } from 'path';
 import { homedir } from 'os';
 
 const MESH_DIR = join(homedir(), '.openchat', 'neural-mesh');
 const LOCAL_WEIGHTS = join(MESH_DIR, 'local-weights.json');
 const PEER_WEIGHTS_DIR = join(MESH_DIR, 'peers');
-
-const MAX_HIDDEN_SIZE = 1024;
-const MAX_WEIGHT_FILE_KB = 5120;
-
-function sanitizePeerId(raw) {
-  if (typeof raw !== 'string' && typeof raw !== 'number') return 'unknown';
-  const s = String(raw);
-  const safe = s.replace(/[^a-zA-Z0-9._-]/g, '').slice(0, 128);
-  return safe || 'unknown';
-}
-
-function validateWeights(data) {
-  if (!data || typeof data !== 'object') return false;
-  if (data.samples < 0 || data.samples > 1e9) return false;
-  if (data.hiddenSize <= 0 || data.hiddenSize > MAX_HIDDEN_SIZE) return false;
-  const matrices = ['W_i','U_i','W_f','U_f','W_c','U_c','W_o','U_o','W_out'];
-  for (const key of matrices) {
-    const m = data[key];
-    if (!m || !Array.isArray(m) || m.length === 0) return false;
-    for (const row of m) {
-      if (!Array.isArray(row) || row.length === 0) return false;
-      for (const v of row) {
-        if (!Number.isFinite(v) || Math.abs(v) > 1e6) return false;
-      }
-    }
-  }
-  const vectors = ['b_i','b_f','b_c','b_o','b_out'];
-  for (const key of vectors) {
-    const v = data[key];
-    if (!v || !Array.isArray(v)) return false;
-    for (const val of v) {
-      if (!Number.isFinite(val) || Math.abs(val) > 1e6) return false;
-    }
-  }
-  return true;
-}
 
 export class NeuralMesh {
   constructor(p2p, myPort) {
@@ -99,12 +63,8 @@ export class NeuralMesh {
    * 接收其他节点的权重并合并
    */
   receiveWeights(data) {
-    if (!validateWeights(data)) {
-      console.log(`[NeuralMesh] 拒绝无效权重 from port=${data?.port}`);
-      return;
-    }
-    const rawPeerId = data.port || 'unknown';
-    const peerId = sanitizePeerId(rawPeerId);
+    if (!data || !data.W_i) return;
+    const peerId = data.port || 'unknown';
     this.peerWeights.set(peerId, data);
     this._savePeerWeights(peerId, data);
     console.log(`[NeuralMesh] 收到 ${peerId} 权重: ${data.samples}样本`);
@@ -115,7 +75,7 @@ export class NeuralMesh {
    */
   mergeAll(nn) {
     if (this.peerWeights.size === 0) return 0;
-    const peers = [...this.peerWeights.values()].filter(validateWeights);
+    const peers = [...this.peerWeights.values()].filter(d => d.W_i);
     if (peers.length === 0) return 0;
 
     const localSamples = nn.samples || 0;
@@ -180,14 +140,7 @@ export class NeuralMesh {
   }
 
   _savePeerWeights(peerId, data) {
-    try {
-      const resolved = resolve(PEER_WEIGHTS_DIR, `${peerId}.json`);
-      if (!resolved.startsWith(resolve(PEER_WEIGHTS_DIR) + sep)) {
-        console.log(`[NeuralMesh] 路径穿越拒绝: ${peerId}`);
-        return;
-      }
-      writeFileSync(resolved, JSON.stringify(data));
-    } catch {}
+    try { writeFileSync(join(PEER_WEIGHTS_DIR, `${peerId}.json`), JSON.stringify(data)); } catch {}
   }
 
   getStats() {

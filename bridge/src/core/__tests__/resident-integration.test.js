@@ -56,7 +56,7 @@ describe('resident integration', () => {
     persistentConfig.setCurrentProvider('test-provider');
     residentManager.setMaxListeners(20);
     residentManager.once('llm-request', ({ resolve }) => {
-      resolve({ content: '=== 思路 1：基础分析\n分析：最简单的方式\n方案：方案A\n\n=== 思路 2：深入\n分析：更全面\n方案：方案B\n\n=== 选择结果 ===\n最佳思路：1\n理由：最简单', model: 'test' });
+      resolve({ content: '=== 思路 1：基础分析\n分析：最简单的方式\n方案：方案A\n\n=== 思路 2：深入\n分析：更全面\n方案：方案B\n\n=== 选择结果 ===\n最佳思路�?\n理由：最简�?, model: 'test' });
     });
     const result = await residentManager.think({
       messages: [{ role: 'user', content: 'solve X' }],

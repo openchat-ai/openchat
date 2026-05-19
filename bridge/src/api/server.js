@@ -39,8 +39,7 @@ class APIServer {
     this.swarm = options.swarm || null;
     this.deployEnabled = options.deployEnabled !== false;
     this.app = express();
-    this.server = options.httpServer || null;
-    this.legacyRouter = options.legacyRouter || null;
+    this.server = null;
 
     this.setupMiddlewares();
     this.setupRoutes();
@@ -94,13 +93,6 @@ class APIServer {
       maxAge: 86400 // 24 hours
     }));
 
-    // 请求追踪 ID
-    this.app.use((req, res, next) => {
-      req.id = crypto.randomUUID();
-      res.setHeader('X-Request-Id', req.id);
-      next();
-    });
-
     // 请求日志
     this.app.use(morgan('combined'));
 
@@ -118,19 +110,6 @@ class APIServer {
   setupRoutes() {
     // 健康检查（无需认证，无限流）
     this.app.use('/health', healthRouter);
-
-    // 调试统计（无需认证）
-    this.app.get('/debug/stats', async (req, res) => {
-      try {
-        const { vectorMemory } = await import('../core/vector-memory.js');
-        const stats = vectorMemory.getStats();
-        Object.assign(stats, {
-          uptime: process.uptime(),
-          memory: Math.round(process.memoryUsage().rss / 1024 / 1024) + 'MB',
-        });
-        res.json(stats);
-      } catch { res.json({ error: 'stats unavailable' }); }
-    });
 
     // API 信息（无需认证）
     this.app.get('/api/v1', (req, res) => {
@@ -181,21 +160,6 @@ class APIServer {
       } catch (e) { next(e); }
     });
 
-    // AI 居民 MVP: 可对话角色列表
-    this.app.get('/api/v1/characters', authMiddleware, async (req, res, next) => {
-      try {
-        const residents = residentManager.list(null);
-        const characters = residents.map(r => ({
-          id: r.id,
-          name: r.name,
-          status: r.status,
-          traits: r.traits,
-          energy: r.energy,
-        }));
-        res.json({ characters, total: characters.length });
-      } catch (e) { next(e); }
-    });
-
     // Metrics API
     this.app.use('/api/v1/metrics', authMiddleware, metricsRouter);
 
@@ -211,11 +175,6 @@ class APIServer {
       }));
     }
 
-    // Legacy web routes (/, /live, /dashboard, /metrics)
-    if (this.legacyRouter) {
-      this.app.use(this.legacyRouter);
-    }
-
     // 404 处理
     this.app.use((req, res) => {
       res.status(404).json({ error: 'Not Found', path: req.path });
@@ -227,10 +186,6 @@ class APIServer {
   }
 
   async start() {
-    if (this.server) {
-      console.log(`[API] Mounted on existing server, port ${this.port}`);
-      return Promise.resolve(this.server);
-    }
     return new Promise((resolve, reject) => {
       try {
         this.server = this.app.listen(this.port, () => {

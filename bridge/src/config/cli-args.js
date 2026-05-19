@@ -1,11 +1,11 @@
 import os from 'os';
 import path from 'path';
 import { persistentConfig } from '../core/persistent-config.js';
-import { hasPublicAddress } from '../p2p/swarm.js';
+import { hasPublicAddress } from '../p2p/p2p-net.js';
 
 /**
- * 解析命令行参数和持久化配置，生成完整的 CONFIG 对象
- * 读取顺序：~/.openchat/config.json bridge.* → CLI 覆盖
+ * 瑙ｆ瀽鍛戒护琛屽弬鏁板拰鎸佷箙鍖栭厤缃紝鐢熸垚瀹屾暣鐨?CONFIG 瀵硅薄
+ * 璇诲彇椤哄簭锛殈/.openchat/config.json bridge.* 鈫?CLI 瑕嗙洊
  */
 export function parseCliArgs(argv = process.argv) {
   const args = argv.slice(2);
@@ -15,35 +15,31 @@ export function parseCliArgs(argv = process.argv) {
   const isHeadless = savedBridge.mode === 'cli' && !isInteractive ? false : !isInteractive;
   const isPublic = hasPublicAddress() || !!savedBridge.advertiseHost;
 
-  // 支持 --port 命令行参数覆盖配置
-  const portArgIndex = args.findIndex(a => a.startsWith('--port='));
+  // 鏀寔 --port 鍛戒护琛屽弬鏁拌鐩栭厤缃?  const portArgIndex = args.findIndex(a => a.startsWith('--port='));
   const cliPort = portArgIndex !== -1 ? parseInt(args[portArgIndex].split('=')[1]) : null;
   const port = cliPort || savedBridge.port || 3000;
   const portChanged = cliPort !== null && cliPort !== savedBridge.port;
 
-  // 主 Bridge 判定：显式 --main 标记
+  // 涓?Bridge 鍒ゅ畾锛氭樉寮?--main 鏍囪
   const isMain = args.includes('--main');
 
-  // 主 Bridge 端口（fairy 需要知道往哪发心跳，默认 = 自身端口）
-  const mainPortIdx = args.findIndex(a => a.startsWith('--mainPort='));
+  // 涓?Bridge 绔彛锛坒airy 闇€瑕佺煡閬撳線鍝彂蹇冭烦锛岄粯璁?= 鑷韩绔彛锛?  const mainPortIdx = args.findIndex(a => a.startsWith('--mainPort='));
   const mainPort = mainPortIdx !== -1 ? parseInt(args[mainPortIdx].split('=')[1]) : (isMain ? port : 3800);
 
   const dhtPort = savedBridge.dhtPort || 0;
   const localBootstrap = savedBridge.localBootstrap || [];
-  // 端口变更时，丢弃旧端口体系的直连配置
+  // 绔彛鍙樻洿鏃讹紝涓㈠純鏃х鍙ｄ綋绯荤殑鐩磋繛閰嶇疆
   let directListen = (portChanged ? 0 : savedBridge.directListen) || 0;
   let directConnect = portChanged ? [] : (savedBridge.directConnect || []);
-  // 支持 --directListen CLI 参数
+  // 鏀寔 --directListen CLI 鍙傛暟
   const directListenIdx = args.findIndex(a => a.startsWith('--directListen='));
   if (directListenIdx !== -1) {
     directListen = parseInt(args[directListenIdx].split('=')[1]);
   }
-  // 如果 --port 显式传入但没传 --directListen，则根据新端口重新计算
-  if (portArgIndex !== -1 && directListenIdx === -1 && !args.includes('--no-direct') && !args.includes('--nesting')) {
+  // 濡傛灉 --port 鏄惧紡浼犲叆浣嗘病浼?--directListen锛屽垯鏍规嵁鏂扮鍙ｉ噸鏂拌绠?  if (portArgIndex !== -1 && directListenIdx === -1 && !args.includes('--no-direct') && !args.includes('--nesting')) {
     directListen = port + 2;
   }
-  // 本地开发：无 bootstrap 时自动启用直连 TCP（端口 = HTTP 端口 + 2）
-  const isNesting = args.includes('--nesting');
+  // 鏈湴寮€鍙戯細鏃?bootstrap 鏃惰嚜鍔ㄥ惎鐢ㄧ洿杩?TCP锛堢鍙?= HTTP 绔彛 + 2锛?  const isNesting = args.includes('--nesting');
   if (!directListen && localBootstrap.length === 0 && !args.includes('--no-direct') && !isNesting) {
     directListen = port + 2;
   }
@@ -57,7 +53,7 @@ export function parseCliArgs(argv = process.argv) {
   const deployServerEnabled = savedBridge.deployServerEnabled === true;
   const deployServerPort = savedBridge.deployServerPort || 8080;
 
-  // hostId：持久标识，子进程可通过 --hostId 覆盖
+  // hostId锛氭寔涔呮爣璇嗭紝瀛愯繘绋嬪彲閫氳繃 --hostId 瑕嗙洊
   let hostId = savedBridge.hostId || '';
   const hostIdArgIndex = args.findIndex(a => a.startsWith('--hostId='));
   if (hostIdArgIndex !== -1) {
@@ -67,7 +63,7 @@ export function parseCliArgs(argv = process.argv) {
     hostId = persistentConfig.getHostId();
   }
 
-  // houseId：子进程通过 --houseId 指定，默认 hostId + '_default'
+  // houseId锛氬瓙杩涚▼閫氳繃 --houseId 鎸囧畾锛岄粯璁?hostId + '_default'
   let houseIdArg = '';
   const houseIdArgIndex = args.findIndex(a => a.startsWith('--houseId='));
   if (houseIdArgIndex !== -1) {
@@ -75,7 +71,7 @@ export function parseCliArgs(argv = process.argv) {
   }
   const effectiveBodyId = houseIdArg || `${hostId}_default`;
 
-  // --parent：nesting 子进程连接父 Bridge 的直连 TCP 端口
+  // --parent锛歯esting 瀛愯繘绋嬭繛鎺ョ埗 Bridge 鐨勭洿杩?TCP 绔彛
   const parentIndex = args.findIndex(a => a.startsWith('--parent='));
   if (parentIndex !== -1) {
     const parentPort = port + 2;
@@ -84,8 +80,7 @@ export function parseCliArgs(argv = process.argv) {
     }
   }
 
-  // --save-config 持久化本次设置
-  if (args.includes('--save-config')) {
+  // --save-config 鎸佷箙鍖栨湰娆¤缃?  if (args.includes('--save-config')) {
     persistentConfig.setBridgeConfig({
       mode: isHeadless ? 'headless' : 'cli',
       port, name: bridgeName, region: bridgeRegion,
@@ -95,7 +90,7 @@ export function parseCliArgs(argv = process.argv) {
       qiniuEnabled, cores,
       topic: bridgeTopic
     });
-    console.log(`[Config] 已保存到 ${path.join(os.homedir(), '.openchat', 'config.json')}`);
+    console.log(`[Config] 宸蹭繚瀛樺埌 ${path.join(os.homedir(), '.openchat', 'config.json')}`);
   }
 
   const CONFIG_HOST = isPublic ? '0.0.0.0' : 'localhost';

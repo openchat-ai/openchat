@@ -165,7 +165,7 @@ router.get('/:id/feedback', async (req, res, next) => {
 
     res.json({
       agentId: id,
-      findings: agent.feedback || []
+      feedback: agent.feedback || []
     })
   } catch (error) {
     next(error)

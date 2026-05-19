@@ -1,12 +1,10 @@
 /**
- * TopicRegistry — distributed topic-based peer discovery
- * 分布式 topic 注册中心：每个节点共同维护注册表
+ * TopicRegistry �?distributed topic-based peer discovery
+ * 分布�?topic 注册中心：每个节点共同维护注册表
  *
  * 不是单机 Map，而是每个节点本地存一份，
- * 通过 gossip 广播注册/注销事件，所有节点最终一致。
- *
- * 没有单点故障，没有中心服务器。
- */
+ * 通过 gossip 广播注册/注销事件，所有节点最终一致�? *
+ * 没有单点故障，没有中心服务器�? */
 
 import { EventEmitter } from 'events';
 
@@ -14,18 +12,17 @@ class TopicRegistry extends EventEmitter {
   constructor(options = {}) {
     super();
     this.ttl = options.ttl || 120_000;
-    this._topics = new Map(); // topic → Map<peerId, info>
-    this._p2p = null; // 外部注入的 p2p 发送函数
-    this._timer = setInterval(() => this._cleanup(), 30_000);
+    this._topics = new Map(); // topic �?Map<peerId, info>
+    this._p2p = null; // 外部注入�?p2p 发送函�?    this._timer = setInterval(() => this._cleanup(), 30_000);
     this._timer.unref();
   }
 
-  /** 注入 P2P 发送能力 */
+  /** 注入 P2P 发送能�?*/
   setP2PSend(sendFn) {
     this._p2p = sendFn;
   }
 
-  /** 注册本节点到 topic，并广播给所有已知节点 */
+  /** 注册本节点到 topic，并广播给所有已知节�?*/
   announce(topic, peerId, info = {}) {
     const now = Date.now();
     if (!this._topics.has(topic)) this._topics.set(topic, new Map());
@@ -45,8 +42,7 @@ class TopicRegistry extends EventEmitter {
   async getPeers(topic, excludePeerId = null) {
     const local = this._getLocalPeers(topic, excludePeerId);
 
-    // 如果有 P2P 能力，从其他节点同步一次
-    if (this._p2p) {
+    // 如果�?P2P 能力，从其他节点同步一�?    if (this._p2p) {
       try {
         const remote = await this._p2p({
           type: 'topic_query',
@@ -65,7 +61,7 @@ class TopicRegistry extends EventEmitter {
     return local;
   }
 
-  /** 处理收到的 topic 广播 */
+  /** 处理收到�?topic 广播 */
   handleMessage(msg) {
     if (!msg || !msg.topic || !msg.peerId) return;
 
@@ -86,8 +82,7 @@ class TopicRegistry extends EventEmitter {
     // 如果是查询请求，回复本地数据
     if (msg.type === 'topic_query' && this._p2p && msg.expectResponse) {
       const local = this._getLocalPeers(msg.topic, msg.excludePeerId);
-      return local; // 调用方通过 promise 拿到这个返回值
-    }
+      return local; // 调用方通过 promise 拿到这个返回�?    }
   }
 
   /** 离开 topic */

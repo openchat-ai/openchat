@@ -309,7 +309,7 @@ export class ThinkingPath {
   }
 
   _startCrossBridgeSync() {
-    const BRIDGE_PORTS = process.env.BRIDGE_PORTS ? process.env.BRIDGE_PORTS.split(',').map(Number) : [];
+    const BRIDGE_PORTS = (process.env.BRIDGE_PORTS || '3800,3002,3003,3004,3005,3006,3007,3008').split(',').map(Number);
     const sync = () => {
       for (const p of BRIDGE_PORTS) {
         if (p === this.port) continue;
