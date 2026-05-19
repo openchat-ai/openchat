@@ -35,25 +35,32 @@ class Forge {
     this._llmCircuitOpen = false;
   }
 
-  /** 解：先模式匹配（5s超时），解不开走 LLM（30s超时，熔断保护） */
+  /** 解：先召回记忆 → 模式匹配 → LLM */
   async solve(question) {
     const traceId = Date.now().toString(36) + Math.random().toString(36).substr(2, 4);
     let answer = null;
     let source = '';
 
-    // 模式匹配求解（5s 超时）
+    // ① 记忆召回：搜向量记忆，高置信度直接返回
+    const recall = await vectorMemory.embedSearch(question, { limit: 1, minScore: 0.5 });
+    const memoryHit = recall?.[0];
+    if (memoryHit && memoryHit.score > 0.8) {
+      const parsed = memoryHit.text.match(/A:\s*(.+)/s);
+      if (parsed) return { answer: parsed[1].substring(0, 500), source: 'memory' };
+    }
+
+    // ② 模式匹配求解
     try {
-      const timeout = AbortSignal.timeout ? AbortSignal.timeout(5000) : undefined;
-      const solverResult = await generalizationEngineV2.solve({ question }, timeout);
+      const solverResult = await generalizationEngineV2.solve({ question });
       if (solverResult?.content) {
         answer = solverResult.content;
         source = 'solver';
       }
     } catch (e) {
-      // solver error — fall through to LLM
+      this._log(traceId, 'solver_error', e.message);
     }
 
-    // LLM 兜底（熔断保护）
+    // ③ LLM 兜底（熔断保护）
     if (!answer && this._llmHandler && !this._llmCircuitOpen) {
       try {
         const llmResult = await Promise.race([
@@ -68,7 +75,7 @@ class Forge {
       } catch (e) {
         this._llmFailures++;
         if (this._llmFailures >= 3) this._llmCircuitOpen = true;
-        console.error('[Forge] LLM failed:', e.message);
+        this._log(traceId, 'llm_error', e.message);
       }
     }
 
@@ -140,15 +147,20 @@ class Forge {
     }
   }
 
-  /** 死信队列：记录验证失败的答案 */
+  /** 结构化日志 */
+  _log(traceId, event, detail) {
+    try {
+      const entry = `${Date.now()}|${traceId}|${event}|${(detail || '').substring(0, 100)}\n`;
+      fs.appendFileSync(os.tmpdir() + '/forge-trace.log', entry);
+    } catch {}
+  }
+
+  /** 死信队列 */
   _deadLetter(question, answer) {
     try {
-      const logPath = os.tmpdir() + '/forge-deadletter.log';
-      fs.appendFileSync(logPath,
-        `${Date.now()}|verify_fail|${(question || '').substring(0, 80)}|${(answer || '').substring(0, 80)}\n`);
-    } catch (e) {
-      console.error('[Forge] deadletter write failed:', e.message);
-    }
+      const entry = `${Date.now()}|deadletter|${(question || '').substring(0, 80)}|${(answer || '').substring(0, 80)}\n`;
+      fs.appendFileSync(os.tmpdir() + '/forge-deadletter.log', entry);
+    } catch {}
   }
 }
 

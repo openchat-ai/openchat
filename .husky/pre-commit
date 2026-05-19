@@ -5,6 +5,11 @@ echo "🔍 运行提交前检查..."
 
 # 0. Commit message lint
 echo "📝 检查 Commit message..."
+MSG=$(cat "$1" 2>/dev/null || echo "")
+if echo "$MSG" | grep -qiE "^(chore|fix|feat|docs|refactor|test):?\s*(end of day|收工|wip|tmp)\b"; then
+  echo "❌ Commit message 过于含糊（end of day / 收工 / wip / tmp），请写具体描述"
+  exit 1
+fi
 npx --no -- commitlint --edit $1 2>/dev/null || {
   echo "❌ Commit message 格式错误，使用: feat/fix/refactor/test/docs/chore: description"
   exit 1
