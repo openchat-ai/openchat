@@ -107,12 +107,15 @@ class Forge {
     return this;
   }
 
-  /** 触发跨 Bridge 同步（单例，可换 p2p 实例） */
-  sync(p2p) {
-    if (!this._gossip) {
+  /** 触发跨 Bridge 同步（可注入外部 genesis-gossip 实例） */
+  sync(p2p, externalGossip) {
+    if (externalGossip) {
+      // 使用外部 gossip（如 bridge.js 已经创建的），避免两个实例
+      this._gossip = externalGossip;
+    } else if (!this._gossip) {
       this._gossip = new GossipManager();
     }
-    this._gossip.start(p2p);
+    if (p2p) this._gossip.start(p2p);
     return this;
   }
 
