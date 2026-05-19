@@ -12,8 +12,7 @@ import * as os from 'os';
 import { EventEmitter } from 'events';
 import { persistentConfig } from './persistent-config.js';
 import { MessageType, createLLMProxyRequest } from '../p2p/messages.js';
-import { vectorMemory } from './vector-memory.js';
-import { generalizationEngineV2 } from './generalization.js';
+import { forge } from './forge.js';
 
 const DATA_FILE = path.join(os.homedir(), '.openchat', 'residents.json');
 const MAX_ACTIVITIES = 0;
@@ -284,9 +283,9 @@ export class ResidentManager extends EventEmitter {
     let userMsgContent = '';
     if (resident && messages.length > 0 && messages[0].role === 'user') {
       userMsgContent = messages[0].content || '';
-      relatedExperiences = vectorMemory.search(userMsgContent, { limit: 3, minScore: 0.05 });
-      // Also try embedding search asynchronously to augment
-      vectorMemory.embedSearch(userMsgContent, { limit: 2, minScore: 0.3 }).then(embedResults => {
+      relatedExperiences = forge.search(userMsgContent, { limit: 3, minScore: 0.05 });
+      // Also try embedding search asynchronously
+      forge.embedSearch(userMsgContent, { limit: 2, minScore: 0.3 }).then(embedResults => {
         if (embedResults && embedResults.length > 0) {
           // Merge unique embed results into relatedExperiences
           const existingIds = new Set(relatedExperiences.map(r => r.id));
@@ -332,19 +331,8 @@ export class ResidentManager extends EventEmitter {
           if (residentId != null) this.transitionState(residentId, RESIDENT_STATES.ACTIVE);
         }, 2000);
 
-        // Store to vector memory for cross-resident sharing
-        try {
-          const userMsg = messages[0]?.content || '';
-          vectorMemory.store({
-            residentId: String(resident?.id || 'unknown'),
-            text: `Q: ${userMsg}\nA: ${multi.content}`,
-            metadata: { model: multi.model },
-            source: 'multi-path-think',
-          });
-          vectorMemory.save();
-        } catch (e) {
-          // silent
-        }
+        // Store via forge (with verification built in)
+        forge.learn(userMsg, multi.content || '');
 
         return { content: multi.content, model: multi.model || 'multi-path', tokens: { prompt: 0, completion: 0, total: 0 } };
       }
@@ -869,43 +857,14 @@ export class ResidentManager extends EventEmitter {
   async _generalizeThink(userMessage, resident, options, relatedExperiences) {
     const name = resident?.name || '居民';
     try {
-      const emitFn = (llmOpts, resolve, reject) => {
-        const timer = setTimeout(() => {
-          resolve({ content: null, model: 'timeout' });
-        }, 20000);
+      const result = await forge.solve(userMessage);
 
-        this.emit('llm-request', {
-          messages: llmOpts.messages,
-          model: llmOpts.model || persistentConfig.getCurrentModel() || '',
-          temperature: llmOpts.temperature ?? 0.7,
-          maxTokens: options.maxTokens || 2048,
-          resolve: (result) => { clearTimeout(timer); resolve(result); },
-          reject: () => { clearTimeout(timer); reject(); },
-        });
-      };
-
-      const result = await generalizationEngineV2.solve({
-        question: userMessage,
-        residentName: name,
-        emitLLMRequest: (llmOpts, resolve, reject) => {
-          emitFn(llmOpts, resolve, reject);
-        },
-      });
-
-      if (result && result.content) {
-        // Store the Q&A to vector memory for future residents
-        try {
-          const userMsg = userMessage;
-          vectorMemory.store({
-            residentId: String(resident.id),
-            text: `Q: ${userMsg}\nA: ${result.content}`,
-            metadata: { model: result.model },
-            source: 'generalization',
-          });
-          vectorMemory.save();
-        } catch (e) { /* silent */ }
-
-        return { content: result.content, model: result.model || 'generalization', tokens: { prompt: 0, completion: 0, total: 0 } };
+      if (result?.answer) {
+        return {
+          content: result.answer,
+          model: result.source === 'solver' ? 'generalization-v2' : 'forge-llm',
+          tokens: { prompt: 0, completion: 0, total: 0 },
+        };
       }
     } catch (e) {
       console.warn('[Resident] generalization failed, falling back:', e.message);
