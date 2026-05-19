@@ -281,11 +281,12 @@ export class ResidentManager extends EventEmitter {
     // Vector memory: search relevant context from ALL residents
     // 向量记忆：搜索所有居民的相关经验作为上下文注入
     let relatedExperiences = [];
+    let userMsgContent = '';
     if (resident && messages.length > 0 && messages[0].role === 'user') {
-      const userMsg = messages[0].content || '';
-      relatedExperiences = vectorMemory.search(userMsg, { limit: 3, minScore: 0.05 });
+      userMsgContent = messages[0].content || '';
+      relatedExperiences = vectorMemory.search(userMsgContent, { limit: 3, minScore: 0.05 });
       // Also try embedding search asynchronously to augment
-      vectorMemory.embedSearch(userMsg, { limit: 2, minScore: 0.3 }).then(embedResults => {
+      vectorMemory.embedSearch(userMsgContent, { limit: 2, minScore: 0.3 }).then(embedResults => {
         if (embedResults && embedResults.length > 0) {
           // Merge unique embed results into relatedExperiences
           const existingIds = new Set(relatedExperiences.map(r => r.id));
@@ -308,8 +309,8 @@ export class ResidentManager extends EventEmitter {
     }
 
     // Generalization or multi-path: generate adapted solutions
-    if (options.useGeneralization !== false && options.useMultiPath !== false && resident && messages.length > 0 && messages[0].role === 'user') {
-      const userMsg = messages[0].content || '';
+    if (options.useGeneralization !== false && options.useMultiPath !== false && resident && userMsgContent) {
+      const userMsg = userMsgContent;
 
       // Use generalization when there are related experiences; fall back to multi-path
       if (relatedExperiences.length > 0) {
@@ -324,7 +325,7 @@ export class ResidentManager extends EventEmitter {
       }
 
       // Fall back to multi-path reasoning
-      const multi = await this._multiPathThink(messages[0], resident, options);
+      const multi = await this._multiPathThink({ role: 'user', content: userMsg }, resident, options);
       if (multi) {
         this.transitionState(residentId, RESIDENT_STATES.RESPONDING);
         setTimeout(() => {
