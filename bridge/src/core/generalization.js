@@ -1,60 +1,68 @@
 /**
- * Generalization Engine — N-shape general solver
- * N 种形状通用保证问题求解器
- *
- * For each shape: compute two/free → pair all shapes → min
+ * Generalization Engine — zero hardcoded names
+ * 完全通用：口味名、形状名全部从题目自动提取
  */
 import { vectorMemory } from './vector-memory.js';
 
 class GeneralizationEngineV2 {
   async solve({ question, emitLLMRequest }) {
-    const nums = (question.match(/\d+/g) || []).map(Number);
-    const nShapes = nums.length / 3; // 6→2 shapes, 9→3 shapes, etc
-    if (nShapes < 2 || nShapes !== Math.floor(nShapes)) return { content: '无法解析形状数量', model: 'error' };
-
-    const names = ['圆形', '星形', '方形', '三角形', '心形', '菱形']; // extendable
-    const shapes = [];
-    for (let s = 0; s < nShapes; s++) {
-      shapes.push({
-        name: names[s],
-        apple: nums[s],
-        peach: nums[s + nShapes],
-        wm: nums[s + nShapes * 2],
-      });
+    // Extract all (flavor, shape, count) triples
+    // Pattern: "苹果味圆形7" → flavor=苹果, shape=圆形, count=7
+    const triples = [];
+    const re = /([\u4e00-\u9fff]+?)味([\u4e00-\u9fff]+?)(\d+)/g;
+    let m;
+    while ((m = re.exec(question)) !== null) {
+      triples.push({ flavor: m[1], shape: m[2], count: parseInt(m[3]) });
     }
+    if (triples.length < 6) return { content: '无法解析', model: 'error' };
 
-    // Compute: pick ONE shape for "two flavors", rest get "one flavor"
-    // Must cover ALL shapes, can't skip any
-    const results = shapes.map(s => ({
-      ...s,
-      two: s.wm + Math.max(s.apple, s.peach) + 1,
-      one: s.wm + 1,
-    }));
+    // Dynamically identify flavors and shapes
+    const flavors = [...new Set(triples.map(t => t.flavor))];
+    const shapes = [...new Set(triples.map(t => t.shape))];
+    const nFlavors = flavors.length;
+    const nShapes = shapes.length;
 
-    let best = Infinity, bestIdx = -1;
-    for (let i = 0; i < results.length; i++) {
-      let total = results[i].two;
-      for (let j = 0; j < results.length; j++) {
-        if (j !== i) total += results[j].one;
+    // Identify target pair: flavors mentioned near "保证...和..."
+    const targetRe = new RegExp(`保证[^。]*?(${flavors.join('|')})[^。]*?和[^。]*?(${flavors.join('|')})`);
+    const targetMatch = question.match(targetRe);
+    let targets = [flavors[0], flavors[1]];
+    if (targetMatch) targets = [targetMatch[1], targetMatch[2]];
+    const irrelevant = flavors.find(f => !targets.includes(f));
+
+    // Build flavor×shape matrix
+    const matrix = {};
+    for (const f of flavors) matrix[f] = {};
+    for (const s of shapes) for (const f of flavors) matrix[f][s] = 0;
+    for (const t of triples) matrix[t.flavor][t.shape] = t.count;
+
+    // For each shape: compute two-flavor and one-flavor costs
+    const shapeData = shapes.map(name => {
+      const irCount = matrix[irrelevant][name];
+      const maxTarget = Math.max(...targets.map(t => matrix[t][name]));
+      return { name, irCount, maxTarget };
+    });
+
+    // Try each shape for "two flavors", rest get "one flavor"
+    let best = Infinity, bestI = -1;
+    for (let i = 0; i < nShapes; i++) {
+      const two = shapeData[i].irCount + shapeData[i].maxTarget + 1;
+      let total = two;
+      for (let j = 0; j < nShapes; j++) {
+        if (j !== i) total += shapeData[j].irCount + 1;
       }
-      if (total < best) { best = total; bestIdx = i; }
+      if (total < best) { best = total; bestI = i; }
     }
 
-    const lines = results.map((s, i) => {
-      const isBest = i === bestIdx;
-      const label = isBest ? '★ 两种' : '   一种';
-      return `  ${s.name}: 苹果${s.apple} 桃${s.peach} 西瓜${s.wm} → ${label}=${isBest ? s.two : s.one}`;
+    // Format output
+    const header = `${targets.join('+')}（无关：${irrelevant}）`;
+    const lines = shapeData.map((s, i) => {
+      const counts = targets.map(t => `${t}${matrix[t][s.name]}`).concat(`${irrelevant}${matrix[irrelevant][s.name]}`).join(' ');
+      const cost = i === bestI ? `★两类=${s.irCount}+${s.maxTarget}+1=${s.irCount + s.maxTarget + 1}` : `一类=${s.irCount}+1=${s.irCount + 1}`;
+      return `  ${s.name}: ${counts} → ${cost}`;
     });
 
     return {
-      content: [
-        '=== 各形状 ===',
-        ...lines,
-        '',
-        `最优：先保${results[bestIdx].name}两种(=${results[bestIdx].two})，`,
-        ...results.filter((_, i) => i !== bestIdx).map(s => `  再保${s.name}一种(=${s.one})`),
-        `合计：${best}颗`,
-      ].join('\n'),
+      content: [header, ...lines, '', `最优：${best}`].join('\n'),
       model: 'generalization-v2',
     };
   }
