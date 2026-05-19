@@ -41,10 +41,10 @@ class Forge {
     let answer = null;
     let source = '';
 
-    // ① 记忆召回：搜向量记忆，高置信度直接返回
-    const recall = await vectorMemory.embedSearch(question, { limit: 1, minScore: 0.5 });
+    // ① 记忆召回：搜向量记忆，置信度达标直接返回
+    const recall = await vectorMemory.embedSearch(question, { limit: 1, minScore: 0.3 });
     const memoryHit = recall?.[0];
-    if (memoryHit && memoryHit.score > 0.8) {
+    if (memoryHit && memoryHit.score > 0.6) {
       const parsed = memoryHit.text.match(/A:\s*(.+)/s);
       if (parsed) return { answer: parsed[1].substring(0, 500), source: 'memory' };
     }
