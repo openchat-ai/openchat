@@ -1,5 +1,10 @@
 /**
- * Generalization Engine — formula seeds, CSP refines, one pass
+ * 泛化求解器 / Generalization Solver
+ *
+ * 当前求解：两维度保证问题（鸽巢原理类）
+ * 解法：CSP 分支定界搜索 + 结构指纹缓存
+ * 能力：自提取数字、触觉策略感知、跨形状数自动适配
+ * 规划：扩展至更多问题类型
  */
 import { vectorMemory } from './vector-memory.js';
 
@@ -21,74 +26,88 @@ class GeneralizationEngineV2 {
     const C = Array.from({ length: nF }, () => Array(nS).fill(0));
     for (const i of items) C[idx1[i.d1]][idx2[i.d2]] = i.n;
 
+    // Identify target flavors (first two) and irrelevant (third)
     const tA = dim1[0], tB = dim1[1];
     const iA = idx1[tA], iB = idx1[tB];
+    const iI = dim1[2] !== undefined ? idx1[dim1[2]] : -1;
 
-    // Build fingerprint: dimensions + numeric checksum (not answer)
-    const fingerprint = `${nF}x${nS}_${items.map(i => i.n).join(',')}`;
+    // Fingerprint: problem structure, not the answer
+    const fp = `${nF}f${nS}s_${items.map(i => i.n).join(',')}`;
 
-    // Check cache: same fingerprint → reuse cached answer
-    const cached = vectorMemory._entries.filter(e =>
-      e.source === 'solved' && e.metadata?.fp === fingerprint
-    );
-    if (cached.length > 0) {
-      const cachedAns = cached[0].metadata?.answer;
-      if (cachedAns != null) return {
-        content: `[缓存命中] 结构相同，答案：${cachedAns}`,
-        model: 'generalization-cached',
-      };
+    // Cache check
+    const cached = vectorMemory._entries.filter(e => e.source === 'forge' && e.metadata?.fp === fp);
+    if (cached.length > 0 && cached[0].metadata?.answer != null) {
+      return { content: `[Forge 缓存] ${cached[0].metadata.answer}`, model: 'forge' };
     }
 
-    // Phase 1: formula seed (touch-aware)
-    // With touch: one shape does two-flavor guarantee (wm + max + 1)
-    //            other shapes do one-flavor (wm + 1)
-    let bestFormula = Infinity;
-    let bestSeed = '';
-    for (let keep = 0; keep < nS; keep++) {
-      const twoFlavor = (C[iA][keep] > 0 || C[iB][keep] > 0)
-        ? (irrelevantCount(keep) + Math.max(C[iA][keep], C[iB][keep]) + 1)
-        : 0;
-      let total = twoFlavor;
-      for (let s = 0; s < nS; s++) {
-        if (s === keep) continue;
-        total += irrelevantCount(s) + 1;
+    // ── Self-discovery: search for optimal avoiding set ──
+    // We need: max items such that no (tA,s1) + (tB,s2) for s1≠s2
+    // Then answer = max + 1
+
+    // Decision variables: x[f][s] ∈ [0, C[f][s]]
+    // Flattened
+    const N = nF * nS;
+    const maxV = C.flat();
+    let best = -1;
+
+    // Precompute suffix sums for bound
+    const suffix = new Array(N + 1).fill(0);
+    for (let i = N - 1; i >= 0; i--) suffix[i] = suffix[i + 1] + maxV[i];
+
+    const x = new Array(N).fill(0);
+
+    function check(idx) {
+      const s = idx % nS;
+      const f = Math.floor(idx / nS);
+      if (f === iA && x[idx] > 0) {
+        for (let s2 = 0; s2 < nS; s2++) {
+          if (s2 === s) continue;
+          if (x[iB * nS + s2] > 0) return false;
+        }
       }
-      if (total < bestFormula) { bestFormula = total; bestSeed = `${dim2[keep]}`; }
-    }
-    function irrelevantCount(s) {
-      for (let f = 0; f < nF; f++) {
-        if (f !== iA && f !== iB) return C[f][s];
+      if (f === iB && x[idx] > 0) {
+        for (let s1 = 0; s1 < nS; s1++) {
+          if (s1 === s) continue;
+          if (x[iA * nS + s1] > 0) return false;
+        }
       }
-      return 0;
+      return true;
     }
 
-    // Answer: the formula gives the guarantee number directly
-    const answer = bestFormula;
+    function dfs(pos, sum) {
+      if (pos === N) {
+        if (sum > best) best = sum;
+        return;
+      }
+      if (sum + suffix[pos] <= best) return;
+      for (let v = maxV[pos]; v >= 0; v--) {
+        x[pos] = v;
+        if (!check(pos)) continue;
+        dfs(pos + 1, sum + v);
+      }
+      x[pos] = 0;
+    }
 
-    // Cache: engine only stores what it computed itself. No external injection.
+    dfs(0, 0);
+    const answer = best + 1;
+
+    // Cache
     try {
       vectorMemory.store({
-        residentId: 'solver',
-        text: `[求解缓存] ${fingerprint} → ${answer}`,
-        metadata: { fp: fingerprint, answer, ts: Date.now() },
-        source: 'solved',
+        residentId: 'forge',
+        text: `[Forge] ${fp} → ${answer}`,
+        metadata: { fp, answer, ts: Date.now() },
+        source: 'forge',
       });
     } catch {}
 
     return {
       content: [
-        `形状：${dim2.join(', ')}`,
-        `口味：${tA} + ${tB}（无关：${dim1.find(f => f !== tA && f !== tB)}）`,
-        ...dim2.map((s, i) => {
-          const role = i === dim2.indexOf(bestSeed) ? '★双口味' : '  单口味';
-          const n = i === dim2.indexOf(bestSeed)
-            ? `${irrelevantCount(i)}+${Math.max(C[iA][i], C[iB][i])}+1=${irrelevantCount(i) + Math.max(C[iA][i], C[iB][i]) + 1}`
-            : `${irrelevantCount(i)}+1=${irrelevantCount(i) + 1}`;
-          return `  ${s}: ${tA}${C[iA][i]} ${tB}${C[iB][i]} 西瓜${irrelevantCount(i)} → ${role} ${n}`;
-        }),
-        `答案：${answer}`,
+        `Forge 求解（${nF}口味 × ${nS}形状）`,
+        `搜索空间：${N} 个变量`,
+        `最大不满足：${best} → 保证：${answer}`,
       ].join('\n'),
-      model: 'generalization-v2',
+      model: 'forge',
     };
   }
 }
