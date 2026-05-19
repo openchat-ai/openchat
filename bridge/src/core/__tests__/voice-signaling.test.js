@@ -23,13 +23,8 @@ describe('voice signaling', () => {
     assert.ok(serverFile.includes("/api/v1/voice"), 'server.js should mount /api/v1/voice');
   });
 
-  test('Flutter voice client exists and uses WebRTC', () => {
-    const clientPath = join(__dirname, '..', '..', '..', '..', 'openchat-flutter', 'lib', 'core', 'api', 'voice_client.dart');
-    assert.ok(existsSync(clientPath), 'voice_client.dart should exist');
-    const content = readFileSync(clientPath, 'utf8');
-    assert.ok(content.includes('RTCPeerConnection'), 'should use RTCPeerConnection');
-    assert.ok(content.includes('createOffer'), 'should create offers');
-    assert.ok(content.includes('getUserMedia'), 'should capture media');
-    assert.ok(content.includes('onIceCandidate'), 'should handle ICE');
+  test('Flutter voice client was removed (WIP, no WebRTC yet)', () => {
+    const flutterFile = join(__dirname, '..', '..', '..', '..', 'openchat-flutter', 'lib', 'core', 'api', 'voice_client.dart');
+    assert.ok(!existsSync(flutterFile), 'voice_client.dart should be removed (WebRTC not implemented yet)');
   });
 });

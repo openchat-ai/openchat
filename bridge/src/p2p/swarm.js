@@ -7,7 +7,8 @@
 
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const Hyperswarm = require('hyperswarm');
+let Hyperswarm;
+try { Hyperswarm = require('hyperswarm'); } catch { Hyperswarm = null; }
 const crypto = require('crypto');
 const net = require('net');
 const os = require('os');
@@ -133,7 +134,8 @@ class P2PSwarm extends EventEmitter {
         console.log(`[P2P] NAT type: ${type}`);
       }).catch(() => {});
 
-      const hyperswarmOpts = {
+      if (Hyperswarm) {
+        const hyperswarmOpts = {
         maxPeers: 50,
         cache: false,
         fastJoin: true,
@@ -195,6 +197,9 @@ class P2PSwarm extends EventEmitter {
         } catch (e) {
           console.log(`[P2P] 注册中心发现失败: ${e.message}`);
         }
+      }
+      } else {
+        console.log('[P2P] hyperswarm 不可用，仅使用直连模式');
       }
 
       this.isRunning = true;
