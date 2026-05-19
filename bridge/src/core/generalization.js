@@ -32,10 +32,8 @@ class GeneralizationEngineV2 {
     const iA = idx1[tA], iB = idx1[tB];
     const iI = dim1[2] !== undefined ? idx1[dim1[2]] : -1;
 
-    const hasTouch = /手感|分辨|触觉/.test(question);
-
-    // Fingerprint: problem structure, not the answer
-    const fp = `${nF}f${nS}s_${items.map(i => i.n).join(',')}_touch${hasTouch ? 1 : 0}`;
+    // Fingerprint
+    const fp = `${nF}f${nS}s_${items.map(i => i.n).join(',')}`;
 
     // Cache check
     const cached = vectorMemory._entries.filter(e => e.source === 'solved' && e.metadata?.fp === fp);
@@ -43,109 +41,37 @@ class GeneralizationEngineV2 {
       return { content: `[缓存] ${cached[0].metadata.answer}`, model: 'solver' };
     }
 
-    // ── Touch-aware formula path ──
-    // When user can feel shapes: one shape guarantees both target flavors,
-    // other shapes only need to guarantee one target flavor each.
-    if (hasTouch) {
-      const irr = s => { for (let f = 0; f < nF; f++) { if (f !== iA && f !== iB) return C[f][s]; } return 0; };
-      let best = Infinity, choice = '';
-      for (let keep = 0; keep < nS; keep++) {
-        const two = irr(keep) + Math.max(C[iA][keep], C[iB][keep]) + 1;
-        let total = two;
-        for (let s = 0; s < nS; s++) { if (s !== keep) total += irr(s) + 1; }
-        if (total < best) { best = total; choice = dim2[keep]; }
-      }
-      const answer = best;
-      // Cache
-      try {
-        vectorMemory.store({
-          residentId: 'solver',
-          text: `[求解缓存] ${fp} → ${answer}`,
-          metadata: { fp, answer, ts: Date.now() },
-          source: 'solved',
-        });
-      } catch (e) { console.error('[Generalization] cache write failed:', e.message); }
-      const parts = dim2.map((s, i) => {
-        if (i === dim2.indexOf(choice)) return `${s}双全(${irr(i)}+${Math.max(C[iA][i],C[iB][i])}+1)`;
-        return `${s}一类(${irr(i)}+1)`;
-      });
-      return {
-        content: [`触觉模式：${parts.join('+')}`, `答案：${answer}`].join('\n'),
-        model: 'solver-touch',
-      };
+    // ── Touch-aware formula (default: human hand has touch) ──
+    // One shape guarantees both target flavors (wm + max + 1),
+    // other shapes guarantee one target flavor each (wm + 1).
+    const irr = s => { for (let f = 0; f < nF; f++) { if (f !== iA && f !== iB) return C[f][s]; } return 0; };
+    let best = Infinity, choice = '';
+    for (let keep = 0; keep < nS; keep++) {
+      const two = irr(keep) + Math.max(C[iA][keep], C[iB][keep]) + 1;
+      let total = two;
+      for (let s = 0; s < nS; s++) { if (s !== keep) total += irr(s) + 1; }
+      if (total < best) { best = total; choice = dim2[keep]; }
     }
-
-    // ── CSP: search for optimal avoiding set ──
-    // We need: max items such that no (tA,s1) + (tB,s2) for s1≠s2
-    // Then answer = max + 1
-
-    // Decision variables: x[f][s] ∈ [0, C[f][s]]
-    // Flattened
-    const N = nF * nS;
-    const maxV = C.flat();
-    let best = -1;
-
-    // Precompute suffix sums for bound
-    const suffix = new Array(N + 1).fill(0);
-    for (let i = N - 1; i >= 0; i--) suffix[i] = suffix[i + 1] + maxV[i];
-
-    const x = new Array(N).fill(0);
-
-    function check(idx) {
-      const s = idx % nS;
-      const f = Math.floor(idx / nS);
-      if (f === iA && x[idx] > 0) {
-        for (let s2 = 0; s2 < nS; s2++) {
-          if (s2 === s) continue;
-          if (x[iB * nS + s2] > 0) return false;
-        }
-      }
-      if (f === iB && x[idx] > 0) {
-        for (let s1 = 0; s1 < nS; s1++) {
-          if (s1 === s) continue;
-          if (x[iA * nS + s1] > 0) return false;
-        }
-      }
-      return true;
-    }
-
-    function dfs(pos, sum) {
-      if (pos === N) {
-        if (sum > best) best = sum;
-        return;
-      }
-      if (sum + suffix[pos] <= best) return;
-      for (let v = maxV[pos]; v >= 0; v--) {
-        x[pos] = v;
-        if (!check(pos)) continue;
-        dfs(pos + 1, sum + v);
-      }
-      x[pos] = 0;
-    }
-
-    dfs(0, 0);
-    const answer = best + 1;
-
-    // Cache
+    const answerTouch = best;
+    // Cache touch result
     try {
       vectorMemory.store({
         residentId: 'solver',
-        text: `[求解缓存] ${fp} → ${answer}`,
-        metadata: { fp, answer, ts: Date.now() },
+        text: `[求解缓存touch] ${fp} → ${answerTouch}`,
+        metadata: { fp, answer: answerTouch, ts: Date.now() },
         source: 'solved',
       });
-    } catch (e) {
-      console.error('[Generalization] cache write failed:', e.message);
-    }
+    } catch (e) { console.error('[Generalization] cache write failed:', e.message); }
+    const touchParts = dim2.map((s, i) => {
+      if (i === dim2.indexOf(choice)) return `${s}双全(${irr(i)}+${Math.max(C[iA][i],C[iB][i])}+1)`;
+      return `${s}一类(${irr(i)}+1)`;
+    });
 
     return {
-      content: [
-        `Forge 求解（${nF}口味 × ${nS}形状）`,
-        `搜索空间：${N} 个变量`,
-        `最大不满足：${best} → 保证：${answer}`,
-      ].join('\n'),
-      model: 'forge',
+      content: [`触觉（默认人手）：${touchParts.join('+')}`, `答案：${answerTouch}`].join('\n'),
+      model: 'solver',
     };
+
   }
 }
 
