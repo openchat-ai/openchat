@@ -10,7 +10,8 @@ import { vectorMemory } from './vector-memory.js';
 
 class GeneralizationEngineV2 {
   async solve({ question }) {
-    // Parse
+    // Parse (with input length guard)
+    if (question.length > 10000) return { content: '输入过长', model: 'error' };
     const items = [];
     const re = /([\u4e00-\u9fff]+?)味([\u4e00-\u9fff]+?)(\d+)/g;
     let m;
@@ -35,7 +36,7 @@ class GeneralizationEngineV2 {
     const fp = `${nF}f${nS}s_${items.map(i => i.n).join(',')}`;
 
     // Cache check
-    const cached = vectorMemory._entries.filter(e => e.source === 'forge' && e.metadata?.fp === fp);
+    const cached = vectorMemory._entries.filter(e => e.source === 'solved' && e.metadata?.fp === fp);
     if (cached.length > 0 && cached[0].metadata?.answer != null) {
       return { content: `[Forge 缓存] ${cached[0].metadata.answer}`, model: 'forge' };
     }
@@ -94,12 +95,14 @@ class GeneralizationEngineV2 {
     // Cache
     try {
       vectorMemory.store({
-        residentId: 'forge',
-        text: `[Forge] ${fp} → ${answer}`,
+        residentId: 'solver',
+        text: `[求解缓存] ${fp} → ${answer}`,
         metadata: { fp, answer, ts: Date.now() },
-        source: 'forge',
+        source: 'solved',
       });
-    } catch {}
+    } catch (e) {
+      console.error('[Generalization] cache write failed:', e.message);
+    }
 
     return {
       content: [

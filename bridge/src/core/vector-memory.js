@@ -105,19 +105,30 @@ function vectorCosineSim(a, b) {
 // ---- Embedding API ----
 
 let _embedApiKey = process.env.SILICONFLOW_API_KEY || '';
-let _embedCache = new Map(); // text hash → vector
-let _embedInflight = new Map(); // dedup concurrent requests
+let _embedCache = new Map();
+let _embedInflight = new Map();
+const EMBED_CACHE_MAX = 1000;
 
-async function _callEmbedAPI(texts) {
+async function _callEmbedAPI(texts, retries = 2) {
   if (!_embedApiKey) return null;
-  const res = await fetch(`${EMBED_API}/embeddings`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${_embedApiKey}` },
-    body: JSON.stringify({ model: EMBED_MODEL, input: texts, encoding_format: 'float' }),
-  });
-  if (!res.ok) return null;
-  const data = await res.json();
-  return data.data?.map(d => d.embedding) || null;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(`${EMBED_API}/embeddings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${_embedApiKey}` },
+        body: JSON.stringify({ model: EMBED_MODEL, input: texts, encoding_format: 'float' }),
+      });
+      if (!res.ok) {
+        if (attempt < retries) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+        continue;
+      }
+      const data = await res.json();
+      if (data.data?.length > 0) return data.data.map(d => d.embedding);
+    } catch (e) {
+      if (attempt < retries) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+    }
+  }
+  return null;
 }
 
 async function getEmbedding(text) {
@@ -125,12 +136,17 @@ async function getEmbedding(text) {
   const key = text.substring(0, 200);
   if (_embedCache.has(key)) return _embedCache.get(key);
 
-  // Dedup concurrent requests for the same text
   if (_embedInflight.has(key)) return _embedInflight.get(key);
 
   const promise = _callEmbedAPI([text]).then(vecs => {
     const vec = vecs?.[0] || null;
-    if (vec) _embedCache.set(key, vec);
+    if (vec) {
+      _embedCache.set(key, vec);
+      if (_embedCache.size > EMBED_CACHE_MAX) {
+        const first = _embedCache.keys().next().value;
+        if (first) _embedCache.delete(first);
+      }
+    }
     _embedInflight.delete(key);
     return vec;
   }).catch(() => {
@@ -192,6 +208,7 @@ class VectorMemory {
    * 存储一条记忆
    */
   store({ residentId, text, metadata = {}, source = 'conversation' }) {
+    if (!text || typeof text !== 'string' || text.length > 50000) return null;
     const tokens = tokenize(text);
     const tf = computeTF(tokens);
     const id = `${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
@@ -277,13 +294,25 @@ class VectorMemory {
   }
 
   /**
-   * Auto search: try embedding first, fall back to TF-IDF.
-   * 自动选择：优先 embedding，不可用时降级 TF-IDF
+   * Auto search: embedding + TF-IDF merged, best recall.
+   * 自动搜索：embedding + TF-IDF 合并结果，取最高召回
    */
   async autoSearch(query, opts = {}) {
-    const embed = await this.embedSearch(query, opts);
-    if (embed) return embed;
-    return this.search(query, opts);
+    const embedResults = await this.embedSearch(query, opts).catch(() => null);
+    const tfidfResults = this.search(query, opts);
+
+    if (!embedResults || embedResults.length === 0) return tfidfResults;
+
+    // Merge: keep unique by ID, prefer embedding score
+    const seen = new Set();
+    const merged = [];
+    for (const r of [...embedResults, ...tfidfResults]) {
+      if (seen.has(r.id)) continue;
+      seen.add(r.id);
+      merged.push(r);
+    }
+    merged.sort((a, b) => b.score - a.score);
+    return merged.slice(0, opts.limit || 5);
   }
 
   /**
