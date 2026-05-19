@@ -23,32 +23,37 @@ class GeneralizationEngineV2 {
       });
     }
 
+    // Compute: pick ONE shape for "two flavors", rest get "one flavor"
+    // Must cover ALL shapes, can't skip any
     const results = shapes.map(s => ({
       ...s,
       two: s.wm + Math.max(s.apple, s.peach) + 1,
       one: s.wm + 1,
     }));
 
-    let best = Infinity, bestA = '', bestB = '';
-    const pairs = [];
+    let best = Infinity, bestIdx = -1;
     for (let i = 0; i < results.length; i++) {
-      for (let j = i + 1; j < results.length; j++) {
-        const a = results[i], b = results[j];
-        const d1 = a.two + b.one;
-        const d2 = b.two + a.one;
-        const m = Math.min(d1, d2);
-        pairs.push({ a: a.name, b: b.name, d1, d2, best: m });
-        if (m < best) { best = m; bestA = a.name; bestB = b.name; }
+      let total = results[i].two;
+      for (let j = 0; j < results.length; j++) {
+        if (j !== i) total += results[j].one;
       }
+      if (total < best) { best = total; bestIdx = i; }
     }
+
+    const lines = results.map((s, i) => {
+      const isBest = i === bestIdx;
+      const label = isBest ? '★ 两种' : '   一种';
+      return `  ${s.name}: 苹果${s.apple} 桃${s.peach} 西瓜${s.wm} → ${label}=${isBest ? s.two : s.one}`;
+    });
 
     return {
       content: [
         '=== 各形状 ===',
-        ...results.map(s => `  ${s.name}: 苹果${s.apple} 桃${s.peach} 西瓜${s.wm} → 两种=${s.two} 一种=${s.one}`),
-        '', '=== 配对对比 ===',
-        ...pairs.map(p => `  ${p.a}+${p.b}: ${p.d1}/${p.d2} → ${p.best}`),
-        '', `最优：${bestA}+${bestB} → ${best}颗`,
+        ...lines,
+        '',
+        `最优：先保${results[bestIdx].name}两种(=${results[bestIdx].two})，`,
+        ...results.filter((_, i) => i !== bestIdx).map(s => `  再保${s.name}一种(=${s.one})`),
+        `合计：${best}颗`,
       ].join('\n'),
       model: 'generalization-v2',
     };
