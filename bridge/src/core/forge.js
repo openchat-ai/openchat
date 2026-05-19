@@ -2,6 +2,8 @@
  * Forge — unified entry for solve/verify/store/learn/sync
  * 统一入口：所有泛化能力从这里出去
  */
+import * as fs from 'fs';
+import * as os from 'os';
 import { generalizationEngineV2 } from './generalization.js';
 import { vectorMemory } from './vector-memory.js';
 import { GossipManager } from '../p2p/gossip-manager.js';
@@ -98,13 +100,21 @@ class Forge {
     return this;
   }
 
-  /** 触发跨 Bridge 同步 */
+  /** 触发跨 Bridge 同步（单例，可换 p2p 实例） */
   sync(p2p) {
     if (!this._gossip) {
       this._gossip = new GossipManager();
-      this._gossip.start(p2p);
     }
+    this._gossip.start(p2p);
     return this;
+  }
+
+  /** 停止 gossip */
+  stopSync() {
+    if (this._gossip) {
+      this._gossip.stop();
+      this._gossip = null;
+    }
   }
 
   /** 验证链：遍历所有验证器 */
@@ -133,14 +143,12 @@ class Forge {
   /** 死信队列：记录验证失败的答案 */
   _deadLetter(question, answer) {
     try {
-      import('fs').then(fs => {
-        import('os').then(os => {
-          const logDir = os.tmpdir() + '/forge-deadletter.log';
-          fs.appendFileSync(logDir,
-            `${Date.now()}|verify_fail|${(question || '').substring(0, 80)}|${(answer || '').substring(0, 80)}\n`);
-        });
-      });
-    } catch {}
+      const logPath = os.tmpdir() + '/forge-deadletter.log';
+      fs.appendFileSync(logPath,
+        `${Date.now()}|verify_fail|${(question || '').substring(0, 80)}|${(answer || '').substring(0, 80)}\n`);
+    } catch (e) {
+      console.error('[Forge] deadletter write failed:', e.message);
+    }
   }
 }
 

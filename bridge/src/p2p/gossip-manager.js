@@ -25,18 +25,23 @@ class GossipManager extends EventEmitter {
 
   /**
    * Start gossip loop — call after P2P is connected
-   * 启动八卦循环：在 P2P 连接后调用
+   * 启动八卦循环：在 P2P 连接后调用（幂等，可换 p2p 实例）
    */
   start(p2p) {
+    const prevP2p = this._p2p;
+    if (prevP2p && prevP2p !== p2p && this._handler) {
+      prevP2p.removeListener('message', this._handler);
+    }
+
     this._p2p = p2p;
     if (this._timer) return;
 
-    // Listen for incoming gossip
-    p2p.on('message', ({ from, payload }) => {
+    this._handler = ({ from, payload }) => {
       if (payload?.type === MessageType.KNOWLEDGE_SYNC) {
         this._handleSyncMessage(from, payload.data);
       }
-    });
+    };
+    p2p.on('message', this._handler);
 
     // Periodic gossip
     this._timer = setInterval(() => this._gossip(), GOSSIP_INTERVAL_MS);
@@ -52,7 +57,12 @@ class GossipManager extends EventEmitter {
       clearInterval(this._timer);
       this._timer = null;
     }
+    if (this._p2p && this._handler) {
+      this._p2p.removeListener('message', this._handler);
+      this._handler = null;
+    }
     this._p2p = null;
+    this._peerClock.clear();
   }
 
   /**

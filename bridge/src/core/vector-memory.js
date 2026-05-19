@@ -271,21 +271,23 @@ class VectorMemory {
    * Embedding 语义搜索（增强路径，需 API key）
    */
   async embedSearch(query, { limit = 5, minScore = 0.3 } = {}) {
-    const qVec = await getEmbedding(query);
-    if (!qVec) return null; // embedding unavailable
-
+    const qVec = await getEmbedding(query).catch(() => null);
     const scored = [];
-    for (const entry of this._entries) {
-      if (!entry._embed) continue; // not yet embedded
-      const score = vectorCosineSim(qVec, entry._embed);
-      if (score >= minScore) scored.push({ ...entry, score, _embed: undefined });
+
+    if (qVec) {
+      for (const entry of this._entries) {
+        if (!entry._embed) continue;
+        const score = vectorCosineSim(qVec, entry._embed);
+        if (score >= minScore) scored.push({ ...entry, score, _embed: undefined });
+      }
     }
 
-    // If too few embedding results, augment with TF-IDF
-    if (scored.length < 3) {
-      const tfidf = this.search(query, { limit: limit - scored.length, minScore: 0.01 });
-      for (const t of tfidf) {
-        if (!scored.find(s => s.id === t.id)) scored.push(t);
+    // Always augment with TF-IDF (fills gaps when embedding unavailable or sparse)
+    const tfidf = this.search(query, { limit, minScore: 0.01 });
+    for (const t of tfidf) {
+      if (!scored.find(s => s.id === t.id)) {
+        const embedScore = scored.find(s => s.id === t.id)?.score || 0;
+        scored.push({ ...t, score: Math.max(t.score, embedScore), _embed: undefined });
       }
     }
 
@@ -346,6 +348,13 @@ class VectorMemory {
 
   getResidentEntries(residentId) {
     return this._entries.filter(e => e.residentId === residentId);
+  }
+
+  /**
+   * Find entries by metadata field value (public, replaces _entries direct access)
+   */
+  findByMetadata(key, value) {
+    return this._entries.filter(e => e.metadata?.[key] === value);
   }
 
   getStats() {

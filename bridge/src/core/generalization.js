@@ -36,7 +36,7 @@ class GeneralizationEngineV2 {
     const fp = `${nF}f${nS}s_${items.map(i => i.n).join(',')}`;
 
     // Cache check
-    const cached = vectorMemory._entries.filter(e => e.source === 'solved' && e.metadata?.fp === fp);
+    const cached = vectorMemory.findByMetadata('fp', fp);
     if (cached.length > 0 && cached[0].metadata?.answer != null) {
       return { content: `[缓存] ${cached[0].metadata.answer}`, model: 'solver' };
     }
