@@ -62,6 +62,7 @@ describe('resident integration', () => {
       messages: [{ role: 'user', content: 'solve X' }],
       residentId: 'uuid-test-123',
       timeout: 5000,
+      useGeneralization: false,
     });
     assert.ok(result);
     assert.ok(result.content.includes('基础分析'));

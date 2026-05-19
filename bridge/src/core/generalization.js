@@ -32,16 +32,50 @@ class GeneralizationEngineV2 {
     const iA = idx1[tA], iB = idx1[tB];
     const iI = dim1[2] !== undefined ? idx1[dim1[2]] : -1;
 
+    const hasTouch = /手感|分辨|触觉/.test(question);
+
     // Fingerprint: problem structure, not the answer
-    const fp = `${nF}f${nS}s_${items.map(i => i.n).join(',')}`;
+    const fp = `${nF}f${nS}s_${items.map(i => i.n).join(',')}_touch${hasTouch ? 1 : 0}`;
 
     // Cache check
     const cached = vectorMemory._entries.filter(e => e.source === 'solved' && e.metadata?.fp === fp);
     if (cached.length > 0 && cached[0].metadata?.answer != null) {
-      return { content: `[Forge 缓存] ${cached[0].metadata.answer}`, model: 'forge' };
+      return { content: `[缓存] ${cached[0].metadata.answer}`, model: 'solver' };
     }
 
-    // ── Self-discovery: search for optimal avoiding set ──
+    // ── Touch-aware formula path ──
+    // When user can feel shapes: one shape guarantees both target flavors,
+    // other shapes only need to guarantee one target flavor each.
+    if (hasTouch) {
+      const irr = s => { for (let f = 0; f < nF; f++) { if (f !== iA && f !== iB) return C[f][s]; } return 0; };
+      let best = Infinity, choice = '';
+      for (let keep = 0; keep < nS; keep++) {
+        const two = irr(keep) + Math.max(C[iA][keep], C[iB][keep]) + 1;
+        let total = two;
+        for (let s = 0; s < nS; s++) { if (s !== keep) total += irr(s) + 1; }
+        if (total < best) { best = total; choice = dim2[keep]; }
+      }
+      const answer = best;
+      // Cache
+      try {
+        vectorMemory.store({
+          residentId: 'solver',
+          text: `[求解缓存] ${fp} → ${answer}`,
+          metadata: { fp, answer, ts: Date.now() },
+          source: 'solved',
+        });
+      } catch (e) { console.error('[Generalization] cache write failed:', e.message); }
+      const parts = dim2.map((s, i) => {
+        if (i === dim2.indexOf(choice)) return `${s}双全(${irr(i)}+${Math.max(C[iA][i],C[iB][i])}+1)`;
+        return `${s}一类(${irr(i)}+1)`;
+      });
+      return {
+        content: [`触觉模式：${parts.join('+')}`, `答案：${answer}`].join('\n'),
+        model: 'solver-touch',
+      };
+    }
+
+    // ── CSP: search for optimal avoiding set ──
     // We need: max items such that no (tA,s1) + (tB,s2) for s1≠s2
     // Then answer = max + 1
 
