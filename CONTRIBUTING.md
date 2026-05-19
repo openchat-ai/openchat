@@ -17,6 +17,26 @@ npm start   # Start Bridge locally
 - Join the discussion in existing PRs before opening a new one
 - Have a question? Open a Discussion, not an Issue
 
+## FAQ / 常见问题
+
+**Bridge 启动报 hyperswarm/hyperdht 错误？**
+这是已知的 Node 24 兼容性问题。如不需要 P2P，用 `--headless --no-p2p` 启动。
+
+**怎么测试泛化求解器？**
+```bash
+cd bridge
+node -e "await import('./src/core/generalization.js').then(m=>m.generalizationEngineV2.solve({question:'苹果味圆形7苹果味星形7，桃子味圆形9桃子味星形6，西瓜味圆形8西瓜味星形4'}).then(r=>console.log(r.content)))"
+```
+
+**embedding 搜索需要配置？**
+设置 `SILICONFLOW_API_KEY` 环境变量。未设置时自动降级为 TF-IDF。
+
+**测试怎么跑？**
+```bash
+cd bridge && npm test        # 后端 80+ 测试
+cd openchat-flutter && flutter test  # 前端 12 测试
+```
+
 ## Git workflow
 
 ```bash

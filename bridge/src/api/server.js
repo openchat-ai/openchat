@@ -119,6 +119,19 @@ class APIServer {
     // 健康检查（无需认证，无限流）
     this.app.use('/health', healthRouter);
 
+    // 调试统计（无需认证）
+    this.app.get('/debug/stats', async (req, res) => {
+      try {
+        const { vectorMemory } = await import('../core/vector-memory.js');
+        const stats = vectorMemory.getStats();
+        Object.assign(stats, {
+          uptime: process.uptime(),
+          memory: Math.round(process.memoryUsage().rss / 1024 / 1024) + 'MB',
+        });
+        res.json(stats);
+      } catch { res.json({ error: 'stats unavailable' }); }
+    });
+
     // API 信息（无需认证）
     this.app.get('/api/v1', (req, res) => {
       res.json({
