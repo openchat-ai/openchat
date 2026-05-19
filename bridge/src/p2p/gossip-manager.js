@@ -138,11 +138,33 @@ class GossipManager extends EventEmitter {
     }
 
     else if (data.action === 'entries') {
-      // Received full entries — store locally
+      // Received full entries — store with conflict resolution
+      // LWW: if same fingerprint exists, keep newer timestamp
       let count = 0;
       for (const e of (data.entries || [])) {
-        const exists = this._vectorMemory._entries.find(l => l.id === e.id);
-        if (!exists && e.text) {
+        const byId = this._vectorMemory._entries.find(l => l.id === e.id);
+        if (byId) continue; // exact match, skip
+
+        // Check fingerprint conflict: same problem, different answer
+        const byFingerprint = e.metadata?.fp
+          ? this._vectorMemory._entries.find(l => l.metadata?.fp === e.metadata.fp)
+          : null;
+
+        if (byFingerprint) {
+          // Conflict detected: resolve by LWW
+          if ((e.timestamp || 0) > (byFingerprint.timestamp || 0)) {
+            // Remote is newer — replace local
+            Object.assign(byFingerprint, {
+              text: e.text,
+              timestamp: e.timestamp,
+              metadata: e.metadata,
+              source: 'gossip-resolved',
+            });
+            count++;
+          }
+          // If local is newer, keep local (no-op)
+        } else if (e.text) {
+          // No conflict, new entry
           this._vectorMemory.store({
             residentId: e.residentId || 'remote',
             text: e.text,

@@ -9,38 +9,72 @@ import { GossipManager } from '../p2p/gossip-manager.js';
 class Forge {
   constructor() {
     this._gossip = null;
-    this._llmHandler = null; // 外部注入 LLM 调用函数
+    this._llmHandler = null;
+    this._llmFailures = 0;
+    this._llmCircuitOpen = false;
+    this._validators = [
+      // default validators
+      (text) => text && text.length > 5 ? null : 'too_short',
+      (text) => text.length < 50000 ? null : 'too_long',
+      (text) => !text.includes('无法回答') ? null : 'refusal',
+      (text) => !text.includes('我不知道') ? null : 'refusal',
+    ];
   }
 
-  /** 注入 LLM 处理器：外部只需注册一次 */
+  /** 注册自定义验证器 */
+  addValidator(fn) {
+    this._validators.push(fn);
+  }
+
+  /** 注入 LLM 处理器 */
   setLLMHandler(fn) {
     this._llmHandler = fn;
+    this._llmFailures = 0;
+    this._llmCircuitOpen = false;
   }
 
-  /** 解：先模式匹配，解不开则调 LLM */
+  /** 解：先模式匹配（5s超时），解不开走 LLM（30s超时，熔断保护） */
   async solve(question) {
+    const traceId = Date.now().toString(36) + Math.random().toString(36).substr(2, 4);
     let answer = null;
     let source = '';
 
-    // 尝试模式匹配求解
-    const solverResult = await generalizationEngineV2.solve({ question });
-    if (solverResult?.content) {
-      answer = solverResult.content;
-      source = 'solver';
+    // 模式匹配求解（5s 超时）
+    try {
+      const timeout = AbortSignal.timeout ? AbortSignal.timeout(5000) : undefined;
+      const solverResult = await generalizationEngineV2.solve({ question }, timeout);
+      if (solverResult?.content) {
+        answer = solverResult.content;
+        source = 'solver';
+      }
+    } catch (e) {
+      // solver error — fall through to LLM
     }
 
-    // 求解失败，走 LLM
-    if (!answer && this._llmHandler) {
-      const llmResult = await this._llmHandler(question);
-      if (llmResult) {
-        answer = llmResult;
-        source = 'llm';
+    // LLM 兜底（熔断保护）
+    if (!answer && this._llmHandler && !this._llmCircuitOpen) {
+      try {
+        const llmResult = await Promise.race([
+          this._llmHandler(question),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('LLM timeout')), 30000)),
+        ]);
+        if (llmResult) {
+          answer = llmResult;
+          source = 'llm';
+          this._llmFailures = 0;
+        }
+      } catch (e) {
+        this._llmFailures++;
+        if (this._llmFailures >= 3) this._llmCircuitOpen = true;
+        console.error('[Forge] LLM failed:', e.message);
       }
     }
 
     // 验证通过才存库
     if (answer && this._verify(answer)) {
       this._store(question, answer, source);
+    } else {
+      this._deadLetter(question, answer);
     }
 
     return { answer, source };
@@ -73,11 +107,13 @@ class Forge {
     return this;
   }
 
-  /** 验证：长度 + 无效内容过滤 */
+  /** 验证链：遍历所有验证器 */
   _verify(text) {
-    return text && text.length > 5 && text.length < 50000
-      && !text.includes('无法回答')
-      && !text.includes('我不知道');
+    for (const v of this._validators) {
+      const reason = v(text);
+      if (reason) return false;
+    }
+    return true;
   }
 
   /** 存储到向量记忆 */
@@ -92,6 +128,19 @@ class Forge {
     } catch (e) {
       console.error('[Forge] store failed:', e.message);
     }
+  }
+
+  /** 死信队列：记录验证失败的答案 */
+  _deadLetter(question, answer) {
+    try {
+      import('fs').then(fs => {
+        import('os').then(os => {
+          const logDir = os.tmpdir() + '/forge-deadletter.log';
+          fs.appendFileSync(logDir,
+            `${Date.now()}|verify_fail|${(question || '').substring(0, 80)}|${(answer || '').substring(0, 80)}\n`);
+        });
+      });
+    } catch {}
   }
 }
 
