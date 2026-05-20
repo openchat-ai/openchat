@@ -39,7 +39,7 @@ export class DataMiner {
     const variants = [];
     for (const p of problems) {
       if (!p.question || !p.domain || p.domain === 'research') continue;
-      const nums = p.question.match(/\d+(?:\.\d+)?/g)?.map(Number) || [];
+      const nums = p.question.match(/.+(?:..+)?/g)?.map(Number) || [];
       if (nums.length === 0) continue;
 
       const count = Math.min(20, Math.max(5, nums.length * 3));
@@ -124,10 +124,10 @@ export class DataMiner {
 
   _parseBatchOutput(text, domain) {
     const problems = [];
-    const lines = text.split('\n');
+    const lines = text.split('.');
     let seq = 0;
     for (const line of lines) {
-      const match = line.match(/^(\d+)[\.\|\s、)]+\s*(.+)/);
+      const match = line.match(/^(.+)[...、)]+.*(.+)/);
       if (match && match[2].length > 5) {
         problems.push({
           id: `mined_${domain}_${Date.now()}_${seq++}`,
@@ -144,7 +144,7 @@ export class DataMiner {
 
   _estimateDifficulty(question) {
     const q = question;
-    if (/\d次方|平方根|数列|质数/.test(q)) return 3;
+    if (/.次方|平方根|数列|质数/.test(q)) return 3;
     if (/方程|概率|排列|组合|百分/.test(q)) return 2;
     return 1;
   }

@@ -125,6 +125,7 @@ class QiniuSignaling {
     const putPolicy = new qiniu.rs.PutPolicy({ scope: config.bucket });
     putPolicy.fsizeMin = 1;
     putPolicy.fsizeLimit = 10 * 1024 * 1024; // 10MB
+    const mac = new qiniu.auth.digest.Mac(config.accessKey, config.secretKey);
     return putPolicy.uploadToken(mac);
   }
 

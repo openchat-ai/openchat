@@ -1,0 +1,39 @@
+## 第 2 步：技术经理 15 条问题
+
+基于以上 13 位专家意见，以下为分级可执行问题清单。
+
+### P0 🔴（1-5）
+
+1) **CLI 体验改造**：为 sandbox demo 添加 colored output、进度指示器、对话历史持久化（保存到本地 JSON），让首次用户 30 秒内感受到"这是产品"。[来源: 1, 10, 12 — 用户支持、架构师、竞品分析师]
+
+2) **Flutter 编译验证 + CI 接入**：修复 Flutter 项目编译错误（如果有），`flutter build apk --debug` 加入 CI 流水线，解决硬编码 API 地址问题。[来源: 6, 8 — Flutter开发者、安全研究员] [上轮已提: R14 P0-5]
+
+3) **lint error 清零 + CI 阻断**：修复 59 个 error（重点是 no-undef），设 CI 中 `max-warnings=50` 防止新增，在下一轮降至 0 error。[来源: 2, 7 — 核心工程师、SRE] [上轮已提: R14 P1]
+
+4) **evolution-integration flaky 根因分析**：不重复跑 3 次糊弄，定位 flaky 的 root cause（猜测是异步竞态），打 patch 或标记为 skip 直到修好。[来源: 3 — 测试工程师] [上轮已提: R9, R10, R14]
+
+5) **单分支开发整改**：建立 feature branch 策略，至少确保 Flutter 代码在独立分支开发。清理 `bridge_setup.py` 等无关文件出 src/。禁止"混合提交"。[来源: 13 — Git 专家] [上轮已提: R14]
+
+### P1 🟡（6-10）
+
+6) **Agent loop 闭环验证**：为至少一个 agent role（e.g. coordinator）编写端到端 think() 测试，mock LLM 但走通 tool-use + CoT + memory 完整链路。不要只测"LLM 返回了一个字符串"。[来源: 9, 3 — AI研究员、测试工程师]
+
+7) **WebSocket 消息大小限制**：在 ws server 端加 `maxPayload: 1MB`，防止恶意 peer OOM。[来源: 8 — 安全研究员]
+
+8) **Graceful shutdown**：给 Express + WS 服务器加 SIGTERM/SIGINT 处理，关闭前等待 inflight 请求完成，而不是 process.exit()。[来源: 7 — SRE]
+
+9) **模块级 README**：src/下每个一级目录加 5-10 行 README.md，说明本模块职责、边界、依赖方向。[来源: 1 — 架构师]
+
+10) **删除 todo 桩测试**：38 个 `todo: 'write test'` 要么补上真实测试，要么删除。假的绿不可用。[来源: 3 — 测试工程师]
+
+### P2 🔵（11-15）
+
+11) **架构图绘制**：docs/下插入一张架构图（Mermaid 或 draw.io），画清 HTTP→WS→P2P 三层数据流。[来源: 11 — 技术写作者]
+
+12) **CHANGELOG.md**：从 MEMORY.md 中提取版本历史到标准 CHANGELOG.md，格式遵守 Keep a Changelog。[来源: 11 — 技术写作者]
+
+13) **LLM provider 配置引导**：sandbox 退出时提示如何配置真实 LLM provider（打印 docs URL），减少用户卡住。[来源: 10 — 用户支持]
+
+14) **prometheus /healthz 端点**：在 Express 加 `/healthz` 和 `/metrics` 端点，为未来监控做准备。[来源: 7 — SRE]
+
+15) **Flutter Riverpod 迁移规划**：出 1-2 页 Riverpod 迁移计划（先不执行），避免 lib/继续 setState 膨胀。[来源: 6 — Flutter开发者]

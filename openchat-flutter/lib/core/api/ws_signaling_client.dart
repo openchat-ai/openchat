@@ -30,7 +30,7 @@ class WsSignalingClient {
   String? get remotePeerId => _remotePeerId;
   String? get roomId => _roomId;
 
-  WsSignalingClient({String host = 'localhost', int port = 3000, String? token})
+  WsSignalingClient({String host = 'localhost', int port = 3800, String? token})
       : _host = host, _port = port, _token = token;
 
   Future<void> connect(String peerId) async {

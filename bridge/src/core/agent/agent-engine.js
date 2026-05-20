@@ -344,6 +344,8 @@ export class AgentEngine {
       const llmResponse = await provider.chat(session.model, messages, chatOptions);
       const content = llmResponse.content;
       const toolCalls = llmResponse.toolCalls;
+      const args = toolCalls?.[0]?.function?.arguments || {};
+      const { args, formattedResult } = llmResponse.toolCalls?.[0] || {};
 
       // 检查是否完成任务
       if (content && content.startsWith('FINAL:')) {

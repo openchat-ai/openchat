@@ -3,7 +3,8 @@ import { EventEmitter } from 'events';
 import { MessageType, createMessage } from './messages.js';
 import { vectorMemory } from '../core/vector-memory.js';
 
-const GOSSIP_INTERVAL_MS = 60_000; // ?60 秒广播一次摘?const SYNC_BATCH_SIZE = 10;         // 每次同步最?10 ?
+const GOSSIP_INTERVAL_MS = 60_000; // gossip broadcast interval
+const SYNC_BATCH_SIZE = 10;         // max entries per sync batch
 class GossipManager extends EventEmitter {
   constructor(options = {}) {
     super();

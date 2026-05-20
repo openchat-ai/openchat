@@ -784,16 +784,7 @@ export class QualityScorer {
     return 'Expert audience, graduate level';
   }
 
-  _countSyllables(word) {
-    word = word.toLowerCase().replace(/[^a-z]/g, '');
-    if (word.length <= 3) return 1;
-    word = word.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/, '');
-    word = word.replace(/^y/, '');
-    const matches = word.match(/[aeiouy]{1,2}/g);
-    return matches ? matches.length : 1;
-  }
-
-  _countSyllables(word) {
+  _countSyllables_old(word) {
     word = word.toLowerCase().replace(/[^a-z]/g, '');
     if (word.length <= 3) return 1;
     word = word.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/, '');

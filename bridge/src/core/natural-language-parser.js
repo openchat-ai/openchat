@@ -50,7 +50,7 @@ const PROVIDER_ALIASES = {
   // Common short aliases
   'sf': 'siliconflow', 'siliconflow': 'siliconflow',
   'ds': 'deepseek', 'deepseek': 'deepseek',
-  'openai': 'openai', 'openai': 'openai',
+  'openai': 'openai',
   'anthropic': 'anthropic', 'claude': 'anthropic',
   'groq': 'groq',
   'ollama': 'ollama',

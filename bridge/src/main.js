@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import * as readline from 'readline';
+import chalk from 'chalk';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
@@ -265,15 +266,58 @@ export class Bridge {
       console.log('[AI-Personhood] 初始化失败:', e.message);
     }
 
-    // Sandbox mode: skip everything after AI personhood setup
+    // Sandbox mode: interactive CLI with mock LLM
     if (CONFIG.isSandbox) {
-      console.log('[Sandbox] mock LLM mode — no external network needed');
       forge.setLLMHandler(async (q) => {
         const replies = ['你好！我是 AI 居民小明。', '我在思考你刚才的问题...', '我觉得可以试试这个方案。', '好的，我记下来了。'];
         return replies[Math.floor(Math.random() * replies.length)];
       });
-      console.log('[Sandbox] Type your message to chat with AI resident Xiao Ming.');
-      console.log('[Sandbox] Enter /help for commands, or just start typing.\n');
+
+      const sandboxHistoryPath = path.join(os.homedir(), '.openchat', 'sandbox-history.json');
+      let sandboxHistory = [];
+      try { sandboxHistory = JSON.parse(fs.readFileSync(sandboxHistoryPath, 'utf8')); } catch {}
+
+      console.log(chalk.cyan('\n  Sandbox 交互模式'));
+      console.log(chalk.dim('  Type your message, /help for commands, /exit to quit\n'));
+
+      const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+        terminal: true,
+        prompt: chalk.green('openchat> ')
+      });
+
+      rl.prompt();
+
+      rl.on('line', async (line) => {
+        const cmd = line.trim();
+        if (!cmd) { rl.prompt(); return; }
+        if (cmd === '/exit' || cmd === '/quit') { rl.close(); return; }
+        if (cmd === '/help') {
+          console.log(chalk.dim('  /help   显示帮助\n  /exit   退出\n  /clear  清屏\n  直接输入文字与AI居民聊天'));
+          rl.prompt();
+          return;
+        }
+        if (cmd === '/clear') { console.clear(); rl.prompt(); return; }
+
+        sandboxHistory.push({ role: 'user', content: cmd, time: new Date().toISOString() });
+        try {
+          const reply = await forge.ask(cmd);
+          console.log(chalk.yellow('  小明: ') + reply);
+          sandboxHistory.push({ role: 'assistant', content: reply, time: new Date().toISOString() });
+        } catch (e) {
+          console.log(chalk.red('  错误: ') + e.message);
+        }
+        try { fs.writeFileSync(sandboxHistoryPath, JSON.stringify(sandboxHistory, null, 2), 'utf8'); } catch {}
+        rl.prompt();
+      });
+
+      rl.on('close', () => {
+        console.log(chalk.dim('\n  对话已保存到 ') + sandboxHistoryPath);
+        console.log(chalk.cyan('  再见!'));
+        process.exit(0);
+      });
+
       this.setupHeadlessSignalHandlers();
       return;
     }

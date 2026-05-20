@@ -16,15 +16,17 @@ export function parseCliArgs(argv = process.argv) {
   const isHeadless = savedBridge.mode === 'cli' && !isInteractive ? false : !isInteractive;
   const isPublic = hasPublicAddress() || !!savedBridge.advertiseHost;
 
-  // 鏀寔 --port 鍛戒护琛屽弬鏁拌鐩栭厤缃?  const portArgIndex = args.findIndex(a => a.startsWith('--port='));
+  // --port CLI arg overrides config file port
+  const portArgIndex = args.findIndex(a => a.startsWith('--port='));
   const cliPort = portArgIndex !== -1 ? parseInt(args[portArgIndex].split('=')[1]) : null;
   const port = cliPort || savedBridge.port || DEFAULT_PORT;
   const portChanged = cliPort !== null && cliPort !== savedBridge.port;
 
-  // 涓?Bridge 鍒ゅ畾锛氭樉寮?--main 鏍囪
+  // --main flag marks this Bridge as main (fairy heartbeat target)
   const isMain = args.includes('--main');
 
-  // 涓?Bridge 绔彛锛坒airy 闇€瑕佺煡閬撳線鍝彂蹇冭烦锛岄粯璁?= 鑷韩绔彛锛?  const mainPortIdx = args.findIndex(a => a.startsWith('--mainPort='));
+  // --mainPort overrides the main Bridge port for fairy heartbeats
+  const mainPortIdx = args.findIndex(a => a.startsWith('--mainPort='));
   const defaultMainPort = parseInt(process.env.MAIN_PORT || String(DEFAULT_PORT), 10);
   const mainPort = mainPortIdx !== -1 ? parseInt(args[mainPortIdx].split('=')[1]) : (isMain ? port : defaultMainPort);
 
@@ -38,11 +40,12 @@ export function parseCliArgs(argv = process.argv) {
   if (directListenIdx !== -1) {
     directListen = parseInt(args[directListenIdx].split('=')[1]);
   }
-  // 如果 --port 显式传入但没传 --directListen，则根据新端口重新计算
+  // When --port is explicit but --directListen not given, derive from port+2
   if (portArgIndex !== -1 && directListenIdx === -1 && !args.includes('--no-direct') && !args.includes('--nesting')) {
     directListen = port + 2;
   }
-  // 鏈湴寮€鍙戯細鏃?bootstrap 鏃惰嚜鍔ㄥ惎鐢ㄧ洿杩?TCP锛堢鍙?= HTTP 绔彛 + 2锛?  const isNesting = args.includes('--nesting');
+  // --nesting flag: run as nested process (no direct TCP)
+  const isNesting = args.includes('--nesting');
   if (!directListen && localBootstrap.length === 0 && !args.includes('--no-direct') && !isNesting) {
     directListen = port + 2;
   }
