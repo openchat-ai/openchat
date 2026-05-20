@@ -129,9 +129,11 @@ class KnowledgeBase {
         logger.info(`[KB] 已迁移 ${count} 条到 SQLite`);
       }
       return store;
-    } catch (e) { logger.warn('[IGNORE] // sql.js 不可用 → 回退 JSON
-      logger.info('[KB] sql.js 不可用，使用 JSON 存储');
-      return new JSONStore(KNOWLEDGE_DIR);: ' + (e?.message || '')); }
+    } catch (e) {
+      logger.warn('[IGNORE] sql.js unavailable, fallback to JSON: ' + (e?.message || ''));
+      logger.info('[KB] sql.js unavailable, using JSON store');
+      return new JSONStore(KNOWLEDGE_DIR);
+    }
   }
 
   /** 旧版兼容：无参构造时调用 start() 等价于 init() */

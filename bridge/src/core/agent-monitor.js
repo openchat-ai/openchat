@@ -1,5 +1,5 @@
 import { messageBus, MESSAGE_TYPES } from './message-bus.js';
-import { AGENT_STATES } from './agent-session.js';
+import { AGENT_STATES } from './agent/agent-session.js';
 import fs from 'fs/promises';
 import path from 'path';
 

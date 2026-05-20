@@ -11,7 +11,7 @@ import { residentManager } from './resident-manager.js';
 import { persistentConfig } from './persistent-config.js';
 import { SelfEvolution } from './self-evolution.js';
 import { ReasoningEngine } from './reasoning-engine.js';
-import { UniversalSolver } from './universal-solver.js';
+import { UniversalSolver } from './convergence/universal-solver.js';
 import { SymbolicReasoner } from './symbolic-reasoner.js';
 import { SemanticNN } from './semantic-nn.js';
 import { TeacherLLM } from './teacher-llm.js';

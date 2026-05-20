@@ -2,7 +2,7 @@
  * 流式验证器
  * 在流式传输过程中验证 JSON 结构
  */
-import { StructuredOutputValidator } from './structured-output-validator.js';
+import { StructuredOutputValidator } from './security/structured-output-validator.js';
 
 export class StreamingValidator {
   constructor(options = {}) {

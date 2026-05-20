@@ -11,7 +11,7 @@ import {
   WebToolsPlugin,
   MemoryToolsPlugin
 } from '../plugins/agent-tools.js';
-import { agentEngine } from './agent-engine.js';
+import { agentEngine } from './agent/agent-engine.js';
 
 /**
  * CoreHandlers contains the actual logic for the Bridge's operations.

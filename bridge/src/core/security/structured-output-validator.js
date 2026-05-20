@@ -409,7 +409,7 @@ export class StructuredOutputValidator {
   _toJsonPath(path) {
     return path
       .replace(/^\./, '')
-      .replace(/\.[(\d+)\]/g, '[$1]')
+      .replace(/\.\[(\d+)\]/g, '[$1]')
       .replace(/\.([^.[\]]+)/g, '.$1');
   }
 
@@ -455,7 +455,7 @@ export class StructuredOutputValidator {
   }
 
   _getValueAtPath(obj, path) {
-    const parts = path.replace(/[(\d+)\]/g, '.$1').split('.').filter(Boolean);
+    const parts = path.replace(/\.\[(\d+)\]/g, '.$1').split('.').filter(Boolean);
     let current = obj;
     for (const part of parts) {
       if (current === null || current === undefined) return undefined;

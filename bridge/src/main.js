@@ -33,7 +33,7 @@ import { aiPersonManager } from './core/ai-person-manager.js';
 import { getEnhancedStabilitySystem } from './core/enhanced-stability-system.js';
 import { CollaborationEngine } from './core/collaboration-engine.js';
 import { residentManager } from './core/resident-manager.js';
-import { residentScheduler } from './core/resident-scheduler.js';
+import { residentScheduler } from './core/agent/resident-scheduler.js';
 import { LearningCore } from './core/learning-core.js';
 import P2PSwarm, { hasPublicAddress, getPublicIPv4 } from './p2p/p2p-net.js';
 import { MessageType as P2PMessageType } from './p2p/messages.js';

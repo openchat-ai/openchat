@@ -275,21 +275,8 @@ const residents = residentManager.list(null);
     } else {
       this._assignTask(id, resident, traits);
     }
-  }
 
-  /** 快速获取房子健康分（不依赖 houseOrchestrator 的 await） */
-  _getHealthScore() {
-    try {
-      const baseline = this.houseOrchestrator?.stability?.getSystemStatus?.() || {};
-      const p2pPeers = this.houseOrchestrator?.p2p?.connectedPeers?.size || 0;
-      const residentCount = residentManager.list('active').length;
-      const mem = baseline.memoryUsage ? Math.max(0, 100 - (baseline.memoryUsage / 1024 ** 3) * 20) : 80;
-      const cpu = baseline.cpuLoad ? Math.max(0, 100 - baseline.cpuLoad * 30) : 80;
-      return Math.round(mem * 0.35 + cpu * 0.25 + Math.min(100, p2pPeers * 15 + 30) * 0.2 + Math.min(100, residentCount * 10 + 40) * 0.2);
-    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || '')); return 80; // 默认健康分 }
-  }
-
-  /** 居民自我体检 + 诊断 + 自愈 */
+    /** 居民自我体检 + 诊断 + 自愈 */
   async _runHealthCheck(residentId, resident) {
     try {
       const report = {

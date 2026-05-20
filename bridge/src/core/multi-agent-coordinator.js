@@ -1,4 +1,4 @@
-import { AgentSession } from './agent-session.js';
+import { AgentSession } from './agent/agent-session.js';
 import { messageBus, MESSAGE_TYPES } from './message-bus.js';
 import { persistentConfig } from '../core/persistent-config.js';
 import { socialConnector } from './social-connector.js';

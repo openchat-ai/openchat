@@ -345,7 +345,6 @@ export class AgentEngine {
       const content = llmResponse.content;
       const toolCalls = llmResponse.toolCalls;
       const args = toolCalls?.[0]?.function?.arguments || {};
-      const { args, formattedResult } = llmResponse.toolCalls?.[0] || {};
 
       // 检查是否完成任务
       if (content && content.startsWith('FINAL:')) {
@@ -402,10 +401,10 @@ export class AgentEngine {
             // [优化] 增量更新上下文
             currentContext.push(
               { role: 'assistant', content: `Action: ${toolName}` },
-              { role: 'system', content: formattedResult }
+              { role: 'system', content: formatted }
             );
           } catch (error) {
-            executionTrace.actions.push({ tool: toolName, args, error: error.message, mode: 'text' });
+            executionTrace.actions.push({ tool: toolName, args: args || {}, error: error.message, mode: 'text' });
             await mm.addMessage(sessionId, 'system', `Error executing ${toolName}: ${error.message}`);
             currentContext.push({ role: 'system', content: `Error executing ${toolName}: ${error.message}` });
           }

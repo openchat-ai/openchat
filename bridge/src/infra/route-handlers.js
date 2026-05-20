@@ -3,7 +3,7 @@ import { providerRegistry } from '../providers/provider-registry.js';
 import { memoryManager } from '../memory/memory-manager.js';
 import { sessionManager } from '../session/session-manager.js';
 import { agentMonitor } from '../core/agent-monitor.js';
-import { residentScheduler } from '../core/resident-scheduler.js';
+import { residentScheduler } from '../core/agent/resident-scheduler.js';
 import { router } from '../core/router.js';
 import { WSGateway } from '../gateway/base.js';
 import { MessageType } from '../protocol/message.js';
