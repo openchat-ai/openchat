@@ -1,4 +1,4 @@
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 /**
  * 经验积累器
  * 记录任务执行结果，识别成功/失败模式

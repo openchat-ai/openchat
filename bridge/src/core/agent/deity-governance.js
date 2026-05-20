@@ -6,7 +6,7 @@
 
 import { messageBus } from '../message-bus.js';
 import { AIPerson } from './ai-personhood.js';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 // 神识权限等级
 export const DEITY_RANK = {

@@ -3,7 +3,7 @@
  * 支持多种 LLM 提供商的响应格式
  */
 import { providerManager } from '../../providers/provider-manager.js';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 export class ResponseParser {
   constructor() {

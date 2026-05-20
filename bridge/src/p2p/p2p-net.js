@@ -1,4 +1,4 @@
-import logger from '../core/logger.js';
+import logger from '../core/monitoring/logger.js';
 /**
  * P2P Swarm Manager
  * 使用 hyperswarm 实现基础 P2P 能力

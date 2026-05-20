@@ -1,4 +1,4 @@
-import logger from '../core/logger.js';
+import logger from '../core/monitoring/logger.js';
 /**
  * Offline Queue for P2P Messages
  * 离线消息队列 - 节点离线时缓存消息

@@ -1,5 +1,5 @@
 import { providerManager, getRuntimeApiKey, getRuntimeBaseUrl } from './provider-manager.js';
-import logger from '../core/logger.js';
+import logger from '../core/monitoring/logger.js';
 
 export class AiProvider {
   constructor(id, name) {

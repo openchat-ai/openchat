@@ -13,7 +13,7 @@ import { EventEmitter } from 'events';
 import { persistentConfig } from '../persistent-config.js';
 import { MessageType, createLLMProxyRequest } from '../../p2p/messages.js';
 import { toolRegistry } from '../tool-registry.js';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 const DATA_FILE = path.join(os.homedir(), '.openchat', 'residents.json');
 const MAX_ACTIVITIES = 0;

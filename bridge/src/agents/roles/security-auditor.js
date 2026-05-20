@@ -1,4 +1,4 @@
-import logger from '../../core/logger.js';
+import logger from '../../core/monitoring/logger.js';
 /**
  * Security Auditor Agent
  * 安全审计和漏洞检测

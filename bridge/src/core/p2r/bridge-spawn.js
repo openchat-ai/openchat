@@ -15,7 +15,7 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createLaunchStrategy } from './launch-strategies.js';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MAX_CHILDREN = 6;

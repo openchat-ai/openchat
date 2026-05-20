@@ -1,4 +1,4 @@
-import logger from '../../core/logger.js';
+import logger from '../../core/monitoring/logger.js';
 /**
  * Security Middleware
  * 包含：限流、黑名单评分、认证

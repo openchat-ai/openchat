@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import logger from './logger.js';
+import logger from './monitoring/logger.js';
 
 /**
  * PersistentSessionManager 类：工作会话持久化管理器

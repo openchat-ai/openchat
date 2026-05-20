@@ -10,7 +10,7 @@
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 const DATA_DIR = join(homedir(), '.openchat', 'data');
 const VARIANT_DIR = join(DATA_DIR, 'variants');

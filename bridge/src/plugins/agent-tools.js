@@ -1,4 +1,4 @@
-import logger from './core/logger.js';
+import logger from '../core/monitoring/logger.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs/promises';

@@ -1,4 +1,4 @@
-import logger from '../core/logger.js';
+import logger from '../core/monitoring/logger.js';
 /** * Gossip Manager ?Cross-Bridge knowledge sync via P2P * ： P2P ?Bridge * * Uses timestamp-based vector clock for conflict resolution. * Periodically gossips knowledge summaries; peers pull missing entries. * 。，? */
 import { EventEmitter } from 'events';
 import { MessageType, createMessage } from './messages.js';

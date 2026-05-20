@@ -4,7 +4,7 @@ import { sessionManager } from '../session-manager.js';
 import { PromptBuilder } from '../convergence/prompt-builder.js';
 import { agentMonitor } from './agent-monitor.js';
 import { QualityChecker, Corrector } from '../quality/quality-check-system.js';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 /**
  * Agent 事件类型

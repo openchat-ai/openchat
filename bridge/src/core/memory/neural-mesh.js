@@ -10,7 +10,7 @@
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 const MESH_DIR = join(homedir(), '.openchat', 'neural-mesh');
 const LOCAL_WEIGHTS = join(MESH_DIR, 'local-weights.json');

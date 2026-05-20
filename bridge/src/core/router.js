@@ -1,4 +1,4 @@
-import logger from './logger.js';
+import logger from '../../core/monitoring/logger.js';
 /**
  * Router is the central dispatcher of the Bridge.
  * It routes messages from Gateways to the appropriate Core Logic and then to Providers/Tools.

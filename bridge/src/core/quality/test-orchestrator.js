@@ -1,4 +1,4 @@
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 /**
  * TestOrchestrator 类：整合自动化测试流程
  * 串联：代码改动 → commit → sandbox test → 多模型验证 → 对抗验证 → restart/rollback

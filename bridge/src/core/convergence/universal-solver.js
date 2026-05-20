@@ -1,4 +1,4 @@
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 /**
  * UniversalSolver — 统一求解引擎
  *

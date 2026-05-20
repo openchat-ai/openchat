@@ -1,4 +1,4 @@
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 /**
  * 弹性组件
  * 包含响应缓存、智能路由、流处理器、安全包装器

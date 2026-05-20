@@ -7,7 +7,7 @@
 import { Deity, DEITY_TYPE } from './deity-system.js';
 import { AIPerson, aiPersonRegistry } from './ai-personhood.js';
 import { messageBus } from '../message-bus.js';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 // 能源类型枚举
 export const ENERGY_TYPE = {

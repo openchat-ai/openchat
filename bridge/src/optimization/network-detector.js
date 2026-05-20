@@ -1,4 +1,4 @@
-import logger from '../core/logger.js';
+import logger from '../core/monitoring/logger.js';
 /**
  * Network Type Detector
  * 检测网络类型：WiFi vs Mobile

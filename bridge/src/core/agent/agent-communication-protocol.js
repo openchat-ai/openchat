@@ -1,4 +1,4 @@
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 /**
  * Agent通信协议
  * 实现Agent间的通信和协作

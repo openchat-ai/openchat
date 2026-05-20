@@ -4,7 +4,21 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import logger from './core/monitoring/logger.js';
 import { DEFAULT_PORT, getMainPort } from './constants.js';
+// Init stage tracker for health dependency graph
+class InitTracker {
+  constructor() {
+    this._stages = {};
+    this._order = [];
+  }
+  start(stage) { this._stages[stage] = { status: 'running', startedAt: Date.now() }; this._order.push(stage); }
+  ok(stage) { if (this._stages[stage]) this._stages[stage].status = 'ok'; }
+  fail(stage, err) { if (this._stages[stage]) { this._stages[stage].status = 'failed'; this._stages[stage].error = err.message; } }
+  report() { const e = Date.now(); return this._order.map(s => ({ stage: s, ...this._stages[s], elapsed: e - this._stages[s].startedAt })); }
+}
+const initTracker = new InitTracker();
+
 import { sessionManager } from './core/session-manager.js';
 
 // 新增：REST API 服务器（31 个端点）
@@ -38,7 +52,6 @@ import { MessageType as P2PMessageType } from './p2p/messages.js';
 import { PeerRegistry } from './p2p/peer-registry.js';
 import { QiniuBackend } from './p2p/peer-registry/qiniu-backend.js';
 import { HttpBackend } from './p2p/peer-registry/http-backend.js';
-import logger from './core/logger.js';
 
 // Helper: fetch models from Bridge's own HTTP API for a local provider
 async function fetchLocalModelsFromBridge(providerName) {

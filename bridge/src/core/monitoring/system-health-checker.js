@@ -1,4 +1,4 @@
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 /**
  * 系统健康检查器
  * 检查系统各组件健康状态

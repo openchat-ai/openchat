@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { homedir } from 'os';
-import logger from '../core/logger.js';
+import logger from './monitoring/logger.js';
 
 const CONFIG_DIR = path.join(homedir(), '.openchat');
 const SESSIONS_FILE = path.join(CONFIG_DIR, 'sessions.json');

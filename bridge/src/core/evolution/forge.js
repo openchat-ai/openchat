@@ -3,7 +3,7 @@ import * as os from 'os';
 import { generalizationEngineV2 } from './generalization.js';
 import { vectorMemory } from '../memory/vector-memory.js';
 import { GossipManager } from '../../p2p/gossip-manager.js';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 class Forge {
   constructor() {

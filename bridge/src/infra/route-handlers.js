@@ -1,6 +1,6 @@
 import { persistentConfig } from '../core/persistent-config.js';
 import { providerRegistry } from '../providers/provider-registry.js';
-import { memoryManager } from '../memory/memory-manager.js';
+import { memoryManager } from '../core/memory/memory-manager.js';
 import { sessionManager } from '../core/session-manager.js';
 import { agentMonitor } from '../core/agent/agent-monitor.js';
 import { residentScheduler } from '../core/agent/resident-scheduler.js';

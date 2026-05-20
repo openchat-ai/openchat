@@ -1,4 +1,4 @@
-import logger from '../../core/logger.js';
+import logger from '../../core/monitoring/logger.js';
 /**
  * OpenChat 多协议聚合中转服务器
  *

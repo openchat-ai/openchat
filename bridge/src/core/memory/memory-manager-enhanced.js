@@ -1,4 +1,4 @@
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 /**
  * 增强版内存管理器
  * 优化内存使用，防止内存泄漏

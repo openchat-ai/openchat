@@ -1,4 +1,4 @@
-import logger from '../core/logger.js';
+import logger from '../core/monitoring/logger.js';
 /**
  * Skill 下载和集成系统
  *

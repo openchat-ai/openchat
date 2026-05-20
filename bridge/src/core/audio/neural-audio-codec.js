@@ -16,7 +16,7 @@
  */
 
 import { EventEmitter } from 'events';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 class NeuralAudioCodec extends EventEmitter {
   constructor(options = {}) {

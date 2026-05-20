@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import logger from '../core/logger.js';
+import logger from '../core/monitoring/logger.js';
 
 class TopicRegistry extends EventEmitter {
   constructor(options = {}) {

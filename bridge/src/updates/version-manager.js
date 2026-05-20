@@ -1,4 +1,4 @@
-import logger from '../core/logger.js';
+import logger from '../core/monitoring/logger.js';
 /**
  * Version Manager
  * 版本快照管理 - 保存版本历史，支持回滚

@@ -27,7 +27,7 @@ import AutoRollbackManager from '../monitoring/auto-rollback-manager.js';
 import TestOrchestrator from '../quality/test-orchestrator.js';
 import IntelligenceCollector from '../memory/intelligence-collector.js';
 import Monitor from '../monitoring/monitor.js';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 export class EvolutionSystem {
   constructor() {

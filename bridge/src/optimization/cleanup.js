@@ -1,4 +1,4 @@
-import logger from '../core/logger.js';
+import logger from '../core/monitoring/logger.js';
 /**
  * Cleanup Manager
  * 智能清理 - 日志、缓存、旧版本

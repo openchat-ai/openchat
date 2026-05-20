@@ -1,4 +1,4 @@
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 /**
 
 // 🚀 自动生成的改进 - 2026-04-22T09:13:04.523Z

@@ -1,4 +1,4 @@
-import logger from '../core/logger.js';
+import logger from '../core/monitoring/logger.js';
 /**
  * Compression Manager
  * 传输层压缩（gzip/brotli）- 简化版

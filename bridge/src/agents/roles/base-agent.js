@@ -1,4 +1,4 @@
-import logger from '../../core/logger.js';
+import logger from '../../core/monitoring/logger.js';
 /**
  * Base Agent Class
  * 所有 Agent 的基类

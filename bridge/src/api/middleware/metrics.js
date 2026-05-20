@@ -1,4 +1,4 @@
-import logger from '../../core/logger.js';
+import logger from '../../core/monitoring/logger.js';
 /**
  * API Metrics Collector
  * API 指标收集器

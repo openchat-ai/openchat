@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import * as os from 'os';
-import logger from '../core/logger.js';
+import logger from '../core/monitoring/logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROVIDERS_PATH = path.join(__dirname, '../core/provider-models.json');

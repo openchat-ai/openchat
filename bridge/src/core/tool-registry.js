@@ -1,5 +1,5 @@
 import { vectorMemory } from './memory/vector-memory.js';
-import logger from './logger.js';
+import logger from './monitoring/logger.js';
 import { evaluate } from 'mathjs';
 import { URL } from 'url';
 

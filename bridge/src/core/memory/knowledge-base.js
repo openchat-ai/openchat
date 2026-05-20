@@ -19,7 +19,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 const KNOWLEDGE_DIR = path.join(os.homedir(), '.openchat', 'knowledge');
 const MAX_ENTRIES_PER_DOMAIN = 1000;

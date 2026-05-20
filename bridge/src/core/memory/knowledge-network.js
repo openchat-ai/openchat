@@ -6,7 +6,7 @@
 import { messageBus } from '../message-bus.js';
 import { EvolutionMemory } from '../evolution/evolution-memory.js';
 import { socialConnector } from '../collaboration/social-connector.js';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 export class KnowledgeNetwork {
   constructor() {

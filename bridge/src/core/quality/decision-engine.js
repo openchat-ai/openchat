@@ -9,7 +9,7 @@
  */
 
 import { persistentConfig } from '../persistent-config.js';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 export class DecisionEngine {
   constructor() {

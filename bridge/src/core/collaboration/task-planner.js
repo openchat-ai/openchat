@@ -11,7 +11,7 @@ import { pluginManager } from '../../plugins/plugin-manager.js';
 import { memoryManager } from '../../memory/memory-manager.js';
 import { sessionManager } from '../session-manager.js';
 import { PromptBuilder } from '../convergence/prompt-builder.js';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 export class TaskPlanner {
   constructor(options = {}) {

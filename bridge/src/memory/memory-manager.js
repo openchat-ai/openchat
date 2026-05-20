@@ -1,4 +1,4 @@
-import logger from '../core/logger.js';
+import logger from '../core/monitoring/logger.js';
 /**
  * MemoryManager handles the three layers of memory:
  * 1. Short-term (Context Window) - 会话内滑动窗口

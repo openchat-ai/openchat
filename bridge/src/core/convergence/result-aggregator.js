@@ -1,4 +1,4 @@
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 /**
  * 结果聚合器
  * 汇聚多Agent协作的结果

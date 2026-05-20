@@ -1,4 +1,4 @@
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 /**
  * ConvergenceEngine — 分解竞标 + 快速收敛
  *

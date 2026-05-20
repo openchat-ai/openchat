@@ -1,4 +1,4 @@
-import logger from '../core/logger.js';
+import logger from '../core/monitoring/logger.js';
 /**
  * 增强的错误恢复策略系统
  * 针对混沌测试中发现的典型故障场景提供智能恢复方案

@@ -3,7 +3,7 @@ import path from 'path';
 import { persistentConfig } from '../core/persistent-config.js';
 import { hasPublicAddress } from '../p2p/p2p-net.js';
 import { DEFAULT_PORT } from '../constants.js';
-import logger from '../core/logger.js';
+import logger from './monitoring/logger.js';
 
 /**
  * 瑙ｆ瀽鍛戒护琛屽弬鏁板拰鎸佷箙鍖栭厤缃紝鐢熸垚瀹屾暣鐨?CONFIG 瀵硅薄

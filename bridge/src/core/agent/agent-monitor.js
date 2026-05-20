@@ -2,7 +2,7 @@ import { messageBus, MESSAGE_TYPES } from '../message-bus.js';
 import { AGENT_STATES } from './agent-session.js';
 import fs from 'fs/promises';
 import path from 'path';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 const MONITOR_INTERVAL = 5000;
 const STATE_FILE = path.join(process.env.HOME || process.env.USERPROFILE, '.openchat', 'agent-state.json');

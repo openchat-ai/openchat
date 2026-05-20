@@ -5,7 +5,7 @@ import { EvolutionMemory } from './evolution-memory.js';
 
 const EXPERIENCES_FILE = path.join(os.homedir(), '.openchat', 'memory', 'evolution-experiences.json');
 import SkillManager from './skill-manager.js';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 export class EvolutionEngine {
   constructor() {

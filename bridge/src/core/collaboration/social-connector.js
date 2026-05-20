@@ -6,7 +6,7 @@
 import { messageBus } from '../message-bus.js';
 import { persistentConfig } from '../persistent-config.js';
 import { EvolutionMemory } from '../evolution/evolution-memory.js';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 export class SocialConnector {
   constructor(options = {}) {

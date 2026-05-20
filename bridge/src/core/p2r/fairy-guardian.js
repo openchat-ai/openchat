@@ -10,7 +10,7 @@
 
 import { spawn } from 'child_process';
 import { getMainPort } from '../../constants.js';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 export class FairyGuardian {
   constructor(myPort) {

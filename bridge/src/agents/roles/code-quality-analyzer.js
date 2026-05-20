@@ -1,4 +1,4 @@
-import logger from '../../core/logger.js';
+import logger from '../../core/monitoring/logger.js';
 /**
  * Code Quality Analyzer Agent
  * 代码质量和最佳实践分析

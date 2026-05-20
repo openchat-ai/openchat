@@ -61,9 +61,7 @@
     "zeromq": "^6.5.0"
   },
   "devDependencies": {
-    "@types/jest": "^30.0.0",
-    "husky": "^9.1.7",
-    "jest": "^30.3.0"
+    "husky": "^9.1.7"
   },
   "optionalDependencies": {
     "pm2": "^5.4.0",

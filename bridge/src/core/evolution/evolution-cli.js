@@ -6,7 +6,7 @@
 import { EvolutionSystem } from './evolution-system.js';
 import MultiModelTester from '../quality/multi-model-tester.js';
 import AdversarialTest from '../quality/adversarial-test.js';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 class EvolutionCLI {
   constructor() {

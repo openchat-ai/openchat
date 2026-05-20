@@ -11,7 +11,7 @@
 import { sessionManager } from '../session-manager.js';
 import { persistentConfig } from '../persistent-config.js';
 import { MessageType, createLLMProxyResponse, createLLMAvailableMessage, createLLMProviderQueryMessage } from '../../p2p/messages.js';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 class LLMProxyAgent {
   /**

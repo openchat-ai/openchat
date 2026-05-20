@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import logger from '../core/logger.js';
+import logger from '../core/monitoring/logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 

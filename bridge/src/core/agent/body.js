@@ -16,7 +16,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 const BODY_DIR = join(homedir(), '.openchat', 'bodies');
 

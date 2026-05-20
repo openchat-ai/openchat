@@ -1,4 +1,4 @@
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 /**
  * Resident Decisions — 性格 Archetype + 惯性 + 事件驱动
  *

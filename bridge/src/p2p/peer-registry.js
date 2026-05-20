@@ -1,4 +1,4 @@
-import logger from '../core/logger.js';
+import logger from '../core/monitoring/logger.js';
 /**
  * PeerRegistry — 多核心 Peer 注册调度器
  *

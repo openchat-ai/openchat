@@ -4,7 +4,7 @@
  */
 
 import { globalErrorBoundary } from '../security/error-boundary.js';
-import { getEnhancedMemoryManager } from '../memory/memory-manager-enhanced.js';
+import { getEnhancedMemoryManager } from '../../memory/memory-manager-enhanced.js';
 import { getPerformanceMonitor } from './performance-monitor.js';
 import { getSystemHealthChecker } from './system-health-checker.js';
 // 使用已有的 multi-agent-coordinator.js

@@ -11,7 +11,7 @@ import { createRequire } from 'module';
 import { createHash } from 'crypto';
 import { execSync } from 'child_process';
 import { residentManager } from '../agent/resident-manager.js';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 const require = createRequire(import.meta.url);
 const fs = require('fs');

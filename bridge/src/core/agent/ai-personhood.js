@@ -9,7 +9,7 @@
 
 import { messageBus } from '../message-bus.js';
 import { EvolutionMemory } from '../evolution/evolution-memory.js';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 // AI人类型枚举
 export const AI_PERSON_TYPE = {

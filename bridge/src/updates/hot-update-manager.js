@@ -1,4 +1,4 @@
-import logger from '../core/logger.js';
+import logger from '../core/monitoring/logger.js';
 /**
  * Hot Update Manager
  * 真正的热更新 - 动态代码加载，无需重启进程

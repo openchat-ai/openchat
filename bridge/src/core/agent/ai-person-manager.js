@@ -13,7 +13,7 @@
 import { AIPerson, aiPersonRegistry, AI_PERSON_TYPE } from './ai-personhood.js';
 import { identityGenerator } from './identity-generator.js';
 import { messageBus } from '../message-bus.js';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 // 回收站保留时间 (7天)
 const RECYCLE_BIN_DAYS = 7;

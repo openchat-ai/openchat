@@ -9,7 +9,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 const DATA_DIR = path.join(os.homedir(), '.openchat', 'vector-memory');
 const DATA_FILE = path.join(DATA_DIR, 'vectors.json');

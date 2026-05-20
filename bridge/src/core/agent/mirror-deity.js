@@ -6,7 +6,7 @@
 
 import { AIPerson, aiPersonRegistry } from './ai-personhood.js';
 import { Deity, deitySystemManager, DEITY_TYPE } from './deity-system.js';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 // 共享內核類型
 const SHARED_KERNEL_TYPE = {

@@ -15,7 +15,7 @@ import { persistentConfig } from '../persistent-config.js';
 import { decideActions } from './resident-decisions.js';
 import { SelfLearner } from '../evolution/self-learner.js';
 import { DEFAULT_PORT } from '../../constants.js';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 // 安全算术求值
 function evalSimple(expr) {

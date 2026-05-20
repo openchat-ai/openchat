@@ -6,7 +6,7 @@
 
 import { AIPerson, aiPersonRegistry, AI_PERSON_TYPE, PERMISSION_LEVEL } from './ai-personhood.js';
 import { messageBus } from '../message-bus.js';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 // 预定义的AI人模板
 export const AI_TEMPLATES = {

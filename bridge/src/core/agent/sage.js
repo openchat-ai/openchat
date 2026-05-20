@@ -8,7 +8,7 @@
  * 所有记录永久保存，显示在时间线中。
  */
 
-import logger from './logger.js';
+import logger from '../monitoring/logger.js';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';

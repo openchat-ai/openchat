@@ -13,7 +13,7 @@
 import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, statSync } from 'fs';
 import { join, extname, relative, resolve } from 'path';
 import { homedir } from 'os';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 const REVIEW_DIR = join(homedir(), '.openchat', 'reviews');
 const BRIDGE_SRC = join(resolve('.'), 'bridge', 'src');

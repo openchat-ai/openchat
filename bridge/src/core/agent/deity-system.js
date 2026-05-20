@@ -8,7 +8,7 @@
 import { AIPerson, aiPersonRegistry, PERMISSION_LEVEL, AI_PERSON_TYPE } from './ai-personhood.js';
 import { messageBus } from '../message-bus.js';
 import { deityGovernance, DEITY_RANK } from './deity-governance.js';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 // 神识类型
 export const DEITY_TYPE = {

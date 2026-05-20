@@ -13,7 +13,7 @@
 
 import qiniu from 'qiniu';
 import { createHmac, createHash } from 'crypto';
-import logger from './logger.js';
+import logger from '../../core/monitoring/logger.js';
 
 // 七牛云配置 (从参考代码获取)
 const config = {

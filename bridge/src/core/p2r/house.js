@@ -16,7 +16,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { HOUSES_DIR } from '../persistent-config.js';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 class House {
   /**

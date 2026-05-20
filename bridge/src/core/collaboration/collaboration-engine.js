@@ -6,7 +6,7 @@
 import TaskOrchestrator from './task-orchestrator.js';
 import AgentCommunicationProtocol, { MESSAGE_TYPES } from '../agent/agent-communication-protocol.js';
 import ResultAggregator from '../convergence/result-aggregator.js';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 export class CollaborationEngine {
   constructor(options = {}) {

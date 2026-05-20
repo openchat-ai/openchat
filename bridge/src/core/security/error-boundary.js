@@ -1,4 +1,4 @@
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 /**
  * 错误边界处理器 - 提升系统稳定性
  * 实现更完善的错误处理机制

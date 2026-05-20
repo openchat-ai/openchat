@@ -1,4 +1,4 @@
-import logger from '../core/logger.js';
+import logger from '../core/monitoring/logger.js';
 /**
  * P2P Message Types
  * 定义 6 种 P2P 消息类型

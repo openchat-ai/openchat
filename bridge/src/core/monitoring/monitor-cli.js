@@ -4,7 +4,7 @@
  * Monitor CLI - 系统监控命令行接口
  */
 import Monitor from './monitor.js';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 const monitor = new Monitor();
 

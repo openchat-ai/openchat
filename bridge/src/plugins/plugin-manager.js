@@ -1,4 +1,4 @@
-import logger from '../core/logger.js';
+import logger from '../core/monitoring/logger.js';
 /**
  * PluginManager manages the lifecycle of skills and tools.
  * It allows the AI Agent to discover and execute capabilities.

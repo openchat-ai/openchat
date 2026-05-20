@@ -6,7 +6,7 @@
  * Features: auto-extract numbers, touch-aware, cross-shape adapt
  */
 import { vectorMemory } from '../memory/vector-memory.js';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 class GeneralizationEngineV2 {
   async solve({ question }) {

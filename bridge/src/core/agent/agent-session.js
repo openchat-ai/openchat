@@ -17,7 +17,7 @@ import { StreamingValidator, ValidationErrorExplainer } from '../security/stream
 import { SchemaAutoGenerator, SchemaVersionManager, FormatConverter } from '../quality/schema-manager.js';
 import { MultimodalHandler } from '../audio/multimodal-handler.js';
 import { ResponseCache, SmartRouter, StreamHandler, SafetyWrapper, CircuitBreakerMonitor, MetricsCollector, AdaptiveLimiter, IntelligentCircuitBreaker, CircuitBreaker, RequestQueue, RequestDeduplicator } from '../monitoring/resilience.js';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 export const AGENT_STATES = {
   IDLE: 'idle',

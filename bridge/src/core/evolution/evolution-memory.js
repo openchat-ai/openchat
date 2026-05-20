@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import logger from '../logger.js';
+import logger from '../monitoring/logger.js';
 
 const MEMORY_FILE = path.join(os.homedir(), '.openchat', 'memory', 'evolution-memory.json');
 
