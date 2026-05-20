@@ -28,6 +28,8 @@
     "test:chaos": "node test-utils/chaos-test.js",
     "test:coverage": "node --experimental-test-module-mocks --experimental-test-coverage --test src/core/__tests__/*.test.mjs src/core/__tests__/*.test.js",
     "test:all": "node --experimental-test-module-mocks --test src/core/__tests__/*.test.mjs src/core/__tests__/*.test.js src/p2p/__tests__/*.test.js tests/benchmarks/*.js tests/contract/*.js",
+    "lint": "eslint src/",
+    "demo": "node scripts/demo.mjs",
     "prepare": "husky"
   },
   "keywords": [
@@ -62,6 +64,7 @@
     "zeromq": "^6.5.0"
   },
   "devDependencies": {
+    "eslint": "^9.39.4",
     "husky": "^9.1.7"
   },
   "optionalDependencies": {

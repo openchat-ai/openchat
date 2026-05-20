@@ -51,7 +51,7 @@ async function fetchLocalModelsFromBridge(providerName) {
       return json.models || [];
     }
   } catch (e) {
-    // Silently fail - provider may not have models endpoint
+    console.log(`[fetchLocalModels] provider models error: ${e.message}`);
   }
   return [];
 }
@@ -236,14 +236,14 @@ export class Bridge {
     try {
       this.stabilitySystem.start();
     } catch (e) {
-      // 稳定性系统启动失败不影响主流程
+      console.log(`[Stability] 启动失败: ${e.message}`);
     }
 
     // 初始化 RAG 系统
     try {
       await memoryManager.initialize();
     } catch (e) {
-      // RAG 初始化可选
+      console.log(`[RAG] 初始化跳过: ${e.message}`);
     }
 
     // 初始化 AI 人系统
@@ -327,7 +327,7 @@ export class Bridge {
           console.log(`[P2P] 公网节点已注册到对等网络 (${publicIp})`);
           this._peerHeartbeat = setInterval(async () => {
             try { await registry.publishPeer(publishInfo); }
-            catch (e) { /* 静默失败 */ }
+            catch (e) { console.log(`[P2P] 心跳注册失败: ${e.message}`); }
           }, 60000);
         }
       }
@@ -737,7 +737,7 @@ export class Bridge {
       try {
         await memoryManager.initialize();
       } catch (e) {
-        // 忽略初始化错误，继续处理
+        console.log(`[WS] memory init error: ${e.message}`);
       }
     }
 

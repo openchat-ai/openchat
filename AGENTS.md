@@ -26,6 +26,7 @@ cd bridge
 
 npm start                    # 启动 Bridge
 npm run dev                  # 开发模式(文件监听)
+npm run lint                 # ESLint 检查（`src/`）
 npm test                     # 运行测试
 npm run pm2:start            # PM2 生产启动
 npm run pm2:stop             # PM2 停止

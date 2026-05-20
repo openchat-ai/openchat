@@ -11,7 +11,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '24' }
       - run: npm ci
-      - run: npx eslint src/ --quiet
+      - run: npm run lint -- --quiet
       - run: npm test
 
   build:

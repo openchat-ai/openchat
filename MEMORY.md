@@ -12,7 +12,10 @@
 
 ## 关键指标（实时）
 
-- **测试**: 120/120 全部通过（2026-05-20 首次达成）
+- **测试**: 138/138 全绿（1 flaky evolution-integration，单跑通过）
+- **Lint**: eslint 9.39.4 + eslint.config.js 配置完成，59项预存错误待修
+- **Demo**: `npm run demo` 一键 sandbox 体验脚本完成
+- **P2P教程**: docs/p2p-voice-tutorial.md 完成
 - **HTTP 路径**: 已统一到 Express 服务器（端口 3800），废弃 raw HTTP server
 - **基础端口**: 固定为 3800，所有衍生端口以 3800 为基准推导
 - **OpenAPI**: `/api-docs` 端点可通过 Swagger UI 浏览
@@ -106,6 +109,13 @@
 | R13 | 四项原则评审—原则3强制执行机制 | Code Review | 写入AGENTS.md原则3 | ✅ 已修(R13) | 技术写作者 |
 | R13 | 四项原则评审—换方案触发机制 | 核心工程师 | 写入AGENTS.md原则1 | ✅ 已修(R13) | 核心工程师 |
 | R13 | 四项原则评审—每3轮硬性版号 | 竞品分析师 | 写入AGENTS.md原则4 | ✅ 已修(R13) | 竞品分析师 |
+| R14 | main.js空catch加logger(5处) | 安全研究员 | P0-4 | ✅ 已修(R14) | 安全研究员 |
+| R14 | CI lint替换eslint.config.js+devDependencies | SRE/运维 | P0-2 | ✅ 已修(R14) | SRE/运维 |
+| R14 | npm run demo一键sandbox体验脚本 | 用户支持 | P0-1 | ✅ 已修(R14) | 用户支持 |
+| R14 | P2P端到端demo教程 | 竞品分析师 | P0-3 | ✅ 已修(R14) | 竞品分析师 |
+| R14 | src/*.js 59项预存lint错误(no-undef/no-empty等) | SRE/运维 | P1-后续 | ❌ 待修 | SRE/运维 |
+| R14 | evolution-integration flaky续存 | 测试工程师 | P1-6 | ❌ 待修 | 测试工程师 |
+| R14 | Flutter编译状态验证 | Flutter开发者 | P0-5 | ❌ 待修(部分完成) | Flutter开发者 |
 
 ## 版本历史
 
@@ -113,6 +123,7 @@
 |------|------|------|
 | v0.0.1 | 2026-05-20 | P2P sandbox + demo 脚本 + 死代码清理 + 端口统一 |
 | v0.0.2 | 2026-05-20 | CI 全绿 + API Bearer 鉴权 + OpenAPI + 143 测试 |
+| v0.0.3 | 2026-05-20 | eslint配置修复+lint脚本+npm run demo+P2P教程+5处空catch修复 |
 | v0.0.3 | — | CLI /help 完善 + Flutter 连通性验证 |
 | v0.1.0 | — | Flutter 测试 ≥ 30 + WebRTC 端到端通话 |
 | v0.2.0 | — | P2P 语音通话 demo + AI 居民完整交互 |

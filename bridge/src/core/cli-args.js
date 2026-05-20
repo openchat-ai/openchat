@@ -1,4 +1,4 @@
-import os from 'os';
+﻿import os from 'os';
 import path from 'path';
 import { persistentConfig } from '../core/persistent-config.js';
 import { hasPublicAddress } from '../p2p/p2p-net.js';
@@ -18,7 +18,8 @@ export function parseCliArgs(argv = process.argv) {
   const isHeadless = savedBridge.mode === 'cli' && !isInteractive ? false : !isInteractive;
   const isPublic = hasPublicAddress() || !!savedBridge.advertiseHost;
 
-  // 鏀寔 --port 鍛戒护琛屽弬鏁拌鐩栭厤缃?  const portArgIndex = args.findIndex(a => a.startsWith('--port='));
+  // 支持 --port 命令行参数覆盖配置
+  const portArgIndex = args.findIndex(a => a.startsWith('--port='));
   const cliPort = portArgIndex !== -1 ? parseInt(args[portArgIndex].split('=')[1]) : null;
   const port = cliPort || savedBridge.port || DEFAULT_PORT;
   const portChanged = cliPort !== null && cliPort !== savedBridge.port;
@@ -26,7 +27,8 @@ export function parseCliArgs(argv = process.argv) {
   // 涓?Bridge 鍒ゅ畾锛氭樉寮?--main 鏍囪
   const isMain = args.includes('--main');
 
-  // 涓?Bridge 绔彛锛坒airy 闇€瑕佺煡閬撳線鍝彂蹇冭烦锛岄粯璁?= 鑷韩绔彛锛?  const mainPortIdx = args.findIndex(a => a.startsWith('--mainPort='));
+  // 主Bridge端口(fairy需要知道往哪发心跳，默认=自身端口)
+  const mainPortIdx = args.findIndex(a => a.startsWith('--mainPort='));
   const defaultMainPort = parseInt(process.env.MAIN_PORT || String(DEFAULT_PORT), 10);
   const mainPort = mainPortIdx !== -1 ? parseInt(args[mainPortIdx].split('=')[1]) : (isMain ? port : defaultMainPort);
 
@@ -44,7 +46,8 @@ export function parseCliArgs(argv = process.argv) {
   if (portArgIndex !== -1 && directListenIdx === -1 && !args.includes('--no-direct') && !args.includes('--nesting')) {
     directListen = port + 2;
   }
-  // 鏈湴寮€鍙戯細鏃?bootstrap 鏃惰嚜鍔ㄥ惎鐢ㄧ洿杩?TCP锛堢鍙?= HTTP 绔彛 + 2锛?  const isNesting = args.includes('--nesting');
+  // 鏈湴寮€鍙戯細鏃?bootstrap 鏃惰嚜鍔ㄥ惎鐢ㄧ洿杩?TCP锛堢鍙?= HTTP 绔彛 + 2锛?
+const isNesting = args.includes('--nesting');
   if (!directListen && localBootstrap.length === 0 && !args.includes('--no-direct') && !isNesting) {
     directListen = port + 2;
   }
