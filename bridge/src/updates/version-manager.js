@@ -1,4 +1,3 @@
-import logger from '../core/monitoring/logger.js';
 /**
  * Version Manager
  * 版本快照管理 - 保存版本历史，支持回滚
@@ -18,7 +17,7 @@ class VersionManager {
     this.ensureDirectory();
     this.loadVersionHistory();
 
-    logger.info(`[VersionManager] Initialized, current: ${this.currentVersion}, history: ${this.versions.size} versions`);
+    console.log(`[VersionManager] Initialized, current: ${this.currentVersion}, history: ${this.versions.size} versions`);
   }
 
   /**
@@ -46,9 +45,9 @@ class VersionManager {
         this.versions.set(data.version, data);
       }
 
-      logger.info(`[VersionManager] Loaded ${this.versions.size} versions`);
+      console.log(`[VersionManager] Loaded ${this.versions.size} versions`);
     } catch (error) {
-      logger.error(`[VersionManager] Load error: ${error.message}`);
+      console.error(`[VersionManager] Load error: ${error.message}`);
     }
   }
 
@@ -98,7 +97,7 @@ class VersionManager {
     // 清理旧版本
     await this.cleanupOldVersions();
 
-    logger.info(`[VersionManager] Created snapshot for version ${version}`);
+    console.log(`[VersionManager] Created snapshot for version ${version}`);
     return snapshot;
   }
 
@@ -119,7 +118,7 @@ class VersionManager {
     const filePath = path.join(this.versionDir, `${version}.json`);
     fs.writeFileSync(filePath, JSON.stringify(snapshot, null, 2));
 
-    logger.info(`[VersionManager] Marked version ${version} as deployed`);
+    console.log(`[VersionManager] Marked version ${version} as deployed`);
     return snapshot;
   }
 
@@ -179,7 +178,7 @@ class VersionManager {
     const filePath = path.join(this.versionDir, `${targetVersion}.json`);
     fs.writeFileSync(filePath, JSON.stringify(snapshot, null, 2));
 
-    logger.info(`[VersionManager] Rolled back to version ${targetVersion}`);
+    console.log(`[VersionManager] Rolled back to version ${targetVersion}`);
 
     return {
       success: true,
@@ -208,7 +207,7 @@ class VersionManager {
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
         this.versions.delete(v.version);
-        logger.info(`[VersionManager] Cleaned up old version: ${v.version}`);
+        console.log(`[VersionManager] Cleaned up old version: ${v.version}`);
       }
     }
   }

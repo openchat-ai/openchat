@@ -1,4 +1,3 @@
-import logger from '../../core/monitoring/logger.js';
 /**
  * Custom Agent
  * 自定义角色
@@ -22,7 +21,7 @@ class CustomAgent extends BaseAgent {
    * 运行自定义任务
    */
   async runTask(task) {
-    logger.info(`[CustomAgent] Running custom task: ${task.description || 'unnamed'}`);
+    console.log(`[CustomAgent] Running custom task: ${task.description || 'unnamed'}`);
 
     const results = {
       custom: true,

@@ -3,7 +3,7 @@
  * Usage: node src/api-entry.js [options]
  * Default: headless mode on port 3800
  */
-import { Bridge } from './core/bridge-lifecycle.js';
+import { Bridge } from './main.js';
 import { parseCliArgs } from './core/cli-args.js';
 
 const CONFIG = parseCliArgs(process.argv);

@@ -13,7 +13,6 @@
 
 import qiniu from 'qiniu';
 import { createHmac, createHash } from 'crypto';
-import logger from '../../core/monitoring/logger.js';
 
 // 七牛云配置 (从参考代码获取)
 const config = {
@@ -39,7 +38,7 @@ class QiniuSignaling {
     this.bucketManager = new qiniu.rs.BucketManager(credentials, configQiniu);
     this.formUploader = new qiniu.form_up.FormUploader(configQiniu);
     this.putExtra = new qiniu.form_up.PutExtra();
-    logger.info(`[QiniuSignaling] Bridge peerId: ${this.peerId}`);
+    console.log(`[QiniuSignaling] Bridge peerId: ${this.peerId}`);
   }
 
   /**
@@ -48,7 +47,7 @@ class QiniuSignaling {
   async initialize() {
     // 确保目录存在
     await this._ensureDir(COORDINATOR_DIR);
-    logger.info('[QiniuSignaling] Initialized');
+    console.log('[QiniuSignaling] Initialized');
   }
 
   /**
@@ -149,7 +148,7 @@ class QiniuSignaling {
         });
 
         this.currentRoom = roomId;
-        logger.info(`[QiniuSignaling] Allocated room-${roomId} for ${phonePeerId}`);
+        console.log(`[QiniuSignaling] Allocated room-${roomId} for ${phonePeerId}`);
 
         return {
           roomId,
@@ -192,7 +191,7 @@ class QiniuSignaling {
       connectedAt: new Date().toISOString()
     });
 
-    logger.info(`[QiniuSignaling] Wrote answer for room-${roomId}`);
+    console.log(`[QiniuSignaling] Wrote answer for room-${roomId}`);
   }
 
   /**
@@ -228,7 +227,7 @@ class QiniuSignaling {
       await this._deleteFile(`room-${roomId}/ice-candidates`);
       await this._deleteFile(`room-${roomId}/data-to-bridge`);
       await this._deleteFile(`room-${roomId}/data-to-phone`);
-      logger.info(`[QiniuSignaling] Released room-${roomId}`);
+      console.log(`[QiniuSignaling] Released room-${roomId}`);
     } catch (e) {
       // 忽略删除错误
     }
@@ -250,7 +249,7 @@ class QiniuSignaling {
       peerId: this.peerId,
       timestamp: new Date().toISOString()
     });
-    logger.info(`[QiniuSignaling] Phone sent data to room-${roomId}`);
+    console.log(`[QiniuSignaling] Phone sent data to room-${roomId}`);
   }
 
   /**
@@ -284,7 +283,7 @@ class QiniuSignaling {
       peerId: this.peerId,
       timestamp: new Date().toISOString()
     });
-    logger.info(`[QiniuSignaling] Bridge sent data to room-${roomId}`);
+    console.log(`[QiniuSignaling] Bridge sent data to room-${roomId}`);
   }
 
   /**

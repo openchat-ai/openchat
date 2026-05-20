@@ -1,6 +1,6 @@
-import { EvolutionSystem } from '../evolution/evolution-system.js';
-import MultiModelTester from '../quality/multi-model-tester.js';
-import AdversarialTest from '../quality/adversarial-test.js';
+import { EvolutionSystem } from '../evolution-system.js';
+import MultiModelTester from '../multi-model-tester.js';
+import AdversarialTest from '../adversarial-test.js';
 
 async function runAdvancedIntegrationTests() {
   console.log('🧪 开始 Phase 6 高级功能集成测试...\n');

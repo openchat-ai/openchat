@@ -1,6 +1,5 @@
 import { spawn } from 'child_process';
 import { Readable } from 'stream';
-import logger from '../core/monitoring/logger.js';
 
 export class LocalAiProvider {
   constructor(id, name) {
@@ -99,7 +98,7 @@ export class LocalAiProvider {
 
       child.on('close', (code) => {
         if (code !== 0 && stderr) {
-          logger.error(`[${this.name}] stderr: ${stderr}`);
+          console.error(`[${this.name}] stderr: ${stderr}`);
         }
         
         resolve({

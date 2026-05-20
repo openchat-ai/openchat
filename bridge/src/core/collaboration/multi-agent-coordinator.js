@@ -2,7 +2,7 @@ import { AgentSession } from '../agent/agent-session.js';
 import { messageBus, MESSAGE_TYPES } from '../message-bus.js';
 import { persistentConfig } from '../persistent-config.js';
 import { socialConnector } from './social-connector.js';
-import { knowledgeNetwork } from '../../memory/knowledge-network.js';
+import { knowledgeNetwork } from '../memory/knowledge-network.js';
 import logger from '../monitoring/logger.js';
 
 export class MultiAgentCoordinator {

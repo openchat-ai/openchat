@@ -1,4 +1,3 @@
-import logger from '../../core/monitoring/logger.js';
 /**
  * Security Middleware
  * 包含：限流、黑名单评分、认证
@@ -44,7 +43,7 @@ setInterval(() => {
     // 检查封禁是否到期，到期直接释放
     if (data.blockedUntil && now > data.blockedUntil) {
       data.blockedUntil = null
-      logger.info(`[Security] Block expired: ${ip}, remaining score: ${data.score}`)
+      console.log(`[Security] Block expired: ${ip}, remaining score: ${data.score}`)
     }
 
     // 评分恢复：每分钟无异常扣 2 分
@@ -60,7 +59,7 @@ setInterval(() => {
   if (endpointStats.size > 0) {
     const topTraffic = Math.max(...endpointStats.values())
     if (topTraffic > 500) {
-      logger.info('[Security] High traffic detected')
+      console.log('[Security] High traffic detected')
     }
     endpointStats.clear()
   }
@@ -111,12 +110,12 @@ const addScore = (ip, score, reason) => {
   // 检查是否需要拉黑
   if (record.score >= SCORE_THRESHOLDS.BLOCK_24H) {
     record.blockedUntil = Date.now() + 24 * 60 * 60 * 1000
-    logger.info(`[Security] BLOCKED 24H: ${ip}, score: ${record.score}`)
+    console.log(`[Security] BLOCKED 24H: ${ip}, score: ${record.score}`)
   } else if (record.score >= SCORE_THRESHOLDS.BLOCK_1H) {
     record.blockedUntil = Date.now() + 60 * 60 * 1000
-    logger.info(`[Security] BLOCKED 1H: ${ip}, score: ${record.score}`)
+    console.log(`[Security] BLOCKED 1H: ${ip}, score: ${record.score}`)
   } else if (record.score >= SCORE_THRESHOLDS.WARNING) {
-    logger.info(`[Security] WARNING: ${ip}, score: ${record.score}`)
+    console.log(`[Security] WARNING: ${ip}, score: ${record.score}`)
   }
 
   return record.score
@@ -142,7 +141,7 @@ export const securityMiddleware = (req, res, next) => {
   const path = req.path
   if (HONEYPOT_ROUTES.some(honeypot => path.includes(honeypot))) {
     const record = addScore(clientIp, SCORE_RULES.HONEYPOT, 'Honeypot access')
-    logger.info(`[Security] Honeypot triggered: ${clientIp} -> ${path}, score: ${record}`)
+    console.log(`[Security] Honeypot triggered: ${clientIp} -> ${path}, score: ${record}`)
     return res.status(404).json({ error: 'Not Found' })
   }
 

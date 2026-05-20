@@ -1,4 +1,3 @@
-import logger from '../core/monitoring/logger.js';
 /**
  * MemoryManager handles the three layers of memory:
  * 1. Short-term (Context Window) - 会话内滑动窗口
@@ -121,11 +120,11 @@ export class MemoryManager {
           metadata: { ...metadata, timestamp: factData.timestamp }
         });
       } catch (e) {
-        logger.warn('[MemoryManager] Failed to index fact:', e.message);
+        console.warn('[MemoryManager] Failed to index fact:', e.message);
       }
     }
 
-    logger.info(`[Memory] Fact saved for user ${userId}: ${fact}`);
+    console.log(`[Memory] Fact saved for user ${userId}: ${fact}`);
     return factId;
   }
 
@@ -150,7 +149,7 @@ export class MemoryManager {
       });
       return results;
     } catch (e) {
-      logger.warn('[MemoryManager] Query failed, fallback to keyword:', e.message);
+      console.warn('[MemoryManager] Query failed, fallback to keyword:', e.message);
       const user = this.longTerm.get(userId);
       if (!user) return [];
       return user.facts.filter(f => f.content.includes(query));
@@ -162,7 +161,7 @@ export class MemoryManager {
    */
   async retrieveRelevantContext(query, options = {}) {
     if (!this.useRAG || !this.initialized) {
-      logger.info('[MemoryManager] RAG not available, skipping retrieval');
+      console.log('[MemoryManager] RAG not available, skipping retrieval');
       return [];
     }
 
@@ -184,7 +183,7 @@ export class MemoryManager {
         timestamp: r.metadata?.timestamp
       }));
     } catch (e) {
-      logger.warn('[MemoryManager] Retrieval failed:', e.message);
+      console.warn('[MemoryManager] Retrieval failed:', e.message);
       return [];
     }
   }
@@ -254,7 +253,7 @@ export class MemoryManager {
         }
       });
     } catch (e) {
-      logger.warn('[MemoryManager] Failed to index message:', e.message);
+      console.warn('[MemoryManager] Failed to index message:', e.message);
     }
   }
 
@@ -280,7 +279,7 @@ export class MemoryManager {
         }
       });
     } catch (e) {
-      logger.warn('[MemoryManager] Failed to archive message:', e.message);
+      console.warn('[MemoryManager] Failed to archive message:', e.message);
     }
   }
 
@@ -310,11 +309,11 @@ export class MemoryManager {
           metadata: skillData
         });
       } catch (e) {
-        logger.warn('[MemoryManager] Failed to index skill:', e.message);
+        console.warn('[MemoryManager] Failed to index skill:', e.message);
       }
     }
 
-    logger.info(`[Memory] New Skill stored: ${name}`);
+    console.log(`[Memory] New Skill stored: ${name}`);
   }
 
   /**

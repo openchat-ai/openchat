@@ -1,4 +1,3 @@
-import logger from '../core/monitoring/logger.js';
 /**
  * Offline Queue for P2P Messages
  * 离线消息队列 - 节点离线时缓存消息
@@ -25,7 +24,7 @@ class OfflineQueue {
   ensureStorageDir() {
     if (!fs.existsSync(this.storageDir)) {
       fs.mkdirSync(this.storageDir, { recursive: true });
-      logger.info(`[OfflineQueue] Created storage directory: ${this.storageDir}`);
+      console.log(`[OfflineQueue] Created storage directory: ${this.storageDir}`);
     }
   }
 
@@ -54,7 +53,7 @@ class OfflineQueue {
       await this.cleanup();
     }
 
-    logger.info(`[OfflineQueue] Stored message for peer: ${peerId.slice(0, 8)}... (total: ${messages.length})`);
+    console.log(`[OfflineQueue] Stored message for peer: ${peerId.slice(0, 8)}... (total: ${messages.length})`);
 
     return queueItem;
   }
@@ -108,7 +107,7 @@ class OfflineQueue {
       await this.persistAll();
     }
 
-    logger.info(`[OfflineQueue] Removed messages for peer: ${peerId.slice(0, 8)}...`);
+    console.log(`[OfflineQueue] Removed messages for peer: ${peerId.slice(0, 8)}...`);
   }
 
   /**
@@ -133,7 +132,7 @@ class OfflineQueue {
 
       fs.writeFileSync(filePath, JSON.stringify(messages, null, 2));
     } catch (error) {
-      logger.error(`[OfflineQueue] Persist error: ${error.message}`);
+      console.error(`[OfflineQueue] Persist error: ${error.message}`);
     }
   }
 
@@ -146,7 +145,7 @@ class OfflineQueue {
       try {
         fs.writeFileSync(filePath, JSON.stringify(messages, null, 2));
       } catch (error) {
-        logger.error(`[OfflineQueue] Persist all error: ${error.message}`);
+        console.error(`[OfflineQueue] Persist all error: ${error.message}`);
       }
     }
   }
@@ -169,9 +168,9 @@ class OfflineQueue {
         this.pendingMessages.set(peerId, messages);
       }
 
-      logger.info(`[OfflineQueue] Loaded ${this.pendingMessages.size} peer queues`);
+      console.log(`[OfflineQueue] Loaded ${this.pendingMessages.size} peer queues`);
     } catch (error) {
-      logger.error(`[OfflineQueue] Load error: ${error.message}`);
+      console.error(`[OfflineQueue] Load error: ${error.message}`);
     }
   }
 
@@ -195,7 +194,7 @@ class OfflineQueue {
     }
 
     if (cleaned > 0) {
-      logger.info(`[OfflineQueue] Cleaned ${cleaned} expired messages`);
+      console.log(`[OfflineQueue] Cleaned ${cleaned} expired messages`);
       await this.persistAll();
     }
   }

@@ -1,5 +1,4 @@
 import { providerManager, getRuntimeApiKey, getRuntimeBaseUrl } from './provider-manager.js';
-import logger from '../core/monitoring/logger.js';
 
 export class AiProvider {
   constructor(id, name) {
@@ -236,13 +235,13 @@ class OpenAiProvider extends AiProvider {
       });
       if (!response.ok) {
         // 连接失败但 API key 存在，跳过验证（可能是 endpoint 不支持 /models）
-        logger.info(`[Provider] ${this.name} verifyConnection 返回 ${response.status}，跳过验证`);
+        console.log(`[Provider] ${this.name} verifyConnection 返回 ${response.status}，跳过验证`);
         return true;
       }
       return true;
     } catch (e) {
       // 网络错误也跳过验证
-      logger.info(`[Provider] ${this.name} verifyConnection 异常: ${e.message}，跳过验证`);
+      console.log(`[Provider] ${this.name} verifyConnection 异常: ${e.message}，跳过验证`);
       return true;
     }
   }

@@ -1,10 +1,10 @@
-import EvolutionSystem from '../evolution/evolution-system.js';
-import AutoRestartManager from '../monitoring/auto-restart-manager.js';
-import SandboxManager from '../security/sandbox-manager.js';
-import AutoRollbackManager from '../monitoring/auto-rollback-manager.js';
-import TestOrchestrator from '../quality/test-orchestrator.js';
-import IntelligenceCollector from '../memory/intelligence-collector.js';
-import Monitor from '../monitoring/monitor.js';
+import EvolutionSystem from '../evolution-system.js';
+import AutoRestartManager from '../auto-restart-manager.js';
+import SandboxManager from '../sandbox-manager.js';
+import AutoRollbackManager from '../auto-rollback-manager.js';
+import TestOrchestrator from '../test-orchestrator.js';
+import IntelligenceCollector from '../intelligence-collector.js';
+import Monitor from '../monitor.js';
 
 async function runPhase34IntegrationTests() {
   console.log('🧪 开始 Phase 3-4 集成测试...\n');

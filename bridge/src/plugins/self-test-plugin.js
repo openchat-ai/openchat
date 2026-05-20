@@ -2,7 +2,6 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs';
 import path from 'path';
-import logger from '../core/monitoring/logger.js';
 
 const execPromise = promisify(exec);
 
@@ -16,7 +15,7 @@ class SelfTestPlugin {
         name: 'run_llm_judge',
         description: 'Executes the LLM-as-a-Judge suite to get a professional score on the task execution quality.',
         execute: async ({ testCaseId }) => {
-          logger.info(`[SelfTest] Evaluating quality for case: ${testCaseId || 'Full Suite'}`);
+          console.log(`[SelfTest] Evaluating quality for case: ${testCaseId || 'Full Suite'}`);
           try {
             // Execute the judge script
             const { stdout } = await execPromise('npm run test:llm-judge');
@@ -36,7 +35,7 @@ class SelfTestPlugin {
         name: 'run_chaos_test',
         description: 'Injects faults into the system to test resilience and error recovery capabilities.',
         execute: async () => {
-          logger.info('[SelfTest] Injecting chaos to verify robustness...');
+          console.log('[SelfTest] Injecting chaos to verify robustness...');
           try {
             const { stdout } = await execPromise('npm run test:chaos');
             const reportMatch = stdout.match(/📊 混沌工程测试报告:([\s\S]*)/);
@@ -53,7 +52,7 @@ class SelfTestPlugin {
         name: 'run_property_test',
         description: 'Generates random action sequences to find edge-case crashes (Fuzzing).',
         execute: async () => {
-          logger.info('[SelfTest] Running property-based fuzzing...');
+          console.log('[SelfTest] Running property-based fuzzing...');
           try {
             const { stdout } = await execPromise('npm run test:property');
             const reportMatch = stdout.match(/📊 基于属性测试结果: (\{.*})/s);

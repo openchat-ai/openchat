@@ -1,5 +1,4 @@
 import { EventEmitter } from 'events';
-import logger from '../core/monitoring/logger.js';
 
 class TopicRegistry extends EventEmitter {
   constructor(options = {}) {
@@ -32,7 +31,7 @@ class TopicRegistry extends EventEmitter {
           }
         }
       } catch (e) {
-        logger.warn('[TopicRegistry] remote query failed:', e.message);
+        console.warn('[TopicRegistry] remote query failed:', e.message);
       }
     }
     return local;

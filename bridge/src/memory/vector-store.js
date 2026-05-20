@@ -1,4 +1,3 @@
-import logger from '../core/monitoring/logger.js';
 /**
  * VectorStore - 轻量级向量存储
  *
@@ -62,7 +61,7 @@ export class VectorStore {
       this.index = new Map(Object.entries(data));
     } catch (e) {
       if (e.code !== 'ENOENT') {
-        logger.warn('[VectorStore] Failed to load index:', e.message);
+        console.warn('[VectorStore] Failed to load index:', e.message);
       }
       this.index = new Map();
     }
@@ -81,7 +80,7 @@ export class VectorStore {
         const data = Object.fromEntries(this.index);
         await fsPromises.writeFile(INDEX_FILE, JSON.stringify(data, null, 2));
       } catch (e) {
-        logger.warn('[VectorStore] Failed to save index:', e.message);
+        console.warn('[VectorStore] Failed to save index:', e.message);
       } finally {
         this._savePending = false;
       }
@@ -180,7 +179,7 @@ export class VectorStore {
       return data;
     } catch (e) {
       if (e.code !== 'ENOENT') {
-        logger.warn('[VectorStore] Failed to read vector:', e.message);
+        console.warn('[VectorStore] Failed to read vector:', e.message);
       }
       return null;
     }
@@ -331,7 +330,7 @@ export class VectorStore {
       await this.deleteVector(id);
     }
 
-    logger.info(`[VectorStore] Cleaned ${toDelete.length} old vectors`);
+    console.log(`[VectorStore] Cleaned ${toDelete.length} old vectors`);
     return toDelete.length;
   }
 

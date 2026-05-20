@@ -1,6 +1,6 @@
 import { router } from '../core/router.js';
-import { sessionManager } from './session-manager.js';
-import { MessageType } from './protocol-message.js';
+import { sessionManager } from '../session/session-manager.js';
+import { MessageType } from '../protocol/message.js';
 import { pluginManager } from '../plugins/plugin-manager.js';
 import { ShellPlugin, FilePlugin } from '../plugins/system-plugins.js';
 import { GitPlugin, DevToolsPlugin } from '../plugins/eng-plugins.js';

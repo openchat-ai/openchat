@@ -1,4 +1,3 @@
-import logger from '../core/monitoring/logger.js';
 /**
  * Provider Registry - 简化的 Provider 管理
  *
@@ -79,7 +78,7 @@ class ProviderRegistry {
       // 未来可添加其他特殊 provider
 
       default:
-        logger.warn(`[Provider] Special provider ${providerId} not implemented, using OpenAI-compatible`);
+        console.warn(`[Provider] Special provider ${providerId} not implemented, using OpenAI-compatible`);
         return null;
     }
   }

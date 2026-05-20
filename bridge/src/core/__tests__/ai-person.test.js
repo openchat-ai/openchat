@@ -1,9 +1,9 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert';
-import { AIPerson, aiPersonRegistry, AI_PERSON_TYPE, createFounder } from '../agent/ai-personhood.js';
-import { residentManager } from '../agent/resident-manager.js';
+import { AIPerson, aiPersonRegistry, AI_PERSON_TYPE, createFounder } from '../ai-personhood.js';
+import { residentManager } from '../resident-manager.js';
 import { persistentConfig } from '../persistent-config.js';
-import { QualityChecker, Corrector } from '../quality/quality-check-system.js';
+import { QualityChecker, Corrector } from '../quality-check-system.js';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';

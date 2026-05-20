@@ -1,4 +1,3 @@
-import logger from '../core/monitoring/logger.js';
 /**
  * 版本快照系统
  *
@@ -82,11 +81,11 @@ class VersionSnapshot {
       // 清理旧快照
       await this.cleanupOldSnapshots();
 
-      logger.info(`[VersionSnapshot] Created snapshot ${snapshotId}, size: ${totalSize} bytes`);
+      console.log(`[VersionSnapshot] Created snapshot ${snapshotId}, size: ${totalSize} bytes`);
 
       return { success: true, snapshot };
     } catch (error) {
-      logger.error(`[VersionSnapshot] Failed to create snapshot:`, error.message);
+      console.error(`[VersionSnapshot] Failed to create snapshot:`, error.message);
       return { success: false, error: error.message };
     }
   }
@@ -206,7 +205,7 @@ class VersionSnapshot {
 
       this.currentVersion = snapshot.version;
 
-      logger.info(`[VersionSnapshot] Restored snapshot ${snapshotId}, version: ${snapshot.version}`);
+      console.log(`[VersionSnapshot] Restored snapshot ${snapshotId}, version: ${snapshot.version}`);
 
       return {
         success: true,
@@ -214,7 +213,7 @@ class VersionSnapshot {
         snapshotId
       };
     } catch (error) {
-      logger.error(`[VersionSnapshot] Failed to restore snapshot:`, error.message);
+      console.error(`[VersionSnapshot] Failed to restore snapshot:`, error.message);
       return { success: false, error: error.message };
     }
   }
@@ -234,7 +233,7 @@ class VersionSnapshot {
       fs.rmSync(snapshotPath, { recursive: true, force: true });
       this.snapshots.delete(snapshotId);
 
-      logger.info(`[VersionSnapshot] Deleted snapshot ${snapshotId}`);
+      console.log(`[VersionSnapshot] Deleted snapshot ${snapshotId}`);
 
       return { success: true };
     } catch (error) {
@@ -317,12 +316,12 @@ class VersionSnapshot {
           const snapshot = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
           this.snapshots.set(snapshot.id, snapshot);
         } catch (e) {
-          logger.error(`[VersionSnapshot] Failed to load snapshot ${dir}:`, e.message);
+          console.error(`[VersionSnapshot] Failed to load snapshot ${dir}:`, e.message);
         }
       }
     }
 
-    logger.info(`[VersionSnapshot] Loaded ${this.snapshots.size} snapshots`);
+    console.log(`[VersionSnapshot] Loaded ${this.snapshots.size} snapshots`);
   }
 
   /**

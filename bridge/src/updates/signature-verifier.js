@@ -1,4 +1,3 @@
-import logger from '../core/monitoring/logger.js';
 /**
  * 代码签名验证模块
  *
@@ -71,7 +70,7 @@ class SignatureVerifier {
     fs.writeFileSync(this.publicKeyPath, this.keyPair.publicKey);
     fs.writeFileSync(this.privateKeyPath, this.keyPair.privateKey);
 
-    logger.info(`[Signature] Keys saved to ${publicDir}`);
+    console.log(`[Signature] Keys saved to ${publicDir}`);
   }
 
   /**

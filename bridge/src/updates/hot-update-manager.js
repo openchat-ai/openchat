@@ -1,4 +1,3 @@
-import logger from '../core/monitoring/logger.js';
 /**
  * Hot Update Manager
  * 真正的热更新 - 动态代码加载，无需重启进程
@@ -31,7 +30,7 @@ class HotUpdateManager {
     this.backupDir = path.join(this.snapshotDir, 'backups');
     this.ensureDirectories();
 
-    logger.info(`[HotUpdate] Manager initialized, version: ${this.currentVersion}`);
+    console.log(`[HotUpdate] Manager initialized, version: ${this.currentVersion}`);
   }
 
   /**
@@ -78,7 +77,7 @@ class HotUpdateManager {
       JSON.stringify(metadata, null, 2)
     );
 
-    logger.info(`[HotUpdate] Created snapshot: ${snapshotId}`);
+    console.log(`[HotUpdate] Created snapshot: ${snapshotId}`);
     return metadata;
   }
 
@@ -94,7 +93,7 @@ class HotUpdateManager {
     const startTime = Date.now();
 
     try {
-      logger.info(`[HotUpdate] Applying update to version ${version}...`);
+      console.log(`[HotUpdate] Applying update to version ${version}...`);
 
       // 1. 下载/获取新版本
       const updatePackage = await this.fetchUpdate(version);
@@ -118,7 +117,7 @@ class HotUpdateManager {
         onFastFail: options.onFastFail,
         onSlowFail: options.onSlowFail,
         onSuccess: () => {
-          logger.info(`[HotUpdate] Update to ${version} successful`);
+          console.log(`[HotUpdate] Update to ${version} successful`);
         }
       });
 
@@ -136,7 +135,7 @@ class HotUpdateManager {
 
       // 自动回滚
       if (options.autoRollback !== false) {
-        logger.error(`[HotUpdate] Update failed: ${error.message}, rolling back...`);
+        console.error(`[HotUpdate] Update failed: ${error.message}, rolling back...`);
         await this.rollback();
       }
 
@@ -161,7 +160,7 @@ class HotUpdateManager {
    * 运行本地测试
    */
   async runLocalTests(updatePackage) {
-    logger.info('[HotUpdate] Running local tests...');
+    console.log('[HotUpdate] Running local tests...');
 
     // 简化：模拟测试
     const passed = Math.random() > 0.1; // 90% 通过率
@@ -197,7 +196,7 @@ class HotUpdateManager {
       JSON.stringify(metadata, null, 2)
     );
 
-    logger.info(`[HotUpdate] Backed up version ${this.currentVersion}`);
+    console.log(`[HotUpdate] Backed up version ${this.currentVersion}`);
     return metadata;
   }
 
@@ -205,7 +204,7 @@ class HotUpdateManager {
    * 动态加载新代码（核心功能）
    */
   async dynamicLoad(updatePackage) {
-    logger.info('[HotUpdate] Dynamically loading new code...');
+    console.log('[HotUpdate] Dynamically loading new code...');
 
     // 实际实现中：
     // 1. 使用 require.cache 清空旧模块
@@ -225,7 +224,7 @@ class HotUpdateManager {
       this.onCodeReloaded(updatePackage);
     }
 
-    logger.info(`[HotUpdate] Code reloaded to version ${this.currentVersion}`);
+    console.log(`[HotUpdate] Code reloaded to version ${this.currentVersion}`);
   }
 
   /**
@@ -240,7 +239,7 @@ class HotUpdateManager {
       if (callbacks.onFastFail) {
         const health = this.quickHealthCheck();
         if (!health.healthy) {
-          logger.error('[HotUpdate] Fast check failed:', health.issues);
+          console.error('[HotUpdate] Fast check failed:', health.issues);
           callbacks.onFastFail(health);
         }
       }
@@ -251,7 +250,7 @@ class HotUpdateManager {
       if (callbacks.onSlowFail) {
         const health = this.deepHealthCheck();
         if (!health.healthy) {
-          logger.error('[HotUpdate] Deep check failed:', health.issues);
+          console.error('[HotUpdate] Deep check failed:', health.issues);
           callbacks.onSlowFail(health);
         }
       }
@@ -260,7 +259,7 @@ class HotUpdateManager {
     this.watchdogTimers = [fastTimer, slowTimer];
     this.watchdogCallbacks = callbacks;
 
-    logger.info('[HotUpdate] 2-layer Watchdog started');
+    console.log('[HotUpdate] 2-layer Watchdog started');
   }
 
   /**
@@ -271,7 +270,7 @@ class HotUpdateManager {
       clearInterval(timer);
     }
     this.watchdogTimers = [];
-    logger.info('[HotUpdate] Watchdog stopped');
+    console.log('[HotUpdate] Watchdog stopped');
   }
 
   /**
@@ -322,7 +321,7 @@ class HotUpdateManager {
    * 回滚
    */
   async rollback() {
-    logger.info('[HotUpdate] Rolling back...');
+    console.log('[HotUpdate] Rolling back...');
 
     this.stopWatchdog();
 
@@ -336,7 +335,7 @@ class HotUpdateManager {
     const previousVersion = '1.0.0';
     this.currentVersion = previousVersion;
 
-    logger.info(`[HotUpdate] Rolled back to version ${previousVersion}`);
+    console.log(`[HotUpdate] Rolled back to version ${previousVersion}`);
 
     return {
       success: true,

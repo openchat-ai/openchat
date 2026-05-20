@@ -1,4 +1,3 @@
-import logger from '../core/monitoring/logger.js';
 /**
  * API Server Integration
  * 鐏?REST API 闂嗗棙鍨氶崚棰佸瘜缁嬪绨?
@@ -35,7 +34,7 @@ class OpenChatAPISystem {
    * 閸掓繂顫愰崠鏍ㄥ閺堝绮嶆禒?
    */
   async initialize(config = {}) {
-    logger.info('[API System] Initializing...');
+    console.log('[API System] Initializing...');
 
     // 1. 閸氼垰濮?REST API 閺堝秴濮熼崳?
     this.apiServer = new APIServer({
@@ -51,7 +50,7 @@ class OpenChatAPISystem {
       // 瀵ゆ儼绻滈崥顖氬З閿涘瞼鐡戝鍛秹缂佹粌姘ㄧ紒?
       setTimeout(() => {
         this.P2PNet.start().catch(err => {
-          logger.error('[API System] P2P start failed:', err.message);
+          console.error('[API System] P2P start failed:', err.message);
         });
       }, 5000);
     }
@@ -70,7 +69,7 @@ class OpenChatAPISystem {
     }
 
     this.initialized = true;
-    logger.info('[API System] Initialized successfully');
+    console.log('[API System] Initialized successfully');
 
     return {
       apiPort: config.apiPort || 3001,
@@ -113,7 +112,7 @@ class OpenChatAPISystem {
    * 閸嬫粍顒涢幍鈧張澶嬫箛閸?
    */
   async shutdown() {
-    logger.info('[API System] Shutting down...');
+    console.log('[API System] Shutting down...');
 
     if (this.P2PNet) {
       await this.P2PNet.stop();
@@ -126,7 +125,7 @@ class OpenChatAPISystem {
     this.cacheManager?.destroy();
     this.initialized = false;
 
-    logger.info('[API System] Shutdown complete');
+    console.log('[API System] Shutdown complete');
   }
 }
 

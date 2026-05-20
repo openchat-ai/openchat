@@ -1,4 +1,3 @@
-import logger from '../core/monitoring/logger.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs/promises';
@@ -292,7 +291,9 @@ export const ProjectManagementPlugin = {
           try {
             const content = await fs.readFile(pkgPath, 'utf8');
             pkgInfo = JSON.parse(content);
-          } catch (e) { logger.warn('[IGNORE] // No package.json: ' + (e?.message || '')); }
+          } catch {
+            // No package.json
+          }
 
           // Count files using native method
           const jsFiles = await scanDirectory('.', '\\.(js|ts)$', 10000);

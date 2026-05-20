@@ -1,4 +1,3 @@
-import logger from '../core/monitoring/logger.js';
 /**
  * P2P Peer Discovery
  * 节点发现服务
@@ -28,13 +27,13 @@ class PeerDiscovery {
    */
   start() {
     if (!this.swarm) {
-      logger.warn('[PeerDiscovery] No swarm configured');
+      console.warn('[PeerDiscovery] No swarm configured');
       return;
     }
 
     this.discover();
     this.discoveryTimer = setInterval(() => this.discover(), this.discoveryInterval);
-    logger.info('[PeerDiscovery] Started');
+    console.log('[PeerDiscovery] Started');
   }
 
   /**
@@ -45,7 +44,7 @@ class PeerDiscovery {
       clearInterval(this.discoveryTimer);
       this.discoveryTimer = null;
     }
-    logger.info('[PeerDiscovery] Stopped');
+    console.log('[PeerDiscovery] Stopped');
   }
 
   /**
@@ -66,7 +65,7 @@ class PeerDiscovery {
         });
       }
     } catch (error) {
-      logger.error('[PeerDiscovery] Error:', error.message);
+      console.error('[PeerDiscovery] Error:', error.message);
     }
   }
 
@@ -139,7 +138,7 @@ class PeerDiscovery {
         try {
           listener.callback(data);
         } catch (error) {
-          logger.error('[PeerDiscovery] Listener error:', error.message);
+          console.error('[PeerDiscovery] Listener error:', error.message);
         }
       }
     }

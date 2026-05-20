@@ -1,8 +1,7 @@
-import logger from '../core/monitoring/logger.js';
 /** * Gossip Manager ?Cross-Bridge knowledge sync via P2P * ： P2P ?Bridge * * Uses timestamp-based vector clock for conflict resolution. * Periodically gossips knowledge summaries; peers pull missing entries. * 。，? */
 import { EventEmitter } from 'events';
 import { MessageType, createMessage } from './messages.js';
-import { vectorMemory } from '../core/memory/vector-memory.js';
+import { vectorMemory } from '../core/vector-memory.js';
 
 const GOSSIP_INTERVAL_MS = 60_000; // ?60 秒广播一次摘?const SYNC_BATCH_SIZE = 10;         // 每次同步最?10 ?
 class GossipManager extends EventEmitter {
@@ -35,7 +34,7 @@ class GossipManager extends EventEmitter {
     // Periodic gossip
     this._timer = setInterval(() => this._gossip(), GOSSIP_INTERVAL_MS);
     this._timer.unref();
-    logger.info('[Gossip] started, interval:', GOSSIP_INTERVAL_MS / 1000 + 's');
+    console.log('[Gossip] started, interval:', GOSSIP_INTERVAL_MS / 1000 + 's');
 
     // Do first gossip after a short delay
     setTimeout(() => this._gossip(), 5_000);
@@ -172,7 +171,7 @@ class GossipManager extends EventEmitter {
       }
       if (count > 0) {
         this._vectorMemory.save();
-        logger.info(`[Gossip] synced ${count} entries from ${fromPeer.slice(0, 8)}...`);
+        console.log(`[Gossip] synced ${count} entries from ${fromPeer.slice(0, 8)}...`);
       }
     }
   }

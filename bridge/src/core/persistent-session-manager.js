@@ -1,7 +1,6 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import logger from './monitoring/logger.js';
 
 /**
  * PersistentSessionManager 类：工作会话持久化管理器
@@ -185,7 +184,7 @@ class PersistentSessionManager {
       } else {
         // 加载所有会话
         if (!fs.existsSync(this.indexFile)) {
-          logger.info('No sessions found to load');
+          console.log('No sessions found to load');
           return [];
         }
 
@@ -198,7 +197,7 @@ class PersistentSessionManager {
             const session = await this.loadSession(sessionRef.id);
             loadedSessions.push(session);
           } catch (e) {
-            logger.warn(`Failed to load session ${sessionRef.id}: ${e.message}`);
+            console.warn(`Failed to load session ${sessionRef.id}: ${e.message}`);
           }
         }
 
@@ -227,7 +226,7 @@ class PersistentSessionManager {
         return currentTime > latestTime ? current : latest;
       });
     } catch (error) {
-      logger.warn(`Failed to restore last session: ${error.message}`);
+      console.warn(`Failed to restore last session: ${error.message}`);
       return null;
     }
   }

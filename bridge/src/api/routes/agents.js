@@ -1,4 +1,3 @@
-import logger from '../../core/monitoring/logger.js';
 /**
  * P0-02: Agents API Routes
  * 8 个端点 - 多代理协作框架
@@ -25,9 +24,9 @@ async function initCoordinator() {
     try {
       const { getMultiAgentCoordinator } = await import('../integrations/index.js')
       coordinator = await getMultiAgentCoordinator()
-      logger.info('[Agents API] Using real MultiAgentCoordinator')
+      console.log('[Agents API] Using real MultiAgentCoordinator')
     } catch (e) {
-      logger.info('[Agents API] Failed to load real module, using mock:', e.message)
+      console.log('[Agents API] Failed to load real module, using mock:', e.message)
       useRealModule = false
     }
   }

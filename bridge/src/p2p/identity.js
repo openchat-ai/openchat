@@ -1,4 +1,3 @@
-import logger from '../core/monitoring/logger.js';
 /**
  * P2P Node Identity ?ed25519 keypair management
  *
@@ -35,7 +34,7 @@ function loadOrGenerateKeypair() {
         };
       }
     } catch (e) {
-      logger.info('[P2P Identity] Failed to load key, generating new one');
+      console.log('[P2P Identity] Failed to load key, generating new one');
     }
   }
 
@@ -94,7 +93,9 @@ class NodeIdentity {
       const verify = crypto.createVerify('sha256');
       verify.update(data);
       return verify.verify(publicKey, Buffer.from(signature, 'base64'));
-    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || '')); return false; }
+    } catch {
+      return false;
+    }
   }
 
   /**

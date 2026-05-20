@@ -1,4 +1,3 @@
-import logger from '../core/monitoring/logger.js';
 /**
  * Network Type Detector
  * 检测网络类型：WiFi vs Mobile
@@ -20,7 +19,7 @@ class NetworkDetector {
   start() {
     this.detect(); // 立即检测一次
     this.checkTimer = setInterval(() => this.detect(), this.checkInterval);
-    logger.info('[NetworkDetector] Started');
+    console.log('[NetworkDetector] Started');
   }
 
   /**
@@ -31,7 +30,7 @@ class NetworkDetector {
       clearInterval(this.checkTimer);
       this.checkTimer = null;
     }
-    logger.info('[NetworkDetector] Stopped');
+    console.log('[NetworkDetector] Stopped');
   }
 
   /**
@@ -43,7 +42,7 @@ class NetworkDetector {
 
     if (networkType !== previousType) {
       this.lastNetworkType = networkType;
-      logger.info(`[NetworkDetector] Network changed: ${previousType} -> ${networkType}`);
+      console.log(`[NetworkDetector] Network changed: ${previousType} -> ${networkType}`);
 
       // 通知监听器
       this.notifyListeners({
@@ -131,7 +130,7 @@ class NetworkDetector {
       try {
         callback(change);
       } catch (error) {
-        logger.error('[NetworkDetector] Listener error:', error.message);
+        console.error('[NetworkDetector] Listener error:', error.message);
       }
     }
   }

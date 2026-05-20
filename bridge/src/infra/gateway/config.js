@@ -1,4 +1,3 @@
-import logger from '../../core/monitoring/logger.js';
 #!/usr/bin/env node
 
 /**
@@ -33,7 +32,7 @@ function loadConfig() {
     const data = fs.readFileSync(GATEWAY_CONFIG_FILE, 'utf8');
     return JSON.parse(data);
   } catch (e) {
-    logger.error('❌ 加载配置失败:', e.message);
+    console.error('❌ 加载配置失败:', e.message);
     process.exit(1);
   }
 }
@@ -46,7 +45,7 @@ function saveConfig(config) {
     fs.writeFileSync(GATEWAY_CONFIG_FILE, JSON.stringify(config, null, 2), 'utf8');
     return true;
   } catch (e) {
-    logger.error('❌ 保存配置失败:', e.message);
+    console.error('❌ 保存配置失败:', e.message);
     return false;
   }
 }
@@ -54,23 +53,23 @@ function saveConfig(config) {
 function listKeys() {
   const config = loadConfig();
 
-  logger.info('\n📋 虚拟 API Keys:\n');
-  logger.info('┌──────────────────────┬────────────────┬──────────────────────────┬────────┐');
-  logger.info('│ Virtual Key          │ Provider       │ Model                    │ Status │');
-  logger.info('├──────────────────────┼────────────────┼──────────────────────────┼────────┤');
+  console.log('\n📋 虚拟 API Keys:\n');
+  console.log('┌──────────────────────┬────────────────┬──────────────────────────┬────────┐');
+  console.log('│ Virtual Key          │ Provider       │ Model                    │ Status │');
+  console.log('├──────────────────────┼────────────────┼──────────────────────────┼────────┤');
 
   const keys = Object.entries(config.virtualKeys || {});
 
   if (keys.length === 0) {
-    logger.info('│ (无)                                                                    │');
+    console.log('│ (无)                                                                    │');
   } else {
     for (const [key, cfg] of keys) {
       const status = cfg.enabled ? '✅ 启用' : '❌ 禁用';
-      logger.info(`│ ${key.padEnd(20)} │ ${cfg.provider.padEnd(14)} │ ${(cfg.model || 'default').padEnd(24)} │ ${status.padEnd(6)} │`);
+      console.log(`│ ${key.padEnd(20)} │ ${cfg.provider.padEnd(14)} │ ${(cfg.model || 'default').padEnd(24)} │ ${status.padEnd(6)} │`);
     }
   }
 
-  logger.info('└──────────────────────┴────────────────┴──────────────────────────┴────────┘\n');
+  console.log('└──────────────────────┴────────────────┴──────────────────────────┴────────┘\n');
 }
 
 /**
@@ -116,26 +115,26 @@ async function addKeyInteractive() {
   const rl = createReadlineInterface();
 
   try {
-    logger.info('\n🔐 交互式虚拟 Key 生成\n');
+    console.log('\n🔐 交互式虚拟 Key 生成\n');
 
     // 步骤 1: 输入虚拟 Key 名称
     const virtualKey = await question(rl, '虚拟 Key 名称 (如: vk-claude): ');
     if (!virtualKey) {
-      logger.info('❌ 虚拟 Key 不能为空');
+      console.log('❌ 虚拟 Key 不能为空');
       return;
     }
 
     // 步骤 2: 获取已配置的 Provider
     const configuredProviders = providerRegistry.listConfigured();
     if (configuredProviders.length === 0) {
-      logger.info('❌ 没有已配置的 Provider，请先添加 API Key');
-      logger.info('💡 使用: node manage-providers.js add <provider-id> <api-key>');
+      console.log('❌ 没有已配置的 Provider，请先添加 API Key');
+      console.log('💡 使用: node manage-providers.js add <provider-id> <api-key>');
       return;
     }
 
-    logger.info('\n📋 已配置的 Provider:\n');
+    console.log('\n📋 已配置的 Provider:\n');
     configuredProviders.forEach((p, i) => {
-      logger.info(`  ${i + 1}. ${p.name} (${p.id})`);
+      console.log(`  ${i + 1}. ${p.name} (${p.id})`);
     });
 
     // 步骤 3: 选择 Provider
@@ -143,21 +142,21 @@ async function addKeyInteractive() {
     const providerIndex = parseInt(providerChoice) - 1;
 
     if (providerIndex < 0 || providerIndex >= configuredProviders.length) {
-      logger.info('❌ 无效的选择');
+      console.log('❌ 无效的选择');
       return;
     }
 
     const selectedProvider = configuredProviders[providerIndex];
 
     // 步骤 4: 获取可用模型
-    logger.info(`\n🔄 正在获取 ${selectedProvider.name} 的模型列表...\n`);
+    console.log(`\n🔄 正在获取 ${selectedProvider.name} 的模型列表...\n`);
     const models = getProviderModels(selectedProvider.id);
 
     if (!models || models.length === 0) {
-      logger.info('⚠️  无法获取模型列表');
+      console.log('⚠️  无法获取模型列表');
       const modelInput = await question(rl, '请手动输入模型名称 (如: claude-3-5-haiku-20241022): ');
       if (!modelInput) {
-        logger.info('❌ 模型名称不能为空');
+        console.log('❌ 模型名称不能为空');
         return;
       }
       addKey(virtualKey, selectedProvider.id, modelInput);
@@ -165,30 +164,30 @@ async function addKeyInteractive() {
     }
 
     // 步骤 5: 显示模型列表让用户选择
-    logger.info('📦 可用模型:\n');
+    console.log('📦 可用模型:\n');
     models.forEach((m, i) => {
-      logger.info(`  ${i + 1}. ${m}`);
+      console.log(`  ${i + 1}. ${m}`);
     });
 
     const modelChoice = await question(rl, '\n选择默认模型 (输入数字): ');
     const modelIndex = parseInt(modelChoice) - 1;
 
     if (modelIndex < 0 || modelIndex >= models.length) {
-      logger.info('❌ 无效的选择');
+      console.log('❌ 无效的选择');
       return;
     }
 
     const selectedModel = models[modelIndex];
 
     // 步骤 6: 确认并保存
-    logger.info('\n✅ 配置摘要:');
-    logger.info(`   虚拟 Key: ${virtualKey}`);
-    logger.info(`   Provider: ${selectedProvider.name} (${selectedProvider.id})`);
-    logger.info(`   默认模型: ${selectedModel}\n`);
+    console.log('\n✅ 配置摘要:');
+    console.log(`   虚拟 Key: ${virtualKey}`);
+    console.log(`   Provider: ${selectedProvider.name} (${selectedProvider.id})`);
+    console.log(`   默认模型: ${selectedModel}\n`);
 
     const confirm = await question(rl, '确认保存? (y/n): ');
     if (confirm.toLowerCase() !== 'y') {
-      logger.info('⚠️  已取消');
+      console.log('⚠️  已取消');
       return;
     }
 
@@ -204,7 +203,7 @@ async function addKeyInteractive() {
  */
 function addKey(virtualKey, provider, model) {
   if (!virtualKey || !provider) {
-    logger.error('❌ 用法: node gateway-config.js add <virtual-key> <provider> [model]');
+    console.error('❌ 用法: node gateway-config.js add <virtual-key> <provider> [model]');
     return;
   }
 
@@ -221,41 +220,41 @@ function addKey(virtualKey, provider, model) {
   };
 
   if (saveConfig(config)) {
-    logger.info(`✅ 已添加虚拟 Key: ${virtualKey} -> ${provider}/${model || 'default'}`);
-    logger.info(`💡 使用此 Key: Authorization: Bearer ${virtualKey}`);
+    console.log(`✅ 已添加虚拟 Key: ${virtualKey} -> ${provider}/${model || 'default'}`);
+    console.log(`💡 使用此 Key: Authorization: Bearer ${virtualKey}`);
   }
 }
 
 function removeKey(virtualKey) {
   if (!virtualKey) {
-    logger.error('❌ 用法: node gateway-config.js remove <virtual-key>');
+    console.error('❌ 用法: node gateway-config.js remove <virtual-key>');
     return;
   }
 
   const config = loadConfig();
 
   if (!config.virtualKeys || !config.virtualKeys[virtualKey]) {
-    logger.info(`⚠️  虚拟 Key "${virtualKey}" 不存在`);
+    console.log(`⚠️  虚拟 Key "${virtualKey}" 不存在`);
     return;
   }
 
   delete config.virtualKeys[virtualKey];
 
   if (saveConfig(config)) {
-    logger.info(`✅ 已删除虚拟 Key: ${virtualKey}`);
+    console.log(`✅ 已删除虚拟 Key: ${virtualKey}`);
   }
 }
 
 function toggleKey(virtualKey) {
   if (!virtualKey) {
-    logger.error('❌ 用法: node gateway-config.js toggle <virtual-key>');
+    console.error('❌ 用法: node gateway-config.js toggle <virtual-key>');
     return;
   }
 
   const config = loadConfig();
 
   if (!config.virtualKeys || !config.virtualKeys[virtualKey]) {
-    logger.info(`⚠️  虚拟 Key "${virtualKey}" 不存在`);
+    console.log(`⚠️  虚拟 Key "${virtualKey}" 不存在`);
     return;
   }
 
@@ -263,25 +262,25 @@ function toggleKey(virtualKey) {
 
   if (saveConfig(config)) {
     const status = config.virtualKeys[virtualKey].enabled ? '启用' : '禁用';
-    logger.info(`✅ 已${status}虚拟 Key: ${virtualKey}`);
+    console.log(`✅ 已${status}虚拟 Key: ${virtualKey}`);
   }
 }
 
 function showConfig() {
   const config = loadConfig();
 
-  logger.info('\n⚙️  网关设置:\n');
-  logger.info(`  启用日志: ${config.settings.enableLogging ? '✅' : '❌'}`);
-  logger.info(`  启用统计: ${config.settings.enableStats ? '✅' : '❌'}`);
-  logger.info(`  超时时间: ${config.settings.timeout}ms`);
-  logger.info(`  重试次数: ${config.settings.maxRetries}`);
-  logger.info('');
+  console.log('\n⚙️  网关设置:\n');
+  console.log(`  启用日志: ${config.settings.enableLogging ? '✅' : '❌'}`);
+  console.log(`  启用统计: ${config.settings.enableStats ? '✅' : '❌'}`);
+  console.log(`  超时时间: ${config.settings.timeout}ms`);
+  console.log(`  重试次数: ${config.settings.maxRetries}`);
+  console.log('');
 
   listKeys();
 }
 
 function generateExample() {
-  logger.info(`
+  console.log(`
 📝 生成示例配置...
 `);
 
@@ -321,13 +320,13 @@ function generateExample() {
   };
 
   if (saveConfig(config)) {
-    logger.info('✅ 已生成示例配置\n');
+    console.log('✅ 已生成示例配置\n');
     listKeys();
   }
 }
 
 function showUsage() {
-  logger.info(`
+  console.log(`
 OpenChat 网关配置管理工具
 
 用法:
@@ -404,7 +403,7 @@ switch (command) {
   case 'create':
   case 'add-interactive':
     addKeyInteractive().catch(e => {
-      logger.error('❌ 错误:', e.message);
+      console.error('❌ 错误:', e.message);
       process.exit(1);
     });
     break;
@@ -432,7 +431,7 @@ switch (command) {
     if (!command) {
       showUsage();
     } else {
-      logger.error(`❌ 未知命令: ${command}`);
-      logger.info('💡 使用 "node gateway-config.js help" 查看帮助');
+      console.error(`❌ 未知命令: ${command}`);
+      console.log('💡 使用 "node gateway-config.js help" 查看帮助');
     }
 }

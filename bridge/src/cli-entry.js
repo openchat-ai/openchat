@@ -2,7 +2,7 @@
  * CLI entry — starts Bridge with interactive prompt.
  * Usage: node src/cli-entry.js [options]
  */
-import { Bridge } from './core/bridge-lifecycle.js';
+import { Bridge } from './main.js';
 import { parseCliArgs } from './core/cli-args.js';
 
 const CONFIG = parseCliArgs(process.argv);

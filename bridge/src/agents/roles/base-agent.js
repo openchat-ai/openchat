@@ -1,4 +1,3 @@
-import logger from '../../core/monitoring/logger.js';
 /**
  * Base Agent Class
  * 所有 Agent 的基类
@@ -26,7 +25,7 @@ class BaseAgent {
    */
   async initialize() {
     this.status = 'READY';
-    logger.info(`[Agent] ${this.name} (${this.role}) initialized`);
+    console.log(`[Agent] ${this.name} (${this.role}) initialized`);
     return this;
   }
 
@@ -82,7 +81,7 @@ class BaseAgent {
   async terminate() {
     this.status = 'TERMINATED';
     this.completedAt = new Date().toISOString();
-    logger.info(`[Agent] ${this.name} terminated`);
+    console.log(`[Agent] ${this.name} terminated`);
   }
 
   /**

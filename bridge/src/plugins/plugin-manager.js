@@ -1,4 +1,3 @@
-import logger from '../core/monitoring/logger.js';
 /**
  * PluginManager manages the lifecycle of skills and tools.
  * It allows the AI Agent to discover and execute capabilities.
@@ -126,7 +125,7 @@ export class PluginManager {
     // Validate and normalize arguments
     const validation = this.validateArgs(name, args);
     if (!validation.valid) {
-      logger.warn(`[PluginManager] Invalid args for ${name}: ${validation.error}`);
+      console.warn(`[PluginManager] Invalid args for ${name}: ${validation.error}`);
       return {
         success: false,
         error: validation.error,
@@ -138,14 +137,14 @@ export class PluginManager {
 
     const normalizedArgs = validation.normalizedArgs || args;
 
-    logger.info(`[PluginManager] Executing tool ${name} with args:`, normalizedArgs);
+    console.log(`[PluginManager] Executing tool ${name} with args:`, normalizedArgs);
 
     try {
       const result = await tool.execute(normalizedArgs, context);
       return result;
     } catch (error) {
       // Don't crash on tool errors - return structured error instead
-      logger.error(`[PluginManager] Tool ${name} error:`, error.message);
+      console.error(`[PluginManager] Tool ${name} error:`, error.message);
       return {
         success: false,
         error: error.message,

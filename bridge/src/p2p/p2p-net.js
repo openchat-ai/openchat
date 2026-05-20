@@ -1,4 +1,3 @@
-import logger from '../core/monitoring/logger.js';
 /**
  * P2P Swarm Manager
  * 使用 hyperswarm 实现基础 P2P 能力
@@ -117,7 +116,7 @@ class P2PNet extends EventEmitter {
       return msg.type === 'topic_query' ? this._queryTopicPeers(msg.topic, msg.excludePeerId) : null;
     });
 
-    logger.info(`[P2P] 已初始化，节点ID: ${this.peerId.slice(0, 8)}...`);
+    console.log(`[P2P] 已初始化，节点ID: ${this.peerId.slice(0, 8)}...`);
   }
 
   /**
@@ -125,7 +124,7 @@ class P2PNet extends EventEmitter {
    */
   async start() {
     if (this.isRunning) {
-      logger.info('[P2P] 已在运行');
+      console.log('[P2P] 已在运行');
       return;
     }
 
@@ -154,14 +153,14 @@ class P2PNet extends EventEmitter {
           this.swarm.dht.firewalled = false;
         });
       }
-      logger.info(`[P2P] 公网节点: ${isPublic}${isPublic ? ' (firewalled=false, 可作为中继)' : ' (firewalled=auto, 经中继通信)'}`);
+      console.log(`[P2P] 公网节点: ${isPublic}${isPublic ? ' (firewalled=false, 可作为中继)' : ' (firewalled=auto, 经中继通信)'}`);
 
       this.swarm.on('connection', (conn, info) => {
         this.handleConnection(conn, info);
       });
 
       this.swarm.on('peer', (peer) => {
-        logger.info(`[P2P] DHT 发现节点: ${peer.publicKey?.toString('hex')?.slice(0, 8) || 'unknown'}...`);
+        console.log(`[P2P] DHT 发现节点: ${peer.publicKey?.toString('hex')?.slice(0, 8) || 'unknown'}...`);
       });
 
       // 加入主题（带超时）
@@ -173,7 +172,7 @@ class P2PNet extends EventEmitter {
 
       if (!joinOk && this.registry) {
         // DHT 引导失败 → 通过 registry 发现其他节点
-        logger.info('[P2P] DHT 加入超时，正在尝试注册中心...');
+        console.log('[P2P] DHT 加入超时，正在尝试注册中心...');
         try {
           const onlinePeers = await this.registry.discoverPeers();
           for (const p of onlinePeers) {
@@ -187,15 +186,15 @@ class P2PNet extends EventEmitter {
             }
           }
           if (onlinePeers.length > 0) {
-            logger.info(`[P2P] 注册中心发现 ${onlinePeers.length} 个节点 (${onlinePeers.some(p => p.stale) ? '含过期' : '全部在线'})`);
+            console.log(`[P2P] 注册中心发现 ${onlinePeers.length} 个节点 (${onlinePeers.some(p => p.stale) ? '含过期' : '全部在线'})`);
           }
         } catch (e) {
-          logger.info(`[P2P] 注册中心发现失败: ${e.message}`);
+          console.log(`[P2P] 注册中心发现失败: ${e.message}`);
         }
       }
 
       this.isRunning = true;
-      logger.info(`[P2P] 已加入主题: ${this.topic.toString('hex').slice(0, 8)}...`);
+      console.log(`[P2P] 已加入主题: ${this.topic.toString('hex').slice(0, 8)}...`);
 
       // 直连所有 known peers
       for (const peer of this.knownPeers) {
@@ -205,7 +204,7 @@ class P2PNet extends EventEmitter {
       this.cleanupTimer = setInterval(() => this.cleanupPeers(), 30000);
 
     } catch (error) {
-      logger.error('[P2P] 启动失败:', error.message);
+      console.error('[P2P] 启动失败:', error.message);
       throw error;
     }
   }
@@ -236,9 +235,9 @@ class P2PNet extends EventEmitter {
       this.connectedPeers.clear();
       this.directPeers.clear();
       this.isRunning = false;
-      logger.info('[P2P] 已停止');
+      console.log('[P2P] 已停止');
     } catch (error) {
-      logger.error('[P2P] 停止错误:', error.message);
+      console.error('[P2P] 停止错误:', error.message);
     }
   }
 
@@ -249,9 +248,11 @@ class P2PNet extends EventEmitter {
     let peerId;
     try {
       peerId = conn?.peer?.publicKey?.toString('hex') || crypto.randomBytes(8).toString('hex');
-    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || '')); peerId = crypto.randomBytes(8).toString('hex'); }
+    } catch {
+      peerId = crypto.randomBytes(8).toString('hex');
+    }
 
-    logger.info(`[P2P] 新连接来自: ${peerId.slice(0, 8)}... (${info.client ? '客户端' : '服务端'})`);
+    console.log(`[P2P] 新连接来自: ${peerId.slice(0, 8)}... (${info.client ? '客户端' : '服务端'})`);
 
     // 设置连接超时
     conn.setTimeout(30000);
@@ -266,7 +267,7 @@ class P2PNet extends EventEmitter {
 
     // 处理断开
     conn.on('close', () => {
-      logger.info(`[P2P] 连接已关闭: ${peerId.slice(0, 8)}...`);
+      console.log(`[P2P] 连接已关闭: ${peerId.slice(0, 8)}...`);
       this.connectedPeers.delete(peerId);
       this.peerInfo.delete(peerId);
       this.emit('peer-disconnected', peerId);
@@ -274,7 +275,7 @@ class P2PNet extends EventEmitter {
 
     // 处理错误
     conn.on('error', (error) => {
-      logger.error(`[P2P] 连接错误: ${error.message}`);
+      console.error(`[P2P] 连接错误: ${error.message}`);
       this.connectedPeers.delete(peerId);
       this.peerInfo.delete(peerId);
     });
@@ -297,10 +298,10 @@ class P2PNet extends EventEmitter {
    */
   connectPeer(host, port, label) {
     const peerKey = label || `${host}:${port}`;
-    logger.info(`[P2P] 直连中: ${host}:${port}...`);
+    console.log(`[P2P] 直连中: ${host}:${port}...`);
 
     const socket = net.createConnection({ host, port }, () => {
-      logger.info(`[P2P] 直连已建立: ${host}:${port}`);
+      console.log(`[P2P] 直连已建立: ${host}:${port}`);
     });
 
     socket.setTimeout(10000);
@@ -314,14 +315,14 @@ class P2PNet extends EventEmitter {
     });
 
     socket.on('close', () => {
-      logger.info(`[P2P] 直连已关闭: ${host}:${port}`);
+      console.log(`[P2P] 直连已关闭: ${host}:${port}`);
       this.directPeers.delete(peerKey);
       this.peerInfo.delete(peerKey);
       this.emit('peer-disconnected', peerKey);
     });
 
     socket.on('error', (error) => {
-      logger.error(`[P2P] 直连错误 (${host}:${port}): ${error.message}`);
+      console.error(`[P2P] 直连错误 (${host}:${port}): ${error.message}`);
       this.directPeers.delete(peerKey);
       this.peerInfo.delete(peerKey);
     });
@@ -348,7 +349,7 @@ class P2PNet extends EventEmitter {
     if (this.directServer) return;
     this.directServer = net.createServer((socket) => {
       const remoteAddr = `${socket.remoteAddress}:${socket.remotePort}`;
-      logger.info(`[P2P] 直连入站: ${remoteAddr}`);
+      console.log(`[P2P] 直连入站: ${remoteAddr}`);
       socket.setTimeout(10000);
 
       // 发送握手回复（带帧头）
@@ -372,19 +373,19 @@ class P2PNet extends EventEmitter {
 
       socket.on('close', () => {
         const id = socket._peerId?.slice(0, 8) || remoteAddr;
-        logger.info(`[P2P] 直连入站已关闭: ${id}...`);
+        console.log(`[P2P] 直连入站已关闭: ${id}...`);
         this.directPeers.delete(socket._peerId || remoteAddr);
       });
 
       socket.on('error', (err) => {
         const id = socket._peerId?.slice(0, 8) || remoteAddr;
-        logger.error(`[P2P] 直连入站错误 (${id}): ${err.message}`);
+        console.error(`[P2P] 直连入站错误 (${id}): ${err.message}`);
         this.directPeers.delete(socket._peerId || remoteAddr);
       });
     });
 
     this.directServer.listen(port, host, () => {
-      logger.info(`[P2P] 直连 TCP 服务器正在监听 ${host}:${port}`);
+      console.log(`[P2P] 直连 TCP 服务器正在监听 ${host}:${port}`);
     });
   }
 
@@ -396,7 +397,7 @@ class P2PNet extends EventEmitter {
       const message = JSON.parse(data.toString());
 
       if (message.type === 'HANDSHAKE') {
-        logger.info(`[P2P] 直连握手来自: ${message.peerId.slice(0, 8)}...`);
+        console.log(`[P2P] 直连握手来自: ${message.peerId.slice(0, 8)}...`);
         // 用对方 peerId 替换 key 以便识别
         if (!this.directPeers.has(message.peerId)) {
           this.directPeers.set(message.peerId, socket);
@@ -411,7 +412,7 @@ class P2PNet extends EventEmitter {
       // 统一走 handleMessage 逻辑
       this.handleMessage(resolvedPeerId, data);
     } catch (error) {
-      logger.error(`[P2P] 直连消息错误: ${error.message}`);
+      console.error(`[P2P] 直连消息错误: ${error.message}`);
     }
   }
 
@@ -427,7 +428,7 @@ class P2PNet extends EventEmitter {
         timestamp: Date.now()
       }));
     } catch (error) {
-      logger.error(`[P2P] 握手失败: ${error.message}`);
+      console.error(`[P2P] 握手失败: ${error.message}`);
     }
   }
 
@@ -458,7 +459,7 @@ class P2PNet extends EventEmitter {
     try {
       conn.write(createFrame(info));
     } catch (error) {
-      logger.error(`[P2P] 身份发送失败: ${error.message}`);
+      console.error(`[P2P] 身份发送失败: ${error.message}`);
     }
   }
 
@@ -471,7 +472,7 @@ class P2PNet extends EventEmitter {
 
       switch (message.type) {
         case 'HANDSHAKE':
-          logger.info(`[P2P] 收到握手来自: ${message.peerId.slice(0, 8)}...`);
+          console.log(`[P2P] 收到握手来自: ${message.peerId.slice(0, 8)}...`);
           break;
 
         case 'topic_announce':
@@ -498,7 +499,7 @@ class P2PNet extends EventEmitter {
         case 'IDENTITY': {
           const info = message.info || {};
           this.peerInfo.set(peerId, info);
-          logger.info(`[P2P] 身份: ${info.name || '?'}(${info.region || '?'}) ${info.residentCount || 0}居民`);
+          console.log(`[P2P] 身份: ${info.name || '?'}(${info.region || '?'}) ${info.residentCount || 0}居民`);
           break;
         }
 
@@ -537,10 +538,10 @@ class P2PNet extends EventEmitter {
           break;
 
         default:
-          logger.info(`[P2P] 未知消息类型: ${message.type}`);
+          console.log(`[P2P] 未知消息类型: ${message.type}`);
       }
     } catch (error) {
-      logger.error(`[P2P] 消息解析错误: ${error.message}`);
+      console.error(`[P2P] 消息解析错误: ${error.message}`);
     }
   }
 
@@ -554,7 +555,7 @@ class P2PNet extends EventEmitter {
       conn = this.directPeers.get(peerId);
     }
     if (!conn) {
-      logger.info(`[P2P] 节点未连接: ${peerId.slice(0, 8)}...`);
+      console.log(`[P2P] 节点未连接: ${peerId.slice(0, 8)}...`);
       return false;
     }
 
@@ -562,7 +563,7 @@ class P2PNet extends EventEmitter {
       conn.write(createFrame(message));
       return true;
     } catch (error) {
-      logger.error(`[P2P] 发送失败: ${error.message}`);
+      console.error(`[P2P] 发送失败: ${error.message}`);
       return false;
     }
   }
@@ -619,7 +620,7 @@ class P2PNet extends EventEmitter {
     }
 
     if (cleaned > 0) {
-      logger.info(`[P2P] 已清理 ${cleaned} 个失效连接`);
+      console.log(`[P2P] 已清理 ${cleaned} 个失效连接`);
     }
   }
 

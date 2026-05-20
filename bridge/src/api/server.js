@@ -1,4 +1,3 @@
-import logger from '../core/monitoring/logger.js';
 /**
  * OpenChat API Server
  * 统一的 REST API 框架
@@ -37,7 +36,7 @@ import voiceRouter from './routes/voice.js';
 import signalingRouter from './routes/signaling.js';
 import residentsRouter from './routes/residents.js';
 import sageRouter from './routes/sage.js';
-import { residentManager } from '../core/agent/resident-manager.js';
+import { residentManager } from '../core/resident-manager.js';
 
 class APIServer {
   constructor(options = {}) {
@@ -242,7 +241,7 @@ async function R(){
     // Chat WebSocket
     this.wss = new WebSocketServer({ server, path: '/ws' });
     this.wss.on('connection', (ws) => {
-      logger.info('[WS] client connected');
+      console.log('[WS] client connected');
       ws._peerId = 'ws-' + Date.now().toString(36);
       this.clients.add(ws);
       ws.on('message', (data) => {
@@ -255,7 +254,7 @@ async function R(){
       });
       ws.on('close', () => {
         this.clients.delete(ws);
-        logger.info('[WS] client disconnected');
+        console.log('[WS] client disconnected');
       });
       ws.send(JSON.stringify({ type: 'bridge_handshake', data: { version: 2 } }));
     });
@@ -264,7 +263,7 @@ async function R(){
     this.signalingWss = new WebSocketServer({ server, path: '/signaling' });
     this.signalingWss.on('connection', (ws) => {
       let registeredPeerId = null;
-      logger.info('[Signaling] 客户端已连接 via Express');
+      console.log('[Signaling] 客户端已连接 via Express');
       ws.on('message', (data) => {
         try {
           const msg = JSON.parse(data.toString());
@@ -283,7 +282,7 @@ async function R(){
               return;
             }
           }
-        } catch (e) { logger.error('[Signaling] error:', e.message); }
+        } catch (e) { console.error('[Signaling] error:', e.message); }
       });
       ws.on('close', () => {
         if (registeredPeerId) this._signalingRooms.delete(registeredPeerId);
@@ -295,7 +294,7 @@ async function R(){
     return new Promise((resolve, reject) => {
       try {
         this.server = this.app.listen(this.port, () => {
-          logger.info(`[API] Server running on port ${this.port}`);
+          console.log(`[API] Server running on port ${this.port}`);
           resolve(this.server);
         });
       } catch (error) {
@@ -308,10 +307,9 @@ async function R(){
     if (this.server) {
       if (this.wss) this.wss.close();
       if (this.signalingWss) this.signalingWss.close();
-      this.server.closeAllConnections();
       return new Promise((resolve) => {
         this.server.close(() => {
-          logger.info('[API] Server stopped');
+          console.log('[API] Server stopped');
           resolve();
         });
       });

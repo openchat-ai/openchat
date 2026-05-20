@@ -1,4 +1,3 @@
-import logger from '../core/monitoring/logger.js';
 /**
  * P2P 故障检测和重试机制
  *
@@ -77,7 +76,7 @@ class FaultTolerance extends EventEmitter {
         return this.scheduleRetry(envelope, result?.error);
       }
     } catch (error) {
-      logger.error(`[FaultTolerance] Send error:`, error.message);
+      console.error(`[FaultTolerance] Send error:`, error.message);
       return this.scheduleRetry(envelope, error.message);
     }
   }
@@ -94,7 +93,7 @@ class FaultTolerance extends EventEmitter {
       this.maxRetryDelay
     );
 
-    logger.info(`[FaultTolerance] Scheduling retry ${attempts}/${maxRetries} for ${messageId} in ${delay}ms`);
+    console.log(`[FaultTolerance] Scheduling retry ${attempts}/${maxRetries} for ${messageId} in ${delay}ms`);
 
     const timer = setTimeout(async () => {
       this.retryTimers.delete(messageId);
