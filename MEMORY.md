@@ -49,3 +49,29 @@
 - [2026-05-18] 四轮专家评审共执行 24 项 P0，Bridge 根目录清理 12 个 Python 遗留文件，AI 居民状态机+多路径推理替换预制回答。**教训：专家评审每轮都套用相同提问模式——架构/测试/安全/AI——不会问完全重复的问题。当评审开始聚焦"居民不够聪明"和"知识不共享"时，说明基础设施债已还完，轮到产品力了。**
 
 - [2026-05-20] **第五轮专家评审 — HTTP 路径统一 + 首次全绿**：测试从 98/98 推进到 120/120（第五轮 98→第六轮 120，最终全绿）。完成 5 项 P0 执行：Express 监听端口 3800，废弃 raw HTTP server，所有衍生端口以 3800 为基准。**教训：大量遗留代码（startServer 中的 ~250 行路由/WebSocket 逻辑）在首次 edit 时未完全匹配删除，因文件行号已因前序 edit 偏移。大段替换时必须用唯一匹配锚点（如 `}` + 下一方法签名）。**
+
+
+## 专家意见跟踪
+
+| 轮次 | 意见摘要 | 提出专家 | 对应任务 | 状态 | 验收人 |
+|------|---------|---------|---------|------|-------|
+| R1 | 死代码太多(analysis-*.cjs, .js.js) | Git专家 | P0-1 清理4770文件 | ✅ 已修(R1) | Git专家 |
+| R1 | 测试20%失败率不可接受 | 测试工程师 | P0-2 修复17个失败 | ✅ 已修(R2) | 测试工程师 |
+| R1 | 旧HTTP无鉴权 | 安全研究员 | P0-3 API鉴权统一 | ✅ 已修(R2) | 安全研究员 |
+| R1 | P2P零测试 | 测试工程师 | P0-4 8个P2P测试 | ✅ 已修(R2) | 测试工程师 |
+| R1 | agent-engine session store缺失 | 核心工程师 | P0-1 注入deps | ✅ 已修(R2) | 核心工程师 |
+| R2 | 两条HTTP路径共存 | 架构师 | P0-1 废弃raw HTTP | ✅ 已修(R3) | 架构师 |
+| R2 | agent-session混用jest/ESM | 测试工程师 | P0-2 删除jest测试 | ✅ 已修(R3) | 测试工程师 |
+| R2 | Flutter API对齐未验证 | Flutter开发者 | P0-3 baseUrl确认 | ✅ 已修(R3) | Flutter开发者 |
+| R3 | //注释吃掉后续代码(3处) | 核心工程师 | 修复topic-registry/route-handlers | ✅ 已修(R4) | 核心工程师 |
+| R4 | WS clients未追踪 | Code Review | server.js加this.clients | ✅ 已修(R4) | Code Review |
+| R4 | _queryTopicPeers递归爆栈 | Code Review | 改为_getLocalPeers | ✅ 已修(R4) | Code Review |
+| R4 | catch{}吞异常 | 安全研究员 | topic-registry加日志 | ✅ 已修(R4) | 安全研究员 |
+| R4 | isMain端口检测被移除 | Code Review | 恢复port===DEFAULT_PORT | ✅ 已修(R4) | Code Review |
+| R5 | forge.js零测试覆盖 | 核心工程师 | 16个测试 | ✅ 已修(R5) | 核心工程师 |
+| R5 | generalization单测试不可信 | AI研究员 | 基准重算+扩展 | ✅ 已修(R6) | AI研究员 |
+| R5 | evolution-integration flaky | 测试工程师 | 重写为node:test | ✅ 已修(R6) | 测试工程师 |
+| R6 | 产品无一句话定位 | VC/投资人 | README重写 | ✅ 已修(R7) | VC/投资人 |
+| R6 | 无新人onboarding | 开源社区经理 | first-steps.md | ✅ 已修(R7) | 开源社区经理 |
+| R6 | 无CI | SRE/运维 | .github/workflows/ci.yml | ✅ 已修(R7) | SRE/运维 |
+| R6 | eval-report残留 | Git专家 | 清理+.gitignore | ✅ 已修(R7) | Git专家 |
