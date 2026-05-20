@@ -905,7 +905,7 @@ class Bridge {
     // Print welcome once
     const pname = this.getPrompt();
     logger.info('');
-    logger.info('  OPENCHAT BRIDGE v0.1.0');
+    logger.info('  OPENCHAT BRIDGE v0.0.2');
     if (pname) logger.info(`  [${pname}]`);
     logger.info('  输入 /help 查看命令列表，或直接开始聊天\n');
 
