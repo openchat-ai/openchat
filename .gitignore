@@ -75,3 +75,5 @@ bridge/src/core/age_increment*.js
 research-*
 analysis-*
 *_detect_*.log
+# Evaluation reports
+eval-report-*.json
