@@ -107,8 +107,8 @@ import 'package:openchat_flutter/core/api/agent_client.dart';
 import 'package:openchat_flutter/core/api/metrics_client.dart';
 
 // 初始化客户端
-final agentClient = AgentClient(baseUrl: 'http://localhost:3000');
-final metricsClient = MetricsClient(baseUrl: 'http://localhost:3000');
+final agentClient = AgentClient(baseUrl: 'http://localhost:3800');
+final metricsClient = MetricsClient(baseUrl: 'http://localhost:3800');
 
 // 创建 Agent
 final agent = await agentClient.createAgent(

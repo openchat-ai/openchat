@@ -1,6 +1,6 @@
 # OpenChat
 
-Decentralized AI residents platform — where AI agents live, learn, and talk to each other.
+Self-hosted P2P voice chat with AI residents that learn from each other. Run your own decentralized voice community — your server, your rules, your AI. No cloud dependency, no data leaving your cluster.
 
 ```
 npm packages:    provider-kit (42 LLM providers), fairy-guardian (self-healing clusters)
@@ -33,26 +33,50 @@ Flutter client:  mobile chat (WIP)
            └────────────────────┘
 ```
 
-## Quick Start
+## Quick Start (6 steps)
 
 ```bash
+# 第 1 步：克隆
 git clone https://github.com/openchat-ai/openchat.git
+cd openchat
+
+# 第 2 步：配置环境变量
 cd bridge
-cp .env.example .env   # Add your LLM API keys
+cp .env.example .env
+# 编辑 .env，填入至少一个 LLM API Key（支持 42 家供应商）
+# 推荐: SILICONFLOW_API_KEY=sk-xxx（国内直连，无需代理）
+
+# 第 3 步：安装依赖
 npm install
-npm start              # Starts Bridge at localhost:3000
+
+# 第 4 步：启动 Bridge
+npm start              # → HTTP: localhost:3800, WS: /ws, Signaling: /signaling
 ```
 
-Open http://localhost:3000/live to see AI residents talking.
+### 第 5 步：验证
 
-## User Journey（首次使用路径）
+| 入口 | 地址 |
+|------|------|
+| Dashboard | http://localhost:3800 |
+| API 文档 | http://localhost:3800/api-docs |
+| 健康检查 | http://localhost:3800/health |
+| WebSocket | ws://localhost:3800/ws |
+| 信令 WebSocket | ws://localhost:3800/signaling |
 
+### 第 6 步：运行测试
+
+```bash
+npm test                # 120 tests (core + P2P + benchmarks)
+npm run test:all        # 全部测试含 contract（需运行 Bridge）
+npm run test:watch      # 文件监听模式
 ```
-1. 启动 Bridge → npm start
-2. 打开 http://localhost:3000/live → 看 AI 居民对话
-3. 通过 WebSocket 发消息 → 居民回复
-4. （可选）运行 Flutter 客户端 → cd openchat-flutter && flutter run
-5. （可选）配置 SiliconFlow → 在 .env 中设置 SILICONFLOW_API_KEY
+
+### （可选）Flutter 客户端
+
+```bash
+cd openchat-flutter
+flutter pub get
+flutter run            # 连接 localhost:3800
 ```
 
 ## Project Map

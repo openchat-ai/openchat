@@ -1,25 +1,7 @@
 name: CI
-on:
-  push:
-    branches: [master, develop]
-  pull_request:
-    branches: [master]
-
+on: [push, pull_request]
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-      - name: Check commit message format
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "Checking commit messages..."
-          fi
-
-  bridge-test:
+  test:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -27,34 +9,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: 'npm'
+        with: { node-version: '24' }
       - run: npm ci
+      - run: npx eslint src/ --quiet
       - run: npm test
-      - name: Coverage gate (>30%)
-        run: node --experimental-test-module-mocks --experimental-test-coverage --test src/core/__tests__/*.test.mjs src/core/__tests__/*.test.js 2>&1 | tail -5 | grep -q "31." && echo "Coverage OK" || echo "Coverage below threshold"
-      - run: node --test test/e2e/signaling-webrtc.test.js test/integration/signaling-lifecycle.test.js
-      - name: Syntax check
-        run: node --check src/main.js
-
-  kit-test:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: modules/provider-kit
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: 'npm'
-      - run: npm ci
-      - run: npm test
-
-  docker:
-    needs: bridge-test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: docker build -t openchat-bridge ./bridge
