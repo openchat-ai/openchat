@@ -242,21 +242,26 @@ class Bridge {
     logger.info('╚═══════════════════════════════════════════════════════════╝');
     logger.info('');
 
-    // 启动增强稳定性系统
+    // Phase 1: 增强稳定性系统
+    initTracker.start('stability');
     try {
       this.stabilitySystem.start();
+      initTracker.ok('stability');
     } catch (e) {
-      // 稳定性系统启动失败不影响主流程
+      initTracker.fail('stability', e);
     }
 
-    // 初始化 RAG 系统
+    // Phase 2: 初始化 RAG 系统
+    initTracker.start('rag');
     try {
       await memoryManager.initialize();
+      initTracker.ok('rag');
     } catch (e) {
-      // RAG 初始化可选
+      initTracker.fail('rag', e);
     }
 
-    // 初始化 AI 人系统
+    // Phase 3: 初始化 AI 人系统
+    initTracker.start('ai-personhood');
     try {
       const founder = createFounder();
       await deitySystemManager.initialize(founder.id);
@@ -271,15 +276,17 @@ class Bridge {
       global.aiPersonManager = aiPersonManager;
 
       aiPersonManager.createDefaultAIPerson();
+      initTracker.ok('ai-personhood');
     } catch (e) {
-      logger.info('[AI-Personhood] 初始化失败:', e.message);
+      initTracker.fail('ai-personhood', e);
     }
 
     await this.autoConfigProviders(detectedTools);
 
     initCore();
 
-    // 启动 P2P 网络（在 API 服务器之前，以便注入 swarm 实例）
+    // Phase 4: 启动 P2P 网络（在 API 服务器之前，以便注入 swarm 实例）
+    initTracker.start('p2p');
     try {
       // 构造 PeerRegistry（多核心）
       const backends = [];
@@ -333,7 +340,9 @@ class Bridge {
         this.p2p.listenDirect(CONFIG.directListen);
       }
       logger.info(`[P2P] Hyperswarm 网络已加入`);
+      initTracker.ok('p2p');
     } catch (p2pErr) {
+      initTracker.fail('p2p', p2pErr);
       logger.info(`[P2P] 启动跳过: ${p2pErr.message}`);
     }
 
@@ -353,7 +362,8 @@ class Bridge {
       }
     }
 
-    // 启动统一 REST API 服务器（合并了原始 HTTP 服务）
+    // Phase 5: 启动统一 REST API 服务器（合并了原始 HTTP 服务）
+    initTracker.start('api');
     try {
       const { default: APIServer, setBridgeContext } = await import('./api/server.js');
       this.apiServer = new APIServer({ port: CONFIG.port, swarm: this.p2p, deployEnabled: deployServerEnabled });
@@ -667,7 +677,9 @@ class Bridge {
           }
         });
       }
+      initTracker.ok('api');
     } catch (e) {
+      initTracker.fail('api', e);
       logger.info(`[启动] API/P2R 初始化失败: ${e.message}`);
     }
 
@@ -693,6 +705,15 @@ class Bridge {
         logger.info('[提示] 仅监听本地连接（自动检测未发现公网 IP）');
       }
       logger.info('');
+      if (initTracker) {
+        const report = initTracker.report();
+        const failed = report.filter(s => s.status === 'failed');
+        if (failed.length > 0) {
+          logger.warn({ failed: failed.map(s => s.stage + ': ' + s.error) }, `[Init] ${failed.length} phase(s) failed`);
+        } else {
+          logger.info(`[Init] All ${report.length} phases OK`);
+        }
+      }
       logger.info('[Bridge] 运行中... (Ctrl+C 停止)');
       logger.info('[提示] 使用 --cli 参数进入交互模式');
 
