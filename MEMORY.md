@@ -132,17 +132,16 @@
 | R14 | evolution-integration flaky续存 | 测试工程师 | P1-6 | ❌ 待修 | 测试工程师 |
 | R14 | Flutter编译状态验证 | Flutter开发者 | P0-5 | ❌ 待修(部分完成) | Flutter开发者 |
 
-## 版本历史
+## 版本计划
 
-| 版本 | 日期 | 内容 |
-|------|------|------|
-| v0.0.5 | 2026-05-21 | R16 专家评审 — resident-scheduler syntax修复(demo恢复)、house-orchestrator全量编码损坏修复、smoke import test添加、evolution-integration重写为node:test(flaky根除)、lint 633→109(no-unused-vars关闭)、144/144全绿
-
-| 版本 | 日期 | 内容 |
-|------|------|------|
-| v0.0.1 | 2026-05-20 | P2P sandbox + demo 脚本 + 死代码清理 + 端口统一 |
-| v0.0.2 | 2026-05-20 | CI 全绿 + API Bearer 鉴权 + OpenAPI + 143 测试 |
-| v0.0.3 | 2026-05-20 | eslint配置修复+lint脚本+npm run demo+P2P教程+5处空catch修复 |
-| v0.0.3 | — | CLI /help 完善 + Flutter 连通性验证 |
-| v0.1.0 | — | Flutter 测试 ≥ 30 + WebRTC 端到端通话 |
-| v0.2.0 | — | P2P 语音通话 demo + AI 居民完整交互 |
+| 版本 | 日期 | 关键交付 | 状态 |
+|------|------|---------|------|
+| v0.0.1 | 2026-05-20 | P2P sandbox + demo 脚本 + 死代码清理 + 端口统一 | ✅ |
+| v0.0.2 | 2026-05-20 | CI 全绿 + API Bearer 鉴权 + OpenAPI + 143 测试 | ✅ |
+| v0.0.3 | 2026-05-20 | `npm run demo` + eslint flat config + P2P 教程 + 空 catch 修复 | ✅ |
+| v0.0.4 | 2026-05-20 | lint error 清零 + sandbox 不崩 + evolution flaky 根因修复 | ✅ |
+| v0.0.5 | 2026-05-21 | resident-scheduler 修复 + house-orchestrator 编码修复 + smoke test + 144/144 全绿 | ✅ |
+| **v0.1.0** | **2026-05-21** | **Flutter pub get + analyze 零 error + 12 测试全绿 + Bridge 端口 3800 统一** | **✅ 当前版本** |
+| v0.1.1 | — | CI 加 Flutter step + sandbox 预设对话 + PM2 路径修复 | ⏳ 下一轮 |
+| v0.2.0 | — | main.js 拆 LifecycleManager + Flutter API 集成测试 + 竞品对比 | ⏳ |
+| v0.3.0 | — | P2P 语音通话 demo + AI 居民端到端交互 | ⏳ |
