@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 
-const { Forge } = await import('../forge.js');
+const { Forge } = await import('../evolution/forge.js');
 
 describe('Forge', () => {
   let forge;
