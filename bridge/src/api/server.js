@@ -1,3 +1,4 @@
+import logger from '../core/logger.js';
 /**
  * OpenChat API Server
  * 统一的 REST API 框架
@@ -241,7 +242,7 @@ async function R(){
     // Chat WebSocket
     this.wss = new WebSocketServer({ server, path: '/ws' });
     this.wss.on('connection', (ws) => {
-      console.log('[WS] client connected');
+      logger.info('[WS] client connected');
       ws._peerId = 'ws-' + Date.now().toString(36);
       this.clients.add(ws);
       ws.on('message', (data) => {
@@ -254,7 +255,7 @@ async function R(){
       });
       ws.on('close', () => {
         this.clients.delete(ws);
-        console.log('[WS] client disconnected');
+        logger.info('[WS] client disconnected');
       });
       ws.send(JSON.stringify({ type: 'bridge_handshake', data: { version: 2 } }));
     });
@@ -263,7 +264,7 @@ async function R(){
     this.signalingWss = new WebSocketServer({ server, path: '/signaling' });
     this.signalingWss.on('connection', (ws) => {
       let registeredPeerId = null;
-      console.log('[Signaling] 客户端已连接 via Express');
+      logger.info('[Signaling] 客户端已连接 via Express');
       ws.on('message', (data) => {
         try {
           const msg = JSON.parse(data.toString());
@@ -282,7 +283,7 @@ async function R(){
               return;
             }
           }
-        } catch (e) { console.error('[Signaling] error:', e.message); }
+        } catch (e) { logger.error('[Signaling] error:', e.message); }
       });
       ws.on('close', () => {
         if (registeredPeerId) this._signalingRooms.delete(registeredPeerId);
@@ -294,7 +295,7 @@ async function R(){
     return new Promise((resolve, reject) => {
       try {
         this.server = this.app.listen(this.port, () => {
-          console.log(`[API] Server running on port ${this.port}`);
+          logger.info(`[API] Server running on port ${this.port}`);
           resolve(this.server);
         });
       } catch (error) {
@@ -310,7 +311,7 @@ async function R(){
       this.server.closeAllConnections();
       return new Promise((resolve) => {
         this.server.close(() => {
-          console.log('[API] Server stopped');
+          logger.info('[API] Server stopped');
           resolve();
         });
       });

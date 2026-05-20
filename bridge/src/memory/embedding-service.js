@@ -1,3 +1,4 @@
+import logger from '../core/logger.js';
 /**
  * EmbeddingService - Embedding API 封装
  *
@@ -49,7 +50,7 @@ export class EmbeddingService {
       this.cache = new Map(Object.entries(data));
     } catch (e) {
       if (e.code !== 'ENOENT') {
-        console.warn('[EmbeddingService] Cache load failed:', e.message);
+        logger.warn('[EmbeddingService] Cache load failed:', e.message);
       }
       this.cache = new Map();
     }
@@ -69,7 +70,7 @@ export class EmbeddingService {
         const data = Object.fromEntries(this.cache);
         await fsPromises.writeFile(CACHE_FILE, JSON.stringify(data));
       } catch (e) {
-        console.warn('[EmbeddingService] Cache save failed:', e.message);
+        logger.warn('[EmbeddingService] Cache save failed:', e.message);
       } finally {
         this._savePending = false;
       }
@@ -347,7 +348,7 @@ export class EmbeddingService {
     if (fs.existsSync(CACHE_FILE)) {
       fs.unlinkSync(CACHE_FILE);
     }
-    console.log('[EmbeddingService] Cache cleared');
+    logger.info('[EmbeddingService] Cache cleared');
   }
 
   /**

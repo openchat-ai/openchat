@@ -1,3 +1,4 @@
+import logger from '../core/logger.js';
 /**
  * P2P 路由引擎
  *
@@ -127,7 +128,7 @@ class RoutingEngine extends EventEmitter {
     // 查找最佳路由
     const route = this.findBestRoute(target);
     if (!route) {
-      console.warn(`[RoutingEngine] No route found for ${target}`);
+      logger.warn(`[RoutingEngine] No route found for ${target}`);
       return null;
     }
 

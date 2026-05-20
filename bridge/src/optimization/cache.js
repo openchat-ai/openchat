@@ -1,3 +1,4 @@
+import logger from '../core/logger.js';
 /**
  * Cache Manager
  * 单层缓存管理（简化版）
@@ -16,7 +17,7 @@ class CacheManager {
     // 定期清理过期缓存
     this.cleanupTimer = setInterval(() => this.cleanup(), this.cleanupInterval);
 
-    console.log(`[Cache] Manager initialized, maxSize: ${this.maxSize}, maxAge: ${this.maxAge}ms`);
+    logger.info(`[Cache] Manager initialized, maxSize: ${this.maxSize}, maxAge: ${this.maxAge}ms`);
   }
 
   /**
@@ -95,7 +96,7 @@ class CacheManager {
     this.cache.clear();
     this.hits = 0;
     this.misses = 0;
-    console.log('[Cache] Cleared');
+    logger.info('[Cache] Cleared');
   }
 
   /**
@@ -113,7 +114,7 @@ class CacheManager {
     }
 
     if (cleaned > 0) {
-      console.log(`[Cache] Cleaned ${cleaned} expired entries`);
+      logger.info(`[Cache] Cleaned ${cleaned} expired entries`);
     }
   }
 
@@ -156,7 +157,7 @@ class CacheManager {
       clearInterval(this.cleanupTimer);
     }
     this.cache.clear();
-    console.log('[Cache] Manager destroyed');
+    logger.info('[Cache] Manager destroyed');
   }
 }
 

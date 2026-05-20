@@ -23,6 +23,7 @@ import { homedir } from 'os';
 import { join } from 'path';
 import { execSync } from 'child_process';
 import { DEFAULT_PORT } from '../constants.js';
+import logger from './logger.js';
 
 const KB_DIR = join(homedir(), '.openchat', 'knowledge');
 const PROBLEM_POOL_DIR = join(homedir(), '.openchat', 'problem-pool');
@@ -97,10 +98,10 @@ this.history = {
         try {
           const problems = JSON.parse(readFileSync(join(PROBLEM_POOL_DIR, file), 'utf8'));
           this.problemPool.push(...problems);
-        } catch (e) { console.log('[LC] Load fail '+file+':', e.message); }
+        } catch (e) { logger.info('[LC] Load fail '+file+':', e.message); }
       }
     }
-    console.log('[LC] Loaded pool:', this.problemPool.length, 'problems');
+    logger.info('[LC] Loaded pool:', this.problemPool.length, 'problems');
   }
 
 _loadStats() {
@@ -239,11 +240,11 @@ this.age = Math.max(this.solvedCount, this.age);
       try {
         const answer = await solve(problem, solver);
         if (answer !== null && answer !== undefined) {
-          console.log(`[学习核心] ${name}求解成功: ${problem.id}`);
+          logger.info(`[学习核心] ${name}求解成功: ${problem.id}`);
           return answer;
         }
       } catch (e) {
-        console.log(`[学习核心] ${name}求解失败: ${e.message}`);
+        logger.info(`[学习核心] ${name}求解失败: ${e.message}`);
       }
     }
     
@@ -340,13 +341,13 @@ ${problem.context ? '背景：' + JSON.stringify(problem.context) : ''}
               if (jsonMatch) {
                 const parsed = JSON.parse(jsonMatch[0]);
                 if (parsed.tasks && Array.isArray(parsed.tasks)) {
-                  console.log(`[学习核心] 研究题生成 ${parsed.tasks.length} 个任务`);
+                  logger.info(`[学习核心] 研究题生成 ${parsed.tasks.length} 个任务`);
                   await this._executeTasks(parsed.tasks, problem.id);
                 }
                 return parsed.analysis || content;
               }
             } catch (e) {
-              console.log(`[学习核心] 解析任务失败: ${e.message}`);
+              logger.info(`[学习核心] 解析任务失败: ${e.message}`);
             }
           }
           
@@ -354,7 +355,7 @@ ${problem.context ? '背景：' + JSON.stringify(problem.context) : ''}
         }
       }
     } catch (e) {
-      console.log(`[学习核心] Agent求解失败: ${e.message}`);
+      logger.info(`[学习核心] Agent求解失败: ${e.message}`);
     }
     
     return null;
@@ -366,22 +367,22 @@ ${problem.context ? '背景：' + JSON.stringify(problem.context) : ''}
         if (task.type === 'write_file' && task.path && task.content) {
           const { writeFile } = await import('fs/promises');
           await writeFile(task.path, task.content);
-          console.log(`[学习核心] ✅ 写入文件: ${task.path}`);
+          logger.info(`[学习核心] ✅ 写入文件: ${task.path}`);
         } else if (task.type === 'run_command' && task.command) {
           const { exec } = await import('child_process');
           await new Promise((resolve, reject) => {
             exec(task.command, { cwd: process.cwd() }, (error, stdout, stderr) => {
               if (error) reject(error);
               else {
-                console.log(`[学习核心] ✅ 执行命令: ${task.command.substring(0, 50)}`);
-                if (stdout) console.log(`  输出: ${stdout.trim().substring(0, 100)}`);
+                logger.info(`[学习核心] ✅ 执行命令: ${task.command.substring(0, 50)}`);
+                if (stdout) logger.info(`  输出: ${stdout.trim().substring(0, 100)}`);
                 resolve();
               }
             });
           });
         }
       } catch (e) {
-        console.log(`[学习核心] 任务执行失败: ${e.message}`);
+        logger.info(`[学习核心] 任务执行失败: ${e.message}`);
       }
     }
     
@@ -420,7 +421,7 @@ ${problem.context ? '背景：' + JSON.stringify(problem.context) : ''}
     const codeBlocks = answer.match(/```(?:javascript|js|python|bash|sh)?\n([\s\S]*?)```/g);
     if (!codeBlocks || codeBlocks.length === 0) return;
     
-    console.log(`[学习核心] 研究题包含 ${codeBlocks.length} 个代码块，准备执行...`);
+    logger.info(`[学习核心] 研究题包含 ${codeBlocks.length} 个代码块，准备执行...`);
     
     for (let i = 0; i < codeBlocks.length; i++) {
       const block = codeBlocks[i];
@@ -446,15 +447,15 @@ ${problem.context ? '背景：' + JSON.stringify(problem.context) : ''}
       
       exec(fullCmd, { cwd: process.cwd() }, (error, stdout, stderr) => {
         if (error) {
-          console.log(`[学习核心] Git 执行失败: ${error.message}`);
+          logger.info(`[学习核心] Git 执行失败: ${error.message}`);
         } else {
-          console.log(`[学习核心] ✅ Git 执行成功: ${stdout.trim()}`);
+          logger.info(`[学习核心] ✅ Git 执行成功: ${stdout.trim()}`);
           // 重新加载年龄
           this._loadStats();
         }
       });
     } catch (e) {
-      console.log(`[学习核心] Git 执行错误: ${e.message}`);
+      logger.info(`[学习核心] Git 执行错误: ${e.message}`);
     }
   }
 
@@ -464,7 +465,7 @@ ${problem.context ? '背景：' + JSON.stringify(problem.context) : ''}
     if (!pathMatch) return;
     
     const filePath = pathMatch[1];
-    console.log(`[学习核心] 准备写入文件: ${filePath}`);
+    logger.info(`[学习核心] 准备写入文件: ${filePath}`);
     
     // 实际写入需要更复杂的解析，这里简化处理
     // 后续可以让 Agent 直接返回结构化的任务
@@ -495,7 +496,7 @@ ${problem.context ? '背景：' + JSON.stringify(problem.context) : ''}
       try {
         const prompt = this.teacher.buildExtractPatternPrompt({ question: problem.question, domain: problem.domain, difficulty: problem.difficulty }, String(answer));
         // TeacherLLM 会在下次会话集成时异步调用，先记日志
-        console.log(`[Teacher] 准备提炼规则: ${problem.id}`);
+        logger.info(`[Teacher] 准备提炼规则: ${problem.id}`);
       } catch {}
     }
 
@@ -511,10 +512,10 @@ ${problem.context ? '背景：' + JSON.stringify(problem.context) : ''}
     if (this.solvedCount % 10 === 0 && this.solvedCount > 0 && this.inductive) {
       const solved = this.problemPool.filter(p => p.solved && p.answer);
       const discovered = this.inductive.hypothesize(solved);
-      if (discovered.length) console.log(`[归纳] 发现 ${discovered.length} 条新定理`);
+      if (discovered.length) logger.info(`[归纳] 发现 ${discovered.length} 条新定理`);
     }
     
-    console.log(`[学习核心] ✅ 已解决: ${problem.id} → IQ: ${this.iq}`);
+    logger.info(`[学习核心] ✅ 已解决: ${problem.id} → IQ: ${this.iq}`);
   }
 
   // ==================== 年龄计算 ====================
@@ -583,7 +584,7 @@ ${problem.context ? '背景：' + JSON.stringify(problem.context) : ''}
     // 记录问题
     if (issues.length > 0) {
       this.history.warnings = issues;
-      console.log('[元监控] 发现异常:', issues.map(i => i.message).join(', '));
+      logger.info('[元监控] 发现异常:', issues.map(i => i.message).join(', '));
       
       // 将异常转化为问题加入问题池
       this._addWarningAsProblem(issues);
@@ -599,7 +600,7 @@ ${problem.context ? '背景：' + JSON.stringify(problem.context) : ''}
   }
 
 _addWarningAsProblem(issues) {
-    console.log('[元监控] ' + issues.map(i=>i.type).join(',') + ' → 离线批量求解');
+    logger.info('[元监控] ' + issues.map(i=>i.type).join(',') + ' → 离线批量求解');
     this._offlineBulkSolve();
   }
 
@@ -612,7 +613,7 @@ _addWarningAsProblem(issues) {
       if (!existsSync(f)) writeFileSync(f, JSON.stringify({ problemId: p.id, question: p.question, domain: p.domain, answer: String(p.answer), solver: 'offline', solvedAt: Date.now() }, null, 2));
       p.solved = true; s++;
     }
-    if (s > 0) { this.solvedCount = this.problemPool.filter(p => p.solved).length; this.age = this.solvedCount; console.log(`[离线批量] ${s}题`); }
+    if (s > 0) { this.solvedCount = this.problemPool.filter(p => p.solved).length; this.age = this.solvedCount; logger.info(`[离线批量] ${s}题`); }
   }
 }
 

@@ -8,6 +8,7 @@
  */
 
 import { persistentConfig } from './persistent-config.js';
+import logger from './logger.js';
 
 export class CollaborationManager {
   constructor() {
@@ -183,7 +184,7 @@ export class CollaborationManager {
       const toSave = this.collaborationHistory.slice(-200);
       await persistentConfig.set('collaborations', toSave);
     } catch (e) {
-      console.error('Failed to persist collaboration history:', e);
+      logger.error('Failed to persist collaboration history:', e);
     }
   }
 
@@ -197,7 +198,7 @@ export class CollaborationManager {
         this.collaborationHistory = history;
       }
     } catch (e) {
-      console.error('Failed to load collaboration history:', e);
+      logger.error('Failed to load collaboration history:', e);
     }
   }
 }

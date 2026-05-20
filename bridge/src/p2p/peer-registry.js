@@ -1,3 +1,4 @@
+import logger from '../core/logger.js';
 /**
  * PeerRegistry — 多核心 Peer 注册调度器
  *
@@ -43,7 +44,7 @@ class PeerRegistry {
     );
     for (const r of results) {
       if (r.status === 'rejected') {
-        console.log(`[PeerRegistry] publish failed: ${r.reason?.message || r.reason}`);
+        logger.info(`[PeerRegistry] publish failed: ${r.reason?.message || r.reason}`);
       }
     }
   }
@@ -57,7 +58,7 @@ class PeerRegistry {
     );
     for (const r of results) {
       if (r.status === 'rejected') {
-        console.log(`[PeerRegistry] unpublish failed: ${r.reason?.message || r.reason}`);
+        logger.info(`[PeerRegistry] unpublish failed: ${r.reason?.message || r.reason}`);
       }
     }
   }

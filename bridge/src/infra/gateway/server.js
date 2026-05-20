@@ -1,3 +1,4 @@
+import logger from '../../core/logger.js';
 /**
  * OpenChat 多协议聚合中转服务器
  *
@@ -45,7 +46,7 @@ class GatewayConfig {
         const data = fs.readFileSync(GATEWAY_CONFIG_FILE, 'utf8');
         return JSON.parse(data);
       } catch (e) {
-        console.error('Failed to load gateway config:', e.message);
+        logger.error('Failed to load gateway config:', e.message);
       }
     }
 
@@ -86,7 +87,7 @@ class GatewayConfig {
       fs.writeFileSync(GATEWAY_CONFIG_FILE, JSON.stringify(this.config, null, 2), 'utf8');
       return true;
     } catch (e) {
-      console.error('Failed to save gateway config:', e.message);
+      logger.error('Failed to save gateway config:', e.message);
       return false;
     }
   }
@@ -256,7 +257,7 @@ class GatewayServer {
       const targetModel = model || keyConfig.model;
 
       if (this.config.getSetting('enableLogging')) {
-        console.log(`[Gateway] ${keyConfig.virtualKey} -> ${provider}/${targetModel}`);
+        logger.info(`[Gateway] ${keyConfig.virtualKey} -> ${provider}/${targetModel}`);
       }
 
       // 调用后端
@@ -269,7 +270,7 @@ class GatewayServer {
       // 记录统计
       this.stats.record(provider, targetModel, true);
     } catch (e) {
-      console.error('[Gateway] Error:', e.message);
+      logger.error('[Gateway] Error:', e.message);
       this.stats.record(keyConfig?.provider || 'unknown', 'unknown', false);
       this.sendError(res, 500, e.message, 'server_error');
     }
@@ -369,7 +370,7 @@ class GatewayServer {
         }
       }
     } catch (e) {
-      console.error('[Gateway] Streaming error:', e.message);
+      logger.error('[Gateway] Streaming error:', e.message);
       const errorChunk = {
         error: {
           message: e.message,
@@ -417,7 +418,7 @@ class GatewayServer {
       }
 
       if (this.config.getSetting('enableLogging')) {
-        console.log(`[Gateway] ${keyConfig.virtualKey} queried models - returned ${models.length} models from ${provider}`);
+        logger.info(`[Gateway] ${keyConfig.virtualKey} queried models - returned ${models.length} models from ${provider}`);
       }
     } else {
       // 无虚拟 Key：返回所有 Provider 的所有模型
@@ -440,7 +441,7 @@ class GatewayServer {
       }
 
       if (this.config.getSetting('enableLogging')) {
-        console.log(`[Gateway] Anonymous queried models - returned ${models.length} total models`);
+        logger.info(`[Gateway] Anonymous queried models - returned ${models.length} total models`);
       }
     }
 
@@ -539,56 +540,56 @@ class GatewayServer {
   start() {
     const server = http.createServer((req, res) => {
       this.handleRequest(req, res).catch(e => {
-        console.error('[Gateway] Unhandled error:', e);
+        logger.error('[Gateway] Unhandled error:', e);
         this.sendError(res, 500, 'Internal server error', 'server_error');
       });
     });
 
     server.listen(PORT, () => {
-      console.log('');
-      console.log('╔══════════════════════════════════════════════════════════════╗');
-      console.log('║                                                              ║');
-      console.log('║          OpenChat 多协议聚合中转服务器已启动                ║');
-      console.log('║                                                              ║');
-      console.log('╚══════════════════════════════════════════════════════════════╝');
-      console.log('');
-      console.log(`🚀 服务器运行在: http://localhost:${PORT}`);
-      console.log('');
-      console.log('📌 OpenAI 兼容接口:');
-      console.log(`   Base URL: http://localhost:${PORT}/v1`);
-      console.log(`   Endpoint: http://localhost:${PORT}/v1/chat/completions`);
-      console.log('');
-      console.log('🔑 虚拟 API Keys:');
+      logger.info('');
+      logger.info('╔══════════════════════════════════════════════════════════════╗');
+      logger.info('║                                                              ║');
+      logger.info('║          OpenChat 多协议聚合中转服务器已启动                ║');
+      logger.info('║                                                              ║');
+      logger.info('╚══════════════════════════════════════════════════════════════╝');
+      logger.info('');
+      logger.info(`🚀 服务器运行在: http://localhost:${PORT}`);
+      logger.info('');
+      logger.info('📌 OpenAI 兼容接口:');
+      logger.info(`   Base URL: http://localhost:${PORT}/v1`);
+      logger.info(`   Endpoint: http://localhost:${PORT}/v1/chat/completions`);
+      logger.info('');
+      logger.info('🔑 虚拟 API Keys:');
       for (const [key, config] of this.config.listVirtualKeys()) {
         if (config.enabled) {
-          console.log(`   ${key} -> ${config.provider}/${config.model}`);
+          logger.info(`   ${key} -> ${config.provider}/${config.model}`);
         }
       }
-      console.log('');
-      console.log('📊 监控接口:');
-      console.log(`   健康检查: http://localhost:${PORT}/health`);
-      console.log(`   统计信息: http://localhost:${PORT}/stats`);
-      console.log('');
-      console.log('📋 模型查询接口:');
-      console.log(`   所有模型: http://localhost:${PORT}/v1/models`);
-      console.log(`   指定 Provider 的模型: http://localhost:${PORT}/v1/models (+ Authorization: Bearer <virtual-key>)`);
-      console.log('');
-      console.log('💡 使用示例:');
-      console.log('   # 查询所有模型');
-      console.log(`   curl http://localhost:${PORT}/v1/models`);
-      console.log('');
-      console.log('   # 查询 Claude 的模型');
-      console.log(`   curl http://localhost:${PORT}/v1/models \\`);
-      console.log('     -H "Authorization: Bearer vk-claude"');
-      console.log('');
-      console.log('   # 发送聊天请求');
-      console.log('   curl http://localhost:8787/v1/chat/completions \\');
-      console.log('     -H "Authorization: Bearer vk-claude" \\');
-      console.log('     -H "Content-Type: application/json" \\');
-      console.log('     -d \'{"model":"claude-3-5-haiku-20241022","messages":[{"role":"user","content":"Hi"}]}\'');
-      console.log('');
-      console.log('⏹️  按 Ctrl+C 停止服务器');
-      console.log('');
+      logger.info('');
+      logger.info('📊 监控接口:');
+      logger.info(`   健康检查: http://localhost:${PORT}/health`);
+      logger.info(`   统计信息: http://localhost:${PORT}/stats`);
+      logger.info('');
+      logger.info('📋 模型查询接口:');
+      logger.info(`   所有模型: http://localhost:${PORT}/v1/models`);
+      logger.info(`   指定 Provider 的模型: http://localhost:${PORT}/v1/models (+ Authorization: Bearer <virtual-key>)`);
+      logger.info('');
+      logger.info('💡 使用示例:');
+      logger.info('   # 查询所有模型');
+      logger.info(`   curl http://localhost:${PORT}/v1/models`);
+      logger.info('');
+      logger.info('   # 查询 Claude 的模型');
+      logger.info(`   curl http://localhost:${PORT}/v1/models \\`);
+      logger.info('     -H "Authorization: Bearer vk-claude"');
+      logger.info('');
+      logger.info('   # 发送聊天请求');
+      logger.info('   curl http://localhost:8787/v1/chat/completions \\');
+      logger.info('     -H "Authorization: Bearer vk-claude" \\');
+      logger.info('     -H "Content-Type: application/json" \\');
+      logger.info('     -d \'{"model":"claude-3-5-haiku-20241022","messages":[{"role":"user","content":"Hi"}]}\'');
+      logger.info('');
+      logger.info('⏹️  按 Ctrl+C 停止服务器');
+      logger.info('');
     });
 
     return server;

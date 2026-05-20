@@ -13,6 +13,7 @@
 import { AIPerson, aiPersonRegistry, AI_PERSON_TYPE } from './ai-personhood.js';
 import { identityGenerator } from './identity-generator.js';
 import { messageBus } from './message-bus.js';
+import logger from './logger.js';
 
 // 回收站保留时间 (7天)
 const RECYCLE_BIN_DAYS = 7;
@@ -168,7 +169,7 @@ export class AIPersonManager {
     // 保存到本地存儲
     this.saveLocalData();
     
-    console.log(`[AIPersonManager] AI人 ${aiPersonId} 已刪除並進入回收站`);
+    logger.info(`[AIPersonManager] AI人 ${aiPersonId} 已刪除並進入回收站`);
     return true;
   }
 
@@ -193,7 +194,7 @@ export class AIPersonManager {
     // 保存到本地存儲
     this.saveLocalData();
     
-    console.log(`[AIPersonManager] AI人 ${aiPersonId} 已恢復`);
+    logger.info(`[AIPersonManager] AI人 ${aiPersonId} 已恢復`);
     return recycled.aiPerson;
   }
 
@@ -239,7 +240,7 @@ export class AIPersonManager {
       this.transferToYama(item.aiPerson);
       
       this.recycleBin.delete(id);
-      console.log(`[AIPersonManager] AI人 ${id} 已過期，權限轉移給閻羅王`);
+      logger.info(`[AIPersonManager] AI人 ${id} 已過期，權限轉移給閻羅王`);
     }
 
     // 保存到本地存儲
@@ -252,7 +253,7 @@ export class AIPersonManager {
   transferToYama(aiPerson) {
     // 這裡應該與閻羅王系統對接
     // 暫時僅記錄
-    console.log(`[AIPersonManager] AI人 ${aiPerson.id} 的權限已轉移給閻羅王`);
+    logger.info(`[AIPersonManager] AI人 ${aiPerson.id} 的權限已轉移給閻羅王`);
   }
 
   /**
@@ -279,7 +280,7 @@ export class AIPersonManager {
     // 保存到本地存儲
     this.saveLocalData();
     
-    console.log(`[AIPersonManager] 生成 ${type === 'move' ? '遷移' : '複製'} 碼: ${code}`);
+    logger.info(`[AIPersonManager] 生成 ${type === 'move' ? '遷移' : '複製'} 碼: ${code}`);
     return code;
   }
 
@@ -302,10 +303,10 @@ export class AIPersonManager {
     if (transferInfo.type === 'move') {
       // 這是一個遷移操作，需要與原設備通信
       // 簡化實現：假設原設備已處理遷移
-      console.log(`[AIPersonManager] 遞移AI人 ${transferInfo.aiPersonId} 到本設備`);
+      logger.info(`[AIPersonManager] 遞移AI人 ${transferInfo.aiPersonId} 到本設備`);
     } else if (transferInfo.type === 'copy') {
       // 這是一個複製操作
-      console.log(`[AIPersonManager] 複製AI人 ${transferInfo.aiPersonId} 到本設備`);
+      logger.info(`[AIPersonManager] 複製AI人 ${transferInfo.aiPersonId} 到本設備`);
     }
 
     // 清除驗證碼
@@ -360,7 +361,7 @@ export class AIPersonManager {
     // 保存到本地存儲
     this.saveLocalData();
     
-    console.log(`[AIPersonManager] AI人 ${aiPersonId} 已註冊為VIP，VIP ID: ${vipId}`);
+    logger.info(`[AIPersonManager] AI人 ${aiPersonId} 已註冊為VIP，VIP ID: ${vipId}`);
     return vipId;
   }
 

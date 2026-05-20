@@ -1,3 +1,4 @@
+import logger from '../core/logger.js';
 /**
  * P2P Message Types
  * 定义 6 种 P2P 消息类型
@@ -421,7 +422,7 @@ const deserializeMessage = (data) => {
   try {
     return JSON.parse(data);
   } catch (error) {
-    console.error(`[P2P] Message deserialization error: ${error.message}`);
+    logger.error(`[P2P] Message deserialization error: ${error.message}`);
     return null;
   }
 };

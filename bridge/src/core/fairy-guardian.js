@@ -10,6 +10,7 @@
 
 import { spawn } from 'child_process';
 import { getMainPort } from '../constants.js';
+import logger from './logger.js';
 
 export class FairyGuardian {
   constructor(myPort) {
@@ -52,7 +53,7 @@ export class FairyGuardian {
     if (c >= 3) return;
     const last = this._lastRestarts.get(port) || 0;
     if (Date.now() - last < 300000) return;
-    console.log(`[守护] 复活 Fairy :${port} (第${c+1}次)`);
+    logger.info(`[守护] 复活 Fairy :${port} (第${c+1}次)`);
     spawn(process.execPath, ['src/main.js', `--port=${port}`, '--fairy'], {
       cwd: process.cwd(), detached: true, stdio: 'ignore'
     }).unref();

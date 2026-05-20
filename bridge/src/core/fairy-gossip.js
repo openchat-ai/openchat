@@ -1,3 +1,4 @@
+import logger from './logger.js';
 /**
  * FairyGossip — Fairy 分布式大脑
  *
@@ -46,9 +47,9 @@ export class FairyGossip {
     try {
       this.p2p.broadcast('fairy_gossip', gossip);
       this._gossipCount++;
-      console.log(`[FairyGossip] 广播经验: ${problem.id} (${strategyName}, ${solveTimeMs}ms)`);
+      logger.info(`[FairyGossip] 广播经验: ${problem.id} (${strategyName}, ${solveTimeMs}ms)`);
     } catch (e) {
-      console.log(`[FairyGossip] 广播失败: ${e.message}`);
+      logger.info(`[FairyGossip] 广播失败: ${e.message}`);
     }
   }
 
@@ -75,7 +76,7 @@ export class FairyGossip {
           author: `fairy-${peer}`,
           houseId: String(peer)
         });
-        console.log(`[FairyGossip] 吸收 ${peer} 的经验: ${data.problemId}`);
+        logger.info(`[FairyGossip] 吸收 ${peer} 的经验: ${data.problemId}`);
       } catch {}
     }
   }
@@ -125,7 +126,7 @@ export class FairyGossip {
 
     if (winner.votes >= 2) {
       this._consensusCount++;
-      console.log(`[FairyGossip] 共识达成: ${problemId} → "${winner.answer.substring(0, 30)}" (${winner.votes}/${total} votes)`);
+      logger.info(`[FairyGossip] 共识达成: ${problemId} → "${winner.answer.substring(0, 30)}" (${winner.votes}/${total} votes)`);
       return { consensus: true, answer: winner.answer, votes: winner.votes, total };
     }
 

@@ -16,6 +16,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { HOUSES_DIR } from './persistent-config.js';
+import logger from './logger.js';
 
 class House {
   /**
@@ -51,7 +52,7 @@ class House {
     // 写 house.json 元数据
     this._writeMeta();
     this._initialized = true;
-    console.log(`[Body] ${this.houseId} 已初始化 (${this._baseDir})`);
+    logger.info(`[Body] ${this.houseId} 已初始化 (${this._baseDir})`);
   }
 
   /** 写入 house.json 元数据 */

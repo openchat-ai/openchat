@@ -1,6 +1,7 @@
 import { pluginManager } from './plugin-manager.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import logger from '../core/logger.js';
 
 const execPromise = promisify(exec);
 
@@ -20,7 +21,7 @@ export const ShellPlugin = {
         command: { type: 'string', description: 'The command to run' }
       },
       execute: async ({ command }, context) => {
-        console.log(`[Shell] Executing: ${command}`);
+        logger.info(`[Shell] Executing: ${command}`);
         try {
           const { stdout, stderr } = await execPromise(command);
           return {

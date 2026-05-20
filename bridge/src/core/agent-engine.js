@@ -4,6 +4,7 @@ import { sessionManager } from '../session/session-manager.js';
 import { PromptBuilder } from './prompt-builder.js';
 import { agentMonitor } from './agent-monitor.js';
 import { QualityChecker, Corrector } from './quality-check-system.js';
+import logger from './logger.js';
 
 /**
  * Agent 事件类型
@@ -73,7 +74,7 @@ export class AgentEngine {
           userId, sessionId, topK: 5
         });
       } catch (e) {
-        console.warn('[Agent] RAG retrieval failed:', e.message);
+        logger.warn('[Agent] RAG retrieval failed:', e.message);
       }
     }
 
@@ -285,10 +286,10 @@ export class AgentEngine {
         });
 
         if (ragContext.length > 0) {
-          console.log(`[Agent] RAG retrieved ${ragContext.length} relevant messages`);
+          logger.info(`[Agent] RAG retrieved ${ragContext.length} relevant messages`);
         }
       } catch (e) {
-        console.warn('[Agent] RAG retrieval failed:', e.message);
+        logger.warn('[Agent] RAG retrieval failed:', e.message);
       }
     }
 
@@ -359,7 +360,7 @@ export class AgentEngine {
           const args = typeof tc.arguments === 'string' ? JSON.parse(tc.arguments) : tc.arguments;
 
           try {
-            console.log(`[Agent] Function Calling: ${toolName}(${JSON.stringify(args)})`);
+            logger.info(`[Agent] Function Calling: ${toolName}(${JSON.stringify(args)})`);
             const toolResult = await pluginManager.executeTool(toolName, args, { sessionId, userId });
 
             executionTrace.actions.push({ tool: toolName, args, result: toolResult, mode: 'fc' });
@@ -387,7 +388,7 @@ export class AgentEngine {
           const [, toolName, argsJson] = match;
           try {
             const args = JSON.parse(argsJson);
-            console.log(`[Agent] Text Parse: ${toolName}(${JSON.stringify(args)})`);
+            logger.info(`[Agent] Text Parse: ${toolName}(${JSON.stringify(args)})`);
             const toolResult = await pluginManager.executeTool(toolName, args, { sessionId, userId });
 
             executionTrace.actions.push({ tool: toolName, args, result: toolResult, mode: 'text' });
@@ -425,7 +426,7 @@ export class AgentEngine {
     const qualityReport = await this.performSelfVerification(executionTrace);
 
     if (qualityReport && qualityReport.score < this.qualityThreshold) {
-      console.log(`[Agent] 质量得分 ${qualityReport.score} < ${this.qualityThreshold}，开始自我优化...`);
+      logger.info(`[Agent] 质量得分 ${qualityReport.score} < ${this.qualityThreshold}，开始自我优化...`);
       finalizedResponse = await this.selfOptimize(sessionId, userId, userMessage, finalizedResponse, qualityReport);
     }
 
@@ -440,11 +441,11 @@ export class AgentEngine {
     try {
       const judgeTool = pluginManager.skills.get('run_llm_judge');
       if (!judgeTool) {
-        console.log('[Agent] 自检工具不可用，跳过验证');
+        logger.info('[Agent] 自检工具不可用，跳过验证');
         return null;
       }
 
-      console.log('[Agent] 执行自我质量验证...');
+      logger.info('[Agent] 执行自我质量验证...');
       
       // 构建符合预期的测试用例格式
       const testCase = {
@@ -471,13 +472,13 @@ export class AgentEngine {
       const mockResult = await judge.mockAgentExecution(testCase);
       const evaluation = await judge.evaluateAgentPerformance(mockAgentResponse, testCase);
       
-      console.log(`[Agent] 质量得分: ${evaluation.score}/5`);
-      console.log(`[Agent] 反馈: ${evaluation.feedback}`);
+      logger.info(`[Agent] 质量得分: ${evaluation.score}/5`);
+      logger.info(`[Agent] 反馈: ${evaluation.feedback}`);
       
       return evaluation;
       
     } catch (error) {
-      console.log('[Agent] 自检执行失败:', error.message);
+      logger.info('[Agent] 自检执行失败:', error.message);
       return null;
     }
   }
@@ -486,7 +487,7 @@ export class AgentEngine {
    * 自我优化流程
    */
   async selfOptimize(sessionId, userId, originalTask, originalResponse, qualityReport) {
-    console.log('[Agent] 开始自我优化...');
+    logger.info('[Agent] 开始自我优化...');
     
     // 记录当前状态
     await memoryManager.addMessage(sessionId, 'system', 
@@ -519,11 +520,11 @@ export class AgentEngine {
       const llmResponse = await provider.chat(session.model, messages);
       const optimizedResponse = llmResponse.content.replace('FINAL:', '').trim();
       
-      console.log('[Agent] 自我优化完成');
+      logger.info('[Agent] 自我优化完成');
       return optimizedResponse;
 
     } catch (error) {
-      console.log('[Agent] 优化失败:', error.message);
+      logger.info('[Agent] 优化失败:', error.message);
       return originalResponse; // 返回原始结果
     }
   }
@@ -545,7 +546,7 @@ export class AgentEngine {
         issues: check.issues
       });
 
-      console.log(`[QC] 质量检查: ${check.score}/100, 通过: ${check.passed}`);
+      logger.info(`[QC] 质量检查: ${check.score}/100, 通过: ${check.passed}`);
 
       if (check.passed) {
         // ✅ 合格，直接返回
@@ -553,7 +554,7 @@ export class AgentEngine {
       }
 
       // ❌ 不合格，尝试纠偏
-      console.log(`[QC] 检测到质量问题: ${check.issues.join('; ')}`);
+      logger.info(`[QC] 检测到质量问题: ${check.issues.join('; ')}`);
 
       const session = sessionManager.getSession(sessionId);
       const provider = sessionManager.getProvider(session.providerType);
@@ -580,7 +581,7 @@ export class AgentEngine {
       // 第 4 步: 再检查一次
       const newCheck = await this.qualityChecker.check(newContent);
 
-      console.log(`[QC] 纠偏后: ${newCheck.score}/100, 通过: ${newCheck.passed}`);
+      logger.info(`[QC] 纠偏后: ${newCheck.score}/100, 通过: ${newCheck.passed}`);
 
       if (newCheck.passed) {
         // ✅ 纠偏成功
@@ -592,12 +593,12 @@ export class AgentEngine {
       }
 
       // ❌ 纠偏失败，返回新内容（即使不完美）+ 错误提示
-      console.log(`[QC] 纠偏未达标，返回最佳版本`);
+      logger.info(`[QC] 纠偏未达标，返回最佳版本`);
 
       return newContent;
 
     } catch (error) {
-      console.error('[QC] 质量检查异常:', error.message);
+      logger.error('[QC] 质量检查异常:', error.message);
       // 异常时直接返回原始响应
       return response;
     }
@@ -635,7 +636,7 @@ class RobustErrorHandler {
     try {
       return await recoveryFn();
     } catch (recoveryError) {
-      console.error('Recovery failed:', recoveryError);
+      logger.error('Recovery failed:', recoveryError);
       throw error;
     }
   }

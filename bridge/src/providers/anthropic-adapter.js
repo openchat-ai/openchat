@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import logger from '../core/logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -26,7 +27,7 @@ function loadModelConfig() {
       return config.modelSelection?.anthropic || {};
     }
   } catch (e) {
-    console.warn('[AnthropicAdapter] Failed to load model config:', e.message);
+    logger.warn('[AnthropicAdapter] Failed to load model config:', e.message);
   }
   return {};
 }

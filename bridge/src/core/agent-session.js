@@ -17,6 +17,7 @@ import { StreamingValidator, ValidationErrorExplainer } from './streaming-valida
 import { SchemaAutoGenerator, SchemaVersionManager, FormatConverter } from './schema-manager.js';
 import { MultimodalHandler } from './multimodal-handler.js';
 import { ResponseCache, SmartRouter, StreamHandler, SafetyWrapper, CircuitBreakerMonitor, MetricsCollector, AdaptiveLimiter, IntelligentCircuitBreaker, CircuitBreaker, RequestQueue, RequestDeduplicator } from './resilience.js';
+import logger from './logger.js';
 
 export const AGENT_STATES = {
   IDLE: 'idle',
@@ -201,7 +202,7 @@ export class AgentSession {
         this.lastHeartbeat = Date.now();
         this.publishHeartbeatSafe();
       } catch (error) {
-        console.error(`[Agent ${this.config.name}] Heartbeat error: ${error.message}`);
+        logger.error(`[Agent ${this.config.name}] Heartbeat error: ${error.message}`);
         this.restartHeartbeat();
       }
     }, HEARTBEAT_INTERVAL);
@@ -275,7 +276,7 @@ export class AgentSession {
           break;
       }
     } catch (error) {
-      console.error(`[Agent ${this.config.name}] Error handling message: ${error.message}`);
+      logger.error(`[Agent ${this.config.name}] Error handling message: ${error.message}`);
       this.state = AGENT_STATES.ERROR;
       this.error = error.message;
     }
@@ -377,7 +378,7 @@ export class AgentSession {
   }
 
   handleTerminate(msg) {
-    console.log(`[Agent ${this.config.name}] Received terminate signal`);
+    logger.info(`[Agent ${this.config.name}] Received terminate signal`);
     this.destroy();
   }
 
@@ -462,7 +463,7 @@ export class AgentSession {
     if (!apiKey) {
       const ollamaConfig = providerManager.getProviderConfig('ollama');
       if (ollamaConfig) {
-        console.log('[Agent] API key 未配置，自动回退到 Ollama');
+        logger.info('[Agent] API key 未配置，自动回退到 Ollama');
         providerName = 'ollama';
         model = ollamaConfig.defaultModel || 'llama3';
         apiKey = ''; // skipAuth 不需要 key
@@ -604,7 +605,7 @@ export class AgentSession {
         }
 
         if (circuitCheck.state === 'HALF_OPEN') {
-          console.log('[API] Circuit half-open, probing...');
+          logger.info('[API] Circuit half-open, probing...');
         }
 
         attempt++;
@@ -706,7 +707,7 @@ export class AgentSession {
             retryDelay: delay
           });
 
-          console.log(`[API] Attempt ${attempt} failed (HTTP ${status}). Retrying in ${delay}ms...`);
+          logger.info(`[API] Attempt ${attempt} failed (HTTP ${status}). Retrying in ${delay}ms...`);
 
           await this._delay(delay);
           httpRetries++;
@@ -754,7 +755,7 @@ export class AgentSession {
               retryDelay: delay
             });
 
-            console.log(`[API] Attempt ${attempt} failed (${error.message}). Retrying in ${delay}ms...`);
+            logger.info(`[API] Attempt ${attempt} failed (${error.message}). Retrying in ${delay}ms...`);
 
             await this._delay(delay);
             noResponseRetries++;
@@ -1634,7 +1635,7 @@ function createSafetyProxy(session) {
           return result;
 
         } catch (error) {
-          console.error(`[SafetyProxy] ${opName} failed: ${error.message}`);
+          logger.error(`[SafetyProxy] ${opName} failed: ${error.message}`);
 
           const fallback = fallbackStrategies[prop];
           if (fallback) {

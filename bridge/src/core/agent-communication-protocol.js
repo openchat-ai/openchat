@@ -1,3 +1,4 @@
+import logger from './logger.js';
 /**
  * Agent通信协议
  * 实现Agent间的通信和协作
@@ -51,7 +52,7 @@ export class AgentCommunicationProtocol {
     // 设置心跳监测
     this._startHeartbeatMonitoring(agentId);
     
-    console.log(`[ACProtocol] Registered agent: ${agentId}`, agent.capabilities);
+    logger.info(`[ACProtocol] Registered agent: ${agentId}`, agent.capabilities);
     
     return agentId;
   }
@@ -170,14 +171,14 @@ export class AgentCommunicationProtocol {
     
     agent.messageHandlers.set(messageType, handler);
     
-    console.log(`[ACProtocol] Registered handler for ${agentId}: ${messageType}`);
+    logger.info(`[ACProtocol] Registered handler for ${agentId}: ${messageType}`);
   }
 
   /**
    * 默认消息处理器
    */
   _handleDefaultMessage(message) {
-    console.log(`[ACProtocol] Unhandled message: ${message.type} from ${message.from} to ${message.to}`);
+    logger.info(`[ACProtocol] Unhandled message: ${message.type} from ${message.from} to ${message.to}`);
     
     // 对于某些消息类型，提供默认响应
     switch (message.type) {
@@ -257,7 +258,7 @@ export class AgentCommunicationProtocol {
     const heartbeatInterval = setInterval(() => {
       this._sendHeartbeat(agentId)
         .catch(err => {
-          console.error(`[ACProtocol] Heartbeat failed for agent ${agentId}:`, err);
+          logger.error(`[ACProtocol] Heartbeat failed for agent ${agentId}:`, err);
           // 标记Agent为离线
           const agent = this.agents.get(agentId);
           if (agent) {

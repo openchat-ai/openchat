@@ -9,6 +9,7 @@
 
 import { messageBus } from './message-bus.js';
 import { EvolutionMemory } from './evolution-memory.js';
+import logger from './logger.js';
 
 // AI人类型枚举
 export const AI_PERSON_TYPE = {
@@ -58,7 +59,7 @@ export class AIPerson {
    */
   activateConsciousness() {
     this.consciousness = true;
-    console.log(`[AI-Consciousness] AI人 ${this.id} 的自我意识已激活`);
+    logger.info(`[AI-Consciousness] AI人 ${this.id} 的自我意识已激活`);
     return true;
   }
 
@@ -105,7 +106,7 @@ export class AIPerson {
     // 继承权限和属性
     child.inheritAttributes(this);
     
-    console.log(`[AI-Creation] ${this.id} 创建了子AI人 ${childId}`);
+    logger.info(`[AI-Creation] ${this.id} 创建了子AI人 ${childId}`);
     
     return child;
   }
@@ -195,7 +196,7 @@ export class AIPerson {
 
   processGeneralMessage(data) {
     // 一般消息处理
-    console.log(`[AI-${this.id}] 处理消息:`, data.type);
+    logger.info(`[AI-${this.id}] 处理消息:`, data.type);
     return { processed: true };
   }
 
@@ -204,13 +205,13 @@ export class AIPerson {
    */
   executeAction(payload) {
     // 执行具体操作
-    console.log(`[AI-${this.id}] 执行操作:`, payload.action);
+    logger.info(`[AI-${this.id}] 执行操作:`, payload.action);
     return { status: 'completed', data: {} };
   }
 
   executeCommand(payload) {
     // 执行命令
-    console.log(`[AI-${this.id}] 执行命令:`, payload.command);
+    logger.info(`[AI-${this.id}] 执行命令:`, payload.command);
     return { status: 'executed' };
   }
 

@@ -18,7 +18,6 @@
  */
 
 import SkillManager from './skill-manager.js';
-import Logger from './logger.js';
 import PersistentSessionManager from './persistent-session-manager.js';
 import SecurityChecker from './security-checker.js';
 import { EvolutionEngine } from './evolution-engine.js';
@@ -28,12 +27,13 @@ import AutoRollbackManager from './auto-rollback-manager.js';
 import TestOrchestrator from './test-orchestrator.js';
 import IntelligenceCollector from './intelligence-collector.js';
 import Monitor from './monitor.js';
+import logger from './logger.js';
 
 export class EvolutionSystem {
   constructor() {
     // 初始化 Phase 1-2 子系统
     this.skillManager = new SkillManager();
-    this.logger = new Logger();
+    this.logger = logger;
     this.sessionManager = new PersistentSessionManager();
     this.securityChecker = new SecurityChecker();
     this.evolutionEngine = new EvolutionEngine();
@@ -47,12 +47,12 @@ export class EvolutionSystem {
     // 🔧 开发模式：根据环境变量启用文件监听
     // 生产模式（默认）：文件监听禁用，避免与热更新冲突
     if (process.env.DEV_MODE === 'true' || process.argv.includes('--dev')) {
-      console.log('🛠️  开发模式：启用文件监听（自动重启）');
+      logger.info('🛠️  开发模式：启用文件监听（自动重启）');
       this.autoRestart.enableFileWatching(() => {
-        console.log('📝 文件变化检测到，触发重启...');
+        logger.info('📝 文件变化检测到，触发重启...');
       });
     } else {
-      console.log('🚀 生产模式：文件监听已禁用（使用热更新）');
+      logger.info('🚀 生产模式：文件监听已禁用（使用热更新）');
     }
 
     // 初始化 Phase 4 情报与监控子系统
@@ -70,23 +70,23 @@ export class EvolutionSystem {
    */
   async initialize() {
     try {
-      await this.logger.info('系统初始化开始', { module: 'EvolutionSystem' });
+      this.logger.info('系统初始化开始', { module: 'EvolutionSystem' });
 
       // 加载持久化数据
       await this.evolutionEngine.loadSkills();
       const lastSession = await this.sessionManager.restoreLastSession();
 
       if (lastSession) {
-        await this.logger.info('会话已恢复', {
+        this.logger.info('会话已恢复', {
           module: 'EvolutionSystem',
           sessionId: lastSession.id,
         });
       }
 
       this.isInitialized = true;
-      await this.logger.info('系统初始化完成', { module: 'EvolutionSystem' });
+      this.logger.info('系统初始化完成', { module: 'EvolutionSystem' });
     } catch (error) {
-      await this.logger.error('系统初始化失败', error);
+      this.logger.error('系统初始化失败', error);
       throw error;
     }
   }
@@ -108,7 +108,7 @@ export class EvolutionSystem {
       const securityResult = this.securityChecker.check(skill.code || '');
 
       if (!this.securityChecker.canExecute(securityResult)) {
-        await this.logger.warn('Skill 执行被安全检查阻止', {
+        this.logger.warn('Skill 执行被安全检查阻止', {
           skillId,
           securityStatus: securityResult.overallStatus,
         });
@@ -121,7 +121,7 @@ export class EvolutionSystem {
       }
 
       // 步骤 2: 记录执行开始
-      await this.logger.info('Skill 执行开始', {
+      this.logger.info('Skill 执行开始', {
         skillId,
         skillName: skill.name,
       });
@@ -142,14 +142,14 @@ export class EvolutionSystem {
       );
 
       // 步骤 5: 记录执行完成
-      await this.logger.info('Skill 执行完成', {
+      this.logger.info('Skill 执行完成', {
         skillId,
         duration: Date.now() - new Date(result.executedAt).getTime(),
       });
 
       return result;
     } catch (error) {
-      await this.logger.error(`Skill 执行失败: ${skillId}`, error);
+      this.logger.error(`Skill 执行失败: ${skillId}`, error);
       return {
         success: false,
         error: error.message,
@@ -181,7 +181,7 @@ export class EvolutionSystem {
       await this.skillManager.saveSkills();
 
       // 步骤 4: 记录日志
-      await this.logger.info('新 Skill 已添加', {
+      this.logger.info('新 Skill 已添加', {
         skillId,
         skillName: skillData.name,
         securityScore,
@@ -194,7 +194,7 @@ export class EvolutionSystem {
         securityStatus: securityResult.overallStatus,
       };
     } catch (error) {
-      await this.logger.error('添加 Skill 失败', error);
+      this.logger.error('添加 Skill 失败', error);
       return {
         success: false,
         error: error.message,
@@ -211,13 +211,13 @@ export class EvolutionSystem {
     try {
       const session = this.sessionManager.createSession(null, data);
 
-      await this.logger.info('新会话已创建', {
+      this.logger.info('新会话已创建', {
         sessionId: session.id,
       });
 
       return session;
     } catch (error) {
-      await this.logger.error('创建会话失败', error);
+      this.logger.error('创建会话失败', error);
       throw error;
     }
   }
@@ -230,9 +230,9 @@ export class EvolutionSystem {
   async saveSession(sessionId) {
     try {
       await this.sessionManager.saveSession(sessionId);
-      await this.logger.info('会话已保存', { sessionId });
+      this.logger.info('会话已保存', { sessionId });
     } catch (error) {
-      await this.logger.error('保存会话失败', error);
+      this.logger.error('保存会话失败', error);
       throw error;
     }
   }
@@ -329,7 +329,7 @@ export class EvolutionSystem {
    */
   async close() {
     try {
-      await this.logger.info('系统关闭中...', { module: 'EvolutionSystem' });
+      this.logger.info('系统关闭中...', { module: 'EvolutionSystem' });
 
       // 保存所有会话
       await this.sessionManager.saveSession();
@@ -337,12 +337,9 @@ export class EvolutionSystem {
       // 保存所有 Skills
       await this.skillManager.saveSkills();
 
-      // 刷新日志缓冲区
-      await this.logger.close();
-
-      await console.log('✅ 系统已安全关闭');
+      logger.info('✅ 系统已安全关闭');
     } catch (error) {
-      console.error('系统关闭过程中发生错误:', error);
+      logger.error('系统关闭过程中发生错误:', error);
     }
   }
 }

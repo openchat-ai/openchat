@@ -1,3 +1,4 @@
+import logger from '../../core/logger.js';
 /**
  * API Metrics Collector
  * API 指标收集器
@@ -210,7 +211,7 @@ class MetricsCollector {
       p95: [],
       p99: []
     }
-    console.log('[Metrics] Hourly reset completed')
+    logger.info('[Metrics] Hourly reset completed')
   }
 
   /**

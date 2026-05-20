@@ -1,3 +1,4 @@
+import logger from './logger.js';
 /**
  * TestOrchestrator 类：整合自动化测试流程
  * 串联：代码改动 → commit → sandbox test → 多模型验证 → 对抗验证 → restart/rollback
@@ -38,7 +39,7 @@ class TestOrchestrator {
       try {
         listener({ type: eventType, data });
       } catch (error) {
-        console.error(`监听器错误: ${error.message}`);
+        logger.error(`监听器错误: ${error.message}`);
       }
     }
   }

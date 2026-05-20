@@ -1,3 +1,4 @@
+import logger from '../core/logger.js';
 /**
  * P2P 连接管理器
  *
@@ -53,7 +54,7 @@ class ConnectionManager extends EventEmitter {
 
     // 监听错误
     connection.on('error', (err) => {
-      console.error(`[ConnectionManager] Connection error with ${peerId}:`, err.message);
+      logger.error(`[ConnectionManager] Connection error with ${peerId}:`, err.message);
       this.emit('error', { peerId, error: err });
     });
 
@@ -153,7 +154,7 @@ class ConnectionManager extends EventEmitter {
     // 检查超时
     const now = Date.now();
     if (now - conn.lastHeartbeat > this.heartbeatInterval * 3) {
-      console.warn(`[ConnectionManager] No heartbeat from ${peerId}, marking as stale`);
+      logger.warn(`[ConnectionManager] No heartbeat from ${peerId}, marking as stale`);
       this.handleDisconnect(peerId);
       return;
     }
@@ -166,7 +167,7 @@ class ConnectionManager extends EventEmitter {
         conn.connection.write(JSON.stringify({ type: 'heartbeat', timestamp: now }));
       }
     } catch (e) {
-      console.error(`[ConnectionManager] Failed to send heartbeat to ${peerId}:`, e.message);
+      logger.error(`[ConnectionManager] Failed to send heartbeat to ${peerId}:`, e.message);
     }
   }
 
@@ -183,14 +184,14 @@ class ConnectionManager extends EventEmitter {
     // 尝试重连
     const attempts = this.reconnectAttempts.get(peerId) || 0;
     if (attempts < this.maxReconnectAttempts) {
-      console.log(`[ConnectionManager] Attempting reconnect to ${peerId} (attempt ${attempts + 1})`);
+      logger.info(`[ConnectionManager] Attempting reconnect to ${peerId} (attempt ${attempts + 1})`);
       this.reconnectAttempts.set(peerId, attempts + 1);
 
       setTimeout(() => {
         this.emit('reconnect', { peerId, attempt: attempts + 1 });
       }, this.reconnectDelay * (attempts + 1));
     } else {
-      console.warn(`[ConnectionManager] Max reconnect attempts reached for ${peerId}`);
+      logger.warn(`[ConnectionManager] Max reconnect attempts reached for ${peerId}`);
       this.removeConnection(peerId);
       this.reconnectAttempts.delete(peerId);
       this.emit('connectionFailed', { peerId });
@@ -238,7 +239,7 @@ class ConnectionManager extends EventEmitter {
     }
 
     for (const peerId of toRemove) {
-      console.log(`[ConnectionManager] Removing inactive connection: ${peerId}`);
+      logger.info(`[ConnectionManager] Removing inactive connection: ${peerId}`);
       this.removeConnection(peerId);
     }
 

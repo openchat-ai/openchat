@@ -1,3 +1,4 @@
+import logger from '../../core/logger.js';
 /**
  * Performance Analyzer Agent
  * 性能分析和优化建议
@@ -24,7 +25,7 @@ class PerformanceAnalyzerAgent extends BaseAgent {
    * 运行性能分析任务
    */
   async runTask(task) {
-    console.log(`[PerformanceAnalyzer] Analyzing performance...`);
+    logger.info(`[PerformanceAnalyzer] Analyzing performance...`);
 
     const results = {
       metrics: {},

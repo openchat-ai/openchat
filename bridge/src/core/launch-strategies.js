@@ -16,6 +16,7 @@ import { spawn, execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
+import logger from './logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
@@ -63,7 +64,7 @@ class NodeStrategy extends LaunchStrategy {
    */
   async launch() {
     if (this._process) {
-      console.log(`[NodeStrategy] ${this.name} 已在运行`);
+      logger.info(`[NodeStrategy] ${this.name} 已在运行`);
       return null;
     }
 
@@ -75,22 +76,22 @@ class NodeStrategy extends LaunchStrategy {
     });
 
     child.stdout.on('data', (chunk) => {
-      console.log(`[${this.name}] ${chunk.toString().trim()}`);
+      logger.info(`[${this.name}] ${chunk.toString().trim()}`);
     });
     child.stderr.on('data', (chunk) => {
-      console.error(`[${this.name}] ${chunk.toString().trim()}`);
+      logger.error(`[${this.name}] ${chunk.toString().trim()}`);
     });
     child.on('exit', (code) => {
-      console.log(`[${this.name}] 进程退出, code=${code}`);
+      logger.info(`[${this.name}] 进程退出, code=${code}`);
       this._process = null;
     });
     child.on('error', (err) => {
-      console.error(`[${this.name}] 启动失败: ${err.message}`);
+      logger.error(`[${this.name}] 启动失败: ${err.message}`);
       this._process = null;
     });
 
     this._process = child;
-    console.log(`[NodeStrategy] ${this.name} 已启动 pid=${child.pid}`);
+    logger.info(`[NodeStrategy] ${this.name} 已启动 pid=${child.pid}`);
     return { pid: child.pid, name: this.name };
   }
 
@@ -99,7 +100,7 @@ class NodeStrategy extends LaunchStrategy {
    */
   spawnHouse(options = {}) {
     if (this._children.size >= this.maxChildren) {
-      console.log(`[NodeStrategy] 子 House 已达上限 ${this.maxChildren}`);
+      logger.info(`[NodeStrategy] 子 House 已达上限 ${this.maxChildren}`);
       return null;
     }
 
@@ -128,16 +129,16 @@ class NodeStrategy extends LaunchStrategy {
     child.unref();
 
     child.on('exit', (code) => {
-      console.log(`[${name}] 进程退出, code=${code}`);
+      logger.info(`[${name}] 进程退出, code=${code}`);
       this._children.delete(id);
     });
     child.on('error', (err) => {
-      console.error(`[${name}] 启动失败: ${err.message}`);
+      logger.error(`[${name}] 启动失败: ${err.message}`);
       this._children.delete(id);
     });
 
     this._children.set(id, { process: child, port, startTime: Date.now(), name });
-    console.log(`[NodeStrategy] 新窟已筑: ${name} pid=${child.pid} port=${port}`);
+    logger.info(`[NodeStrategy] 新窟已筑: ${name} pid=${child.pid} port=${port}`);
     return { childId: id, port, name };
   }
 
@@ -148,7 +149,7 @@ class NodeStrategy extends LaunchStrategy {
     if (this._process) {
       this._process.kill('SIGTERM');
       this._process = null;
-      console.log(`[NodeStrategy] ${this.name} 已停止`);
+      logger.info(`[NodeStrategy] ${this.name} 已停止`);
     }
   }
 
@@ -184,7 +185,7 @@ class NodeStrategy extends LaunchStrategy {
       } catch { /* ignore */ }
       this._children.delete(id);
     }
-    console.log('[NodeStrategy] 全部进程已关闭');
+    logger.info('[NodeStrategy] 全部进程已关闭');
   }
 }
 
@@ -248,7 +249,7 @@ class PM2Strategy extends LaunchStrategy {
     }
     const content = generateEcosystem(this.name, this.script, this.args, this.env);
     fs.writeFileSync(this.ecosystemPath, content, 'utf8');
-    console.log(`[PM2Strategy] 生态文件已写入: ${this.ecosystemPath}`);
+    logger.info(`[PM2Strategy] 生态文件已写入: ${this.ecosystemPath}`);
   }
 
   /**
@@ -256,7 +257,7 @@ class PM2Strategy extends LaunchStrategy {
    */
   async launch() {
     if (!this._checkPM2()) {
-      console.log('[PM2Strategy] PM2 不可用，请安装: npm install -g pm2');
+      logger.info('[PM2Strategy] PM2 不可用，请安装: npm install -g pm2');
       return null;
     }
 
@@ -267,10 +268,10 @@ class PM2Strategy extends LaunchStrategy {
         cwd: PROJECT_ROOT,
         stdio: 'pipe',
       });
-      console.log(`[PM2Strategy] ${this.name} 已启动`);
+      logger.info(`[PM2Strategy] ${this.name} 已启动`);
       return { name: this.name, strategy: 'pm2' };
     } catch (e) {
-      console.error(`[PM2Strategy] 启动失败: ${e.message}`);
+      logger.error(`[PM2Strategy] 启动失败: ${e.message}`);
       return null;
     }
   }
@@ -282,9 +283,9 @@ class PM2Strategy extends LaunchStrategy {
     if (!this._checkPM2()) return;
     try {
       execSync(`pm2 stop ${this.name}`, { stdio: 'pipe' });
-      console.log(`[PM2Strategy] ${this.name} 已停止`);
+      logger.info(`[PM2Strategy] ${this.name} 已停止`);
     } catch (e) {
-      console.error(`[PM2Strategy] 停止失败: ${e.message}`);
+      logger.error(`[PM2Strategy] 停止失败: ${e.message}`);
     }
   }
 
@@ -318,9 +319,9 @@ class PM2Strategy extends LaunchStrategy {
     if (!this._checkPM2()) return;
     try {
       execSync(`pm2 delete ${this.name}`, { stdio: 'pipe' });
-      console.log(`[PM2Strategy] ${this.name} 已删除`);
+      logger.info(`[PM2Strategy] ${this.name} 已删除`);
     } catch (e) {
-      console.error(`[PM2Strategy] 删除失败: ${e.message}`);
+      logger.error(`[PM2Strategy] 删除失败: ${e.message}`);
     }
   }
 }
@@ -329,15 +330,15 @@ class PM2Strategy extends LaunchStrategy {
 
 class DockerStrategy extends LaunchStrategy {
   async launch() {
-    console.log('[DockerStrategy] Docker 模式预留，待实现');
+    logger.info('[DockerStrategy] Docker 模式预留，待实现');
     return null;
   }
   async stop() {
-    console.log('[DockerStrategy] Docker 模式预留');
+    logger.info('[DockerStrategy] Docker 模式预留');
   }
   list() { return []; }
   async shutdown() {
-    console.log('[DockerStrategy] Docker 模式预留');
+    logger.info('[DockerStrategy] Docker 模式预留');
   }
 }
 
@@ -345,15 +346,15 @@ class DockerStrategy extends LaunchStrategy {
 
 class SystemdStrategy extends LaunchStrategy {
   async launch() {
-    console.log('[SystemdStrategy] Systemd 模式预留，待实现');
+    logger.info('[SystemdStrategy] Systemd 模式预留，待实现');
     return null;
   }
   async stop() {
-    console.log('[SystemdStrategy] Systemd 模式预留');
+    logger.info('[SystemdStrategy] Systemd 模式预留');
   }
   list() { return []; }
   async shutdown() {
-    console.log('[SystemdStrategy] Systemd 模式预留');
+    logger.info('[SystemdStrategy] Systemd 模式预留');
   }
 }
 
@@ -389,14 +390,14 @@ function detectBestStrategy(options = {}) {
   // 1. 优先 PM2（如果全局安装）
   try {
     execSync('pm2 --version', { stdio: 'ignore' });
-    console.log('[Launch] 检测到 PM2，使用 pm2 策略');
+    logger.info('[Launch] 检测到 PM2，使用 pm2 策略');
     return 'pm2';
   } catch {
     // fall through
   }
 
   // 2. 默认 Node 直启
-  console.log('[Launch] 未检测到 PM2，使用 node 策略');
+  logger.info('[Launch] 未检测到 PM2，使用 node 策略');
   return 'node';
 }
 

@@ -1,3 +1,4 @@
+import logger from '../../core/logger.js';
 /**
  * API Authentication Middleware
  * Bearer Token 认证中间件
@@ -34,7 +35,7 @@ export const authMiddleware = (req, res, next) => {
   const validTokens = getValidTokens();
 
   if (validTokens.length === 0) {
-    console.warn('[Auth] No API tokens configured, allowing request');
+    logger.warn('[Auth] No API tokens configured, allowing request');
     req.authenticated = true;
     return next();
   }

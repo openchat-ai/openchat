@@ -1,3 +1,4 @@
+import logger from './logger.js';
 /**
  * 自适应音频传输系统
  *
@@ -85,7 +86,7 @@ class AdaptiveAudioTransport extends EventEmitter {
       networkSwitches: 0
     };
 
-    console.log('[AdaptiveAudio] Transport initialized');
+    logger.info('[AdaptiveAudio] Transport initialized');
   }
 
   /**
@@ -104,7 +105,7 @@ class AdaptiveAudioTransport extends EventEmitter {
     this.checkNetwork();
     this.autoSelectMode();
 
-    console.log('[AdaptiveAudio] Network monitoring started');
+    logger.info('[AdaptiveAudio] Network monitoring started');
   }
 
   /**
@@ -116,7 +117,7 @@ class AdaptiveAudioTransport extends EventEmitter {
       this.monitorInterval = null;
     }
     this.monitoringEnabled = false;
-    console.log('[AdaptiveAudio] Network monitoring stopped');
+    logger.info('[AdaptiveAudio] Network monitoring stopped');
   }
 
   /**
@@ -220,7 +221,7 @@ class AdaptiveAudioTransport extends EventEmitter {
     this.currentMode = newMode;
     this.stats.modeChanges++;
 
-    console.log(`[AdaptiveAudio] Mode: ${oldMode} → ${newMode} (${reason})`);
+    logger.info(`[AdaptiveAudio] Mode: ${oldMode} → ${newMode} (${reason})`);
 
     this.emit('modeChanged', {
       from: oldMode,
@@ -242,7 +243,7 @@ class AdaptiveAudioTransport extends EventEmitter {
     this.currentMode = mode;
     this.currentQuality = quality;
 
-    console.log(`[AdaptiveAudio] Mode set to: ${mode} (${quality})`);
+    logger.info(`[AdaptiveAudio] Mode set to: ${mode} (${quality})`);
 
     this.emit('modeSet', { mode, quality, settings: qualitySettings });
   }

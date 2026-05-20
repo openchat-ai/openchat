@@ -9,6 +9,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import logger from './logger.js';
 
 const DATA_DIR = path.join(os.homedir(), '.openchat', 'vector-memory');
 const DATA_FILE = path.join(DATA_DIR, 'vectors.json');
@@ -182,7 +183,7 @@ class VectorMemory {
         this._idf = data.idf || {};
       }
     } catch (e) {
-      console.warn('[VectorMemory] load failed:', e.message);
+      logger.warn('[VectorMemory] load failed:', e.message);
     }
   }
 
@@ -194,7 +195,7 @@ class VectorMemory {
       fs.writeFileSync(DATA_FILE, JSON.stringify({ entries: stripped, idf: this._idf }, null, 2));
       this._dirty = false;
     } catch (e) {
-      console.error('[VectorMemory] save failed:', e.message);
+      logger.error('[VectorMemory] save failed:', e.message);
     }
   }
 
@@ -307,7 +308,7 @@ class VectorMemory {
   async reembedAll() {
     const todo = this._entries.filter(e => !e._embed);
     if (todo.length === 0) return;
-    console.log(`[VectorMemory] Computing ${todo.length} embeddings...`);
+    logger.info(`[VectorMemory] Computing ${todo.length} embeddings...`);
 
     // Batch in groups of 10
     for (let i = 0; i < todo.length; i += 10) {
@@ -321,7 +322,7 @@ class VectorMemory {
       }
       await new Promise(r => setTimeout(r, 200)); // rate limit
     }
-    console.log(`[VectorMemory] Embedding done for ${todo.length} entries`);
+    logger.info(`[VectorMemory] Embedding done for ${todo.length} entries`);
   }
 
   searchByResident(residentId, query, opts = {}) {

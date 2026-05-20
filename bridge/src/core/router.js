@@ -1,3 +1,4 @@
+import logger from './logger.js';
 /**
  * Router is the central dispatcher of the Bridge.
  * It routes messages from Gateways to the appropriate Core Logic and then to Providers/Tools.
@@ -14,7 +15,7 @@ export class Router {
    */
   registerGateway(id, gateway) {
     this.gateways.set(id, gateway);
-    console.log(`[Router] Gateway registered: ${id}`);
+    logger.info(`[Router] Gateway registered: ${id}`);
   }
 
   /**
@@ -22,7 +23,7 @@ export class Router {
    */
   registerPlugin(id, plugin) {
     this.plugins.set(id, plugin);
-    console.log(`[Router] Plugin registered: ${id}`);
+    logger.info(`[Router] Plugin registered: ${id}`);
   }
 
   /**
@@ -32,7 +33,7 @@ export class Router {
    */
   async dispatch(gatewayId, payload) {
     const { type, data, sessionId } = payload;
-    console.log(`[Router] Dispatching ${type} from ${gatewayId} (Session: ${sessionId})`);
+    logger.info(`[Router] Dispatching ${type} from ${gatewayId} (Session: ${sessionId})`);
 
     // This will be expanded to a more complex pipeline:
     // Gateway -> Middleware (Auth/Session) -> Memory -> Agent/Router -> Provider/Tool -> Response
@@ -47,7 +48,7 @@ export class Router {
       
       return result;
     } catch (error) {
-      console.error(`[Router] Dispatch error: ${error.message}`);
+      logger.error(`[Router] Dispatch error: ${error.message}`);
       throw error;
     }
   }

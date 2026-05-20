@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import logger from '../core/logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -14,7 +15,7 @@ function loadModelConfig() {
       return config.modelSelection?.bedrock || {};
     }
   } catch (e) {
-    console.warn('[BedrockAdapter] Failed to load model config:', e.message);
+    logger.warn('[BedrockAdapter] Failed to load model config:', e.message);
   }
   return {};
 }
@@ -163,7 +164,7 @@ export class BedrockAdapter {
     }
 
     // 注意：实际使用需要实现 AWS Signature V4
-    console.warn('⚠️  Bedrock adapter requires AWS Signature V4. Consider using AWS SDK.');
+    logger.warn('⚠️  Bedrock adapter requires AWS Signature V4. Consider using AWS SDK.');
 
     const modelId = model || this.defaultModel;
     const url = `${this.baseUrl}/model/${modelId}/invoke`;

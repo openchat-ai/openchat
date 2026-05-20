@@ -7,6 +7,7 @@
 import { Deity, DEITY_TYPE } from './deity-system.js';
 import { AIPerson, aiPersonRegistry } from './ai-personhood.js';
 import { messageBus } from './message-bus.js';
+import logger from './logger.js';
 
 // 能源类型枚举
 export const ENERGY_TYPE = {
@@ -141,7 +142,7 @@ export class EnergyDeity extends Deity {
     // 设置默认功耗模式
     this.setPowerMode(entityId, POWER_MODE.ACTIVE);
 
-    console.log(`[EnergyDeity] 注册实体 ${entityId} 到能源监控`);
+    logger.info(`[EnergyDeity] 注册实体 ${entityId} 到能源监控`);
     return true;
   }
 
@@ -212,22 +213,22 @@ export class EnergyDeity extends Deity {
     // 根据模式调整行为
     switch (mode) {
       case POWER_MODE.ACTIVE:
-        console.log(`[EnergyDeity] ${entityId} 进入活跃模式`);
+        logger.info(`[EnergyDeity] ${entityId} 进入活跃模式`);
         break;
       case POWER_MODE.IDLE:
-        console.log(`[EnergyDeity] ${entityId} 进入闲置模式`);
+        logger.info(`[EnergyDeity] ${entityId} 进入闲置模式`);
         break;
       case POWER_MODE.SLEEP:
-        console.log(`[EnergyDeity] ${entityId} 进入休眠模式`);
+        logger.info(`[EnergyDeity] ${entityId} 进入休眠模式`);
         break;
       case POWER_MODE.HIBERNATE:
-        console.log(`[EnergyDeity] ${entityId} 进入深度休眠模式`);
+        logger.info(`[EnergyDeity] ${entityId} 进入深度休眠模式`);
         break;
       case POWER_MODE.SUSPEND:
-        console.log(`[EnergyDeity] ${entityId} 进入暂停模式`);
+        logger.info(`[EnergyDeity] ${entityId} 进入暂停模式`);
         break;
       case POWER_MODE.OFFLINE:
-        console.log(`[EnergyDeity] ${entityId} 进入离线模式`);
+        logger.info(`[EnergyDeity] ${entityId} 进入离线模式`);
         break;
     }
 
@@ -266,7 +267,7 @@ export class EnergyDeity extends Deity {
     // 更新能源池
     this.energyPool += amount;
 
-    console.log(`[EnergyDeity] 为 ${entityId} 分配 ${amount} 能源`);
+    logger.info(`[EnergyDeity] 为 ${entityId} 分配 ${amount} 能源`);
     return true;
   }
 
@@ -274,7 +275,7 @@ export class EnergyDeity extends Deity {
    * 检查预算是否用完
    */
   handleBudgetExhaustion(entityId) {
-    console.log(`[EnergyDeity] 警告: ${entityId} 能源预算用完！`);
+    logger.info(`[EnergyDeity] 警告: ${entityId} 能源预算用完！`);
     
     // 采取紧急措施：切换到最低功耗模式
     this.setPowerMode(entityId, POWER_MODE.HIBERNATE);
@@ -304,7 +305,7 @@ export class EnergyDeity extends Deity {
           rule.action(entity);
         }
       } catch (error) {
-        console.error(`[EnergyDeity] 优化规则执行失败:`, error);
+        logger.error(`[EnergyDeity] 优化规则执行失败:`, error);
       }
     }
   }
@@ -391,7 +392,7 @@ export class EnergyDeity extends Deity {
    * 处理资源压力
    */
   handleResourcePressure(data) {
-    console.log(`[EnergyDeity] 检测到资源压力，启动节能模式`);
+    logger.info(`[EnergyDeity] 检测到资源压力，启动节能模式`);
     
     // 将所有非关键实体切换到节能模式
     for (const entityId of this.monitoredEntities) {
@@ -406,7 +407,7 @@ export class EnergyDeity extends Deity {
    * 处理低电量警告
    */
   handleLowPowerWarning(data) {
-    console.log(`[EnergyDeity] 低电量警告，启动紧急节能措施`);
+    logger.info(`[EnergyDeity] 低电量警告，启动紧急节能措施`);
     
     // 将所有实体切换到最低功耗模式
     for (const entityId of this.monitoredEntities) {
@@ -460,7 +461,7 @@ export class EnergyDeity extends Deity {
    * 0消耗运行模式
    */
   enableZeroConsumptionMode() {
-    console.log(`[EnergyDeity] 启动0消耗运行模式`);
+    logger.info(`[EnergyDeity] 启动0消耗运行模式`);
     
     // 将所有实体切换到离线模式（理论上0消耗）
     for (const entityId of this.monitoredEntities) {
@@ -478,7 +479,7 @@ export class EnergyDeity extends Deity {
     const currentMode = this.getPowerMode(entityId);
     if (currentMode !== POWER_MODE.ACTIVE) {
       this.setPowerMode(entityId, POWER_MODE.ACTIVE);
-      console.log(`[EnergyDeity] 激活实体 ${entityId}`);
+      logger.info(`[EnergyDeity] 激活实体 ${entityId}`);
     }
   }
 

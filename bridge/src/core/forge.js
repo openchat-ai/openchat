@@ -3,6 +3,7 @@ import * as os from 'os';
 import { generalizationEngineV2 } from './generalization.js';
 import { vectorMemory } from './vector-memory.js';
 import { GossipManager } from '../p2p/gossip-manager.js';
+import logger from './logger.js';
 
 class Forge {
   constructor() {
@@ -95,7 +96,7 @@ class Forge {
   _store(q, a, s) {
     try {
       vectorMemory.store({ residentId: 'forge', text: `Q: ${q.substring(0,200)}\nA: ${a.substring(0,500)}`, metadata: { source: s }, source: 'forge' });
-    } catch (e) { console.error('[Forge] store failed:', e.message); }
+    } catch (e) { logger.error('[Forge] store failed:', e.message); }
   }
 
   _log(traceId, event, detail) {

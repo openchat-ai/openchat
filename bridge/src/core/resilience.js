@@ -1,3 +1,4 @@
+import logger from './logger.js';
 /**
  * 弹性组件
  * 包含响应缓存、智能路由、流处理器、安全包装器
@@ -757,7 +758,7 @@ export class AdaptiveLimiter {
       this._currentInterval = Math.min(this._maxInterval, Math.floor(this._currentInterval * 1.5));
     }
     
-    console.log(`[Limiter] Decreased: concurrent=${this._currentConcurrent}, interval=${this._currentInterval}ms`);
+    logger.info(`[Limiter] Decreased: concurrent=${this._currentConcurrent}, interval=${this._currentInterval}ms`);
   }
 
   _increase() {
@@ -810,7 +811,7 @@ export class IntelligentCircuitBreaker {
       if (this._successCount >= this._successThreshold) {
         this._state = 'CLOSED';
         this._successCount = 0;
-        console.log('[ICBreaker] Recovered - CLOSED');
+        logger.info('[ICBreaker] Recovered - CLOSED');
       }
     }
   }
@@ -832,7 +833,7 @@ export class IntelligentCircuitBreaker {
     if (this._state === 'HALF_OPEN') {
       this._state = 'OPEN';
       this._openedAt = Date.now();
-      console.log('[ICBreaker] Probe failed - OPEN');
+      logger.info('[ICBreaker] Probe failed - OPEN');
       return;
     }
     
@@ -841,7 +842,7 @@ export class IntelligentCircuitBreaker {
     if (effectiveFailures >= this._failureThreshold || this._consecutive5xx >= 3) {
       this._state = 'OPEN';
       this._openedAt = Date.now();
-      console.log(`[ICBreaker] Opened after ${effectiveFailures} effective failures (5xx: ${this._consecutive5xx})`);
+      logger.info(`[ICBreaker] Opened after ${effectiveFailures} effective failures (5xx: ${this._consecutive5xx})`);
     }
   }
 
@@ -855,7 +856,7 @@ export class IntelligentCircuitBreaker {
       if (timeSinceOpened >= this._openTimeout) {
         this._state = 'HALF_OPEN';
         this._successCount = 0;
-        console.log('[ICBreaker] Half-Open - probing...');
+        logger.info('[ICBreaker] Half-Open - probing...');
         return { allowed: true, state: this._state };
       }
       return { allowed: false, state: this._state, waitTime: this._openTimeout - timeSinceOpened };
@@ -900,7 +901,7 @@ export class CircuitBreaker {
         this.state = 'CLOSED';
         this.failureCount = 0;
         this.successCount = 0;
-        console.log('[CircuitBreaker] Recovered - CLOSED');
+        logger.info('[CircuitBreaker] Recovered - CLOSED');
       }
     } else {
       this.failureCount = 0;
@@ -914,14 +915,14 @@ export class CircuitBreaker {
     if (this.state === 'HALF_OPEN') {
       this.state = 'OPEN';
       this.openedAt = Date.now();
-      console.log('[CircuitBreaker] Probe failed - OPEN');
+      logger.info('[CircuitBreaker] Probe failed - OPEN');
       return;
     }
     
     if (this.failureCount >= this.failureThreshold) {
       this.state = 'OPEN';
       this.openedAt = Date.now();
-      console.log(`[CircuitBreaker] Opened after ${this.failureCount} failures`);
+      logger.info(`[CircuitBreaker] Opened after ${this.failureCount} failures`);
     }
   }
 
@@ -935,7 +936,7 @@ export class CircuitBreaker {
       if (timeSinceOpened >= this.openTimeout) {
         this.state = 'HALF_OPEN';
         this.successCount = 0;
-        console.log('[CircuitBreaker] Half-Open - probing...');
+        logger.info('[CircuitBreaker] Half-Open - probing...');
         return { allowed: true, state: this.state };
       }
       return { allowed: false, state: this.state, waitTime: this.openTimeout - timeSinceOpened };

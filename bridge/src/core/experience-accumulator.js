@@ -1,3 +1,4 @@
+import logger from './logger.js';
 /**
  * 经验积累器
  * 记录任务执行结果，识别成功/失败模式
@@ -65,7 +66,7 @@ export class ExperienceAccumulator {
     // 检查模式
     this._analyzeExperiencePatterns(experience);
     
-    console.log(`[ExperienceAccumulator] Recorded experience: ${taskId} - Success: ${experience.success}`);
+    logger.info(`[ExperienceAccumulator] Recorded experience: ${taskId} - Success: ${experience.success}`);
     
     return experience.id;
   }
@@ -302,7 +303,7 @@ export class ExperienceAccumulator {
     
     this.knowledgeBase.set(patternKey, knowledge);
     
-    console.log(`[ExperienceAccumulator] Identified pattern: ${patternKey} - Occurrences: ${pattern.occurrences}`);
+    logger.info(`[ExperienceAccumulator] Identified pattern: ${patternKey} - Occurrences: ${pattern.occurrences}`);
   }
 
   /**

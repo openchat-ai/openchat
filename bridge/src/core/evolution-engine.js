@@ -5,6 +5,7 @@ import { EvolutionMemory } from './evolution-memory.js';
 
 const EXPERIENCES_FILE = path.join(os.homedir(), '.openchat', 'memory', 'evolution-experiences.json');
 import SkillManager from './skill-manager.js';
+import logger from './logger.js';
 
 export class EvolutionEngine {
   constructor() {
@@ -126,7 +127,7 @@ export class EvolutionEngine {
     try {
       await this.skillManager.saveSkills();
     } catch (error) {
-      console.error('Failed to save skills:', error);
+      logger.error('Failed to save skills:', error);
     }
   }
 
@@ -152,7 +153,7 @@ export class EvolutionEngine {
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(EXPERIENCES_FILE, JSON.stringify(this.experiences.slice(-100), null, 2));
     } catch (e) {
-      console.error('[EvolutionEngine] save experiences failed:', e.message);
+      // 保存失败不影响主流程
     }
   }
 
@@ -175,7 +176,7 @@ export class EvolutionEngine {
     try {
       await this.skillManager.loadSkills();
     } catch (error) {
-      console.error('Failed to load skills:', error);
+      logger.error('Failed to load skills:', error);
     }
   }
 
@@ -297,7 +298,7 @@ class RobustErrorHandler {
     try {
       return await recoveryFn();
     } catch (recoveryError) {
-      console.error('Recovery failed:', recoveryError);
+      logger.error('Recovery failed:', recoveryError);
       throw error;
     }
   }

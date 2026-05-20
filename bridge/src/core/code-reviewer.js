@@ -13,6 +13,7 @@
 import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, statSync } from 'fs';
 import { join, extname, relative, resolve } from 'path';
 import { homedir } from 'os';
+import logger from './logger.js';
 
 const REVIEW_DIR = join(homedir(), '.openchat', 'reviews');
 const BRIDGE_SRC = join(resolve('.'), 'bridge', 'src');
@@ -156,11 +157,11 @@ ${truncated}
       const bugCount = result.findings.filter(f => f.severity === 'high' && f.type === 'bug').length;
       this.bugsFound += bugCount;
 
-      console.log(`[CodeReview] ${problem.id}: 发现 ${result.findings.length} 个问题，其中 ${bugCount} 个严重 bug`);
+      logger.info(`[CodeReview] ${problem.id}: 发现 ${result.findings.length} 个问题，其中 ${bugCount} 个严重 bug`);
 
       return review;
     } catch (e) {
-      console.log(`[CodeReview] 解析审查结果失败: ${e.message}`);
+      logger.info(`[CodeReview] 解析审查结果失败: ${e.message}`);
       return null;
     }
   }

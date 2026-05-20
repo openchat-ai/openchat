@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { homedir } from 'os';
+import logger from '../core/logger.js';
 
 const CONFIG_DIR = path.join(homedir(), '.openchat');
 const SESSIONS_FILE = path.join(CONFIG_DIR, 'sessions.json');
@@ -28,7 +29,7 @@ export class PersistentSessionStore {
         this.sessions = new Map(Object.entries(data));
       }
     } catch (e) {
-      console.log(`Warning: Failed to load sessions: ${e.message}`);
+      logger.info(`Warning: Failed to load sessions: ${e.message}`);
     }
 
     try {
@@ -37,7 +38,7 @@ export class PersistentSessionStore {
         this.providers = new Map(Object.entries(data));
       }
     } catch (e) {
-      console.log(`Warning: Failed to load providers: ${e.message}`);
+      logger.info(`Warning: Failed to load providers: ${e.message}`);
     }
   }
 
@@ -47,13 +48,13 @@ export class PersistentSessionStore {
     try {
       fs.writeFileSync(SESSIONS_FILE, JSON.stringify(Object.fromEntries(this.sessions)));
     } catch (e) {
-      console.log(`Warning: Failed to save sessions: ${e.message}`);
+      logger.info(`Warning: Failed to save sessions: ${e.message}`);
     }
 
     try {
       fs.writeFileSync(PROVIDERS_FILE, JSON.stringify(Object.fromEntries(this.providers)));
     } catch (e) {
-      console.log(`Warning: Failed to save providers: ${e.message}`);
+      logger.info(`Warning: Failed to save providers: ${e.message}`);
     }
   }
 

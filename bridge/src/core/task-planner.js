@@ -11,6 +11,7 @@ import { pluginManager } from '../plugins/plugin-manager.js';
 import { memoryManager } from '../memory/memory-manager.js';
 import { sessionManager } from '../session/session-manager.js';
 import { PromptBuilder } from './prompt-builder.js';
+import logger from './logger.js';
 
 export class TaskPlanner {
   constructor(options = {}) {
@@ -70,7 +71,7 @@ export class TaskPlanner {
         plan.createdAt = Date.now();
         return plan;
       } catch (e) {
-        console.warn('[Planner] Failed to parse plan:', e.message);
+        logger.warn('[Planner] Failed to parse plan:', e.message);
       }
     }
 

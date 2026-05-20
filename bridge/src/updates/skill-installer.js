@@ -1,3 +1,4 @@
+import logger from '../core/logger.js';
 /**
  * Skill 下载和集成系统
  *
@@ -64,7 +65,7 @@ class SkillInstaller {
 
       return { success: true, path: skillPath };
     } catch (error) {
-      console.error(`[SkillInstaller] Download failed:`, error.message);
+      logger.error(`[SkillInstaller] Download failed:`, error.message);
       return { success: false, error: error.message };
     }
   }
@@ -297,10 +298,10 @@ class SkillInstaller {
 
     try {
       this.copyDirectory(skill.path, backupPath);
-      console.log(`[SkillInstaller] Backed up ${name} to ${backupPath}`);
+      logger.info(`[SkillInstaller] Backed up ${name} to ${backupPath}`);
       return true;
     } catch (error) {
-      console.error(`[SkillInstaller] Backup failed:`, error.message);
+      logger.error(`[SkillInstaller] Backup failed:`, error.message);
       return false;
     }
   }

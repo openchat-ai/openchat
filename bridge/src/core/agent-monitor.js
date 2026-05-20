@@ -2,6 +2,7 @@ import { messageBus, MESSAGE_TYPES } from './message-bus.js';
 import { AGENT_STATES } from './agent-session.js';
 import fs from 'fs/promises';
 import path from 'path';
+import logger from './logger.js';
 
 const MONITOR_INTERVAL = 5000;
 const STATE_FILE = path.join(process.env.HOME || process.env.USERPROFILE, '.openchat', 'agent-state.json');
@@ -282,7 +283,7 @@ export class AgentMonitor {
       if (agent.state === AgentState.EXECUTING) {
         const lastActivity = agent.lastActivity || agent.lastHeartbeat || 0;
         if (now - lastActivity > 60000) { // 1分钟无活动
-          console.warn(`[Monitor] Agent ${id} may be stuck (no activity for ${Math.floor((now - lastActivity) / 1000)}s)`);
+          logger.warn(`[Monitor] Agent ${id} may be stuck (no activity for ${Math.floor((now - lastActivity) / 1000)}s)`);
         }
       }
     }
@@ -346,21 +347,21 @@ export class AgentMonitor {
     const agents = this.getAgentList();
 
     if (agents.length === 0) {
-      console.log('[Monitor] No active agents');
+      logger.info('[Monitor] No active agents');
       return;
     }
 
-    console.log('\n╔═══════════════════════════════════════════════════════════╗');
-    console.log('║              Agent Monitoring Status                       ║');
-    console.log('╚═══════════════════════════════════════════════════════════╝');
+    logger.info('\n╔═══════════════════════════════════════════════════════════╗');
+    logger.info('║              Agent Monitoring Status                       ║');
+    logger.info('╚═══════════════════════════════════════════════════════════╝');
 
     for (const agent of agents) {
-      console.log(`  ${this.formatAgentStatus(agent)}`);
+      logger.info(`  ${this.formatAgentStatus(agent)}`);
     }
 
-    console.log('');
-    console.log(`  Metrics: ${this.metrics.totalExecutions} executions, ${this.metrics.successCount} success, ${this.metrics.totalToolsUsed} tools used`);
-    console.log('');
+    logger.info('');
+    logger.info(`  Metrics: ${this.metrics.totalExecutions} executions, ${this.metrics.successCount} success, ${this.metrics.totalToolsUsed} tools used`);
+    logger.info('');
   }
 
   /**
@@ -382,7 +383,7 @@ export class AgentMonitor {
       // 保存历史（最近的）
       await fs.writeFile(HISTORY_FILE, JSON.stringify(this.executionHistory.slice(-50), null, 2));
     } catch (e) {
-      console.warn('[Monitor] Failed to save state:', e.message);
+      logger.warn('[Monitor] Failed to save state:', e.message);
     }
   }
 
@@ -419,7 +420,7 @@ export class AgentMonitor {
 
       const recoveredCount = Array.from(this.agents.values()).filter(a => a.recovered).length;
       if (recoveredCount > 0) {
-        console.log(`[Monitor] Recovered ${recoveredCount} paused agent(s)`);
+        logger.info(`[Monitor] Recovered ${recoveredCount} paused agent(s)`);
       }
     } catch (e) {
       // 状态文件不存在，忽略

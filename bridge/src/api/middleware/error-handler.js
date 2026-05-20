@@ -1,3 +1,4 @@
+import logger from '../../core/logger.js';
 /**
  * API Error Handler Middleware
  */
@@ -12,7 +13,7 @@ class APIError extends Error {
 }
 
 const errorHandler = (err, req, res, next) => {
-  console.error('[API Error]', err.message, err.stack)
+  logger.error('[API Error]', err.message, err.stack)
 
   // Joi 验证错误
   if (err.isJoi) {

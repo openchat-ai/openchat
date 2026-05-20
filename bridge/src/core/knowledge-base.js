@@ -19,6 +19,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import logger from './logger.js';
 
 const KNOWLEDGE_DIR = path.join(os.homedir(), '.openchat', 'knowledge');
 const MAX_ENTRIES_PER_DOMAIN = 1000;
@@ -125,12 +126,12 @@ class KnowledgeBase {
             fs.renameSync(path.join(KNOWLEDGE_DIR, f), path.join(KNOWLEDGE_DIR, f + '.bak'));
           }
         } catch {}
-        console.log(`[KB] 已迁移 ${count} 条到 SQLite`);
+        logger.info(`[KB] 已迁移 ${count} 条到 SQLite`);
       }
       return store;
     } catch {
       // sql.js 不可用 → 回退 JSON
-      console.log('[KB] sql.js 不可用，使用 JSON 存储');
+      logger.info('[KB] sql.js 不可用，使用 JSON 存储');
       return new JSONStore(KNOWLEDGE_DIR);
     }
   }
@@ -517,7 +518,7 @@ class SQLiteStore {
       `);
       this.db.run('CREATE INDEX IF NOT EXISTS idx_domain ON entries(domain)');
     } catch (e) {
-      console.log(`[KB] SQLite 初始化失败: ${e.message}`);
+      logger.info(`[KB] SQLite 初始化失败: ${e.message}`);
     }
   }
 

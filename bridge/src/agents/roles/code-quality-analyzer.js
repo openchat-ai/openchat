@@ -1,3 +1,4 @@
+import logger from '../../core/logger.js';
 /**
  * Code Quality Analyzer Agent
  * 代码质量和最佳实践分析
@@ -24,7 +25,7 @@ class CodeQualityAnalyzerAgent extends BaseAgent {
    * 运行代码质量分析任务
    */
   async runTask(task) {
-    console.log(`[CodeQualityAnalyzer] Analyzing code quality...`);
+    logger.info(`[CodeQualityAnalyzer] Analyzing code quality...`);
 
     const results = {
       issues: [],

@@ -6,6 +6,7 @@
  * Features: auto-extract numbers, touch-aware, cross-shape adapt
  */
 import { vectorMemory } from './vector-memory.js';
+import logger from './logger.js';
 
 class GeneralizationEngineV2 {
   async solve({ question }) {
@@ -60,7 +61,7 @@ class GeneralizationEngineV2 {
         metadata: { fp, answer: answerTouch, ts: Date.now() },
         source: 'solved',
       });
-    } catch (e) { console.error('[Generalization] cache write failed:', e.message); }
+    } catch (e) { logger.error('[Generalization] cache write failed:', e.message); }
     const touchParts = dim2.map((s, i) => {
       if (i === dim2.indexOf(choice)) return `${s}双全(${irr(i)}+${Math.max(C[iA][i],C[iB][i])}+1)`;
       return `${s}一(${irr(i)}+1)`;

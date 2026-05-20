@@ -11,6 +11,7 @@ import { createRequire } from 'module';
 import { createHash } from 'crypto';
 import { execSync } from 'child_process';
 import { residentManager } from './resident-manager.js';
+import logger from './logger.js';
 
 const require = createRequire(import.meta.url);
 const fs = require('fs');
@@ -61,7 +62,7 @@ class SafeEvolution {
       oldContent = fs.readFileSync(filePath, 'utf8');
       oldHash = createHash('sha256').update(oldContent).digest('hex');
     } catch (e) {
-      console.log(`[SafeEvo] 无法读取文件 ${proposal.file}, 将被视为新建`);
+      logger.info(`[SafeEvo] 无法读取文件 ${proposal.file}, 将被视为新建`);
     }
 
     const newHash = createHash('sha256').update(proposal.newContent).digest('hex');
@@ -69,7 +70,7 @@ class SafeEvolution {
     // 本地安全校验
     const syntaxOk = this._syntaxCheck(proposal.file, proposal.newContent);
     if (!syntaxOk) {
-      console.log(`[SafeEvo] 语法校验失败，提案作废`);
+      logger.info(`[SafeEvo] 语法校验失败，提案作废`);
       return { approved: false, reason: 'syntax_check_failed' };
     }
 
@@ -77,7 +78,7 @@ class SafeEvolution {
     if (options.selfHeal) {
       const validation = SafeEvolution.validateSelfHealChange(proposal.file, options.originalContent || oldContent, proposal.newContent);
       if (!validation.valid) {
-        console.log(`[SafeEvo] 自愈校验失败: ${validation.reason}`);
+        logger.info(`[SafeEvo] 自愈校验失败: ${validation.reason}`);
         return { approved: false, reason: validation.reason };
       }
       // 直接构造 entry 并应用
@@ -90,7 +91,7 @@ class SafeEvolution {
         syntaxOk,
         selfHeal: true,
       });
-      console.log(`[SafeEvo] 自愈提案 ${proposalId.slice(0, 8)}: ${proposal.file} ← ${proposal.residentName}`);
+      logger.info(`[SafeEvo] 自愈提案 ${proposalId.slice(0, 8)}: ${proposal.file} ← ${proposal.residentName}`);
       await this._applyProposal(proposalId);
       return { proposalId, approved: true, selfHeal: true };
     }
@@ -123,7 +124,7 @@ class SafeEvolution {
     const entry = this.pendingProposals.get(proposalId);
     entry.timer = timer;
 
-    console.log(`[SafeEvo] 提案 ${proposalId.slice(0, 8)}: ${proposal.file} ← ${proposal.residentName}`);
+    logger.info(`[SafeEvo] 提案 ${proposalId.slice(0, 8)}: ${proposal.file} ← ${proposal.residentName}`);
 
     return { proposalId, pending: true };
   }
@@ -144,11 +145,11 @@ class SafeEvolution {
     } else {
       entry.rejections.add(verifierId || peerId);
       if (warnings?.length) {
-        console.log(`[SafeEvo] 提案 ${proposalId.slice(0, 8)} 被拒: ${warnings.join(', ')}`);
+        logger.info(`[SafeEvo] 提案 ${proposalId.slice(0, 8)} 被拒: ${warnings.join(', ')}`);
       }
     }
 
-    console.log(`[SafeEvo] 提案 ${proposalId.slice(0, 8)}: ${entry.approvals.size} 同意 / ${entry.rejections.size} 拒绝`);
+    logger.info(`[SafeEvo] 提案 ${proposalId.slice(0, 8)}: ${entry.approvals.size} 同意 / ${entry.rejections.size} 拒绝`);
 
     // 达到共识立即执行
     if (entry.approvals.size >= MIN_APPROVALS) {
@@ -230,7 +231,7 @@ class SafeEvolution {
     if (entry.approvals.size >= MIN_APPROVALS) {
       await this._applyProposal(proposalId);
     } else {
-      console.log(`[SafeEvo] 提案 ${proposalId.slice(0, 8)} 共识不足，作废`);
+      logger.info(`[SafeEvo] 提案 ${proposalId.slice(0, 8)} 共识不足，作废`);
       this.pendingProposals.delete(proposalId);
     }
   }
@@ -272,7 +273,7 @@ class SafeEvolution {
         setTimeout(() => {
           const ok = this._quickHealthCheck();
           if (!ok) {
-            console.log(`[SafeEvo] 快检失败，回滚 ${proposal.file}`);
+            logger.info(`[SafeEvo] 快检失败，回滚 ${proposal.file}`);
             this._markFileCooldown(proposal.file);
             if (originalContent !== null) fs.writeFileSync(filePath, originalContent);
             else fs.unlinkSync(filePath);
@@ -286,12 +287,12 @@ class SafeEvolution {
         setTimeout(() => {
           const ok = this._deepHealthCheck();
           if (!ok) {
-            console.log(`[SafeEvo] 深检失败，回滚 ${proposal.file}`);
+            logger.info(`[SafeEvo] 深检失败，回滚 ${proposal.file}`);
             this._markFileCooldown(proposal.file);
             if (originalContent !== null) fs.writeFileSync(filePath, originalContent);
             else fs.unlinkSync(filePath);
           } else {
-            console.log(`[SafeEvo] 变更应用成功: ${proposal.file}`);
+            logger.info(`[SafeEvo] 变更应用成功: ${proposal.file}`);
             // 清除该文件的冷却状态
             this._cooldowns.delete(proposal.file);
             // 广播成功
@@ -311,13 +312,13 @@ class SafeEvolution {
       this.pendingProposals.delete(proposalId);
 
     } catch (e) {
-      console.error(`[SafeEvo] 应用变更异常: ${e.message}，回滚`);
+      logger.error(`[SafeEvo] 应用变更异常: ${e.message}，回滚`);
       try {
         if (fs.existsSync(filePath + '.orig')) {
           fs.renameSync(filePath + '.orig', filePath);
         }
       } catch (rollbackErr) {
-        console.error(`[SafeEvo] 回滚失败: ${rollbackErr.message}`);
+        logger.error(`[SafeEvo] 回滚失败: ${rollbackErr.message}`);
       }
       this.pendingProposals.delete(proposalId);
     }

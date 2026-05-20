@@ -1,3 +1,4 @@
+import logger from '../core/logger.js';
 /**
  * P2P Node Identity ?ed25519 keypair management
  *
@@ -34,7 +35,7 @@ function loadOrGenerateKeypair() {
         };
       }
     } catch (e) {
-      console.log('[P2P Identity] Failed to load key, generating new one');
+      logger.info('[P2P Identity] Failed to load key, generating new one');
     }
   }
 

@@ -1,3 +1,4 @@
+import logger from '../core/logger.js';
 /**
  * Priority Queue for P2P Messages
  * 优先级队列实现
@@ -60,7 +61,7 @@ class PriorityQueue {
           return queue.shift();
         } else {
           // 超时，移除并记录
-          console.log(`[PriorityQueue] ${priority} message timed out after ${age}ms`);
+          logger.info(`[PriorityQueue] ${priority} message timed out after ${age}ms`);
           queue.shift();
         }
       }

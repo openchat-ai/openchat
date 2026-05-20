@@ -3,6 +3,7 @@ import path from 'path';
 import { spawn, exec } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import logger from './logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -75,22 +76,22 @@ class AutoRestartManager {
   startWatching(callback, forceEnable = false) {
     // 🔒 安全检查：默认禁止启用，除非明确指定
     if (!forceEnable && !this.fileWatchingEnabled) {
-      console.log('⚠️  文件监听已禁用（与热更新冲突）');
-      console.log('   如需启用：autoRestartManager.startWatching(cb, true)');
-      console.log('   或设置：autoRestartManager.fileWatchingEnabled = true');
+      logger.info('⚠️  文件监听已禁用（与热更新冲突）');
+      logger.info('   如需启用：autoRestartManager.startWatching(cb, true)');
+      logger.info('   或设置：autoRestartManager.fileWatchingEnabled = true');
       return;
     }
 
     this.restartCallback = callback;
     this.isRunning = true;
 
-    console.log(`🔍 开始监听文件变化: ${this.watchDir}`);
-    console.log(`⏭️  忽略模式: ${this.ignorePatterns.join(', ')}`);
+    logger.info(`🔍 开始监听文件变化: ${this.watchDir}`);
+    logger.info(`⏭️  忽略模式: ${this.ignorePatterns.join(', ')}`);
 
     // 递归监听所有 JS 文件
     this.watchDirectory(this.watchDir);
 
-    console.log('✅ 文件监听已启动');
+    logger.info('✅ 文件监听已启动');
   }
 
   /**
@@ -98,7 +99,7 @@ class AutoRestartManager {
    * @param {Function} callback - 重启回调函数
    */
   enableFileWatching(callback) {
-    console.log('⚠️  启用文件监听（生产环境建议关闭）');
+    logger.info('⚠️  启用文件监听（生产环境建议关闭）');
     this.fileWatchingEnabled = true;
     this.startWatching(callback, true);
   }
@@ -108,7 +109,7 @@ class AutoRestartManager {
    */
   disableFileWatching() {
     this.fileWatchingEnabled = false;
-    console.log('🔒 文件监听已禁用');
+    logger.info('🔒 文件监听已禁用');
   }
 
   /**
@@ -134,7 +135,7 @@ class AutoRestartManager {
         }
       }
     } catch (error) {
-      console.error(`❌ 监听目录失败: ${error.message}`);
+      logger.error(`❌ 监听目录失败: ${error.message}`);
     }
   }
 
@@ -155,9 +156,9 @@ class AutoRestartManager {
       });
 
       this.watchers.set(filePath, watcher);
-      console.log(`📁 监听文件: ${path.relative(this.watchDir, filePath)}`);
+      logger.info(`📁 监听文件: ${path.relative(this.watchDir, filePath)}`);
     } catch (error) {
-      console.error(`❌ 监听文件失败: ${filePath} - ${error.message}`);
+      logger.error(`❌ 监听文件失败: ${filePath} - ${error.message}`);
     }
   }
 
@@ -175,7 +176,7 @@ class AutoRestartManager {
       return;
     }
 
-    console.log(`📝 文件变化: ${path.relative(this.watchDir, filePath)}`);
+    logger.info(`📝 文件变化: ${path.relative(this.watchDir, filePath)}`);
     this.changeQueue.push(filePath);
 
     // 防抖处理：在 debounceDelay 毫秒内的多个变化只触发一次重启
@@ -196,12 +197,12 @@ class AutoRestartManager {
     // 检查是否太频繁（防止无限重启）
     const now = Date.now();
     if (this.lastRestartTime && now - this.lastRestartTime < 2000) {
-      console.log('⏱️  重启太频繁，跳过本次重启');
+      logger.info('⏱️  重启太频繁，跳过本次重启');
       return;
     }
 
-    console.log('\n🔄 触发应用重启...');
-    console.log(`   变化文件: ${this.changeQueue.join(', ')}`);
+    logger.info('\n🔄 触发应用重启...');
+    logger.info(`   变化文件: ${this.changeQueue.join(', ')}`);
 
     this.changeQueue = [];
     this.restart();
@@ -212,7 +213,7 @@ class AutoRestartManager {
    */
   restart() {
     if (this.childProcess) {
-      console.log('🛑 杀死当前进程...');
+      logger.info('🛑 杀死当前进程...');
       this.childProcess.kill();
       this.childProcess = null;
     }
@@ -226,12 +227,12 @@ class AutoRestartManager {
     this.restartHistory.push(restartRecord);
 
     if (this.restartCallback) {
-      console.log('🚀 启动新进程...');
+      logger.info('🚀 启动新进程...');
       try {
         this.restartCallback();
-        console.log('✅ 应用已重启\n');
+        logger.info('✅ 应用已重启\n');
       } catch (error) {
-        console.error(`❌ 重启失败: ${error.message}`);
+        logger.error(`❌ 重启失败: ${error.message}`);
       }
     }
   }
@@ -240,7 +241,7 @@ class AutoRestartManager {
    * 停止监听
    */
   stopWatching() {
-    console.log('🛑 停止文件监听...');
+    logger.info('🛑 停止文件监听...');
     this.isRunning = false;
 
     // 关闭所有监听器
@@ -261,7 +262,7 @@ class AutoRestartManager {
       this.childProcess = null;
     }
 
-    console.log('✅ 文件监听已停止');
+    logger.info('✅ 文件监听已停止');
   }
 
   /**
@@ -274,7 +275,7 @@ class AutoRestartManager {
       return;
     }
 
-    console.log('🔐 通过特权代理执行重启...');
+    logger.info('🔐 通过特权代理执行重启...');
 
     try {
       await privilegedAgent.executeCommand('restart', {
@@ -282,9 +283,9 @@ class AutoRestartManager {
         reason: 'File change detected',
       });
 
-      console.log('✅ 特权重启完成');
+      logger.info('✅ 特权重启完成');
     } catch (error) {
-      console.error(`❌ 特权重启失败: ${error.message}`);
+      logger.error(`❌ 特权重启失败: ${error.message}`);
     }
   }
 

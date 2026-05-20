@@ -1,6 +1,7 @@
 import { createProvider } from '../providers/ai-provider.js';
 import { persistentStore } from '../storage/persistent-store.js';
 import { persistentConfig } from '../core/persistent-config.js';
+import logger from '../core/logger.js';
 
 export class SessionManager {
   constructor() {
@@ -27,7 +28,7 @@ export class SessionManager {
     await provider.connect(effectiveKey, endpoint);
     this.providers.set(type, provider);
 
-    console.log(`✓ Connected to ${provider.name}`);
+    logger.info(`✓ Connected to ${provider.name}`);
     return provider;
   }
 
@@ -38,7 +39,7 @@ export class SessionManager {
     }
     await provider.disconnect();
     this.providers.delete(type);
-    console.log(`✗ Disconnected from ${provider.name}`);
+    logger.info(`✗ Disconnected from ${provider.name}`);
   }
 
   addProviderDirect(provider) {
@@ -77,7 +78,7 @@ export class SessionManager {
 
     persistentStore.setSession(sessionId, session);
     persistentConfig.addSessionToHistory(sessionId, providerType, model);
-    console.log(`✓ Created session ${sessionId} with ${provider.name}/${model}`);
+    logger.info(`✓ Created session ${sessionId} with ${provider.name}/${model}`);
     return session;
   }
 
@@ -160,7 +161,7 @@ export class SessionManager {
         }
       };
     } catch (error) {
-      console.error(`✗ Session ${sessionId} error:`, error.message);
+      logger.error(`✗ Session ${sessionId} error:`, error.message);
       throw error;
     }
   }
@@ -185,7 +186,7 @@ export class SessionManager {
     const session = persistentStore.getSession(sessionId);
     if (session) {
       persistentStore.deleteSession(sessionId);
-      console.log(`✗ Closed session ${sessionId}`);
+      logger.info(`✗ Closed session ${sessionId}`);
       return true;
     }
     return false;

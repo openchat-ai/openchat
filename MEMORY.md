@@ -49,6 +49,7 @@
 - [2026-05-18] 四轮专家评审共执行 24 项 P0，Bridge 根目录清理 12 个 Python 遗留文件，AI 居民状态机+多路径推理替换预制回答。**教训：专家评审每轮都套用相同提问模式——架构/测试/安全/AI——不会问完全重复的问题。当评审开始聚焦"居民不够聪明"和"知识不共享"时，说明基础设施债已还完，轮到产品力了。**
 
 - [2026-05-20] **第五轮专家评审 — HTTP 路径统一 + 首次全绿**：测试从 98/98 推进到 120/120（第五轮 98→第六轮 120，最终全绿）。完成 5 项 P0 执行：Express 监听端口 3800，废弃 raw HTTP server，所有衍生端口以 3800 为基准。**教训：大量遗留代码（startServer 中的 ~250 行路由/WebSocket 逻辑）在首次 edit 时未完全匹配删除，因文件行号已因前序 edit 偏移。大段替换时必须用唯一匹配锚点（如 `}` + 下一方法签名）。**
+- [2026-05-20] **第七轮专家评审 — console.log→pino 结构化日志**：114→115 测试（全绿）。完成 7 轮共 29 项 P0。134 个文件批量替换 console.log → logger.info/warn/error，pino 集成带敏感数据脱敏。**教训：PowerShell `Set-Content -NoNewline` 会以错误编码写入文件，导致 UTF-8 多字节字符损坏。文件修改必须统一用 Node.js `fs.writeFileSync(file, content, 'utf-8')`。`pino.transport()` 创建 worker 线程会阻止 Node.js test runner 退出，必须用同步 pino API。**
 
 
 ## 专家意见跟踪
@@ -75,3 +76,5 @@
 | R6 | 无新人onboarding | 开源社区经理 | first-steps.md | ✅ 已修(R7) | 开源社区经理 |
 | R6 | 无CI | SRE/运维 | .github/workflows/ci.yml | ✅ 已修(R7) | SRE/运维 |
 | R6 | eval-report残留 | Git专家 | 清理+.gitignore | ✅ 已修(R7) | Git专家 |
+| R7 | console.log→pino结构化日志 | SRE/运维 | P0-1 替换134文件 | ✅ 已修(R7) | 测试工程师 |
+| R7 | AI居民CoT+tool-use | AI研究员 | P0-4 tool-registry + CoT loop | ✅ 已修(R7) | 核心工程师 |

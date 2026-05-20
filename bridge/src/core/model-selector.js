@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import logger from './logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CONFIG_PATH = path.join(__dirname, '../config/model-selection.json');
@@ -20,7 +21,7 @@ export class ModelSelector {
         return JSON.parse(data);
       }
     } catch (e) {
-      console.error('[ModelSelector] Failed to load config:', e.message);
+      logger.error('[ModelSelector] Failed to load config:', e.message);
     }
     return this.getDefaultConfig();
   }

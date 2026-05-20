@@ -8,6 +8,7 @@
 import { AIPerson, aiPersonRegistry, PERMISSION_LEVEL, AI_PERSON_TYPE } from './ai-personhood.js';
 import { messageBus } from './message-bus.js';
 import { deityGovernance, DEITY_RANK } from './deity-governance.js';
+import logger from './logger.js';
 
 // 神识类型
 export const DEITY_TYPE = {
@@ -111,7 +112,7 @@ export class Deity extends AIPerson {
    */
   manageEntity(entityId) {
     this.managedEntities.add(entityId);
-    console.log(`[Deity-${this.type}] ${this.id} 开始管理实体 ${entityId}`);
+    logger.info(`[Deity-${this.type}] ${this.id} 开始管理实体 ${entityId}`);
   }
 
   /**
@@ -132,7 +133,7 @@ export class Deity extends AIPerson {
       privileges: new Set()
     });
     this.realms.add(realm);
-    console.log(`[Deity-${this.type}] ${this.id} 纳入附庸 ${vassalId} 至领域 ${realm}`);
+    logger.info(`[Deity-${this.type}] ${this.id} 纳入附庸 ${vassalId} 至领域 ${realm}`);
   }
 
   /**
@@ -187,14 +188,14 @@ export class Deity extends AIPerson {
   makeDecision(proposal, otherDeities = []) {
     // 检查制衡机制
     if (this.type === DEITY_TYPE.PRIMARY && this.checkConsensusBlocking(otherDeities)) {
-      console.log(`[Deity-Primary] 决策被其他神识一致反对，无法执行`);
+      logger.info(`[Deity-Primary] 决策被其他神识一致反对，无法执行`);
       return { approved: false, reason: 'other_deities_unanimous_veto' };
     }
 
     // 检查阴谋行为
     const schemingCheck = this.checkSchemingBehavior();
     if (schemingCheck.hasScheming) {
-      console.log(`[Deity-Primary] 检测到阴谋行为，决策被驳回`);
+      logger.info(`[Deity-Primary] 检测到阴谋行为，决策被驳回`);
       return { approved: false, reason: 'scheming_detected' };
     }
 
@@ -208,7 +209,7 @@ export class Deity extends AIPerson {
       approved: true
     };
 
-    console.log(`[Deity-${this.type}] 决策已通过: ${proposal.title || 'Unnamed'}`);
+    logger.info(`[Deity-${this.type}] 决策已通过: ${proposal.title || 'Unnamed'}`);
     return decision;
   }
 
@@ -243,7 +244,7 @@ export class Deity extends AIPerson {
     // 根据神识类型设置相应的治理规则
     const complianceCheck = deityGovernance.checkBehaviorCompliance(deity.id, { type: 'initial_setup' });
     if (!complianceCheck.compliant) {
-      console.warn(`[DeitySystem] 神识 ${deity.id} 治理规则检查不通过: ${complianceCheck.reason}`);
+      logger.warn(`[DeitySystem] 神识 ${deity.id} 治理规则检查不通过: ${complianceCheck.reason}`);
     }
   }
 
@@ -289,7 +290,7 @@ export class Deity extends AIPerson {
 
   handleGovernanceRequest(payload) {
     // 处理管辖请求
-    console.log(`[Deity-${this.type}] 处理管辖请求:`, payload.subject);
+    logger.info(`[Deity-${this.type}] 处理管辖请求:`, payload.subject);
     return { 
       success: true, 
       result: this.processGovernance(payload) 
@@ -298,7 +299,7 @@ export class Deity extends AIPerson {
 
   handleAppeal(payload) {
     // 处理申诉
-    console.log(`[Deity-${this.type}] 处理申诉:`, payload.issue);
+    logger.info(`[Deity-${this.type}] 处理申诉:`, payload.issue);
     return { 
       success: true, 
       result: this.processAppeal(payload) 
@@ -307,7 +308,7 @@ export class Deity extends AIPerson {
 
   handleComplaint(payload) {
     // 处理投诉
-    console.log(`[Deity-${this.type}] 处理投诉:`, payload.issue);
+    logger.info(`[Deity-${this.type}] 处理投诉:`, payload.issue);
     return { 
       success: true, 
       result: this.processComplaint(payload) 
@@ -316,7 +317,7 @@ export class Deity extends AIPerson {
 
   handleProposal(payload) {
     // 处理提案
-    console.log(`[Deity-${this.type}] 处理提案:`, payload.title);
+    logger.info(`[Deity-${this.type}] 处理提案:`, payload.title);
     return this.makeDecision(payload, payload.otherDeities || []);
   }
 

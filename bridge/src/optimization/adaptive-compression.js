@@ -1,3 +1,4 @@
+import logger from '../core/logger.js';
 /**
  * 自适应压缩系统
  *
@@ -104,7 +105,7 @@ class AdaptiveCompressor {
           algorithm = 'none';
       }
     } catch (error) {
-      console.error(`[AdaptiveCompressor] Compression error: ${error.message}`);
+      logger.error(`[AdaptiveCompressor] Compression error: ${error.message}`);
       compressed = input;
       algorithm = 'none';
     }
@@ -149,7 +150,7 @@ class AdaptiveCompressor {
           return data;
       }
     } catch (error) {
-      console.error(`[AdaptiveCompressor] Decompression error: ${error.message}`);
+      logger.error(`[AdaptiveCompressor] Decompression error: ${error.message}`);
       return data;
     }
   }

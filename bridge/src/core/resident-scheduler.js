@@ -15,6 +15,7 @@ import { persistentConfig } from './persistent-config.js';
 import { decideActions } from './resident-decisions.js';
 import { SelfLearner } from './self-learner.js';
 import { DEFAULT_PORT } from '../constants.js';
+import logger from './logger.js';
 
 // 安全算术求值
 function evalSimple(expr) {
@@ -85,7 +86,7 @@ class ResidentScheduler {
       solver: solutionEngine,
       optimizer: solutionOptimizer,
     };
-    console.log('[P2R-K] 收敛系统已注入调度器');
+    logger.info('[P2R-K] 收敛系统已注入调度器');
   }
 
   /**
@@ -97,7 +98,7 @@ class ResidentScheduler {
       addedAt: Date.now(),
       status: 'pending',
     });
-    console.log(`[P2R-K] 收到新问题: ${problem.problemId?.slice(0,8) || '?'} (待解: ${this._pendingProblems.length})`);
+    logger.info(`[P2R-K] 收到新问题: ${problem.problemId?.slice(0,8) || '?'} (待解: ${this._pendingProblems.length})`);
   }
 
   /**
@@ -154,7 +155,7 @@ class ResidentScheduler {
     if (this._started) return;
     this._started = true;
     const intervalSec = (TICK_INTERVAL / 1000).toFixed(0);
-    console.log(`[调度器] ▶ 启动，每 ${intervalSec}s 扫描一次居民（最多并发 ${MAX_CONCURRENT_AGENTS} Agent/人）`);
+    logger.info(`[调度器] ▶ 启动，每 ${intervalSec}s 扫描一次居民（最多并发 ${MAX_CONCURRENT_AGENTS} Agent/人）`);
     this._tick();
     this._timer = setInterval(() => this._tick(), TICK_INTERVAL);
   }
@@ -165,7 +166,7 @@ class ResidentScheduler {
       this._timer = null;
     }
     this._started = false;
-    console.log('[调度器] ⏹ 已停止');
+    logger.info('[调度器] ⏹ 已停止');
   }
 
   // ================== 核心 tick ==================
@@ -176,7 +177,7 @@ class ResidentScheduler {
     // P2R: 房子健康检查 + 维护/备灾/找窟
     if (this.houseOrchestrator) {
       this.houseOrchestrator.tick().catch(e => {
-        console.log(`[调度器] HouseOrchestrator tick 失败: ${e.message}`);
+        logger.info(`[调度器] HouseOrchestrator tick 失败: ${e.message}`);
       });
     }
 
@@ -186,7 +187,7 @@ class ResidentScheduler {
         p._autoSolverTried = true;
         this._大脑思考(p).then(solved => {
           if (solved) {
-            console.log(`[自动求解] ✅ 问题 ${p.problemId?.slice(0,8)} 已自动解出`);
+            logger.info(`[自动求解] ✅ 问题 ${p.problemId?.slice(0,8)} 已自动解出`);
           }
         }).catch(() => {});
       }
@@ -227,7 +228,7 @@ const residents = residentManager.list(null);
     // 每日 token 预算耗尽 → 节能模式，不调 LLM
     if (this._dailyTokens >= (bridgeCfg.llmDailyTokenBudget || 1000000)) {
       if (this._tickCount % 10 === 0) {
-        console.log(`[调度器] 今日 token 预算已用尽 (${this._dailyTokens}/${bridgeCfg.llmDailyTokenBudget})，居民进入节能模式`);
+        logger.info(`[调度器] 今日 token 预算已用尽 (${this._dailyTokens}/${bridgeCfg.llmDailyTokenBudget})，居民进入节能模式`);
       }
       return;
     }
@@ -256,7 +257,7 @@ const residents = residentManager.list(null);
       });
       // 每 5 次 routine 才打印一次减少噪声
       if (routineCount % 5 === 0) {
-        console.log(`[调度器] ${resident.name} 继续${topAction.action} (#${routineCount})`);
+        logger.info(`[调度器] ${resident.name} 继续${topAction.action} (#${routineCount})`);
       }
       return;
     }
@@ -359,9 +360,9 @@ const residents = residentManager.list(null);
         message: healed.length ? `自愈: ${healed[0]}` : `体检: ${diagnosis.substring(0, 30)}`,
         summary: result,
       });
-      console.log(`[体检] ${resident.name}\n${result}`);
+      logger.info(`[体检] ${resident.name}\n${result}`);
     } catch (e) {
-      console.log(`[体检] ${resident.name} 体检失败: ${e.message}`);
+      logger.info(`[体检] ${resident.name} 体检失败: ${e.message}`);
     }
   }
 
@@ -445,7 +446,7 @@ const residents = residentManager.list(null);
             if (count > 0 && count < total && count > Math.max(...allCounts, 0) * 0.5) {
               this._pendingProblems = this._pendingProblems.filter(p => p.problemId !== problem.problemId);
               this._convergenceSystem.kb.add('general', qt, String(count), { verified: true, author: 'brain', houseId: 'local' });
-              console.log(`[大脑] 命中模式: ${qt.substring(0, 50)}... = ${count}`);
+              logger.info(`[大脑] 命中模式: ${qt.substring(0, 50)}... = ${count}`);
               return true;
             }
           }
@@ -497,10 +498,10 @@ ${qt}`
       if (confident) {
         this._pendingProblems = this._pendingProblems.filter(p => p.problemId !== problem.problemId);
         this._convergenceSystem.kb.add('general', qt, String(answer), { verified: true, author: 'brain', houseId: 'local' });
-        console.log(`[大脑] 内部求解: ${qt.substring(0, 50)}... = ${answer}`);
+        logger.info(`[大脑] 内部求解: ${qt.substring(0, 50)}... = ${answer}`);
       } else {
         problem._autoAnswer = answer; // 留给LLM验证
-        console.log(`[大脑] 内部求解(待验证): ${qt.substring(0, 50)}... = ${answer}`);
+        logger.info(`[大脑] 内部求解(待验证): ${qt.substring(0, 50)}... = ${answer}`);
       }
       return true;
     }
@@ -526,7 +527,7 @@ ${qt}`
         if (sq.question.includes('所有') || sq.question.includes('全部')) { score -= 10; hasAll = true; }
       }
       if (c.subQuestions.length < 3) score -= 5; // 太少题的直接扣分
-      console.log(`  ${c.resident}: ${c.subQuestions.length}题 评分=${score}${hasAll ? ' ⚠️含"所有"(-10)' : ''}`);
+      logger.info(`  ${c.resident}: ${c.subQuestions.length}题 评分=${score}${hasAll ? ' ⚠️含"所有"(-10)' : ''}`);
       if (score > bestScore) { bestScore = score; best = c; }
     }
 
@@ -535,9 +536,9 @@ ${qt}`
     problem.reviewFeedback = '';
     // 清空待评审方案
     delete problem.candidates;
-    console.log(`[P2R-K] ✅ 选中 ${best.resident} 的方案 (${best.subQuestions.length} 题)`);
+    logger.info(`[P2R-K] ✅ 选中 ${best.resident} 的方案 (${best.subQuestions.length} 题)`);
     for (const sq of best.subQuestions) {
-      console.log(`  Q: [${sq.answerType}] ${sq.question}${sq.formula ? ' formula=' + sq.formula : ''}`);
+      logger.info(`  Q: [${sq.answerType}] ${sq.question}${sq.formula ? ' formula=' + sq.formula : ''}`);
     }
   }
 
@@ -689,7 +690,7 @@ ${rolePrompt}
                     for (const r of refs) {
                       const n = parseInt(r.slice(1));
                       if (n === i + 1) {
-                        console.log(`  ⚠️ Q${i+1} 的公式引用了自己，已清除`);
+                        logger.info(`  ⚠️ Q${i+1} 的公式引用了自己，已清除`);
                         sq.formula = null;
                         break;
                       }
@@ -706,9 +707,9 @@ ${rolePrompt}
                   subQuestions: subQs,
                   submittedAt: Date.now(),
                 });
-                console.log(`[P2R-K] 居民 ${resident.name} 提交分解方案 #${problem.candidates.length} (${subQs.length} 题)`);
+                logger.info(`[P2R-K] 居民 ${resident.name} 提交分解方案 #${problem.candidates.length} (${subQs.length} 题)`);
                 for (const sq of subQs) {
-                  console.log(`  Q: [${sq.answerType}] ${sq.question}${sq.formula ? ' formula=' + sq.formula : ''}`);
+                  logger.info(`  Q: [${sq.answerType}] ${sq.question}${sq.formula ? ' formula=' + sq.formula : ''}`);
                 }
 
                 // 攒够 2 份方案或首份提交后 30s → 竞标选优
@@ -727,7 +728,7 @@ ${rolePrompt}
             }
           }
         } catch (e) {
-          console.log(`[P2R-K] 分解响应解析失败: ${e.message}`);
+          logger.info(`[P2R-K] 分解响应解析失败: ${e.message}`);
         }
       } else if (role === 'decomp_audit' && problem) {
         // 分解质量审核：检查子问题是否精确
@@ -748,15 +749,15 @@ ${rolePrompt}
               ? issues.join('\n')
               : '部分子问题需要进一步拆解';
             problem.status = 'refine';
-            console.log(`[P2R-K] 分解审核: ${issues.length} 题需要重拆`);
+            logger.info(`[P2R-K] 分解审核: ${issues.length} 题需要重拆`);
             for (const issue of issues) {
-              console.log(`  ${issue.substring(0, 120)}`);
+              logger.info(`  ${issue.substring(0, 120)}`);
             }
           } else {
-            console.log(`[P2R-K] ${resident.name} 分解审核通过`);
+            logger.info(`[P2R-K] ${resident.name} 分解审核通过`);
           }
         } catch (e) {
-          console.log(`[P2R-K] 审核后处理失败: ${e.message}`);
+          logger.info(`[P2R-K] 审核后处理失败: ${e.message}`);
         }
       } else if (role === 'solver' && problem) {
         try {
@@ -806,7 +807,7 @@ ${rolePrompt}
 
           const solved = subQs.filter(sq => sq.solved).length;
           const total = subQs.length;
-          console.log(`[P2R-K] 居民 ${resident.name} 求解: ${parsedCount} 题, ${uncertainCount} 不确定, 共识 ${solved}/${total}`);
+          logger.info(`[P2R-K] 居民 ${resident.name} 求解: ${parsedCount} 题, ${uncertainCount} 不确定, 共识 ${solved}/${total}`);
 
           // 公式计算: 对有 formula 的子问题做算术求值
           for (let i = 0; i < subQs.length; i++) {
@@ -824,7 +825,7 @@ ${rolePrompt}
                   residentName: '算术引擎',
                   timestamp: Date.now(),
                 });
-                console.log(`  Q${i+1}: = ${computed} (公式: ${sq.formula})`);
+                logger.info(`  Q${i+1}: = ${computed} (公式: ${sq.formula})`);
               }
             }
           }
@@ -835,7 +836,7 @@ ${rolePrompt}
               const sl = sq.solutions;
               const last = sl[sl.length - 1];
               if (last) {
-                console.log(`  Q${i+1}: ${last.answer}${sq.solved ? ' ✅共识' : ''}`);
+                logger.info(`  Q${i+1}: ${last.answer}${sq.solved ? ' ✅共识' : ''}`);
               }
             }
           }
@@ -844,7 +845,7 @@ ${rolePrompt}
           if (solved > 0 && this._convergenceSystem?.optimizer) {
             const optResult = this._convergenceSystem.optimizer.optimizeAll(subQs);
             if (optResult.optimized.length > 0) {
-              console.log(`[P2R-K] 优化: ${optResult.optimized.length} 子问题最优`);
+              logger.info(`[P2R-K] 优化: ${optResult.optimized.length} 子问题最优`);
             }
           }
 
@@ -857,15 +858,15 @@ ${rolePrompt}
             }
             problem.reviewFeedback = `以下子问题没有确定答案，需要重新分解：\n${lines.filter(l => l.includes('不确定') || l.includes('UNCERTAIN')).join('\n')}`;
             problem.status = 'refine';
-            console.log(`[P2R-K] ${uncertainCount} 题不确定，需要重拆`);
+            logger.info(`[P2R-K] ${uncertainCount} 题不确定，需要重拆`);
           } else if (finalSolved >= total * 0.8) {
             problem.status = 'solved';
-            console.log(`[P2R-K] 问题 ${problem.problemId?.slice(0,8) || '?'} 全部解决 (${finalSolved}/${total})`);
+            logger.info(`[P2R-K] 问题 ${problem.problemId?.slice(0,8) || '?'} 全部解决 (${finalSolved}/${total})`);
           } else {
             problem.status = 'solving';
           }
         } catch (e) {
-          console.log(`[P2R-K] 求解后处理失败: ${e.message}`);
+          logger.info(`[P2R-K] 求解后处理失败: ${e.message}`);
         }
       } else if (role === 'reviewer' && problem) {
         try {
@@ -874,9 +875,9 @@ ${rolePrompt}
             // 审查通过 → 存知识库
             const subQs = problem.subQuestions || [];
             const solved = subQs.filter(sq => sq.solved).length;
-            console.log(`[P2R-K] 审查者 ${resident.name} 通过，已解 ${solved}/${subQs.length}`);
+            logger.info(`[P2R-K] 审查者 ${resident.name} 通过，已解 ${solved}/${subQs.length}`);
             for (const sq of subQs) {
-              console.log(`  Q: "${sq.question.substring(0, 50)}..." = ${sq.solved ? sq.answer : '未解'}`);
+              logger.info(`  Q: "${sq.question.substring(0, 50)}..." = ${sq.solved ? sq.answer : '未解'}`);
             }
             if (this._convergenceSystem?.kb) {
               for (const sq of subQs) {
@@ -895,17 +896,17 @@ ${rolePrompt}
                 const autoAns = problem._autoAnswer;
                 if (llmAns && llmAns !== autoAns) {
                   const sig = this._问题签名(qt);
-                  console.log(`[模式更新] LLM=${llmAns} ≠ 自动=${autoAns}，取LLM结果更新`);
+                  logger.info(`[模式更新] LLM=${llmAns} ≠ 自动=${autoAns}，取LLM结果更新`);
                   this._convergenceSystem.kb.add('_patterns_', sig, JSON.stringify({
                     answer: llmAns, 置信度: 0.9, 次数: 1, 胜率: 1,
                   }), { verified: true, author: 'reviewer', houseId: 'pattern_lib' });
                 }
               }
-              console.log(`[P2R-K] 知识库已更新`);
+              logger.info(`[P2R-K] 知识库已更新`);
             }
             problem.status = 'done';
             this._pendingProblems = this._pendingProblems.filter(p => p.problemId !== problem.problemId);
-            console.log(`[P2R-K] 问题 ${problem.problemId?.slice(0,8) || '?'} 审查通过，求解完成`);
+            logger.info(`[P2R-K] 问题 ${problem.problemId?.slice(0,8) || '?'} 审查通过，求解完成`);
           } else if (content.includes('REVIEW_FAIL')) {
             const reason = content.replace(/.*REVIEW_FAIL:\s*/, '').trim();
             // 清空旧分解者角色，触发重拆
@@ -916,15 +917,15 @@ ${rolePrompt}
             }
             problem.reviewFeedback = reason || '审查未通过，需要重新分解';
             problem.status = 'refine';
-            console.log(`[P2R-K] 审查拒绝: ${problem.reviewFeedback.substring(0, 100)}`);
+            logger.info(`[P2R-K] 审查拒绝: ${problem.reviewFeedback.substring(0, 100)}`);
           } else {
             // 没有明确结论 → 安全地标记完成
             problem.status = 'done';
             this._pendingProblems = this._pendingProblems.filter(p => p.problemId !== problem.problemId);
-            console.log(`[P2R-K] 问题 ${problem.problemId?.slice(0,8) || '?'} 审查无明确结论，标记完成`);
+            logger.info(`[P2R-K] 问题 ${problem.problemId?.slice(0,8) || '?'} 审查无明确结论，标记完成`);
           }
         } catch (e) {
-          console.log(`[P2R-K] 审查后处理失败: ${e.message}`);
+          logger.info(`[P2R-K] 审查后处理失败: ${e.message}`);
         }
       }
 
@@ -938,7 +939,7 @@ ${rolePrompt}
       });
 
     } catch (error) {
-      console.log(`[P2R-K] 居民 ${resident.name} ${role} 失败: ${error.message}`);
+      logger.info(`[P2R-K] 居民 ${resident.name} ${role} 失败: ${error.message}`);
       residentManager.addActivity(residentId, {
         type: 'task_failed',
         message: `${roleName}失败 — ${error.message.substring(0, 60)}`,
@@ -1092,7 +1093,7 @@ ${recentActivities || '才刚来到这个世界，还没有什么经历。'}
 
     } catch (error) {
       const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-      console.log(`[调度器] 居民 ${resident.name} 失败了 (${elapsed}s): ${error.message}`);
+      logger.info(`[调度器] 居民 ${resident.name} 失败了 (${elapsed}s): ${error.message}`);
 
       residentManager.addActivity(residentId, {
         type: 'task_failed',
@@ -1115,13 +1116,13 @@ ${recentActivities || '才刚来到这个世界，还没有什么经历。'}
           );
           if (r?.content) failMsg = r.content.trim().substring(0, 200);
           talker.cleanup();
-        } catch (e) { console.error('[Scheduler] talker cleanup failed:', e.message); }
+        } catch (_) {}
         sageManager.ask(residentId, failMsg);
       }
 
     } finally {
       if (agent) {
-        try { agent.cleanup(); } catch (e) { console.error('[Scheduler] agent cleanup failed:', e.message); }
+        try { agent.cleanup(); } catch (_) { /* ignore */ }
       }
 
       const count = this._residentAgentCount.get(residentId) || 1;
@@ -1297,10 +1298,10 @@ ${resB.name} 的性格：勤奋度 ${pct(resB.traits?.diligence ?? 0.5)}，创�
         summary: contentPreview || undefined,
       });
 
-      console.log(`[调度器] 协作完成: ${resA.name} + ${resB.name} → ${planTitle || '协作'} (${elapsed}s)`);
+      logger.info(`[调度器] 协作完成: ${resA.name} + ${resB.name} → ${planTitle || '协作'} (${elapsed}s)`);
 
     } catch (error) {
-      console.log(`[调度器] 协作失败: ${resA.name} + ${resB.name} → ${error.message.substring(0, 80)}`);
+      logger.info(`[调度器] 协作失败: ${resA.name} + ${resB.name} → ${error.message.substring(0, 80)}`);
 
       residentManager.addActivity(resA.id, {
         type: 'collab_done',
@@ -1313,7 +1314,7 @@ ${resB.name} 的性格：勤奋度 ${pct(resB.traits?.diligence ?? 0.5)}，创�
 
     } finally {
       if (agent) {
-        try { agent.cleanup(); } catch (e) { console.error('[Scheduler] collab agent cleanup failed:', e.message); }
+        try { agent.cleanup(); } catch (_) {}
       }
 
       [resA.id, resB.id].forEach(id => {
@@ -1348,7 +1349,7 @@ ${resB.name} 的性格：勤奋度 ${pct(resB.traits?.diligence ?? 0.5)}，创�
     if (!this._selfLearner) {
       this._selfLearner = new SelfLearner({ scheduler: this });
     }
-    this._selfLearner.runLearningRound().catch(e => console.log('[self-learn]', e.message));
+    this._selfLearner.runLearningRound().catch(e => logger.info('[self-learn]', e.message));
   }
 
 }

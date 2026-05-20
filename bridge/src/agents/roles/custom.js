@@ -1,3 +1,4 @@
+import logger from '../../core/logger.js';
 /**
  * Custom Agent
  * 自定义角色
@@ -21,7 +22,7 @@ class CustomAgent extends BaseAgent {
    * 运行自定义任务
    */
   async runTask(task) {
-    console.log(`[CustomAgent] Running custom task: ${task.description || 'unnamed'}`);
+    logger.info(`[CustomAgent] Running custom task: ${task.description || 'unnamed'}`);
 
     const results = {
       custom: true,

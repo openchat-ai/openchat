@@ -12,6 +12,8 @@ import * as os from 'os';
 import { EventEmitter } from 'events';
 import { persistentConfig } from './persistent-config.js';
 import { MessageType, createLLMProxyRequest } from '../p2p/messages.js';
+import { toolRegistry } from './tool-registry.js';
+import logger from './logger.js';
 
 const DATA_FILE = path.join(os.homedir(), '.openchat', 'residents.json');
 const MAX_ACTIVITIES = 0;
@@ -198,7 +200,7 @@ export class ResidentManager extends EventEmitter {
           try {
             const queryMsg = createLLMProviderQueryMessage({ from: p2p.peerId || '' });
             p2p.sendTo(peerId, queryMsg);
-          } catch (e) { console.error('[ResidentManager] P2P provider query failed:', e.message); }
+          } catch (_) {}
         });
 
         this._proxyListenerRegistered = true;
@@ -298,17 +300,74 @@ export class ResidentManager extends EventEmitter {
     });
   }
 
-  /** 本地调用 LLM（通过事件让外部协调者注入 provider） */
+  /** 本地调用 LLM（通过事件让外部协调者注入 provider），附带 CoT + tool-use */
   async _thinkLocal(options) {
     const { messages, model, temperature, maxTokens, timeout } = options;
+    const enableCot = options.cot !== false;
 
     const providerName = persistentConfig.getCurrentProvider();
     if (!providerName) {
       throw new Error('未配置 LLM provider');
     }
 
+    if (!enableCot) {
+      return this._llmCall(messages, model, temperature, maxTokens, timeout);
+    }
+
+    const systemPrompt = toolRegistry.getSystemPrompt();
+    const cotMessages = [
+      { role: 'system', content: systemPrompt },
+      ...messages,
+    ];
+
+    const MAX_ITERATIONS = 10;
+
+    for (let i = 0; i < MAX_ITERATIONS; i++) {
+      const response = await this._llmCall(cotMessages, model, temperature, maxTokens, timeout);
+      const content = (response.content || '').trim();
+
+      const toolCallMatch = content.match(/TOOL_CALL:\s*(\{.*\})/s);
+      if (!toolCallMatch) {
+        return { ...response, cotIterations: i + 1 };
+      }
+
+      let parsed;
+      try {
+        parsed = JSON.parse(toolCallMatch[1]);
+      } catch {
+        return { ...response, cotIterations: i + 1 };
+      }
+
+      const { tool, args } = parsed;
+      if (tool === 'finish') {
+        return {
+          content: args?.answer || '',
+          model: response.model,
+          tokens: response.tokens,
+          cotIterations: i + 1,
+          finished: true,
+        };
+      }
+
+      const result = await toolRegistry.call(tool, args || {});
+      const resultStr = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+
+      cotMessages.push({ role: 'assistant', content });
+      cotMessages.push({ role: 'user', content: `Tool "${tool}" returned:\n${resultStr}\n\nContinue with your reasoning or call finish when done.` });
+    }
+
+    return {
+      content: 'Reached maximum reasoning iterations without a final answer.',
+      model: model || '',
+      cotIterations: MAX_ITERATIONS,
+      finished: false,
+    };
+  }
+
+  /** Raw LLM call via event emitter */
+  _llmCall(messages, model, temperature, maxTokens, timeout) {
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error(`本地 LLM 调用超时 (${timeout}ms)`)), timeout);
+      const timer = setTimeout(() => reject(new Error(`LLM 调用超时 (${timeout}ms)`)), timeout);
 
       this.emit('llm-request', {
         messages,
@@ -334,7 +393,7 @@ export class ResidentManager extends EventEmitter {
     const residents = readAll();
     const hasActive = residents.some(r => r.status === 'active');
     if (!hasActive) {
-      console.log('[居民] 首次启动，创建首批居民');
+      logger.info('[居民] 首次启动，创建首批居民');
       const dominants = ['diligence', 'curiosity', 'courage', 'creativity'];
       const butler = this.create('管家', { traits: createTraits('diligence') });
       // 陆续出生（父母=管家），每个有不同的主导特质
@@ -346,7 +405,7 @@ export class ResidentManager extends EventEmitter {
       for (const p of firstGen) {
         this.create(p.name, { parentId: butler.id, traits: createTraits(p.trait) });
       }
-      console.log(`[居民] 已创建 ${1 + firstGen.length} 人 (管家 + ${firstGen.map(p => p.name).join(', ')})`);
+      logger.info(`[居民] 已创建 ${1 + firstGen.length} 人 (管家 + ${firstGen.map(p => p.name).join(', ')})`);
       return butler;
     }
     return null;

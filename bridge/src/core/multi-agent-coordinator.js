@@ -3,6 +3,7 @@ import { messageBus, MESSAGE_TYPES } from './message-bus.js';
 import { persistentConfig } from '../core/persistent-config.js';
 import { socialConnector } from './social-connector.js';
 import { knowledgeNetwork } from './knowledge-network.js';
+import logger from './logger.js';
 
 export class MultiAgentCoordinator {
   constructor() {
@@ -63,7 +64,7 @@ export class MultiAgentCoordinator {
           }));
         }
       } catch (e) {
-        console.error('Decomposition failed, falling back to simple split', e);
+        logger.error('Decomposition failed, falling back to simple split', e);
       } finally {
         coordinatorAgent.cleanup();
       }

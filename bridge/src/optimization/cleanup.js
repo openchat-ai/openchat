@@ -1,3 +1,4 @@
+import logger from '../core/logger.js';
 /**
  * Cleanup Manager
  * 智能清理 - 日志、缓存、旧版本
@@ -13,7 +14,7 @@ class CleanupManager {
     this.maxCacheAge = options.maxCacheAge || 7 * 24 * 60 * 60 * 1000; // 7 天
     this.maxOldVersions = options.maxOldVersions || 5;
 
-    console.log('[Cleanup] Manager initialized');
+    logger.info('[Cleanup] Manager initialized');
   }
 
   /**
@@ -66,7 +67,7 @@ class CleanupManager {
     }
 
     results.completedAt = new Date().toISOString();
-    console.log(`[Cleanup] Completed, freed ${results.totalFreedMB.toFixed(2)}MB`);
+    logger.info(`[Cleanup] Completed, freed ${results.totalFreedMB.toFixed(2)}MB`);
 
     return results;
   }
@@ -133,7 +134,7 @@ class CleanupManager {
           fs.writeFileSync(filePath, newContent);
           freedBytes += (oldSize - newContent.length);
         } catch (error) {
-          console.error(`[Cleanup] Log truncate error: ${error.message}`);
+          logger.error(`[Cleanup] Log truncate error: ${error.message}`);
         }
       }
     }

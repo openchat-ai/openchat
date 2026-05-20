@@ -9,6 +9,7 @@
  */
 
 import { persistentConfig } from './persistent-config.js';
+import logger from './logger.js';
 
 export class DecisionEngine {
   constructor() {
@@ -292,7 +293,7 @@ export class DecisionEngine {
       }
       await persistentConfig.set('decisions', config);
     } catch (e) {
-      console.error('Failed to persist decision:', e);
+      logger.error('Failed to persist decision:', e);
     }
   }
 
@@ -383,7 +384,7 @@ export class DecisionEngine {
         this.learningData.agentEffectiveness = performance;
       }
     } catch (e) {
-      console.error('Failed to load decision history:', e);
+      logger.error('Failed to load decision history:', e);
     }
   }
 }

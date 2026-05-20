@@ -10,6 +10,7 @@
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
+import logger from './logger.js';
 
 const DATA_DIR = join(homedir(), '.openchat', 'data');
 const VARIANT_DIR = join(DATA_DIR, 'variants');
@@ -65,7 +66,7 @@ export class DataMiner {
     // 去重保存
     this._saveVariants(variants);
     this.generatedCount += variants.length;
-    console.log(`[DataMiner] 生成 ${variants.length} 道变体题`);
+    logger.info(`[DataMiner] 生成 ${variants.length} 道变体题`);
     return variants;
   }
 
@@ -113,10 +114,10 @@ export class DataMiner {
       const problems = this._parseBatchOutput(result.content.trim(), domain);
       this._saveMined(problems);
       this.minedCount += problems.length;
-      console.log(`[DataMiner] LLM 量产 ${problems.length} 道${domain}题`);
+      logger.info(`[DataMiner] LLM 量产 ${problems.length} 道${domain}题`);
       return problems;
     } catch (e) {
-      console.log(`[DataMiner] LLM 量产失败: ${e.message}`);
+      logger.info(`[DataMiner] LLM 量产失败: ${e.message}`);
       return [];
     }
   }
@@ -178,7 +179,7 @@ export class DataMiner {
 
     this._saveMined(problems);
     this.minedCount += problems.length;
-    console.log(`[DataMiner] 网页抓取 ${problems.length} 道${domain}题`);
+    logger.info(`[DataMiner] 网页抓取 ${problems.length} 道${domain}题`);
     return problems;
   }
 
@@ -246,7 +247,7 @@ export class DataMiner {
       results.push(...mined);
     }
 
-    console.log(`[DataMiner] 本轮总计获取 ${results.length} 道题`);
+    logger.info(`[DataMiner] 本轮总计获取 ${results.length} 道题`);
     return results;
   }
 

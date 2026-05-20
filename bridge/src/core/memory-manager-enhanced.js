@@ -1,3 +1,4 @@
+import logger from './logger.js';
 /**
  * 增强版内存管理器
  * 优化内存使用，防止内存泄漏
@@ -188,7 +189,7 @@ export class EnhancedMemoryManager {
     const percentage = (used / this.memoryLimit) * 100;
     
     if (percentage > 80) {
-      console.warn(`[MemoryManager] High memory usage: ${percentage.toFixed(2)}%`);
+      logger.warn(`[MemoryManager] High memory usage: ${percentage.toFixed(2)}%`);
       if (percentage > 90) {
         // 严重高内存使用，进行强制清理
         this._aggressiveCleanup();

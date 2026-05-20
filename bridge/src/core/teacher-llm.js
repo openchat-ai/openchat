@@ -10,6 +10,7 @@
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
+import logger from './logger.js';
 
 const RULES_DIR = join(homedir(), '.openchat', 'rules');
 
@@ -170,10 +171,10 @@ function solve(question) {
       const file = join(RULES_DIR, `rule_${problemId}_${Date.now()}.json`);
       writeFileSync(file, JSON.stringify(rule, null, 2));
       this.rulesGenerated++;
-      console.log(`[Teacher] 新推理规则: ${concept} (${problemId})`);
+      logger.info(`[Teacher] 新推理规则: ${concept} (${problemId})`);
       return rule;
     } catch (e) {
-      console.log(`[Teacher] 保存规则失败: ${e.message}`);
+      logger.info(`[Teacher] 保存规则失败: ${e.message}`);
       return null;
     }
   }

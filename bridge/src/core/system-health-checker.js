@@ -1,3 +1,4 @@
+import logger from './logger.js';
 /**
  * 系统健康检查器
  * 检查系统各组件健康状态
@@ -313,7 +314,7 @@ export class SystemHealthChecker {
     
     this.autoCheckTimer = setInterval(() => {
       this.runAllChecks().catch(error => {
-        console.error('Error running auto health checks:', error);
+        logger.error('Error running auto health checks:', error);
       });
     }, this.checkInterval);
   }

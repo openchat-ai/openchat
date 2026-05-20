@@ -11,6 +11,7 @@
 import { sessionManager } from '../session/session-manager.js';
 import { persistentConfig } from './persistent-config.js';
 import { MessageType, createLLMProxyResponse, createLLMAvailableMessage, createLLMProviderQueryMessage } from '../p2p/messages.js';
+import logger from './logger.js';
 
 class LLMProxyAgent {
   /**
@@ -52,9 +53,9 @@ class LLMProxyAgent {
       // 每 60s 重广播一次，让新加入的节点发现
       this._broadcastTimer = setInterval(() => this._broadcastAvailability(), 60000);
 
-      console.log('[LLMProxy] 提供方已启动，监听 llm_proxy_request / llm_provider_query');
+      logger.info('[LLMProxy] 提供方已启动，监听 llm_proxy_request / llm_provider_query');
     } else {
-      console.log('[LLMProxy] 提供方已关闭（llmProxyEnabled=false），不服务邻居');
+      logger.info('[LLMProxy] 提供方已关闭（llmProxyEnabled=false），不服务邻居');
     }
   }
 
@@ -91,7 +92,7 @@ class LLMProxyAgent {
     const messages = payload.messages || [];
     const residentName = payload.residentName || '?';
 
-    console.log(`[LLMProxy] ${residentName} 请求代理 LLM model=${model} messages=${messages.length}`);
+    logger.info(`[LLMProxy] ${residentName} 请求代理 LLM model=${model} messages=${messages.length}`);
     this._stats.total++;
 
     try {
@@ -126,7 +127,7 @@ class LLMProxyAgent {
 
       this.p2p.sendTo(from, response);
       this._stats.ok++;
-      console.log(`[LLMProxy] ${residentName} 完成 (${duration}ms)`);
+      logger.info(`[LLMProxy] ${residentName} 完成 (${duration}ms)`);
 
     } catch (e) {
       const duration = Date.now() - startTime;
@@ -142,7 +143,7 @@ class LLMProxyAgent {
         this.p2p.sendTo(from, response);
       }
       this._stats.fail++;
-      console.log(`[LLMProxy] ${residentName} 失败: ${e.message}`);
+      logger.info(`[LLMProxy] ${residentName} 失败: ${e.message}`);
     }
   }
 

@@ -16,6 +16,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
+import logger from './logger.js';
 
 const BODY_DIR = join(homedir(), '.openchat', 'bodies');
 
@@ -86,7 +87,7 @@ export class Body {
       switch (action) {
         case 'write': return writeFileSync(args[0], args[1]);
         case 'read': return readFileSync(args[0], 'utf8');
-        case 'log': console.log(`[${this.name}] ${args[0]}`); return true;
+        case 'log': logger.info(`[${this.name}] ${args[0]}`); return true;
         default: return null;
       }
     } catch (e) {
@@ -135,7 +136,7 @@ export class Body {
       since: Date.now(),
       affinity: 0.5 + Math.random() * 0.5
     });
-    console.log(`[${this.name}] ${resident.name} 灵魂入住`);
+    logger.info(`[${this.name}] ${resident.name} 灵魂入住`);
     return true;
   }
 
@@ -144,7 +145,7 @@ export class Body {
     const idx = this.souls.findIndex(s => s.resident.id === residentId);
     if (idx >= 0) {
       const s = this.souls[idx];
-      console.log(`[${this.name}] ${s.resident.name} 灵魂离开`);
+      logger.info(`[${this.name}] ${s.resident.name} 灵魂离开`);
       this.souls.splice(idx, 1);
     }
   }

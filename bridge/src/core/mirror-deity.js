@@ -6,6 +6,7 @@
 
 import { AIPerson, aiPersonRegistry } from './ai-personhood.js';
 import { Deity, deitySystemManager, DEITY_TYPE } from './deity-system.js';
+import logger from './logger.js';
 
 // 共享內核類型
 const SHARED_KERNEL_TYPE = {
@@ -115,7 +116,7 @@ export class MirrorDeity extends Deity {
       differential: diffId
     });
 
-    console.log(`[MirrorDeity] 創建差異層: ${diffId} (${diffType}) for ${entityId}`);
+    logger.info(`[MirrorDeity] 創建差異層: ${diffId} (${diffType}) for ${entityId}`);
     return diffId;
   }
 
@@ -167,7 +168,7 @@ export class MirrorDeity extends Deity {
       differential: diffId
     });
 
-    console.log(`[MirrorDeity] 綁定實體 ${entityId} 到內核 ${kernelId} 和差異層 ${diffId}`);
+    logger.info(`[MirrorDeity] 綁定實體 ${entityId} 到內核 ${kernelId} 和差異層 ${diffId}`);
     return true;
   }
 
@@ -227,7 +228,7 @@ export class MirrorDeity extends Deity {
     this.accessCache.delete(`full_attr_${entityId}`);
     this.accessCache.delete(`diff_${entityId}`);
 
-    console.log(`[MirrorDeity] 更新差異層: ${entityId}`);
+    logger.info(`[MirrorDeity] 更新差異層: ${entityId}`);
     return true;
   }
 
@@ -262,7 +263,7 @@ export class MirrorDeity extends Deity {
     // 綁定到共享內核
     this.bindEntityToKernel(aiId, kernelId, diffId);
 
-    console.log(`[MirrorDeity] 創建AI人 ${aiId} 使用共享內核 ${kernelId}`);
+    logger.info(`[MirrorDeity] 創建AI人 ${aiId} 使用共享內核 ${kernelId}`);
     return aiPerson;
   }
 
@@ -297,7 +298,7 @@ export class MirrorDeity extends Deity {
     if (nodes.length > threshold) {
       // 執行分類和收縮
       const collapsed = this.treeStructure.collapseCategory(category);
-      console.log(`[MirrorDeity] 分類收縮: ${category} (${nodes.length} -> ${collapsed.count})`);
+      logger.info(`[MirrorDeity] 分類收縮: ${category} (${nodes.length} -> ${collapsed.count})`);
       return collapsed;
     }
 
@@ -335,7 +336,7 @@ export class MirrorDeity extends Deity {
         this.accessCache.delete(entries[i][0]);
       }
       
-      console.log(`[MirrorDeity] 內行優化: 清理了 ${toDelete} 個緩存條目`);
+      logger.info(`[MirrorDeity] 內行優化: 清理了 ${toDelete} 個緩存條目`);
     }
   }
 }

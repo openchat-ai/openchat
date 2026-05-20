@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import logger from './logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const COST_LOG_PATH = path.join(__dirname, '../../logs/cost-monitor.json');
@@ -43,7 +44,7 @@ export class CostMonitor {
         this.stats = { ...this.stats, ...saved };
       }
     } catch (e) {
-      console.error('[CostMonitor] Failed to load stats:', e.message);
+      logger.error('[CostMonitor] Failed to load stats:', e.message);
     }
   }
 
@@ -61,7 +62,7 @@ export class CostMonitor {
       // 保存数据
       fs.writeFileSync(COST_LOG_PATH, JSON.stringify(this.stats, null, 2), 'utf8');
     } catch (e) {
-      console.error('[CostMonitor] Failed to save stats:', e.message);
+      logger.error('[CostMonitor] Failed to save stats:', e.message);
     }
   }
 
@@ -72,7 +73,7 @@ export class CostMonitor {
    */
   recordUsage(modelType, success = true) {
     if (!this.prices[modelType]) {
-      console.warn(`[CostMonitor] Unknown model type: ${modelType}`);
+      logger.warn(`[CostMonitor] Unknown model type: ${modelType}`);
       return;
     }
 

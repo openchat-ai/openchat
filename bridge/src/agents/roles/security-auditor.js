@@ -1,3 +1,4 @@
+import logger from '../../core/logger.js';
 /**
  * Security Auditor Agent
  * 安全审计和漏洞检测
@@ -26,7 +27,7 @@ class SecurityAuditorAgent extends BaseAgent {
    * 运行安全审计任务
    */
   async runTask(task) {
-    console.log(`[SecurityAuditor] Analyzing: ${task.code?.slice(0, 50) || task.description || 'unknown'}`);
+    logger.info(`[SecurityAuditor] Analyzing: ${task.code?.slice(0, 50) || task.description || 'unknown'}`);
 
     const results = {
       vulnerabilities: [],

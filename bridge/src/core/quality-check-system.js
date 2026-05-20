@@ -1,3 +1,4 @@
+import logger from './logger.js';
 /**
 
 // 🚀 自动生成的改进 - 2026-04-22T09:13:04.523Z
@@ -478,10 +479,10 @@ class MessageHandler {
     // 返回简单的日志对象
     return {
       info: (event, data) => {
-        console.log(`[QC] ${event}:`, data);
+        logger.info(`[QC] ${event}:`, data);
       },
       error: (event, data) => {
-        console.error(`[QC] ${event}:`, data);
+        logger.error(`[QC] ${event}:`, data);
       }
     };
   }

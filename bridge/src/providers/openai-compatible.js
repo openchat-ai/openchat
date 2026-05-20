@@ -1,3 +1,4 @@
+import logger from '../core/logger.js';
 /**
  * OpenAI Compatible Provider
  *
@@ -811,7 +812,7 @@ export function createProvider(providerId, apiKey = null, overrides = {}) {
   // 特殊 provider 需要单独处理
   if (preset.special) {
     // 将在单独文件中处理
-    console.log(`[Provider] ${providerId} requires special adapter`);
+    logger.info(`[Provider] ${providerId} requires special adapter`);
   }
 
   return new OpenAICompatibleProvider({

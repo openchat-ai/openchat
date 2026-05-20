@@ -1,3 +1,4 @@
+import logger from './logger.js';
 /**
  * 策略优化器
  * 基于经验调整策略，实现自主优化
@@ -50,7 +51,7 @@ export class StrategyOptimizer {
     
     this.strategies.set(strategyId, strategy);
     
-    console.log(`[StrategyOptimizer] Registered strategy: ${strategyId}`, strategyConfig);
+    logger.info(`[StrategyOptimizer] Registered strategy: ${strategyId}`, strategyConfig);
     
     return strategyId;
   }
@@ -100,7 +101,7 @@ export class StrategyOptimizer {
     // 检查是否需要优化
     this._checkOptimizationOpportunity(strategy);
     
-    console.log(`[StrategyOptimizer] Evaluated strategy ${strategyId} - Reward: ${reward}, Success: ${result.success}`);
+    logger.info(`[StrategyOptimizer] Evaluated strategy ${strategyId} - Reward: ${reward}, Success: ${result.success}`);
   }
 
   /**
@@ -189,7 +190,7 @@ export class StrategyOptimizer {
       strategy.optimizationHistory.shift();
     }
     
-    console.log(`[StrategyOptimizer] Optimized strategy: ${strategy.id}`);
+    logger.info(`[StrategyOptimizer] Optimized strategy: ${strategy.id}`);
   }
 
   /**

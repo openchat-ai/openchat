@@ -10,6 +10,7 @@
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
+import logger from './logger.js';
 
 const RULES_DIR = join(homedir(), '.openchat', 'rules');
 
@@ -61,7 +62,7 @@ export class ReasoningEngine {
           }
         } catch {}
       }
-      console.log(`[Reasoning] 加载 ${this.dynamicRules.length} 条 TeacherLLM 动态规则`);
+      logger.info(`[Reasoning] 加载 ${this.dynamicRules.length} 条 TeacherLLM 动态规则`);
     } catch {}
   }
 
@@ -71,7 +72,7 @@ export class ReasoningEngine {
   injectRule(rule) {
     if (rule.match && rule.solve && rule.concept) {
       this.dynamicRules.push(rule);
-      console.log(`[Reasoning] 注入新规则: ${rule.concept}`);
+      logger.info(`[Reasoning] 注入新规则: ${rule.concept}`);
     }
   }
 

@@ -1,3 +1,4 @@
+import logger from './logger.js';
 /**
  * 高级音频处理管道
  *
@@ -41,7 +42,7 @@ class AudioPipeline {
       rnnoiseProcessingTime: 0
     };
 
-    console.log('[AudioPipeline] Initializing...');
+    logger.info('[AudioPipeline] Initializing...');
   }
 
   /**
@@ -59,17 +60,17 @@ class AudioPipeline {
 
       if (this.rnnoiseState) {
         this.rnnoiseReady = true;
-        console.log('[AudioPipeline] RNNOISE loaded (Jitsi version)');
+        logger.info('[AudioPipeline] RNNOISE loaded (Jitsi version)');
       } else {
         throw new Error('Failed to create RNNOISE state');
       }
     } catch (error) {
-      console.log('[AudioPipeline] RNNOISE not available:', error.message);
-      console.log('[AudioPipeline] Using simulation mode (Node.js environment)');
+      logger.info('[AudioPipeline] RNNOISE not available:', error.message);
+      logger.info('[AudioPipeline] Using simulation mode (Node.js environment)');
       this.rnnoiseReady = false;
     }
 
-    console.log('[AudioPipeline] Ready with VAD/AEC/AGC');
+    logger.info('[AudioPipeline] Ready with VAD/AEC/AGC');
     return this;
   }
 
@@ -174,7 +175,7 @@ class AudioPipeline {
 
         // 如果输出全 0，回退到模拟模式
         if (!hasNonZero) {
-          console.log('[AudioPipeline] RNNOISE returned zeros, using simulation');
+          logger.info('[AudioPipeline] RNNOISE returned zeros, using simulation');
         } else {
           this.stats.rnnoiseProcessingTime += Date.now() - startTime;
 
@@ -187,7 +188,7 @@ class AudioPipeline {
           return { data: output, vad };
         }
       } catch (error) {
-        console.log('[AudioPipeline] RNNOISE processing error:', error.message);
+        logger.info('[AudioPipeline] RNNOISE processing error:', error.message);
       }
     }
 
@@ -480,7 +481,7 @@ class AudioPipeline {
     }
 
     this.rnnoiseReady = false;
-    console.log('[AudioPipeline] Destroyed');
+    logger.info('[AudioPipeline] Destroyed');
   }
 }
 

@@ -1,3 +1,4 @@
+import logger from '../../core/logger.js';
 /**
  * API Integrations
  * 连接 API 路由与核心模块
@@ -53,30 +54,30 @@ export async function getHotUpdateManager() {
  * 初始化所有集成
  */
 export async function initializeIntegrations() {
-  console.log('[API] Initializing integrations...');
+  logger.info('[API] Initializing integrations...');
 
   try {
     await getMultiAgentCoordinator();
-    console.log('[API] ✓ MultiAgentCoordinator initialized');
+    logger.info('[API] ✓ MultiAgentCoordinator initialized');
   } catch (e) {
-    console.log('[API] ✗ MultiAgentCoordinator failed:', e.message);
+    logger.info('[API] ✗ MultiAgentCoordinator failed:', e.message);
   }
 
   try {
     await getVersionManager();
-    console.log('[API] ✓ VersionManager initialized');
+    logger.info('[API] ✓ VersionManager initialized');
   } catch (e) {
-    console.log('[API] ✗ VersionManager failed:', e.message);
+    logger.info('[API] ✗ VersionManager failed:', e.message);
   }
 
   try {
     await getHotUpdateManager();
-    console.log('[API] ✓ HotUpdateManager initialized');
+    logger.info('[API] ✓ HotUpdateManager initialized');
   } catch (e) {
-    console.log('[API] ✗ HotUpdateManager failed:', e.message);
+    logger.info('[API] ✗ HotUpdateManager failed:', e.message);
   }
 
-  console.log('[API] Integrations initialized');
+  logger.info('[API] Integrations initialized');
 }
 
 export default {

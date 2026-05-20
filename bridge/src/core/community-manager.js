@@ -5,6 +5,7 @@
 
 import { messageBus } from './message-bus.js';
 import { knowledgeNetwork } from './knowledge-network.js';
+import logger from './logger.js';
 
 export class CommunityManager {
   constructor() {
@@ -49,7 +50,7 @@ export class CommunityManager {
     
     messageBus.publish('community:created', community);
     
-    console.log(`[CommunityManager] 社区 ${spec.name} 已创建 (ID: ${communityId})`);
+    logger.info(`[CommunityManager] 社区 ${spec.name} 已创建 (ID: ${communityId})`);
     
     return communityId;
   }
@@ -92,7 +93,7 @@ export class CommunityManager {
       avatarCount: community.avatarCount
     });
     
-    console.log(`[CommunityManager] ${entityType} ${entityId} 加入社区 ${community.name}`);
+    logger.info(`[CommunityManager] ${entityType} ${entityId} 加入社区 ${community.name}`);
     
     return true;
   }
@@ -139,7 +140,7 @@ export class CommunityManager {
     
     messageBus.publish('community:post', post);
     
-    console.log(`[CommunityManager] 消息发布到社区 ${community.name} by ${authorType} ${authorId}`);
+    logger.info(`[CommunityManager] 消息发布到社区 ${community.name} by ${authorType} ${authorId}`);
     
     return post.id;
   }
@@ -279,7 +280,7 @@ export class ExtendedKnowledgeNetwork extends knowledgeNetwork.constructor {
   acquireKnowledgeFromCommunity(communityId, knowledge, contributorId) {
     const communityData = this.communityKnowledge.get(communityId);
     if (!communityData) {
-      console.warn(`[KnowledgeNetwork] 社区 ${communityId} 不存在`);
+      logger.warn(`[KnowledgeNetwork] 社区 ${communityId} 不存在`);
       return false;
     }
     

@@ -1,3 +1,4 @@
+import logger from './logger.js';
 /**
  * 错误边界处理器 - 提升系统稳定性
  * 实现更完善的错误处理机制
@@ -40,7 +41,7 @@ export class ErrorBoundary {
         lastError = error;
         this.errorStats.totalErrors++;
         
-        console.warn(`[ErrorBoundary] Operation failed on attempt ${attempt}:`, error.message);
+        logger.warn(`[ErrorBoundary] Operation failed on attempt ${attempt}:`, error.message);
         
         // 如果不是最后一次尝试，等待后重试
         if (attempt < this.maxRetries) {

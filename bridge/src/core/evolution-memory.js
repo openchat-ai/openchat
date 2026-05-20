@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import logger from './logger.js';
 
 const MEMORY_FILE = path.join(os.homedir(), '.openchat', 'memory', 'evolution-memory.json');
 
@@ -23,7 +24,7 @@ export class EvolutionMemory {
       const memoryArray = Array.from(this.memory.entries());
       fs.writeFileSync(MEMORY_FILE, JSON.stringify(memoryArray, null, 2));
     } catch (e) {
-      console.log('[EvolutionMemory] 保存记忆失败:', e.message);
+      logger.info('[EvolutionMemory] 保存记忆失败:', e.message);
     }
   }
 
@@ -36,7 +37,7 @@ export class EvolutionMemory {
         this.memory = new Map(savedMemory);
       }
     } catch (e) {
-      console.log('[EvolutionMemory] 加载记忆失败:', e.message);
+      logger.info('[EvolutionMemory] 加载记忆失败:', e.message);
       this.memory = new Map();
     }
   }

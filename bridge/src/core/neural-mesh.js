@@ -10,6 +10,7 @@
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
+import logger from './logger.js';
 
 const MESH_DIR = join(homedir(), '.openchat', 'neural-mesh');
 const LOCAL_WEIGHTS = join(MESH_DIR, 'local-weights.json');
@@ -53,9 +54,9 @@ export class NeuralMesh {
       this.p2p.broadcast('neural_share', payload);
       this.shareCount++;
       this._saveLocal(payload);
-      console.log(`[NeuralMesh] 广播权重: ${samples}样本 loss=${nn.loss.toFixed(4)}`);
+      logger.info(`[NeuralMesh] 广播权重: ${samples}样本 loss=${nn.loss.toFixed(4)}`);
     } catch (e) {
-      console.log(`[NeuralMesh] 广播失败: ${e.message}`);
+      logger.info(`[NeuralMesh] 广播失败: ${e.message}`);
     }
   }
 
@@ -67,7 +68,7 @@ export class NeuralMesh {
     const peerId = data.port || 'unknown';
     this.peerWeights.set(peerId, data);
     this._savePeerWeights(peerId, data);
-    console.log(`[NeuralMesh] 收到 ${peerId} 权重: ${data.samples}样本`);
+    logger.info(`[NeuralMesh] 收到 ${peerId} 权重: ${data.samples}样本`);
   }
 
   /**
@@ -100,7 +101,7 @@ export class NeuralMesh {
     this._mergeVector(nn.b_out, peers, 'b_out', localSamples, totalSamples);
 
     this.mergeCount++;
-    console.log(`[NeuralMesh] 合并 ${peers.length} 节点权重 (${totalSamples}样本)`);
+    logger.info(`[NeuralMesh] 合并 ${peers.length} 节点权重 (${totalSamples}样本)`);
     return peers.length;
   }
 

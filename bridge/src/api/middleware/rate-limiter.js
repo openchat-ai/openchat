@@ -1,3 +1,4 @@
+import logger from '../../core/logger.js';
 /**
  * Rate Limiter Middleware
  * 双重限流策略 + 分路由限流 + 内部流量统计
@@ -29,7 +30,7 @@ setInterval(() => {
     // 只在高频异常时输出
     const topTraffic = sorted[0]?.[1] || 0
     if (topTraffic > 500) {
-      console.log('[RateLimit] High traffic detected:', sorted.map(([k, v]) => `${k}:${v}`).join(', '))
+      logger.info('[RateLimit] High traffic detected:', sorted.map(([k, v]) => `${k}:${v}`).join(', '))
     }
 
     // 重置统计

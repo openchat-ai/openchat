@@ -3,6 +3,7 @@
  * 支持多种 LLM 提供商的响应格式
  */
 import { providerManager } from '../providers/provider-manager.js';
+import logger from './logger.js';
 
 export class ResponseParser {
   constructor() {
@@ -77,7 +78,7 @@ export class ResponseParser {
     if (config && config.transport === 'openai_chat') {
       parserName = 'openai';
     }
-    console.log(`[ResponseParser] provider=${provider}, transport=${config?.transport}, parserName=${parserName}`);
+    logger.info(`[ResponseParser] provider=${provider}, transport=${config?.transport}, parserName=${parserName}`);
     const parser = this._parsers.get(parserName) || this._parsers.get('generic');
     const result = parser(data);
 

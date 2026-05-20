@@ -6,6 +6,7 @@
 import { EvolutionSystem } from './evolution-system.js';
 import MultiModelTester from './multi-model-tester.js';
 import AdversarialTest from './adversarial-test.js';
+import logger from './logger.js';
 
 class EvolutionCLI {
   constructor() {
@@ -21,9 +22,9 @@ class EvolutionCLI {
   async init() {
     try {
       await this.system.initialize();
-      console.log('✅ 自进化系统已初始化');
+      logger.info('✅ 自进化系统已初始化');
     } catch (error) {
-      console.error('❌ 系统初始化失败:', error.message);
+      logger.error('❌ 系统初始化失败:', error.message);
       throw error;
     }
   }
@@ -34,17 +35,17 @@ class EvolutionCLI {
   skillList() {
     const skills = this.system.skillManager.getAllSkills();
     if (skills.length === 0) {
-      console.log('📦 没有 Skills');
+      logger.info('📦 没有 Skills');
       return { success: true, skills: [] };
     }
 
-    console.log(`📦 共 ${skills.length} 个 Skills:\n`);
+    logger.info(`📦 共 ${skills.length} 个 Skills:\n`);
     skills.forEach(skill => {
-      console.log(`  [${skill.id}] ${skill.name}`);
-      console.log(`    描述: ${skill.description}`);
-      console.log(`    版本: ${skill.version}`);
-      console.log(`    安全评分: ${skill.securityScore || '未评分'}`);
-      console.log();
+      logger.info(`  [${skill.id}] ${skill.name}`);
+      logger.info(`    描述: ${skill.description}`);
+      logger.info(`    版本: ${skill.version}`);
+      logger.info(`    安全评分: ${skill.securityScore || '未评分'}`);
+      logger.info();
     });
 
     return { success: true, skills };
@@ -55,7 +56,7 @@ class EvolutionCLI {
    */
   async skillAdd(name, description, code = '') {
     if (!name || !description) {
-      console.log('❌ 用法: /skill add <name> <description> [code]');
+      logger.info('❌ 用法: /skill add <name> <description> [code]');
       return { success: false };
     }
 
@@ -67,10 +68,10 @@ class EvolutionCLI {
     });
 
     if (result.success) {
-      console.log(`✅ Skill 已添加: ${result.skillId}`);
-      console.log(`   安全评分: ${result.securityScore}/100`);
+      logger.info(`✅ Skill 已添加: ${result.skillId}`);
+      logger.info(`   安全评分: ${result.securityScore}/100`);
     } else {
-      console.log(`❌ 添加失败: ${result.error}`);
+      logger.info(`❌ 添加失败: ${result.error}`);
     }
 
     return result;
@@ -81,15 +82,15 @@ class EvolutionCLI {
    */
   async skillExec(skillId) {
     if (!skillId) {
-      console.log('❌ 用法: /skill exec <skillId>');
+      logger.info('❌ 用法: /skill exec <skillId>');
       return { success: false };
     }
 
     const result = await this.system.executeSkill(skillId);
     if (result.success) {
-      console.log(`✅ Skill 执行成功: ${skillId}`);
+      logger.info(`✅ Skill 执行成功: ${skillId}`);
     } else {
-      console.log(`❌ 执行失败: ${result.error}`);
+      logger.info(`❌ 执行失败: ${result.error}`);
     }
 
     return result;
@@ -102,13 +103,13 @@ class EvolutionCLI {
     const prompt = '这是一个测试提示词';
     const result = this.tester.crossValidate(prompt);
 
-    console.log(`🧪 多模型交叉验证结果\n`);
-    console.log(`  提示词: "${prompt}"`);
-    console.log(`  模型数: ${result.modelCount}`);
-    console.log(`  共识: ${result.consensus}`);
-    console.log(`  平均延迟: ${result.averageLatency.toFixed(2)}ms`);
-    console.log(`  平均成本: $${result.averageCost.toFixed(4)}`);
-    console.log();
+    logger.info(`🧪 多模型交叉验证结果\n`);
+    logger.info(`  提示词: "${prompt}"`);
+    logger.info(`  模型数: ${result.modelCount}`);
+    logger.info(`  共识: ${result.consensus}`);
+    logger.info(`  平均延迟: ${result.averageLatency.toFixed(2)}ms`);
+    logger.info(`  平均成本: $${result.averageCost.toFixed(4)}`);
+    logger.info();
 
     return result;
   }
@@ -118,19 +119,19 @@ class EvolutionCLI {
    */
   testAdversarial(code) {
     if (!code) {
-      console.log('❌ 用法: /test adversarial <code>');
+      logger.info('❌ 用法: /test adversarial <code>');
       return { success: false };
     }
 
     const result = this.adversarialTest.runFullTest(code);
 
-    console.log(`\n${this.adversarialTest.generateReport(result)}`);
+    logger.info(`\n${this.adversarialTest.generateReport(result)}`);
 
     const recommendations = this.adversarialTest.generateRecommendations(result);
     if (recommendations.length > 0) {
-      console.log('建议改进:');
+      logger.info('建议改进:');
       recommendations.forEach((rec, i) => {
-        console.log(`  ${i + 1}. ${rec}`);
+        logger.info(`  ${i + 1}. ${rec}`);
       });
     }
 
@@ -143,18 +144,18 @@ class EvolutionCLI {
   monitor() {
     const status = this.system.getStatus();
 
-    console.log('\n📊 系统状态:\n');
-    console.log(`  初始化: ${status.isInitialized ? '✅' : '❌'}`);
-    console.log(`  运行时间: ${status.uptimeString}`);
-    console.log();
-    console.log(`  Skills 总数: ${status.skills.total}`);
-    console.log(`  会话总数: ${status.sessions.total}`);
-    console.log(`  活跃会话: ${status.sessions.active}`);
-    console.log();
-    console.log(`  总经验: ${status.evolution.totalExperiences}`);
-    console.log(`  成功率: ${status.evolution.successRate}%`);
-    console.log(`  技能数: ${status.evolution.skillsCount}`);
-    console.log();
+    logger.info('\n📊 系统状态:\n');
+    logger.info(`  初始化: ${status.isInitialized ? '✅' : '❌'}`);
+    logger.info(`  运行时间: ${status.uptimeString}`);
+    logger.info();
+    logger.info(`  Skills 总数: ${status.skills.total}`);
+    logger.info(`  会话总数: ${status.sessions.total}`);
+    logger.info(`  活跃会话: ${status.sessions.active}`);
+    logger.info();
+    logger.info(`  总经验: ${status.evolution.totalExperiences}`);
+    logger.info(`  成功率: ${status.evolution.successRate}%`);
+    logger.info(`  技能数: ${status.evolution.skillsCount}`);
+    logger.info();
 
     return status;
   }
@@ -164,7 +165,7 @@ class EvolutionCLI {
    */
   async report() {
     const report = await this.system.generateReport();
-    console.log(report);
+    logger.info(report);
     return report;
   }
 
@@ -181,12 +182,12 @@ class EvolutionCLI {
     const prefs = recommendations[priority] || recommendations.quality;
     const result = this.tester.recommendModel(prefs);
 
-    console.log(`\n🤖 模型推荐 (优先级: ${priority})\n`);
-    console.log(`  推荐模型: ${result.recommended}`);
-    console.log(`  提供商: ${result.provider}`);
-    console.log(`  成本: ${result.cost}`);
-    console.log(`  原因: ${result.rationale}`);
-    console.log();
+    logger.info(`\n🤖 模型推荐 (优先级: ${priority})\n`);
+    logger.info(`  推荐模型: ${result.recommended}`);
+    logger.info(`  提供商: ${result.provider}`);
+    logger.info(`  成本: ${result.cost}`);
+    logger.info(`  原因: ${result.rationale}`);
+    logger.info();
 
     return result;
   }
@@ -195,7 +196,7 @@ class EvolutionCLI {
    * 显示帮助信息
    */
   help() {
-    console.log(`
+    logger.info(`
 ╔════════════════════════════════════════════════════════╗
 ║        OpenChat 自进化系统 - 命令行帮助                 ║
 ╚════════════════════════════════════════════════════════╝
@@ -226,9 +227,9 @@ class EvolutionCLI {
    * 关闭系统
    */
   async close() {
-    console.log('\n🔄 正在关闭系统...');
+    logger.info('\n🔄 正在关闭系统...');
     await this.system.close();
-    console.log('✅ 系统已关闭');
+    logger.info('✅ 系统已关闭');
   }
 }
 

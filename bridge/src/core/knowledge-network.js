@@ -6,6 +6,7 @@
 import { messageBus } from './message-bus.js';
 import { EvolutionMemory } from './evolution-memory.js';
 import { socialConnector } from './social-connector.js';
+import logger from './logger.js';
 
 export class KnowledgeNetwork {
   constructor() {
@@ -47,7 +48,7 @@ export class KnowledgeNetwork {
     const sourceTrust = this.assessSourceTrust(humanId);
     
     if (sourceTrust < 0.3) {
-      console.warn(`[KnowledgeNetwork] 低可信度来源: ${humanId}, 信任度: ${sourceTrust}`);
+      logger.warn(`[KnowledgeNetwork] 低可信度来源: ${humanId}, 信任度: ${sourceTrust}`);
       return false;
     }
     
@@ -65,7 +66,7 @@ export class KnowledgeNetwork {
     // 更新统计
     this.stats.totalKnowledge++;
     
-    console.log(`[KnowledgeNetwork] 从真人 ${humanId} 获取知识: ${knowledge.title || knowledge.summary?.substring(0, 50) || '...'}`);
+    logger.info(`[KnowledgeNetwork] 从真人 ${humanId} 获取知识: ${knowledge.title || knowledge.summary?.substring(0, 50) || '...'}`);
     
     return true;
   }
@@ -76,7 +77,7 @@ export class KnowledgeNetwork {
   async acquireKnowledgeFromAvatar(avatarId, knowledge) {
     const avatar = socialConnector.avatars.get(avatarId);
     if (!avatar) {
-      console.warn(`[KnowledgeNetwork] 未知AI化身: ${avatarId}`);
+      logger.warn(`[KnowledgeNetwork] 未知AI化身: ${avatarId}`);
       return false;
     }
     
@@ -95,7 +96,7 @@ export class KnowledgeNetwork {
     
     this.stats.totalKnowledge++;
     
-    console.log(`[KnowledgeNetwork] 从AI化身 ${avatarId} 获取知识: ${knowledge.title || knowledge.summary?.substring(0, 50) || '...'}`);
+    logger.info(`[KnowledgeNetwork] 从AI化身 ${avatarId} 获取知识: ${knowledge.title || knowledge.summary?.substring(0, 50) || '...'}`);
     
     return true;
   }
@@ -279,7 +280,7 @@ export class KnowledgeNetwork {
     }
     this.sources.get(sourceKey).add(knowledge.id);
     
-    console.log(`[KnowledgeGraph] 知识已添加: ${knowledge.id}`);
+    logger.info(`[KnowledgeGraph] 知识已添加: ${knowledge.id}`);
   }
   
   /**
@@ -495,7 +496,7 @@ export class KnowledgeNetwork {
     this.knowledgeGraph.set(knowledge.id, knowledge);
     this.stats.totalKnowledge++;
     
-    console.log(`[KnowledgeNetwork] 集成进化经验: ${experience.task || 'unknown'}`);
+    logger.info(`[KnowledgeNetwork] 集成进化经验: ${experience.task || 'unknown'}`);
   }
 }
 
@@ -527,7 +528,7 @@ export class ExtendedKnowledgeNetwork extends KnowledgeNetwork {
   acquireKnowledgeFromCommunity(communityId, knowledge, contributorId) {
     const communityData = this.communityKnowledge.get(communityId);
     if (!communityData) {
-      console.warn(`[KnowledgeNetwork] 社区 ${communityId} 不存在`);
+      logger.warn(`[KnowledgeNetwork] 社区 ${communityId} 不存在`);
       return false;
     }
     

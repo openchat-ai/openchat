@@ -1,3 +1,4 @@
+import logger from './logger.js';
 /**
  * 任务编排器
  * 负责任务分解、分配和同步
@@ -33,7 +34,7 @@ export class TaskOrchestrator {
       maxConcurrency: agentSpec.maxConcurrency || 1
     });
     
-    console.log(`[TaskOrchestrator] Registered agent: ${agentId}`, agentSpec.capabilities);
+    logger.info(`[TaskOrchestrator] Registered agent: ${agentId}`, agentSpec.capabilities);
   }
 
   /**
@@ -74,7 +75,7 @@ export class TaskOrchestrator {
       this._setupDependencies(taskId, task.dependencies);
     }
     
-    console.log(`[TaskOrchestrator] Submitted task: ${taskId} - ${task.name}`);
+    logger.info(`[TaskOrchestrator] Submitted task: ${taskId} - ${task.name}`);
     
     // 尝试处理任务
     this._processQueues();
@@ -170,7 +171,7 @@ export class TaskOrchestrator {
       agent.busyCount++;
       agent.lastActivity = Date.now();
 
-      console.log(`[TaskOrchestrator] Assigning task ${taskId} to agent ${agent.id}`);
+      logger.info(`[TaskOrchestrator] Assigning task ${taskId} to agent ${agent.id}`);
 
       // 执行任务（超时控制）
       const result = await this._executeTaskWithTimeout(task, agent);
@@ -180,7 +181,7 @@ export class TaskOrchestrator {
       task.result = result;
       task.completedAt = Date.now();
       
-      console.log(`[TaskOrchestrator] Task ${taskId} completed successfully`);
+      logger.info(`[TaskOrchestrator] Task ${taskId} completed successfully`);
       
       // 通知依赖任务
       this._notifyDependents(taskId);
@@ -191,14 +192,14 @@ export class TaskOrchestrator {
       task.error = error.message;
       task.completedAt = Date.now();
       
-      console.error(`[TaskOrchestrator] Task ${taskId} failed:`, error);
+      logger.error(`[TaskOrchestrator] Task ${taskId} failed:`, error);
       
       // 检查是否需要重试
       if (task.retries < task.maxRetries) {
         task.retries++;
         task.status = 'pending';
         this.readyQueue.unshift(taskId); // 重新放入队列头部
-        console.log(`[TaskOrchestrator] Retrying task ${taskId} (${task.retries}/${task.maxRetries})`);
+        logger.info(`[TaskOrchestrator] Retrying task ${taskId} (${task.retries}/${task.maxRetries})`);
       }
       
       throw error;
@@ -248,7 +249,7 @@ export class TaskOrchestrator {
   async _simulateTaskExecution(task, agent) {
     // 在实际实现中，这里会通过某种通信机制调用代理
     // 目前使用模拟实现
-    console.log(`[Simulator] Executing task ${task.id} on agent ${agent.id}`);
+    logger.info(`[Simulator] Executing task ${task.id} on agent ${agent.id}`);
     
     // 模拟执行时间
     const executionTime = Math.min(1000 + Math.random() * 2000, task.timeout / 2);
@@ -279,7 +280,7 @@ export class TaskOrchestrator {
           // 依赖都已完成，移动到就绪队列
           this.waitingQueue.splice(waitingIndex, 1);
           this.readyQueue.push(dependentId);
-          console.log(`[TaskOrchestrator] Dependencies satisfied for task ${dependentId}`);
+          logger.info(`[TaskOrchestrator] Dependencies satisfied for task ${dependentId}`);
         }
       }
     }
@@ -307,7 +308,7 @@ export class TaskOrchestrator {
       
       // 异步执行任务
       this._executeTask(taskId).catch(error => {
-        console.error('Error executing task:', error);
+        logger.error('Error executing task:', error);
       });
     }
   }

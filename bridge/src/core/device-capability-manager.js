@@ -1,3 +1,4 @@
+import logger from './logger.js';
 /**
  * 设备算力管理器
  *
@@ -38,18 +39,18 @@ class DeviceCapabilityManager extends EventEmitter {
       }
     };
 
-    console.log('[DeviceCapability] Manager initialized');
+    logger.info('[DeviceCapability] Manager initialized');
   }
 
   /**
    * 初始化并检测本地算力
    */
   async initialize() {
-    console.log('[DeviceCapability] Detecting local device...');
+    logger.info('[DeviceCapability] Detecting local device...');
 
     this.localDevice = await this.detectLocalCapability();
 
-    console.log('[DeviceCapability] Local device:', {
+    logger.info('[DeviceCapability] Local device:', {
       name: this.localDevice.name,
       type: this.localDevice.type,
       totalTOPS: this.localDevice.totalTOPS,
@@ -162,7 +163,7 @@ class DeviceCapabilityManager extends EventEmitter {
 
     this.remoteDevices.set(deviceId, device);
 
-    console.log('[DeviceCapability] Remote device registered:', {
+    logger.info('[DeviceCapability] Remote device registered:', {
       deviceId: device.deviceId,
       type: device.type,
       totalTOPS: device.totalTOPS
@@ -251,7 +252,7 @@ class DeviceCapabilityManager extends EventEmitter {
     const remoteLevel = this.getCapabilityLevel(remote);
     const localLevel = this.getCapabilityLevel(local);
 
-    console.log('[DeviceCapability] Capability levels:', {
+    logger.info('[DeviceCapability] Capability levels:', {
       remote: remoteLevel,
       local: localLevel
     });
@@ -359,7 +360,7 @@ class DeviceCapabilityManager extends EventEmitter {
     }
 
     if (cleaned > 0) {
-      console.log(`[DeviceCapability] Cleaned ${cleaned} timeout devices`);
+      logger.info(`[DeviceCapability] Cleaned ${cleaned} timeout devices`);
     }
 
     return cleaned;

@@ -8,6 +8,7 @@
  */
 
 import { persistentConfig } from './persistent-config.js';
+import logger from './logger.js';
 
 export class PerformanceScorer {
   constructor() {
@@ -285,7 +286,7 @@ export class PerformanceScorer {
       const scoresObj = Object.fromEntries(this.agentScores);
       await persistentConfig.set('agent_scores', scoresObj);
     } catch (e) {
-      console.error('Failed to persist agent scores:', e);
+      logger.error('Failed to persist agent scores:', e);
     }
   }
 
@@ -298,7 +299,7 @@ export class PerformanceScorer {
       const toSave = this.learningHistory.slice(-100);
       await persistentConfig.set('learning_history', toSave);
     } catch (e) {
-      console.error('Failed to persist learning history:', e);
+      logger.error('Failed to persist learning history:', e);
     }
   }
 
@@ -317,7 +318,7 @@ export class PerformanceScorer {
         this.learningHistory = learning;
       }
     } catch (e) {
-      console.error('Failed to load history:', e);
+      logger.error('Failed to load history:', e);
     }
   }
 }

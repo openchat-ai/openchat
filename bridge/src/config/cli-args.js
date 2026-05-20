@@ -3,6 +3,7 @@ import path from 'path';
 import { persistentConfig } from '../core/persistent-config.js';
 import { hasPublicAddress } from '../p2p/p2p-net.js';
 import { DEFAULT_PORT } from '../constants.js';
+import logger from '../core/logger.js';
 
 /**
  * 瑙ｆ瀽鍛戒护琛屽弬鏁板拰鎸佷箙鍖栭厤缃紝鐢熸垚瀹屾暣鐨?CONFIG 瀵硅薄
@@ -94,7 +95,7 @@ export function parseCliArgs(argv = process.argv) {
       qiniuEnabled, cores,
       topic: bridgeTopic
     });
-    console.log(`[Config] 宸蹭繚瀛樺埌 ${path.join(os.homedir(), '.openchat', 'config.json')}`);
+    logger.info(`[Config] 宸蹭繚瀛樺埌 ${path.join(os.homedir(), '.openchat', 'config.json')}`);
   }
 
   const CONFIG_HOST = isPublic ? '0.0.0.0' : 'localhost';

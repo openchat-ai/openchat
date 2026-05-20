@@ -1,3 +1,4 @@
+import logger from '../core/logger.js';
 /**
  * Compression Manager
  * 传输层压缩（gzip/brotli）- 简化版
@@ -10,7 +11,7 @@ class CompressionManager {
     this.defaultAlgorithm = options.default || 'gzip';
     this.enabled = true;
 
-    console.log(`[Compression] Manager initialized with ${this.defaultAlgorithm}`);
+    logger.info(`[Compression] Manager initialized with ${this.defaultAlgorithm}`);
   }
 
   /**
@@ -46,7 +47,7 @@ class CompressionManager {
           return input;
       }
     } catch (error) {
-      console.error(`[Compression] Compress error: ${error.message}`);
+      logger.error(`[Compression] Compress error: ${error.message}`);
       return data;
     }
   }
@@ -80,7 +81,7 @@ class CompressionManager {
           return data;
       }
     } catch (error) {
-      console.error(`[Compression] Decompress error: ${error.message}`);
+      logger.error(`[Compression] Decompress error: ${error.message}`);
       return data;
     }
   }
@@ -144,7 +145,7 @@ class CompressionManager {
   setAlgorithm(algorithm) {
     if (['gzip', 'brotli', 'deflate', 'none'].includes(algorithm)) {
       this.defaultAlgorithm = algorithm;
-      console.log(`[Compression] Algorithm set to: ${algorithm}`);
+      logger.info(`[Compression] Algorithm set to: ${algorithm}`);
     }
   }
 
@@ -153,7 +154,7 @@ class CompressionManager {
    */
   setEnabled(enabled) {
     this.enabled = enabled;
-    console.log(`[Compression] ${enabled ? 'Enabled' : 'Disabled'}`);
+    logger.info(`[Compression] ${enabled ? 'Enabled' : 'Disabled'}`);
   }
 
   /**

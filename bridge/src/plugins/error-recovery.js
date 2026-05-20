@@ -1,3 +1,4 @@
+import logger from '../core/logger.js';
 /**
  * 增强的错误恢复策略系统
  * 针对混沌测试中发现的典型故障场景提供智能恢复方案
@@ -55,7 +56,7 @@ export class ErrorRecoveryStrategies {
    * 磁盘满恢复策略
    */
   static async handleDiskFull(context) {
-    console.log('[恢复策略] 磁盘空间不足，尝试清理...');
+    logger.info('[恢复策略] 磁盘空间不足，尝试清理...');
     
     const recoverySteps = [
       {
@@ -95,7 +96,7 @@ export class ErrorRecoveryStrategies {
    * Git远程错误恢复策略
    */
   static async handleGitRemoteError(context) {
-    console.log('[恢复策略] Git远程错误，尝试诊断...');
+    logger.info('[恢复策略] Git远程错误，尝试诊断...');
     
     const recoverySteps = [
       {
@@ -135,7 +136,7 @@ export class ErrorRecoveryStrategies {
    * 随机失败恢复策略
    */
   static async handleRandomFailure(context) {
-    console.log('[恢复策略] 检测到随机失败，执行重试...');
+    logger.info('[恢复策略] 检测到随机失败，执行重试...');
     
     const recoverySteps = [
       {
@@ -173,7 +174,7 @@ export class ErrorRecoveryStrategies {
    * 文件不存在恢复策略
    */
   static async handleFileNotFound(context) {
-    console.log('[恢复策略] 文件不存在，尝试创建或查找...');
+    logger.info('[恢复策略] 文件不存在，尝试创建或查找...');
     
     const recoverySteps = [
       {
@@ -208,7 +209,7 @@ export class ErrorRecoveryStrategies {
    * 权限不足恢复策略
    */
   static async handlePermissionDenied(context) {
-    console.log('[恢复策略] 权限不足，尝试修复...');
+    logger.info('[恢复策略] 权限不足，尝试修复...');
     
     const recoverySteps = [
       {
@@ -243,7 +244,7 @@ export class ErrorRecoveryStrategies {
    * 超时恢复策略
    */
   static async handleTimeout(context) {
-    console.log('[恢复策略: 超时，尝试延长超时时间...');
+    logger.info('[恢复策略: 超时，尝试延长超时时间...');
     
     const recoverySteps = [
       {
@@ -279,7 +280,7 @@ export class ErrorRecoveryStrategies {
    * 未知错误恢复策略
    */
   static async handleUnknown(error, context) {
-    console.log('[恢复策略] 未知错误，尝试通用恢复...');
+    logger.info('[恢复策略] 未知错误，尝试通用恢复...');
     
     const recoverySteps = [
       {
@@ -312,17 +313,17 @@ export class ErrorRecoveryStrategies {
   static async execute(strategy, context) {
     const result = await strategy(context);
     
-    console.log(`[恢复策略] 执行 ${result.strategy}`);
-    console.log(`[恢复策略] 错误类型: ${result.errorType}`);
+    logger.info(`[恢复策略] 执行 ${result.strategy}`);
+    logger.info(`[恢复策略] 错误类型: ${result.errorType}`);
     
     // 执行恢复步骤
     if (result.recoverySteps) {
       for (const step of result.recoverySteps) {
         if (step.command) {
-          console.log(`[恢复步骤] 执行: ${step.command}`);
+          logger.info(`[恢复步骤] 执行: ${step.command}`);
         }
         if (step.retryDelay) {
-          console.log(`[恢复步骤] 等待 ${step.retryDelay}ms 后重试...`);
+          logger.info(`[恢复步骤] 等待 ${step.retryDelay}ms 后重试...`);
           await new Promise(r => setTimeout(r, step.retryDelay));
         }
       }

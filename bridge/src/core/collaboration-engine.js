@@ -6,6 +6,7 @@
 import TaskOrchestrator from './task-orchestrator.js';
 import AgentCommunicationProtocol, { MESSAGE_TYPES } from './agent-communication-protocol.js';
 import ResultAggregator from './result-aggregator.js';
+import logger from './logger.js';
 
 export class CollaborationEngine {
   constructor(options = {}) {
@@ -64,7 +65,7 @@ export class CollaborationEngine {
       throw new Error('No suitable agents available for task');
     }
     
-    console.log(`[CollaborationEngine] Selected ${participatingAgents.length} agents for task ${taskId}`);
+    logger.info(`[CollaborationEngine] Selected ${participatingAgents.length} agents for task ${taskId}`);
     
     // 2. 如果是复合任务，分解为子任务
     if (taskSpec.subtasks && taskSpec.subtasks.length > 0) {

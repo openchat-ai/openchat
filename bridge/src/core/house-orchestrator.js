@@ -21,6 +21,7 @@ import { MessageType,
 
 import * as fs from 'fs';
 import * as path from 'path';
+import logger from './logger.js';
 
 class BodyOrchestrator {
   /**
@@ -60,7 +61,7 @@ class BodyOrchestrator {
       // 姣?tick 楠岃瘉涓€涓畨鍏ㄥ眿
       await this.verifyOneSafehouse(residents);
     } catch (e) {
-      console.log(`[Body] tick error: ${e.message}`);
+      logger.info(`[Body] tick error: ${e.message}`);
     }
   }
 
@@ -121,7 +122,7 @@ class BodyOrchestrator {
         type: 'self',
         lastVerified: Date.now(),
       });
-      console.log(`[Body] 鑷妇褰撳墠 Body 涓哄畨鍏ㄥ眿 (hostId=${this.hostId})`);
+      logger.info(`[Body] 鑷妇褰撳墠 Body 涓哄畨鍏ㄥ眿 (hostId=${this.hostId})`);
       // 閲嶆柊璇诲彇
       valid.push({
         hostId: this.hostId,
@@ -141,7 +142,7 @@ class BodyOrchestrator {
 
     const reason = valid.length < 3 ? '绐熸暟涓嶈冻' : '璺ㄦ満涓嶈冻';
     const prefType = preferredBodyType(resident);
-    console.log(`[Body] ${resident.name} 闇€瑕佹壘绐?(${reason}, 鍋忓ソ: ${prefType})`);
+    logger.info(`[Body] ${resident.name} 闇€瑕佹壘绐?(${reason}, 鍋忓ソ: ${prefType})`);
 
     // 閫氳繃 P2P 骞挎挱 seek
     if (this.p2p) {
@@ -201,14 +202,14 @@ class BodyOrchestrator {
         summary: prompt.substring(0, 200),
       });
 
-      console.log(`[Body] ${resident.name} 鈫?${act.action} (${act.desc})`);
+      logger.info(`[Body] ${resident.name} 鈫?${act.action} (${act.desc})`);
 
       // P2R-S: "鍒涙柊""蹇€熶慨澶? 鈫?鎺ュ叆瀹夊叏鑷不寮曟搸
       if ((act.action === 'innovate' || act.action === 'quick_fix' || act.action === 'diagnose' || act.action === 'repair') && this.safeEvolution) {
         try {
           await this._evolve(resident, act, health);
         } catch (e) {
-          console.log(`[Body] ${resident.name} 杩涘寲灏濊瘯澶辫触 (闈炶嚧鍛?: ${e.message}`);
+          logger.info(`[Body] ${resident.name} 杩涘寲灏濊瘯澶辫触 (闈炶嚧鍛?: ${e.message}`);
         }
       }
 
@@ -236,12 +237,12 @@ class BodyOrchestrator {
       .sort((a, b) => (b.health || 0) - (a.health || 0));
 
     if (houses.length === 0) {
-      console.log(`[Body] ${resident.name} 鎯宠縼浣嗘病鏈夊彲鐢ㄧ獰`);
+      logger.info(`[Body] ${resident.name} 鎯宠縼浣嗘病鏈夊彲鐢ㄧ獰`);
       return null;
     }
 
     const target = houses[0];
-    console.log(`[Body] ${resident.name} 鈫?杩佸線 ${target.bridgeId || target.host}`);
+    logger.info(`[Body] ${resident.name} 鈫?杩佸線 ${target.bridgeId || target.host}`);
 
     if (this.p2p) {
       const msg = createResidentTransferMessage({
@@ -304,7 +305,7 @@ class BodyOrchestrator {
         } catch { /* 鍗曟枃浠跺け璐ヤ笉褰卞搷鏁翠綋 */ }
       }
     } catch { /* 鐩綍鍙兘涓嶅瓨鍦?*/ }
-    if (cleaned > 0) console.log(`[Body] 娓呯悊 ${cleaned} 涓繃鏈熷伐浣滄枃浠禶);
+    if (cleaned > 0) logger.info(`[Body] 娓呯悊 ${cleaned} 涓繃鏈熷伐浣滄枃浠禶);
     return cleaned;
   }
 
@@ -328,10 +329,10 @@ class BodyOrchestrator {
         backedUpAt: new Date().toISOString(),
       };
       fs.writeFileSync(backupFile, JSON.stringify(data, null, 2), 'utf8');
-      console.log(`[Body] 澶囦唤瀹屾垚: ${backupFile}`);
+      logger.info(`[Body] 澶囦唤瀹屾垚: ${backupFile}`);
       return backupFile;
     } catch (e) {
-      console.log(`[Body] 澶囦唤澶辫触: ${e.message}`);
+      logger.info(`[Body] 澶囦唤澶辫触: ${e.message}`);
       return null;
     }
   }

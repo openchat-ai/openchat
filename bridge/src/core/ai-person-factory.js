@@ -6,6 +6,7 @@
 
 import { AIPerson, aiPersonRegistry, AI_PERSON_TYPE, PERMISSION_LEVEL } from './ai-personhood.js';
 import { messageBus } from './message-bus.js';
+import logger from './logger.js';
 
 // 预定义的AI人模板
 export const AI_TEMPLATES = {
@@ -109,11 +110,11 @@ export class AIPersonFactory {
       try {
         hook(aiPerson, finalAttributes);
       } catch (error) {
-        console.error('AI人创建钩子执行失败:', error);
+        logger.error('AI人创建钩子执行失败:', error);
       }
     });
 
-    console.log(`[AIFactory] 创建AI人: ${id} (${templateType})`);
+    logger.info(`[AIFactory] 创建AI人: ${id} (${templateType})`);
     return aiPerson;
   }
 
@@ -143,7 +144,7 @@ export class AIPersonFactory {
    */
   registerTemplate(name, template) {
     this.customTemplates.set(name, template);
-    console.log(`[AIFactory] 注册自定义模板: ${name}`);
+    logger.info(`[AIFactory] 注册自定义模板: ${name}`);
     return true;
   }
 
@@ -338,7 +339,7 @@ class DynamicAIPerson extends AIPerson {
       'personality', 'permissions', 'capabilities', 'energyProfile'
     ]);
 
-    console.log(`[DynamicAIPerson] 动态AI人创建: ${id} (${this.template})`);
+    logger.info(`[DynamicAIPerson] 动态AI人创建: ${id} (${this.template})`);
   }
 
   /**

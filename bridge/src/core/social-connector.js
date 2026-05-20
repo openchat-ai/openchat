@@ -6,6 +6,7 @@
 import { messageBus } from './message-bus.js';
 import { persistentConfig } from '../core/persistent-config.js';
 import { EvolutionMemory } from './evolution-memory.js';
+import logger from './logger.js';
 
 export class SocialConnector {
   constructor(options = {}) {
@@ -75,7 +76,7 @@ export class SocialConnector {
     
     messageBus.publish('social:human:connected', { humanId });
     
-    console.log(`[SocialConnector] 真人 ${humanId} 已连接 - 累计 ${this.stats.totalHumans} 人`);
+    logger.info(`[SocialConnector] 真人 ${humanId} 已连接 - 累计 ${this.stats.totalHumans} 人`);
     
     return true;
   }
@@ -126,7 +127,7 @@ export class SocialConnector {
       spec: avatarSpec 
     });
     
-    console.log(`[SocialConnector] AI化身 ${avatarId} 已创建 - 真人${humanId}的第${human.avatarCount}个化身`);
+    logger.info(`[SocialConnector] AI化身 ${avatarId} 已创建 - 真人${humanId}的第${human.avatarCount}个化身`);
     
     return avatarId;
   }
@@ -159,7 +160,7 @@ export class SocialConnector {
       spec: communitySpec 
     });
     
-    console.log(`[SocialConnector] 社区 ${communitySpec.name} 已创建 - 累计 ${this.stats.totalCommunities} 个社区`);
+    logger.info(`[SocialConnector] 社区 ${communitySpec.name} 已创建 - 累计 ${this.stats.totalCommunities} 个社区`);
     
     return communityId;
   }
@@ -198,7 +199,7 @@ export class SocialConnector {
       type: entity.type
     });
     
-    console.log(`[SocialConnector] ${entity.type} ${entityId} 加入社区 ${community.name}`);
+    logger.info(`[SocialConnector] ${entity.type} ${entityId} 加入社区 ${community.name}`);
     
     return true;
   }
@@ -278,7 +279,7 @@ export class SocialConnector {
     // 在社区中传播知识
     this.spreadKnowledge(knowledgeData);
     
-    console.log(`[SocialConnector] 知识已获取 - 验证来源: ${knowledgeData.source} | 领域: ${knowledgeData.domain}`);
+    logger.info(`[SocialConnector] 知识已获取 - 验证来源: ${knowledgeData.source} | 领域: ${knowledgeData.domain}`);
   }
   
   /**
@@ -296,7 +297,7 @@ export class SocialConnector {
       }
     );
     
-    console.log(`[SocialConnector] 关系已建立 - ${relationshipData.participants.join(' <-> ')}`);
+    logger.info(`[SocialConnector] 关系已建立 - ${relationshipData.participants.join(' <-> ')}`);
   }
   
   /**
@@ -456,7 +457,7 @@ export class SocialConnector {
     
     messageBus.publish('social:disconnected', { id, type: conn.type });
     
-    console.log(`[SocialConnector] ${conn.type} ${id} 已断开连接`);
+    logger.info(`[SocialConnector] ${conn.type} ${id} 已断开连接`);
   }
   
   /**

@@ -16,6 +16,7 @@
  */
 
 import { EventEmitter } from 'events';
+import logger from './logger.js';
 
 class NeuralAudioCodec extends EventEmitter {
   constructor(options = {}) {
@@ -62,7 +63,7 @@ class NeuralAudioCodec extends EventEmitter {
       minimum: 8
     };
 
-    console.log('[NeuralCodec] Initialized with config:', {
+    logger.info('[NeuralCodec] Initialized with config:', {
       sampleRate: this.config.sampleRate,
       frameSize: this.config.frameSize,
       targetBitrate: this.config.targetBitrate,
@@ -74,7 +75,7 @@ class NeuralAudioCodec extends EventEmitter {
    * 异步初始化
    */
   async initialize() {
-    console.log('[NeuralCodec] Initializing neural codec...');
+    logger.info('[NeuralCodec] Initializing neural codec...');
 
     // 初始化编码器/解码器状态
     this.encoder = {
@@ -91,7 +92,7 @@ class NeuralAudioCodec extends EventEmitter {
     };
 
     this.isReady = true;
-    console.log('[NeuralCodec] Ready! (target: ' + this.config.targetBitrate + ' kbps)');
+    logger.info('[NeuralCodec] Ready! (target: ' + this.config.targetBitrate + ' kbps)');
 
     return this;
   }
@@ -461,7 +462,7 @@ class NeuralAudioCodec extends EventEmitter {
     }
 
     this.config.targetBitrate = kbps;
-    console.log(`[NeuralCodec] Bitrate set to ${kbps} kbps (mode: ${mode})`);
+    logger.info(`[NeuralCodec] Bitrate set to ${kbps} kbps (mode: ${mode})`);
   }
 
   /**
@@ -508,7 +509,7 @@ class NeuralAudioCodec extends EventEmitter {
     this.encoder = null;
     this.decoder = null;
     this.isReady = false;
-    console.log('[NeuralCodec] Destroyed');
+    logger.info('[NeuralCodec] Destroyed');
   }
 }
 

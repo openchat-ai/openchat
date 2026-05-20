@@ -5,6 +5,7 @@ import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { DEFAULT_PORT } from '../constants.js';
+import logger from './logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -372,7 +373,7 @@ class SandboxManager {
         await this.cleanupSandbox(sandboxId);
         cleanedCount++;
       } catch (error) {
-        console.error(`清理 ${sandboxId} 失败: ${error.message}`);
+        logger.error(`清理 ${sandboxId} 失败: ${error.message}`);
       }
     }
 

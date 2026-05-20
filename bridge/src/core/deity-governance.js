@@ -6,6 +6,7 @@
 
 import { messageBus } from './message-bus.js';
 import { AIPerson } from './ai-personhood.js';
+import logger from './logger.js';
 
 // 神识权限等级
 export const DEITY_RANK = {
@@ -218,7 +219,7 @@ export class DeityGovernance {
     
     this.isolationMatrix.set(deityId, isolationRecord);
     
-    console.log(`[DeityGovernance] 隔离全局神 ${deityId} 原因: ${reason}`);
+    logger.info(`[DeityGovernance] 隔离全局神 ${deityId} 原因: ${reason}`);
     return true;
   }
   

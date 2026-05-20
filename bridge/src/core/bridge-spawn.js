@@ -15,6 +15,7 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createLaunchStrategy } from './launch-strategies.js';
+import logger from './logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MAX_CHILDREN = 6;
@@ -53,14 +54,14 @@ class BridgeSpawn {
    */
   spawnNesting(options = {}) {
     if (this._childNames.size >= MAX_CHILDREN) {
-      console.log(`[Spawn] 同机子 Bridge 已达上限 ${MAX_CHILDREN}，不再扩窟`);
+      logger.info(`[Spawn] 同机子 Bridge 已达上限 ${MAX_CHILDREN}，不再扩窟`);
       return null;
     }
 
     const result = this._strategy.spawnHouse(options);
     if (result) {
       this._childNames.set(result.childId, result.name);
-      console.log(`[Spawn] 新窟已筑: ${result.name} port=${result.port}`);
+      logger.info(`[Spawn] 新窟已筑: ${result.name} port=${result.port}`);
     }
     return result;
   }
@@ -113,7 +114,7 @@ class BridgeSpawn {
     try {
       this._strategy.killChild(childId);
     } catch (e) {
-      console.log(`[Spawn] 终止失败: ${e.message}`);
+      logger.info(`[Spawn] 终止失败: ${e.message}`);
     }
     this._childNames.delete(childId);
     return true;

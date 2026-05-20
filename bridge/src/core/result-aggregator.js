@@ -1,3 +1,4 @@
+import logger from './logger.js';
 /**
  * 结果聚合器
  * 汇聚多Agent协作的结果
@@ -27,7 +28,7 @@ export class ResultAggregator {
       reputation: 1.0 // 初始声誉值
     });
     
-    console.log(`[ResultAggregator] Registered agent: ${agentId}`, capabilities);
+    logger.info(`[ResultAggregator] Registered agent: ${agentId}`, capabilities);
   }
 
   /**
@@ -62,7 +63,7 @@ export class ResultAggregator {
     // 更新Agent性能历史
     this._updateAgentPerformance(agentId, result);
     
-    console.log(`[ResultAggregator] Received result for task ${taskId} from agent ${agentId}`);
+    logger.info(`[ResultAggregator] Received result for task ${taskId} from agent ${agentId}`);
     
     // 检查是否可以聚合
     this._checkAndAggregate(taskId);
@@ -114,7 +115,7 @@ export class ResultAggregator {
     
     this.aggregatedResults.set(taskId, aggregatedResult);
     
-    console.log(`[ResultAggregator] Aggregated results for task ${taskId}`);
+    logger.info(`[ResultAggregator] Aggregated results for task ${taskId}`);
     
     return aggregatedResult;
   }

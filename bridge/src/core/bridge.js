@@ -32,6 +32,7 @@ import { MessageType as P2PMessageType } from '../p2p/messages.js';
 import { PeerRegistry } from '../p2p/peer-registry.js';
 import { QiniuBackend } from '../p2p/peer-registry/qiniu-backend.js';
 import { HttpBackend } from '../p2p/peer-registry/http-backend.js';
+import logger from './logger.js';
 
 class Bridge {
   constructor(CONFIG, parsedConfig) {
@@ -73,18 +74,18 @@ class Bridge {
     const { CONFIG } = this;
     const { isMain, deployServerEnabled, hostId, houseIdArg, effectiveBodyId, port } = this._parsed;
     const mode = CONFIG.headless ? 'HEADLESS' : 'CLI';
-    console.log('');
-    console.log('============================================================');
-    console.log('|                                                          |');
-    console.log('|                   OPENCHAT BRIDGE                        |');
-    console.log(`|                   [${mode} MODE]                          |`);
-    console.log('|                                                          |');
-    console.log('============================================================');
-    console.log('');
+    logger.info('');
+    logger.info('============================================================');
+    logger.info('|                                                          |');
+    logger.info('|                   OPENCHAT BRIDGE                        |');
+    logger.info(`|                   [${mode} MODE]                          |`);
+    logger.info('|                                                          |');
+    logger.info('============================================================');
+    logger.info('');
 
-    try { this.stabilitySystem.start(); } catch (e) { console.error('[Bridge] stability system start failed:', e.message); }
+    try { this.stabilitySystem.start(); } catch (e) {}
 
-    try { await memoryManager.initialize(); } catch (e) { console.error('[Bridge] memory manager init failed:', e.message); }
+    try { await memoryManager.initialize(); } catch (e) {}
 
     try {
       const founder = createFounder();
@@ -99,7 +100,7 @@ class Bridge {
       global.aiPersonManager = aiPersonManager;
       aiPersonManager.createDefaultAIPerson();
     } catch (e) {
-      console.log('[AI-Personhood] init failed:', e.message);
+      logger.info('[AI-Personhood] init failed:', e.message);
     }
 
     await this.h.autoConfigProviders(detectedTools);
@@ -119,7 +120,7 @@ class Bridge {
         P2PNet = swarmModule.default;
         getPublicIPv4 = swarmModule.getPublicIPv4;
       } catch (e) {
-        console.log('[P2P] swarm 濡€虫健閸旂姾娴囨径杈Е閿涘潝yperswarm 娑撳秴鍚嬬€圭櫢绱氶敍宀冪儲鏉?P2P閿?, e.message);
+        logger.info('[P2P] swarm 濡€虫健閸旂姾娴囨径杈Е閿涘潝yperswarm 娑撳秴鍚嬬€圭櫢绱氶敍宀冪儲鏉?P2P閿?, e.message);
       }
 
       if (P2PNet) {
@@ -141,7 +142,7 @@ class Bridge {
         if (CONFIG.isPublic && registry) {
           const publicIp = getPublicIPv4() || CONFIG.advertiseHost || '';
           if (!publicIp) {
-            console.log('[P2P] no public IP, skip peer registry (hyperswarm relay only)');
+            logger.info('[P2P] no public IP, skip peer registry (hyperswarm relay only)');
           } else {
             // ... public registration unchanged ...
           }
@@ -149,22 +150,22 @@ class Bridge {
         if (CONFIG.directListen > 0) {
           this.p2p.listenDirect(CONFIG.directListen);
         }
-        console.log(`[P2P] Hyperswarm network ready`);
+        logger.info(`[P2P] Hyperswarm network ready`);
 
         if (this.p2p && this.p2p.isRunning) {
           try {
             this.gossip = new GossipManager();
             this.gossip.start(this.p2p);
           } catch (gossipErr) {
-            console.log(`[Gossip] init error: ${gossipErr.message}`);
+            logger.info(`[Gossip] init error: ${gossipErr.message}`);
           }
         }
       } else {
-        console.log('[P2P] 閻╃绻涘Ο鈥崇础閿涘牊妫?DHT閿涘矂娓堕幍瀣З闁板秶鐤?knownPeers閿?);
+        logger.info('[P2P] 閻╃绻涘Ο鈥崇础閿涘牊妫?DHT閿涘矂娓堕幍瀣З闁板秶鐤?knownPeers閿?);
       }
 
     } catch (p2pErr) {
-      console.log(`[P2P] init error: ${p2pErr.message}`);
+      logger.info(`[P2P] init error: ${p2pErr.message}`);
     }
 
     if (deployServerEnabled) {
@@ -178,7 +179,7 @@ class Bridge {
         });
       } catch (e) {
         const detail = e.stderr ? e.stderr.toString().split('\n').filter(l => l.trim()).slice(0, 3).join('; ') : '';
-        console.log(`[Deploy] build ${detail ? ': ' + detail : ''}`);
+        logger.info(`[Deploy] build ${detail ? ': ' + detail : ''}`);
       }
     }
 
@@ -212,7 +213,7 @@ class Bridge {
         },
       });
       this.wss.on('connection', (ws, req) => {
-        console.log('[WS] client connected');
+        logger.info('[WS] client connected');
         this.clients.add(ws);
         ws._peerId = `client-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
         ws._msgCount = 0;
@@ -234,11 +235,11 @@ class Bridge {
       this.signalingWss = new WebSocketServer({ server: this.httpServer, path: '/signaling' });
       this._setupSignaling();
       this.httpServer.listen(CONFIG.port, CONFIG.host);
-      console.log(`[HTTP] ${CONFIG.host}:${CONFIG.port}`);
-      console.log(`[API] endpoints: /api/v1/*`);
+      logger.info(`[HTTP] ${CONFIG.host}:${CONFIG.port}`);
+      logger.info(`[API] endpoints: /api/v1/*`);
       await this.apiServer.start();
       residentScheduler.start();
-      console.log(`[residents] scheduler started`);
+      logger.info(`[residents] scheduler started`);
 
       if (this.p2p) {
         const semanticTypes = [
@@ -250,15 +251,15 @@ class Bridge {
         ];
         for (const t of semanticTypes) {
           this.p2p.on(t, (data) => {
-            console.log(`[P2P] received ${t}: from=${data.from?.slice(0, 8) || '?'}...`);
+            logger.info(`[P2P] received ${t}: from=${data.from?.slice(0, 8) || '?'}...`);
           });
         }
 
         this.p2p.on('peer-connected', (peerId) => {
-          console.log(`[P2P] peer connected: ${peerId?.slice(0, 8) || peerId}...`);
+          logger.info(`[P2P] peer connected: ${peerId?.slice(0, 8) || peerId}...`);
         });
         this.p2p.on('peer-disconnected', (peerId) => {
-          console.log(`[P2P] peer disconnected: ${peerId?.slice(0, 8) || peerId}...`);
+          logger.info(`[P2P] peer disconnected: ${peerId?.slice(0, 8) || peerId}...`);
         });
 
         residentManager.setP2P(this.p2p);
@@ -293,7 +294,7 @@ class Bridge {
           if (isMain) {
             const children = await bridgeSpawn.start();
             for (const c of children) {
-              console.log(`[P2R] ${c.name} port=${c.port}`);
+              logger.info(`[P2R] ${c.name} port=${c.port}`);
             }
           }
 
@@ -305,8 +306,8 @@ class Bridge {
 
           this.llmProxy = new LLMProxyAgent(this.p2p, { enabled: true });
           this.llmProxy.start();
-          console.log('[P2R] HouseOrchestrator + SafeEvolution + BridgeSpawn + LLMProxy ready');
-        } catch (e) { console.log(`[warn] P2R init failed: ${e.message}`); }
+          logger.info('[P2R] HouseOrchestrator + SafeEvolution + BridgeSpawn + LLMProxy ready');
+        } catch (e) { logger.info(`[warn] P2R init failed: ${e.message}`); }
 
         try {
           const { ProblemDecomposer } = await import('./problem-decomposer.js');
@@ -326,9 +327,9 @@ class Bridge {
             this.solutionEngine,
             this.solutionOptimizer
           );
-          console.log('[P2R-K] convergence system ready');
+          logger.info('[P2R-K] convergence system ready');
         } catch (e) {
-          console.log(`[P2R-K] convergence init failed: ${e.message}`);
+          logger.info(`[P2R-K] convergence init failed: ${e.message}`);
         }
 
         if (!isMain) {
@@ -360,7 +361,7 @@ class Bridge {
             };
             this.p2p.sendTo(data.from, { type: P2PMessageType.PROBLEM_RESULT, payload: result });
           } catch (e) {
-            console.log(`[P2R-K] solve error: ${e.message}`);
+            logger.info(`[P2R-K] solve error: ${e.message}`);
           }
         });
 
@@ -368,7 +369,7 @@ class Bridge {
           const payload = data.payload || {};
           const from = data.from;
           const remoteHostId = payload.hostId || '';
-          console.log(`[P2R] verify received: from=${from?.slice(0, 8) || '?'}... hostId=${remoteHostId.slice(0, 8) || '?'}`);
+          logger.info(`[P2R] verify received: from=${from?.slice(0, 8) || '?'}... hostId=${remoteHostId.slice(0, 8) || '?'}`);
           for (const r of residentManager.list(null)) {
             const houses = r.safeHouses || [];
             const idx = houses.findIndex(h => h.bridgeId === from);
@@ -386,11 +387,11 @@ class Bridge {
           const incoming = payload.residents || [];
           const sourceHostId = payload.sourceHostId || '';
           const sourceBridgeId = payload.sourceBridgeId || '';
-          console.log(`[P2R] incoming transfer: ${incoming.length} residents from=${data.from?.slice(0, 8) || '?'} hostId=${sourceHostId.slice(0, 8) || '?'}`);
+          logger.info(`[P2R] incoming transfer: ${incoming.length} residents from=${data.from?.slice(0, 8) || '?'} hostId=${sourceHostId.slice(0, 8) || '?'}`);
           for (const r of incoming) {
             const existing = residentManager.list(null).find(x => x.name === r.name);
             if (existing) {
-              console.log(`[P2R] ${r.name} already exists, skip`);
+              logger.info(`[P2R] ${r.name} already exists, skip`);
               continue;
             }
             const created = residentManager.create(r.name, { traits: r.traits });
@@ -411,14 +412,14 @@ class Bridge {
               lastVerified: Date.now(),
               health: 100,
             });
-            console.log(`[P2R] resident received: ${r.name}`);
+            logger.info(`[P2R] resident received: ${r.name}`);
           }
         });
 
         this.p2p.on('HOUSE_SEEK', (data) => {
           const p = data.payload || {};
           const hid = p.hostId ? p.hostId.slice(0, 8) : '?';
-          console.log(`[P2R] house seek: ${p.residentName} (hostId=${hid}, preferred: ${p.preferredType})`);
+          logger.info(`[P2R] house seek: ${p.residentName} (hostId=${hid}, preferred: ${p.preferredType})`);
           if (this.house && data.from) {
             const offer = {
               type: 'HOUSE_OFFER',
@@ -450,13 +451,13 @@ class Bridge {
               health: p.health || 50,
               lastVerified: Date.now(),
             });
-            console.log(`[P2R] safe house registered: ${p.houseId?.slice(0, 8)} for resident#${p.sourceResidentId}`);
+            logger.info(`[P2R] safe house registered: ${p.houseId?.slice(0, 8)} for resident#${p.sourceResidentId}`);
           }
         });
         this.p2p.on('HOUSE_NEED', (data) => {
           const p = data.payload || {};
           const hid = p.hostId ? p.hostId.slice(0, 8) : '?';
-          console.log(`[P2R] house need: ${p.residentName} (hostId=${hid}, health: ${p.healthScore})`);
+          logger.info(`[P2R] house need: ${p.residentName} (hostId=${hid}, health: ${p.healthScore})`);
         });
 
         this.p2p.on('propose_change', (data) => {
@@ -471,15 +472,15 @@ class Bridge {
         });
         this.p2p.on('change_applied', (data) => {
           const p = data.payload || {};
-          console.log(`[P2R-S] change applied: ${p.file} by ${p.appliedBy?.slice(0, 8)}`);
+          logger.info(`[P2R-S] change applied: ${p.file} by ${p.appliedBy?.slice(0, 8)}`);
         });
         this.p2p.on('fairy_gossip', (data) => {
           const p = data.payload || {};
-          console.log('[Gossip] received from ' + (p.port || '?'));
+          logger.info('[Gossip] received from ' + (p.port || '?'));
         });
       }
     } catch (e) {
-      console.log(`[warn] API/P2R init failed: ${e.message}`);
+      logger.info(`[warn] API/P2R init failed: ${e.message}`);
     }
 
     this._mountLegacyRoutes();
@@ -495,21 +496,21 @@ class Bridge {
         }
       }
       const host = CONFIG.host === '0.0.0.0' ? '0.0.0.0' : 'localhost';
-      console.log('');
-      console.log(`[HTTP] API: http://${host}:${CONFIG.port}`);
-      console.log(`[WS]   Chat: ws://${host}:${CONFIG.port}/ws`);
+      logger.info('');
+      logger.info(`[HTTP] API: http://${host}:${CONFIG.port}`);
+      logger.info(`[WS]   Chat: ws://${host}:${CONFIG.port}/ws`);
       const sigUrl = CONFIG.wsSignalingUrl || `ws://${host}:${CONFIG.port}/signaling`;
-      console.log(`[WS]   Voice: ${sigUrl}${CONFIG.wsSignalingUrl ? '' : ' (no wsSignaling, local only)'}`);
+      logger.info(`[WS]   Voice: ${sigUrl}${CONFIG.wsSignalingUrl ? '' : ' (no wsSignaling, local only)'}`);
       if (CONFIG.host === 'localhost') {
-        console.log('[note] local only, no public IP detected');
+        logger.info('[note] local only, no public IP detected');
       }
-      console.log('');
-      console.log('[Bridge] READY (Ctrl+C to stop)');
-      console.log('[hint] use --cli for interactive mode');
+      logger.info('');
+      logger.info('[Bridge] READY (Ctrl+C to stop)');
+      logger.info('[hint] use --cli for interactive mode');
 
       this.setupHeadlessSignalHandlers();
     } else {
-      console.log('');
+      logger.info('');
       this.cli.startCLI();
     }
   }
@@ -622,7 +623,7 @@ ws.onerror = () => { status.textContent = 'connection failed'; status.className 
   _setupSignaling() {
     this.signalingWss.on('connection', (ws) => {
       let registeredPeerId = null;
-      console.log('[Signaling] client connected');
+      logger.info('[Signaling] client connected');
       ws.on('message', (data) => {
         try {
           const msg = JSON.parse(data.toString());
@@ -700,7 +701,7 @@ ws.onerror = () => { status.textContent = 'connection failed'; status.className 
               return;
             }
           }
-        } catch (e) { console.error('[Signaling] error:', e.message); }
+        } catch (e) { logger.error('[Signaling] error:', e.message); }
       });
       ws.on('close', () => { if (registeredPeerId) this.signalingRooms.delete(registeredPeerId); });
     });
@@ -733,7 +734,7 @@ ws.onerror = () => { status.textContent = 'connection failed'; status.className 
   }
 
   async shutdown() {
-    console.log('\n[Bridge] shutting down...');
+    logger.info('\n[Bridge] shutting down...');
     const sessions = sessionManager.listSessions();
     for (const session of sessions) {
       sessionManager.closeSession(session.id);
@@ -758,7 +759,7 @@ ws.onerror = () => { status.textContent = 'connection failed'; status.className 
     }
     if (this.p2p) await this.p2p.stop();
     residentScheduler.stop();
-    console.log('[Bridge] goodbye!');
+    logger.info('[Bridge] goodbye!');
     process.exit(0);
   }
 }

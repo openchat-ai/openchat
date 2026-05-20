@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import * as os from 'os';
+import logger from '../core/logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROVIDERS_PATH = path.join(__dirname, '../config/provider-models.json');
@@ -28,7 +29,7 @@ function loadRuntimeConfig() {
       return _runtimeConfig;
     }
   } catch (e) {
-    console.warn('[ProviderManager] Failed to load runtime config:', e.message);
+    logger.warn('[ProviderManager] Failed to load runtime config:', e.message);
   }
   return null;
 }
@@ -129,7 +130,7 @@ function loadProviders() {
       Object.assign(PRESET_PROVIDERS, loaded);
     }
   } catch (e) {
-    console.error('Failed to load providers:', e.message);
+    logger.error('Failed to load providers:', e.message);
   }
 }
 
@@ -148,7 +149,7 @@ export function saveProviders() {
     fs.writeFileSync(PROVIDERS_PATH, JSON.stringify(data, null, 2), 'utf8');
     return true;
   } catch (e) {
-    console.error('Failed to save providers:', e.message);
+    logger.error('Failed to save providers:', e.message);
     return false;
   }
 }
