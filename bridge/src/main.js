@@ -19,20 +19,20 @@ import { persistentConfig } from './core/persistent-config.js';
 import { providerManager } from './providers/provider-manager.js';
 import { providerRegistry } from './providers/provider-registry.js';
 import { memoryManager } from './memory/memory-manager.js';
-import { agentMonitor } from './core/agent-monitor.js';
-import { AIPerson, aiPersonRegistry, createFounder } from './core/ai-personhood.js';
-import { Deity, deitySystemManager, DEITY_TYPE } from './core/deity-system.js';
-import { MirrorDeity, mirrorDeity, initializeMirrorDeitySystem } from './core/mirror-deity.js';
-import { EnergyDeity, energyDeity, initializeEnergySystem, ENERGY_TYPE, POWER_MODE } from './core/energy-deity.js';
-import { aiPersonFactory, AI_TEMPLATES } from './core/ai-person-factory.js';
-import { deityGovernance } from './core/deity-governance.js';
-import { identityGenerator } from './core/identity-generator.js';
-import { aiPersonManager } from './core/ai-person-manager.js';
-import { getEnhancedStabilitySystem } from './core/enhanced-stability-system.js';
-import { CollaborationEngine } from './core/collaboration-engine.js';
-import { residentManager } from './core/resident-manager.js';
-import { residentScheduler } from './core/resident-scheduler.js';
-import { LearningCore } from './core/learning-core.js';
+import { agentMonitor } from './core/agent/agent-monitor.js';
+import { AIPerson, aiPersonRegistry, createFounder } from './core/agent/ai-personhood.js';
+import { Deity, deitySystemManager, DEITY_TYPE } from './core/agent/deity-system.js';
+import { MirrorDeity, mirrorDeity, initializeMirrorDeitySystem } from './core/agent/mirror-deity.js';
+import { EnergyDeity, energyDeity, initializeEnergySystem, ENERGY_TYPE, POWER_MODE } from './core/agent/energy-deity.js';
+import { aiPersonFactory, AI_TEMPLATES } from './core/agent/ai-person-factory.js';
+import { deityGovernance } from './core/agent/deity-governance.js';
+import { identityGenerator } from './core/agent/identity-generator.js';
+import { aiPersonManager } from './core/agent/ai-person-manager.js';
+import { getEnhancedStabilitySystem } from './core/monitoring/enhanced-stability-system.js';
+import { CollaborationEngine } from './core/collaboration/collaboration-engine.js';
+import { residentManager } from './core/agent/resident-manager.js';
+import { residentScheduler } from './core/agent/resident-scheduler.js';
+import { LearningCore } from './core/evolution/learning-core.js';
 import P2PSwarm, { hasPublicAddress, getPublicIPv4 } from './p2p/swarm.js';
 import { MessageType as P2PMessageType } from './p2p/messages.js';
 import { PeerRegistry } from './p2p/peer-registry.js';
@@ -401,11 +401,11 @@ class Bridge {
 
         // P2R: 居民治家初始化（try 块防止 HouseOrchestrator 报错阻止后续初始化）
         try {
-        const { SafeEvolution } = await import('./core/safe-evolution.js');
-        const { BridgeSpawn } = await import('./core/bridge-spawn.js');
-        const { detectBestStrategy } = await import('./core/launch-strategies.js');
-        const { House } = await import('./core/house.js');
-        const { LLMProxyAgent } = await import('./core/llm-proxy-agent.js');
+        const { SafeEvolution } = await import('./core/security/safe-evolution.js');
+        const { BridgeSpawn } = await import('./core/p2r/bridge-spawn.js');
+        const { detectBestStrategy } = await import('./core/p2r/launch-strategies.js');
+        const { House } = await import('./core/p2r/house.js');
+        const { LLMProxyAgent } = await import('./core/p2r/llm-proxy-agent.js');
 
         const safeEvo = new SafeEvolution(this.p2p, this.p2p.peerId || 'bridge-1');
 
@@ -428,7 +428,7 @@ class Bridge {
           }
         }
 
-        const { HouseOrchestrator } = await import('./core/house-orchestrator.js');
+        const { HouseOrchestrator } = await import('./core/p2r/house-orchestrator.js');
         this.houseOrchestrator = new HouseOrchestrator(this.p2p, this.p2p.peerId || 'bridge-1', safeEvo, this.house, bridgeSpawn);
         residentScheduler.houseOrchestrator = this.houseOrchestrator;
         this.safeEvolution = safeEvo;
@@ -450,10 +450,10 @@ class Bridge {
 
         // P2R-K: 收敛引擎 — 问题分解→竞标→求解→择优
         try {
-          const { ProblemDecomposer } = await import('./core/problem-decomposer.js');
-          const { ConvergenceEngine } = await import('./core/convergence-engine.js');
-          const { SolutionEngine } = await import('./core/solution-engine.js');
-          const { SolutionOptimizer } = await import('./core/solution-optimizer.js');
+          const { ProblemDecomposer } = await import('./core/convergence/problem-decomposer.js');
+          const { ConvergenceEngine } = await import('./core/convergence/convergence-engine.js');
+          const { SolutionEngine } = await import('./core/convergence/solution-engine.js');
+          const { SolutionOptimizer } = await import('./core/convergence/solution-optimizer.js');
           this.problemDecomposer = new ProblemDecomposer();
           this.convergenceEngine = new ConvergenceEngine();
           this.solutionEngine = new SolutionEngine();

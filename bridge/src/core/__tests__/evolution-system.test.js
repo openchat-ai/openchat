@@ -1,4 +1,4 @@
-import { EvolutionSystem } from '../evolution-system.js';
+import { EvolutionSystem } from '../evolution/evolution-system.js';
 
 async function runFullIntegrationTests() {
   console.log('🧪 开始 Phase 6 完整系统集成测试...\n');

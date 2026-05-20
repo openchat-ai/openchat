@@ -1,4 +1,4 @@
-import { vectorMemory } from './vector-memory.js';
+import { vectorMemory } from './memory/vector-memory.js';
 import logger from './logger.js';
 import { evaluate } from 'mathjs';
 import { URL } from 'url';

@@ -2,7 +2,7 @@ import logger from '../core/logger.js';
 /** * Gossip Manager ?Cross-Bridge knowledge sync via P2P * ： P2P ?Bridge * * Uses timestamp-based vector clock for conflict resolution. * Periodically gossips knowledge summaries; peers pull missing entries. * 。，? */
 import { EventEmitter } from 'events';
 import { MessageType, createMessage } from './messages.js';
-import { vectorMemory } from '../core/vector-memory.js';
+import { vectorMemory } from '../core/memory/vector-memory.js';
 
 const GOSSIP_INTERVAL_MS = 60_000; // ?60 秒广播一次摘?const SYNC_BATCH_SIZE = 10;         // 每次同步最?10 ?
 class GossipManager extends EventEmitter {

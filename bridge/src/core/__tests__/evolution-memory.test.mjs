@@ -8,7 +8,7 @@ const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'evomem-test-'));
 process.env.USERPROFILE = tmpDir;
 process.env.HOME = tmpDir;
 
-const { EvolutionMemory } = await import('../evolution-memory.js');
+const { EvolutionMemory } = await import('../evolution/evolution-memory.js');
 
 describe('EvolutionMemory', () => {
   let mem;

@@ -1,7 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
-import { ConvergenceEngine } from '../convergence-engine.js';
-import { FairyGuardian } from '../fairy-guardian.js';
+import { ConvergenceEngine } from '../convergence/convergence-engine.js';
+import { FairyGuardian } from '../p2r/fairy-guardian.js';
 
 describe('ConvergenceEngine', () => {
   test('constructor sets defaults', () => {

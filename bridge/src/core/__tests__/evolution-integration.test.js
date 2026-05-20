@@ -1,4 +1,4 @@
-import { EvolutionEngine } from '../evolution-engine.js';
+import { EvolutionEngine } from '../evolution/evolution-engine.js';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';

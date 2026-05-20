@@ -5,8 +5,8 @@
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
-import { generalizationEngineV2 } from '../../src/core/generalization.js';
-import { EvolutionMemory } from '../../src/core/evolution-memory.js';
+import { generalizationEngineV2 } from '../../src/core/evolution/generalization.js';
+import { EvolutionMemory } from '../../src/core/evolution/evolution-memory.js';
 
 // ── 泛化准确率测试（N-shape 触觉感知） ──
 const GENERALIZATION_CASES = [

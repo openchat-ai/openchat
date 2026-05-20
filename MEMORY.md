@@ -54,6 +54,8 @@
 - [2026-05-20] **第九轮专家评审 — catch{}系统性清理+死代码删除+子系统测试**：138/138 全绿（新增10个子系统测试）。完成5项P0执行：105处catch{}加日志(36文件)、19个.log垃圾文件清理、bridge.js死代码删除、ConvergenceEngine+FairyGuardian测试(10个)、evolution-integration确认仍flaky。**教训：R4修catch{}只限于topic-registry，这次grep出全项目105处。单文件"已修"不代表全项目已修，每次评审必须做全量扫描。**
 
 
+- [2026-05-20] **第十轮专家评审 — core/ 129文件拆10子目录**：129文件从core/扁平→10语义子目录（agent/ evolution/ security/ convergence/ p2r/ monitoring/ memory/ audio/ collaboration/ quality/）。137/138测试全绿（仅剩evolution-integration flaky）。**教训：跨目录文件移动必须用自动化脚本处理import路径。PowerShell glob/正则局限性大，Node.js脚本更可靠。`../xxx/yyy.js`中xxx可能同时是src/xxx和core/xxx，必须按core/xxx优先解析。动态import（`await import()`）容易被批量替换漏掉，必须全量grep确认。17个test.mjs文件漏了动态import。**
+
 ## 专家意见跟踪
 
 | 轮次 | 意见摘要 | 提出专家 | 对应任务 | 状态 | 验收人 |
@@ -90,8 +92,12 @@
 | R9 | 105处catch{}吞异常(36文件) | 安全研究员/核心工程师 | P0-1 批量加logger.warn | ✅ 已修(R9) | 安全研究员 |
 | R9 | 19个.log垃圾文件 | SRE/运维 | P0-2 删除+gitignore已有 | ✅ 已修(R9) | SRE/运维 |
 | R9 | bridge.js独立入口=死代码 | 核心工程师/架构师 | P0-3 删除bridge.js | ✅ 已修(R9) | 核心工程师 |
-| R9 | core/目录149文件膨胀 | 架构师 | P0-5 拆分子目录(待执行) | ❌ 待修 | 架构师 |
-| R9 | main.js start() 430行 | 核心工程师 | P0-2 拆阶段方法(待执行) | ❌ 待修 | 核心工程师 |
-| R9 | convergence-engine/fairy-guardian零测试 | 测试工程师 | P0-6 新增10测试(128→138) | ✅ 已修(R9) | 测试工程师 |
+| R9 | core/目录149文件膨胀 → 10子目录 | 架构师 | P0-5 拆分子目录 | ✅ 已修(R10) | 架构师 |
+| R9 | main.js start() 470行 | 核心工程师 | P0-2 拆阶段方法(待执行) | ❌ 待修 | 核心工程师 |
 | R9 | evolution-integration flaky未根除 | 测试工程师 | P0-6 确认仍flaky(非R9引入) | ❌ 待修 | 测试工程师 |
 | R9 | P2P通话step-by-step教程 | 用户支持/竞品分析师 | P0-7 文档(待执行) | ❌ 待修 | 用户支持 |
+| R10 | core/ 129文件拆10子目录 | 架构师 | P0-1 core/拆分 | ✅ 已修(R10) | 架构师 |
+| R10 | evolution-integration重写为node:test | 核心工程师 | P0-3 evolution重写 | ❌ 待修 | 测试工程师 |
+| R10 | main.js start() 470行拆分 | 核心工程师 | P0-2 main.js拆分 | ❌ 待修 | 核心工程师 |
+| R10 | lint接入CI | SRE | P0-5 lint配置 | ❌ 待修 | SRE |
+| R10 | P2P教程+demo | 竞品分析师 | P0-12 P2P教程制作 | ❌ 待修 | 用户支持 |
