@@ -3,15 +3,15 @@
   "version": "1.0.0",
   "description": "Decentralized social network + AI residents platform - Bridge CLI",
   "type": "module",
-  "main": "src/main.js",
+  "main": "src/core/bridge-lifecycle.js",
   "bin": {
     "openchat": "./bin/openchat.js"
   },
   "scripts": {
-    "start": "node src/main.js",
-    "dev": "node --watch src/main.js",
+    "start": "node src/core/bridge-lifecycle.js",
+    "dev": "node --watch src/core/bridge-lifecycle.js",
     "deploy:build": "node scripts/build-deploy.js",
-    "pm2:start": "node --input-type=module -e \"import {createLaunchStrategy,detectBestStrategy} from './src/core/launch-strategies.js';const s=createLaunchStrategy(detectBestStrategy(),{name:'openchat-bridge',script:'src/main.js'});await s.launch()\"",
+    "pm2:start": "node --input-type=module -e \"import {createLaunchStrategy,detectBestStrategy} from './src/core/launch-strategies.js';const s=createLaunchStrategy(detectBestStrategy(),{name:'openchat-bridge',script:'src/core/bridge-lifecycle.js'});await s.launch()\"",
     "pm2:stop": "pm2 delete openchat-bridge 2>/dev/null; exit 0",
     "pm2:status": "pm2 status",
     "eval:generalization": "node tools/eval-generalization.mjs",

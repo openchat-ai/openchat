@@ -1,5 +1,5 @@
 #!/bin/bash
-# Demo: 2-node P2P chat
+# Demo: 2-node P2P network with CLI interaction example
 set -e
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
 DEMO_DIR="/tmp/openchat-demo-$$"
@@ -19,10 +19,22 @@ OPENCHAT_DATA_DIR="$DEMO_DIR/node2" node "$DIR/bridge/src/main.js" --port=3802 -
 PID2=$!
 
 echo
-echo "Nodes running. Try:"
-echo "  curl http://localhost:3801/health"
-echo "  curl http://localhost:3802/health"
+echo "=== What you can do ==="
 echo
-echo "Press Ctrl+C to stop."
+echo "1. Check node health:"
+echo "   curl http://localhost:3801/health"
+echo "   curl http://localhost:3802/health"
+echo
+echo "2. Open CLI on node1:"
+echo "   OPENCHAT_DATA_DIR=$DEMO_DIR/node1 node $DIR/bridge/src/main.js --port=3801 --no-direct --cli"
+echo "   Then type: /help"
+echo "              Hello AI residents"
+echo
+echo "3. Or try sandbox mode (single node, no network needed):"
+echo "   cd $DIR/bridge && npm start -- --sandbox"
+echo
+echo "Press Ctrl+C to stop demo."
+echo "===="
+
 wait $PID1 $PID2 2>/dev/null
 echo "Demo stopped."

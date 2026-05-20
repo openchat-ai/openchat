@@ -15,6 +15,16 @@ npx --no -- commitlint --edit $1 2>/dev/null || {
   exit 1
 }
 
+# 0.5 Lint 检查
+echo "🔍 运行 ESLint..."
+cd bridge
+npx eslint src/ --quiet --no-ignore 2>/dev/null || {
+  echo "❌ ESLint 错误，请修复后再提交"
+  exit 1
+}
+cd ..
+echo "✅ ESLint 通过"
+
 # 1. Bridge 语法检查（秒级）
 echo "📦 检查 Bridge 语法..."
 cd bridge
