@@ -1,4 +1,4 @@
-import { BaseGateway } from './base.js';
+import { BaseGateway } from './gateway-base.js';
 
 /**
  * TelegramGateway adapts the Telegram Bot API to the Bridge Router.

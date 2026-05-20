@@ -16,6 +16,7 @@ import { router } from './core/router.js';
 import { initCore } from './core/handlers.js';
 import { CLIGateway, WSGateway } from './gateway/base.js';
 import { persistentConfig } from './core/persistent-config.js';
+import { forge } from './core/evolution/forge.js';
 import { providerManager } from './providers/provider-manager.js';
 import { providerRegistry } from './providers/provider-registry.js';
 import { memoryManager } from './memory/memory-manager.js';
@@ -33,7 +34,7 @@ import { CollaborationEngine } from './core/collaboration-engine.js';
 import { residentManager } from './core/resident-manager.js';
 import { residentScheduler } from './core/resident-scheduler.js';
 import { LearningCore } from './core/learning-core.js';
-import P2PSwarm, { hasPublicAddress, getPublicIPv4 } from './p2p/swarm.js';
+import P2PSwarm, { hasPublicAddress, getPublicIPv4 } from './p2p/p2p-net.js';
 import { MessageType as P2PMessageType } from './p2p/messages.js';
 import { PeerRegistry } from './p2p/peer-registry.js';
 import { QiniuBackend } from './p2p/peer-registry/qiniu-backend.js';
@@ -62,6 +63,7 @@ const args = process.argv.slice(2);
 const savedBridge = persistentConfig.getBridgeConfig();
 const isInteractive = args.includes('--cli') || args.includes('-i');
 
+const isSandbox = process.argv.includes('--sandbox');
 const isHeadless = savedBridge.mode === 'cli' && !isInteractive ? false : !isInteractive;
 const isPublic = hasPublicAddress() || !!savedBridge.advertiseHost;
 
@@ -130,6 +132,7 @@ if (args.includes('--save-config')) {
     port, name: bridgeName, region: bridgeRegion,
     dhtPort, localBootstrap, directListen, directConnect,
     wsSignaling: wsSignalingUrl,
+    isSandbox,
     advertiseHost,
     qiniuEnabled, cores,
     topic: bridgeTopic
@@ -143,6 +146,7 @@ const CONFIG = {
   host: CONFIG_HOST,
   headless: isHeadless,
   isPublic,
+  isSandbox,
   enableWebSocket: true,
   dhtPort,
   localBootstrap,
@@ -218,7 +222,7 @@ export class Bridge {
   }
 
   async start(detectedTools = []) {
-    const mode = CONFIG.headless ? 'HEADLESS' : 'CLI';
+    const mode = CONFIG.isSandbox ? 'SANDBOX' : CONFIG.headless ? 'HEADLESS' : 'CLI';
     console.log('');
     console.log('╔═══════════════════════════════════════════════════════════╗');
     console.log('║                                                          ║');
@@ -261,21 +265,22 @@ export class Bridge {
       console.log('[AI-Personhood] 初始化失败:', e.message);
     }
 
-    await this.autoConfigProviders(detectedTools);
-
-    initCore();
-
-    // Sandbox mode: skip P2P + API, use mock LLM, show CLI directly
+    // Sandbox mode: skip everything after AI personhood setup
     if (CONFIG.isSandbox) {
       console.log('[Sandbox] mock LLM mode — no external network needed');
       forge.setLLMHandler(async (q) => {
         const replies = ['你好！我是 AI 居民小明。', '我在思考你刚才的问题...', '我觉得可以试试这个方案。', '好的，我记下来了。'];
         return replies[Math.floor(Math.random() * replies.length)];
       });
-      this._showDashboard(CONFIG);
+      console.log('[Sandbox] Type your message to chat with AI resident Xiao Ming.');
+      console.log('[Sandbox] Enter /help for commands, or just start typing.\n');
       this.setupHeadlessSignalHandlers();
       return;
     }
+
+    await this.autoConfigProviders(detectedTools);
+
+    initCore();
 
     // 启动 P2P 网络（在 API 服务器之前，以便注入 swarm 实例）
     try {

@@ -7,7 +7,7 @@
  */
 
 import express from 'express';
-import { sageManager } from '../../core/sage.js';
+import { sageManager } from '../../core/agent/sage.js';
 
 const router = express.Router();
 

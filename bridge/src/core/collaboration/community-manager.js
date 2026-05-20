@@ -4,7 +4,7 @@
  */
 
 import { messageBus } from '../message-bus.js';
-import { knowledgeNetwork } from '../../memory/knowledge-network.js';
+import { knowledgeNetwork } from '../memory/knowledge-network.js';
 import logger from '../monitoring/logger.js';
 
 export class CommunityManager {

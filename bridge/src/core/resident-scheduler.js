@@ -9,7 +9,7 @@
  */
 
 import { residentManager } from './resident-manager.js';
-import { sageManager } from './sage.js';
+import { sageManager } from './agent/sage.js';
 import { multiAgentCoordinator } from './multi-agent-coordinator.js';
 import { persistentConfig } from './persistent-config.js';
 import { decideActions } from './resident-decisions.js';
