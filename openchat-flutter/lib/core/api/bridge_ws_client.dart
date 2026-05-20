@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
+enum WsConnectionState { disconnected, connecting, connected, reconnecting }
+
 class BridgeWsMessage {
   final String type;
   final Map<String, dynamic> data;
@@ -14,26 +16,41 @@ class BridgeWsMessage {
   );
 }
 
+class WsConnectionInfo {
+  final WsConnectionState state;
+  final int reconnectAttempt;
+  final int? nextRetrySeconds;
+  WsConnectionInfo({
+    required this.state,
+    this.reconnectAttempt = 0,
+    this.nextRetrySeconds,
+  });
+}
+
 class BridgeWsClient {
   WebSocketChannel? _channel;
   String _host;
   int _port;
   String? _token;
-  bool _connected = false;
+  WsConnectionState _state = WsConnectionState.disconnected;
   bool _reconnect = true;
   Timer? _reconnectTimer;
+  Timer? _heartbeatTimer;
   int _reconnectAttempt = 0;
+  static const int _maxReconnectAttempts = 10;
   static const int _maxReconnectDelay = 30;
+  static const int _heartbeatInterval = 25;
   String? _peerId;
   final _messageController = StreamController<BridgeWsMessage>.broadcast();
-  final _statusController = StreamController<bool>.broadcast();
+  final _stateController = StreamController<WsConnectionInfo>.broadcast();
 
   Stream<BridgeWsMessage> get messages => _messageController.stream;
-  Stream<bool> get connectionStatus => _statusController.stream;
-  bool get isConnected => _connected;
+  Stream<WsConnectionInfo> get connectionState => _stateController.stream;
+  bool get isConnected => _state == WsConnectionState.connected;
+  WsConnectionState get state => _state;
   String? get peerId => _peerId;
 
-  BridgeWsClient({String host = 'localhost', int port = 3000, String? token})
+  BridgeWsClient({String host = 'localhost', int port = 3800, String? token})
       : _host = host, _port = port, _token = token;
 
   void configure({String? host, int? port, String? token}) {
@@ -50,26 +67,56 @@ class BridgeWsClient {
   }
 
   Future<void> _doConnect() async {
+    _setState(WsConnectionState.connecting);
     try {
       var uriStr = 'ws://$_host:$_port/ws';
       if (_token != null && _token!.isNotEmpty) uriStr += '?token=$_token';
       final uri = Uri.parse(uriStr);
       _channel = WebSocketChannel.connect(uri);
       await _channel!.ready;
-      _connected = true;
       _reconnectAttempt = 0;
-      _statusController.add(true);
+      _setState(WsConnectionState.connected);
+      _startHeartbeat();
       _channel!.stream.listen(_onMessage, onError: _onError, onDone: _onDone);
     } catch (e) {
-      _connected = false;
-      _statusController.add(false);
+      _state = WsConnectionState.disconnected;
+      _setState(WsConnectionState.disconnected);
       _scheduleReconnect();
     }
   }
 
+  void _startHeartbeat() {
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = Timer.periodic(
+      Duration(seconds: _heartbeatInterval),
+      (_) {
+        if (_channel != null && _state == WsConnectionState.connected) {
+          try {
+            _channel!.sink.add(jsonEncode({'type': 'ping'}));
+          } catch (_) {
+            _onError('heartbeat failed');
+          }
+        }
+      },
+    );
+  }
+
+  void _setState(WsConnectionState newState) {
+    _state = newState;
+    _stateController.add(WsConnectionInfo(
+      state: newState,
+      reconnectAttempt: _reconnectAttempt,
+      nextRetrySeconds: _reconnectTimer != null && newState == WsConnectionState.reconnecting
+          ? (_reconnectAttempt * 2).clamp(1, _maxReconnectDelay)
+          : null,
+    ));
+  }
+
   void _onMessage(dynamic data) {
     try {
-      final json = jsonDecode(data as String) as Map<String, dynamic>;
+      final text = data as String;
+      if (text == 'pong') return;
+      final json = jsonDecode(text) as Map<String, dynamic>;
       final msg = BridgeWsMessage.fromJson(json);
       if (msg.type == 'bridge_handshake') {
         _peerId = msg.data['peerId'] as String?;
@@ -80,27 +127,32 @@ class BridgeWsClient {
   }
 
   void _onError(Object error) {
-    _connected = false;
-    _statusController.add(false);
+    _heartbeatTimer?.cancel();
+    _setState(WsConnectionState.reconnecting);
     _scheduleReconnect();
   }
 
   void _onDone() {
-    _connected = false;
-    _statusController.add(false);
+    _heartbeatTimer?.cancel();
+    _setState(WsConnectionState.reconnecting);
     _scheduleReconnect();
   }
 
   void _scheduleReconnect() {
     if (!_reconnect) return;
+    if (_reconnectAttempt >= _maxReconnectAttempts) {
+      _setState(WsConnectionState.disconnected);
+      return;
+    }
     _reconnectTimer?.cancel();
     _reconnectAttempt++;
     final delay = (_reconnectAttempt * 2).clamp(1, _maxReconnectDelay);
     _reconnectTimer = Timer(Duration(seconds: delay), _doConnect);
+    _setState(WsConnectionState.reconnecting);
   }
 
   void sendMessage(String text, {String? sessionId}) {
-    if (_channel == null || !_connected) return;
+    if (_channel == null || !isConnected) return;
     _channel!.sink.add(jsonEncode({
       'type': 'chat',
       'data': {'message': text, 'sessionId': sessionId},
@@ -109,7 +161,7 @@ class BridgeWsClient {
   }
 
   void sendToPeer(String targetPeerId, String text, {String? sessionId}) {
-    if (_channel == null || !_connected) return;
+    if (_channel == null || !isConnected) return;
     _channel!.sink.add(jsonEncode({
       'type': 'message',
       'data': {'message': text, 'to': targetPeerId},
@@ -119,14 +171,14 @@ class BridgeWsClient {
   void disconnect() {
     _reconnect = false;
     _reconnectTimer?.cancel();
+    _heartbeatTimer?.cancel();
     _channel?.sink.close();
-    _connected = false;
-    _statusController.add(false);
+    _setState(WsConnectionState.disconnected);
   }
 
   void dispose() {
     disconnect();
     _messageController.close();
-    _statusController.close();
+    _stateController.close();
   }
 }

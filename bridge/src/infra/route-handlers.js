@@ -9,7 +9,7 @@ import { WSGateway } from '../gateway/base.js';
 import { MessageType } from '../protocol/message.js';
 
 /**
- * 创建所�?HTTP 路由 handler，通过闭包捕获 bridge 实例
+ * 创建所?HTTP 路由 handler，通过闭包捕获 bridge 实例
  * @param {object} bridge - Bridge 实例
  * @param {object} CONFIG - 全局配置对象
  * @param {object} crypto - crypto 模块 (用于 UUID 生成)
@@ -109,7 +109,7 @@ export function createHandlers(bridge, CONFIG, crypto) {
 
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({
-            response: '问题已提交，正在求解�?..',
+            response: '问题已提交，正在求解?..',
             source: 'residents_processing',
             problemId
           }));
@@ -463,7 +463,8 @@ export function createHandlers(bridge, CONFIG, crypto) {
       }
     }
 
-    // 处理状态查�?    if (type === 'bridge_status' || type === MessageType.BRIDGE_STATUS) {
+    // Handle bridge status query
+    if (type === 'bridge_status' || type === MessageType.BRIDGE_STATUS) {
       const provider = persistentConfig.getPreference('currentProvider');
       const model = persistentConfig.getPreference('currentModel');
       const memStats = await memoryManager.getStats();
@@ -482,11 +483,12 @@ export function createHandlers(bridge, CONFIG, crypto) {
       return;
     }
 
-    // 处理聊天消息 �?通过 agent-engine 处理
+    // Handle chat messages via agent-engine
     if (type === 'chat' || type === MessageType.CHAT || type === 'message') {
       const { message, sessionId: sid, to } = data || {};
 
-      // P2P 消息：有 to 字段则转发给指定客户�?      if (to) {
+      // P2P message: forward to destination peer
+      if (to) {
         let sent = false;
         for (const client of bridge.clients) {
           if (client.readyState === 1 && client._peerId === to) {

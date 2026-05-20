@@ -4,6 +4,7 @@ import os from 'os';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import { DEFAULT_PORT } from '../constants.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -17,7 +18,7 @@ class SandboxManager {
     // 默认存储位置：~/.openchat-sandbox/
     this.baseDir = baseDir || path.join(os.homedir(), '.openchat-sandbox');
     this.config = {
-      basePort: 3000,
+      basePort: DEFAULT_PORT,
       maxConcurrentSandboxes: 5,
       timeoutMs: 30000,
       enableNetworkIsolation: false,

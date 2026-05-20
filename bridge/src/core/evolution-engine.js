@@ -152,7 +152,7 @@ export class EvolutionEngine {
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(EXPERIENCES_FILE, JSON.stringify(this.experiences.slice(-100), null, 2));
     } catch (e) {
-      // 保存失败不影响主流程
+      console.error('[EvolutionEngine] save experiences failed:', e.message);
     }
   }
 

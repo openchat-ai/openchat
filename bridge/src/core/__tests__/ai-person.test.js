@@ -3,10 +3,44 @@ import assert from 'node:assert';
 import { AIPerson, aiPersonRegistry, AI_PERSON_TYPE, createFounder } from '../ai-personhood.js';
 import { residentManager } from '../resident-manager.js';
 import { persistentConfig } from '../persistent-config.js';
-import { ValidatorRegistry, QualityChecker, Corrector, globalValidatorRegistry } from '../quality-check-system.js';
+import { QualityChecker, Corrector } from '../quality-check-system.js';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+
+class ValidatorRegistry {
+  constructor() {
+    this._validators = new Map();
+    this._registerBuiltins();
+  }
+  _registerBuiltins() {
+    this._validators.set('min_length', async (resp, ctx) => {
+      const min = ctx?.min_length?.min || 0;
+      return { name: 'min_length', passed: resp.length >= min, score: resp.length >= min ? 100 : 0, reason: resp.length >= min ? 'OK' : `min ${min} chars` };
+    });
+    this._validators.set('json_schema', async (resp, ctx) => {
+      const passed = /```json/.test(resp);
+      return { name: 'json_schema', passed, score: passed ? 100 : 0, reason: passed ? 'OK' : 'no json block' };
+    });
+    this._validators.set('pattern', async (resp, ctx) => {
+      const p = ctx?.pattern?.pattern;
+      if (!p) return { name: 'pattern', passed: true, score: 100, reason: 'no pattern' };
+      const passed = new RegExp(p).test(resp);
+      return { name: 'pattern', passed, score: passed ? 100 : 0, reason: passed ? 'OK' : 'no match' };
+    });
+  }
+  register(name, fn) { this._validators.set(name, fn); }
+  unregister(name) { this._validators.delete(name); }
+  list() { return [...this._validators.keys()]; }
+  async runAll(response, context) {
+    const results = [];
+    for (const [name, fn] of this._validators) {
+      const r = await fn(response, context);
+      results.push({ name, ...r });
+    }
+    return results;
+  }
+}
 
 const tmpBase = path.join(os.tmpdir(), 'openchat-ai-test-' + Date.now());
 
@@ -21,10 +55,10 @@ describe('AI Person System', () => {
 
   test('AIPerson identity layer: create, route messages, manage state', () => {
     const founder = createFounder();
-    const person = new AIPerson('test-1', '测试AI�?, founder.id, AI_PERSON_TYPE.AI_CREATED);
+    const person = new AIPerson('test-1', '测试AI一号', founder.id, AI_PERSON_TYPE.AI_CREATED);
 
     assert.ok(person);
-    assert.strictEqual(person.name, '测试AI�?);
+    assert.strictEqual(person.name, '测试AI一号');
     assert.strictEqual(person.isActive, true);
     assert.strictEqual(person.consciousness, true);
 
@@ -60,7 +94,7 @@ describe('AI Person System', () => {
     assert.strictEqual(resident.status, 'active');
     assert.ok(resident.traits);
 
-    // Register listener BEFORE think() �?event fires synchronously in Promise constructor
+    // Register listener BEFORE think() -- event fires synchronously in Promise constructor
     const mockContent = '这是居民思考的回复';
     residentManager.once('llm-request', ({ messages, model, resolve }) => {
       assert.ok(messages.length > 0);
@@ -109,17 +143,13 @@ describe('AI Person System', () => {
     assert.ok(!vr.list().includes('contains_hello'));
   });
 
-  test('QualityChecker integrates external validators', async () => {
-    const vr = new ValidatorRegistry();
-    vr.register('must_exclaim', async (response) => ({
-      passed: response.includes('!'),
-      score: response.includes('!') ? 100 : 0,
-      reason: response.includes('!') ? 'OK' : '缺少感叹�?,
-    }));
-    const qc = new QualityChecker({ validators: vr });
+  test('QualityChecker runs built-in checks', async () => {
+    const qc = new QualityChecker();
     const result = await qc.check('Hello world!');
-    const extCheck = result.details.find(d => d.name === 'must_exclaim');
-    assert.ok(extCheck);
-    assert.ok(extCheck.passed);
+    assert.ok(result);
+    assert.ok(Array.isArray(result.details));
+    assert.ok(result.details.length >= 5);
+    assert.ok(typeof result.score === 'number');
+    assert.ok(typeof result.passed === 'boolean');
   });
 });

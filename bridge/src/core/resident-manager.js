@@ -198,7 +198,7 @@ export class ResidentManager extends EventEmitter {
           try {
             const queryMsg = createLLMProviderQueryMessage({ from: p2p.peerId || '' });
             p2p.sendTo(peerId, queryMsg);
-          } catch (_) {}
+          } catch (e) { console.error('[ResidentManager] P2P provider query failed:', e.message); }
         });
 
         this._proxyListenerRegistered = true;
@@ -359,8 +359,8 @@ export class ResidentManager extends EventEmitter {
    * @returns {object} 居民对象
    */
   create(name, options = {}) {
-    const { parentId, traits: explicitTraits } = options;
-    const id = this._nextId++;
+    const { parentId, traits: explicitTraits, id: customId } = options;
+    const id = customId || this._nextId++;
 
     // 确定性格
     let traits;

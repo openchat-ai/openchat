@@ -48,19 +48,22 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
         title: Text('MESSAGES', style: TextStyle(color: theme.textPrimary, fontSize: 24, fontWeight: FontWeight.bold)),
         actions: [
           connection.when(
-            data: (connected) => Container(
-              margin: const EdgeInsets.only(right: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: connected ? Colors.green.withValues(alpha: 0.2) : Colors.red.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.circle, size: 8, color: connected ? Colors.green : Colors.red),
-                const SizedBox(width: 4),
-                Text(connected ? 'Connected' : 'Offline', style: TextStyle(fontSize: 11, color: connected ? Colors.green : Colors.red)),
-              ]),
-            ),
+            data: (info) {
+              final connected = info.state == WsConnectionState.connected;
+              return Container(
+                margin: const EdgeInsets.only(right: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: connected ? Colors.green.withValues(alpha: 0.2) : Colors.red.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.circle, size: 8, color: connected ? Colors.green : Colors.red),
+                  const SizedBox(width: 4),
+                  Text(connected ? 'Connected' : 'Offline', style: TextStyle(fontSize: 11, color: connected ? Colors.green : Colors.red)),
+                ]),
+              );
+            },
             error: (e, _) => const Text('!'),
             loading: () => const SizedBox(),
           ),

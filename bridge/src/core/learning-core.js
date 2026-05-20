@@ -22,6 +22,7 @@ import { readdirSync, readFileSync, existsSync, writeFileSync, mkdirSync, statSy
 import { homedir } from 'os';
 import { join } from 'path';
 import { execSync } from 'child_process';
+import { DEFAULT_PORT } from '../constants.js';
 
 const KB_DIR = join(homedir(), '.openchat', 'knowledge');
 const PROBLEM_POOL_DIR = join(homedir(), '.openchat', 'problem-pool');
@@ -42,7 +43,7 @@ const BUILTIN_PROBLEMS = [
 ];
 
 class LearningCore {
-  constructor(kb, p2p, myPort = 3000, scheduler = null) {
+  constructor(kb, p2p, myPort = DEFAULT_PORT, scheduler = null) {
     this.kb = kb;
     this.p2p = p2p;
     this.myPort = myPort;

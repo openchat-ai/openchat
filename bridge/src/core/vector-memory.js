@@ -1,10 +1,11 @@
 /**
- * Vector Memory �?Semantic search across resident knowledge
- * 向量记忆：跨居民的语义检�? *
+ * Vector memory - cross-resident semantic search
+ *
  * Primary: TF-IDF + cosine similarity (fast, local, always works)
  * Enhanced: Real embeddings via SiliconFlow API (semantic, needs API key)
  *
- * TF-IDF 快速检索的主路径，embedding 增强检索的副路径�? */
+ * TF-IDF fast path as primary, embedding-enhanced search as secondary
+ */
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -32,9 +33,9 @@ const STOP_WORDS = new Set([
   'it','its','itself','they','them','their','theirs','themselves',
   'what','which','who','whom','this','that','these','those',
   'am','is','are','was','were','be','been','being',
-  '�?,'�?,'�?,'�?,'�?,'�?,'�?,'�?,'�?,'�?,'�?,'一',
-  '一�?,'�?,'�?,'�?,'�?,'�?,'�?,'�?,'�?,'�?,'着',
-  '没有','�?,'�?,'自己','�?,'�?,'�?,'�?,'�?,
+  '的','了','在','是','我','有','和','就','不','人','都','一',
+  '个','上','也','很','到','说','要','去','你','会','着',
+  '没有','自己','这','那','什么','吗','啊','被','把','从',
 ]);
 
 // ---- TF-IDF utilities (fast path / fallback) ----
@@ -201,9 +202,7 @@ class VectorMemory {
 
   // ---- core operations ----
 
-  /**
-   * Store a memory entry.
-   * 存储一条记�?   */
+  /** * Store a memory entry. * ? */
   store({ residentId, text, metadata = {}, source = 'conversation' }) {
     if (!text || typeof text !== 'string' || text.length > 50000) return null;
     const tokens = tokenize(text);
@@ -232,10 +231,7 @@ class VectorMemory {
     return id;
   }
 
-  /**
-   * Semantic search via TF-IDF (fast, always works).
-   * TF-IDF 快速搜索（主路径）
-   */
+  /** * Semantic search via TF-IDF (fast, always works). * TF-IDF （） */
   search(query, { limit = 5, minScore = 0.05 } = {}) {
     const queryTokens = tokenize(query);
     if (queryTokens.length === 0) return [];
@@ -262,10 +258,7 @@ class VectorMemory {
     return scored.slice(0, limit);
   }
 
-  /**
-   * Semantic search via real embeddings (accurate, needs API key).
-   * Returns null if embedding fails �?caller should fall back to search().
-   * Embedding 语义搜索（增强路径，需 API key�?   */
+  /** * Semantic search via real embeddings (accurate, needs API key). * Returns null if embedding fails ?caller should fall back to search(). * Embedding （， API key? */
   async embedSearch(query, { limit = 5, minScore = 0.3 } = {}) {
     const qVec = await getEmbedding(query).catch(() => null);
     const scored = [];
@@ -291,9 +284,7 @@ class VectorMemory {
     return scored.slice(0, limit);
   }
 
-  /**
-   * Auto search: embedding + TF-IDF merged, best recall.
-   * 自动搜索：embedding + TF-IDF 合并结果，取最高召�?   */
+  /** * Auto search: embedding + TF-IDF merged, best recall. * ：embedding + TF-IDF ，? */
   async autoSearch(query, opts = {}) {
     const embedResults = await this.embedSearch(query, opts).catch(() => null);
     const tfidfResults = this.search(query, opts);
@@ -312,10 +303,7 @@ class VectorMemory {
     return merged.slice(0, opts.limit || 5);
   }
 
-  /**
-   * Batch compute missing embeddings for all entries.
-   * 批量补齐缺失�?embedding 向量
-   */
+  /** * Batch compute missing embeddings for all entries. * ?embedding */
   async reembedAll() {
     const todo = this._entries.filter(e => !e._embed);
     if (todo.length === 0) return;

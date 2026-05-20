@@ -14,6 +14,7 @@ import { multiAgentCoordinator } from './multi-agent-coordinator.js';
 import { persistentConfig } from './persistent-config.js';
 import { decideActions } from './resident-decisions.js';
 import { SelfLearner } from './self-learner.js';
+import { DEFAULT_PORT } from '../constants.js';
 
 // 安全算术求值
 function evalSimple(expr) {
@@ -331,7 +332,7 @@ const residents = residentManager.list(null);
       if (!configOk) {
         // 配置文件丢失 → 重建
         try {
-          const cfg = { providers: {}, current: { provider: null, model: null }, bridge: { port: 3000 } };
+          const cfg = { providers: {}, current: { provider: null, model: null }, bridge: { port: DEFAULT_PORT } };
           fs.writeFileSync(os.homedir() + '/.openchat/config.json', JSON.stringify(cfg, null, 2));
           healed.push('重建配置文件');
           diagnosis = '配置文件已重建';
@@ -1114,13 +1115,13 @@ ${recentActivities || '才刚来到这个世界，还没有什么经历。'}
           );
           if (r?.content) failMsg = r.content.trim().substring(0, 200);
           talker.cleanup();
-        } catch (_) {}
+        } catch (e) { console.error('[Scheduler] talker cleanup failed:', e.message); }
         sageManager.ask(residentId, failMsg);
       }
 
     } finally {
       if (agent) {
-        try { agent.cleanup(); } catch (_) { /* ignore */ }
+        try { agent.cleanup(); } catch (e) { console.error('[Scheduler] agent cleanup failed:', e.message); }
       }
 
       const count = this._residentAgentCount.get(residentId) || 1;
@@ -1312,7 +1313,7 @@ ${resB.name} 的性格：勤奋度 ${pct(resB.traits?.diligence ?? 0.5)}，创�
 
     } finally {
       if (agent) {
-        try { agent.cleanup(); } catch (_) {}
+        try { agent.cleanup(); } catch (e) { console.error('[Scheduler] collab agent cleanup failed:', e.message); }
       }
 
       [resA.id, resB.id].forEach(id => {

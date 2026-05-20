@@ -17,6 +17,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { randomUUID } from 'crypto';
+import { DEFAULT_PORT } from '../constants.js';
 
 // 用户主目录（支持环境变量覆盖配置路径）
 const USER_DIR = process.env.OPENCHAT_HOME || path.join(os.homedir(), '.openchat');
@@ -38,7 +39,7 @@ const DEFAULT_CONFIG = {
   bridge: {
     mode: 'headless',
     host: 'localhost',
-    port: 3000,
+    port: DEFAULT_PORT,
     name: '',
     region: '',
     age: 0,

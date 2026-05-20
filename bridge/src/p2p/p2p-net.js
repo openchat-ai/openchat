@@ -15,6 +15,7 @@ const EventEmitter = require('events');
 
 import { MessageType } from './messages.js';
 import TopicRegistry from './topic-registry.js';
+import { DEFAULT_PORT } from '../constants.js';
 
 // --- 粘包处理：消息帧工具 ---
 
@@ -179,7 +180,7 @@ class P2PNet extends EventEmitter {
             if (!this.localBootstrap.find(b => b.host === p.host && b.port === dhtPort)) {
               this.localBootstrap.push({ host: p.host, port: dhtPort });
             }
-            const tcpPort = p.port || 3000;
+            const tcpPort = p.port || DEFAULT_PORT;
             if (!this.knownPeers.find(k => k.host === p.host && k.port === tcpPort)) {
               this.knownPeers.push({ host: p.host, port: tcpPort });
             }
@@ -621,6 +622,21 @@ class P2PNet extends EventEmitter {
     if (cleaned > 0) {
       console.log(`[P2P] 已清理 ${cleaned} 个失效连接`);
     }
+  }
+
+  /** 查询 topic 在线节点 */
+  async getTopicPeers(topic, excludePeerId) {
+    return this.topicRegistry.getPeers(topic, excludePeerId);
+  }
+
+  /** TopicRegistry 远程查询回调 (getPeers→_p2p→本方法，所以要用 _getLocalPeers 避免递归) */
+  _queryTopicPeers(topic, excludePeerId) {
+    return this.topicRegistry._getLocalPeers(topic, excludePeerId);
+  }
+
+  /** 获取已连接 peer 列表 */
+  getConnectedPeers() {
+    return [...this.connectedPeers.keys(), ...this.directPeers.keys()];
   }
 
   /**

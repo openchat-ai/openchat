@@ -2,6 +2,7 @@ import os from 'os';
 import path from 'path';
 import { persistentConfig } from '../core/persistent-config.js';
 import { hasPublicAddress } from '../p2p/p2p-net.js';
+import { DEFAULT_PORT } from '../constants.js';
 
 /**
  * 瑙ｆ瀽鍛戒护琛屽弬鏁板拰鎸佷箙鍖栭厤缃紝鐢熸垚瀹屾暣鐨?CONFIG 瀵硅薄
@@ -17,14 +18,15 @@ export function parseCliArgs(argv = process.argv) {
 
   // 鏀寔 --port 鍛戒护琛屽弬鏁拌鐩栭厤缃?  const portArgIndex = args.findIndex(a => a.startsWith('--port='));
   const cliPort = portArgIndex !== -1 ? parseInt(args[portArgIndex].split('=')[1]) : null;
-  const port = cliPort || savedBridge.port || 3000;
+  const port = cliPort || savedBridge.port || DEFAULT_PORT;
   const portChanged = cliPort !== null && cliPort !== savedBridge.port;
 
   // 涓?Bridge 鍒ゅ畾锛氭樉寮?--main 鏍囪
   const isMain = args.includes('--main');
 
   // 涓?Bridge 绔彛锛坒airy 闇€瑕佺煡閬撳線鍝彂蹇冭烦锛岄粯璁?= 鑷韩绔彛锛?  const mainPortIdx = args.findIndex(a => a.startsWith('--mainPort='));
-  const mainPort = mainPortIdx !== -1 ? parseInt(args[mainPortIdx].split('=')[1]) : (isMain ? port : 3800);
+  const defaultMainPort = parseInt(process.env.MAIN_PORT || String(DEFAULT_PORT), 10);
+  const mainPort = mainPortIdx !== -1 ? parseInt(args[mainPortIdx].split('=')[1]) : (isMain ? port : defaultMainPort);
 
   const dhtPort = savedBridge.dhtPort || 0;
   const localBootstrap = savedBridge.localBootstrap || [];
@@ -36,7 +38,8 @@ export function parseCliArgs(argv = process.argv) {
   if (directListenIdx !== -1) {
     directListen = parseInt(args[directListenIdx].split('=')[1]);
   }
-  // 濡傛灉 --port 鏄惧紡浼犲叆浣嗘病浼?--directListen锛屽垯鏍规嵁鏂扮鍙ｉ噸鏂拌绠?  if (portArgIndex !== -1 && directListenIdx === -1 && !args.includes('--no-direct') && !args.includes('--nesting')) {
+  // 如果 --port 显式传入但没传 --directListen，则根据新端口重新计算
+  if (portArgIndex !== -1 && directListenIdx === -1 && !args.includes('--no-direct') && !args.includes('--nesting')) {
     directListen = port + 2;
   }
   // 鏈湴寮€鍙戯細鏃?bootstrap 鏃惰嚜鍔ㄥ惎鐢ㄧ洿杩?TCP锛堢鍙?= HTTP 绔彛 + 2锛?  const isNesting = args.includes('--nesting');
@@ -80,7 +83,8 @@ export function parseCliArgs(argv = process.argv) {
     }
   }
 
-  // --save-config 鎸佷箙鍖栨湰娆¤缃?  if (args.includes('--save-config')) {
+  // --save-config 持久化本次配置
+  if (args.includes('--save-config')) {
     persistentConfig.setBridgeConfig({
       mode: isHeadless ? 'headless' : 'cli',
       port, name: bridgeName, region: bridgeRegion,

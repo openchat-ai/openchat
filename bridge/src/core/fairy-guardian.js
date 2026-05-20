@@ -9,6 +9,7 @@
  */
 
 import { spawn } from 'child_process';
+import { getMainPort } from '../constants.js';
 
 export class FairyGuardian {
   constructor(myPort) {
@@ -25,7 +26,8 @@ export class FairyGuardian {
 
   /** 检查所有 Fairy 存活状态（主 Bridge 用） */
   async checkAll() {
-    if (this.myPort !== 3800) return;
+    const mainPort = getMainPort();
+    if (this.myPort !== mainPort) return;
     const sisters = [3002, 3003, 3004, 3005, 3006, 3007];
     const now = Date.now();
     for (const port of sisters) {

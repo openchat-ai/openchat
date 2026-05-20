@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/api/bridge_ws_client.dart';
 import 'config_provider.dart';
@@ -13,7 +12,12 @@ final bridgeWsProvider = Provider<BridgeWsClient>((ref) {
   return client;
 });
 
-final bridgeConnectionProvider = StreamProvider<bool>((ref) {
+final bridgeConnectionProvider = StreamProvider<WsConnectionInfo>((ref) {
   final client = ref.watch(bridgeWsProvider);
-  return client.connectionStatus;
+  return client.connectionState;
+});
+
+final bridgeConnectedProvider = Provider<bool>((ref) {
+  final info = ref.watch(bridgeConnectionProvider);
+  return info.valueOrNull?.state == WsConnectionState.connected;
 });

@@ -7,13 +7,18 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import http from 'http';
 import * as path from 'path';
+import * as fs from 'fs';
 import { fileURLToPath } from 'url';
+import { WebSocketServer } from 'ws';
+import swaggerUi from 'swagger-ui-express';
 
 import { errorHandler } from './middleware/error-handler.js';
 import requestValidator from './middleware/request-validator.js';
 import { securityMiddleware, recordAuthFailure } from './middleware/security.js';
 import { authMiddleware } from './middleware/auth.js';
+import { DEFAULT_PORT } from '../constants.js';
 
 // 路由
 import agentsRouter from './routes/agents.js';
@@ -35,15 +40,23 @@ import { residentManager } from '../core/resident-manager.js';
 
 class APIServer {
   constructor(options = {}) {
-    this.port = options.port || 3000;
+    this.port = options.port || DEFAULT_PORT;
     this.swarm = options.swarm || null;
     this.deployEnabled = options.deployEnabled !== false;
     this.app = express();
     this.server = null;
+    this.wss = null;
+    this.signalingWss = null;
+    this._signalingRooms = new Map();
+    this._onWSMessage = null;
 
     this.setupMiddlewares();
     this.setupRoutes();
     this.setupErrorHandling();
+  }
+
+  setWSMessageHandler(handler) {
+    this._onWSMessage = handler;
   }
 
   setupMiddlewares() {
@@ -81,7 +94,7 @@ class APIServer {
     const corsOrigins = process.env.CORS_ORIGINS
       ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
       : process.env.NODE_ENV === 'production'
-        ? ['https://localhost:3000']
+        ? ['https://localhost:3800']
         : '*';
 
     this.app.use(cors({
@@ -108,8 +121,43 @@ class APIServer {
   }
 
   setupRoutes() {
-    // 健康检查（无需认证，无限流）
+    // 健康检查 + 公开端点（无需认证）
     this.app.use('/health', healthRouter);
+    this.app.get('/peers', (req, res) => {
+      const p2p = this.swarm;
+      const peers = p2p ? [...(p2p.connectedPeers?.keys() || [])].map(id => ({
+        peerId: id.slice(0, 8),
+        info: (p2p.peerInfo?.get(id)) || {}
+      })) : [];
+      res.json({ peers });
+    });
+
+    // OpenAPI docs (no auth required)
+    const __dirname = path.dirname(fileURLToPath(import.meta.url));
+    const openApiPath = path.resolve(__dirname, 'openapi.json');
+    if (fs.existsSync(openApiPath)) {
+      const openApiDoc = JSON.parse(fs.readFileSync(openApiPath, 'utf8'));
+      this.app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openApiDoc, {
+        customCss: '.swagger-ui .topbar { display: none }',
+        customSiteTitle: 'OpenChat API Docs',
+      }));
+    }
+
+    // 根路径 HTML Dashboard
+    this.app.get('/', (req, res) => {
+      res.send(`<html lang="zh"><head><meta charset="utf-8"><title>OpenChat</title></head>
+<body style="background:#0a0a1a;color:#e0e0e0;font-family:monospace;padding:20px">
+<h1 style="color:#7c8aff">OpenChat Bridge</h1>
+<pre id="out" style="font-size:13px;line-height:1.6">Loading...</pre>
+<script>
+async function R(){
+  try{const d=await(await fetch('/api/dashboard')).json();
+  let h='IQ: <b style=color:#7c8aff>'+d.iq+'</b>  Age: <b style=color:#ffa502>'+d.age+'</b>  Solved: <b style=color:#2ed573>'+d.solved+'</b>  Pool: <b style=color:#4fc3f7>'+d.poolSize+'</b> (Pending: '+d.pending+')';
+  document.getElementById('out').innerHTML=h;
+  }catch(e){document.getElementById('out').textContent='Waiting...';}
+}R();setInterval(R,3000);
+</script></body></html>`);
+    });
 
     // API 信息（无需认证）
     this.app.get('/api/v1', (req, res) => {
@@ -185,6 +233,63 @@ class APIServer {
     this.app.use(errorHandler);
   }
 
+  setupWebSocket(server) {
+
+    // Track connected clients (used by route-handlers for P2P forwarding)
+    this.clients = new Set();
+
+    // Chat WebSocket
+    this.wss = new WebSocketServer({ server, path: '/ws' });
+    this.wss.on('connection', (ws) => {
+      console.log('[WS] client connected');
+      ws._peerId = 'ws-' + Date.now().toString(36);
+      this.clients.add(ws);
+      ws.on('message', (data) => {
+        try {
+          const msg = JSON.parse(data.toString());
+          if (this._onWSMessage) this._onWSMessage(ws, msg);
+        } catch (e) {
+          ws.send(JSON.stringify({ type: 'error', data: { message: e.message } }));
+        }
+      });
+      ws.on('close', () => {
+        this.clients.delete(ws);
+        console.log('[WS] client disconnected');
+      });
+      ws.send(JSON.stringify({ type: 'bridge_handshake', data: { version: 2 } }));
+    });
+
+    // WebRTC 信令 WebSocket
+    this.signalingWss = new WebSocketServer({ server, path: '/signaling' });
+    this.signalingWss.on('connection', (ws) => {
+      let registeredPeerId = null;
+      console.log('[Signaling] 客户端已连接 via Express');
+      ws.on('message', (data) => {
+        try {
+          const msg = JSON.parse(data.toString());
+          if (msg.type === 'signaling_message' && msg.data) {
+            const d = msg.data;
+            if (d.action === 'register') {
+              registeredPeerId = d.peerId;
+              this._signalingRooms.set(registeredPeerId, ws);
+              ws.send(JSON.stringify({ type: 'signaling_message', data: { action: 'registered', peerId: registeredPeerId } }));
+              return;
+            }
+            if (d.toPeerId) {
+              const target = this._signalingRooms.get(d.toPeerId);
+              if (target && target.readyState === 1) target.send(JSON.stringify(msg));
+              else ws.send(JSON.stringify({ type: 'signaling_message', data: { type: 'error', message: 'Target peer not available' } }));
+              return;
+            }
+          }
+        } catch (e) { console.error('[Signaling] error:', e.message); }
+      });
+      ws.on('close', () => {
+        if (registeredPeerId) this._signalingRooms.delete(registeredPeerId);
+      });
+    });
+  }
+
   async start() {
     return new Promise((resolve, reject) => {
       try {
@@ -200,6 +305,9 @@ class APIServer {
 
   async stop() {
     if (this.server) {
+      if (this.wss) this.wss.close();
+      if (this.signalingWss) this.signalingWss.close();
+      this.server.closeAllConnections();
       return new Promise((resolve) => {
         this.server.close(() => {
           console.log('[API] Server stopped');
@@ -210,4 +318,6 @@ class APIServer {
   }
 }
 
+import { setBridgeContext } from './routes/legacy.js';
+export { setBridgeContext };
 export default APIServer;

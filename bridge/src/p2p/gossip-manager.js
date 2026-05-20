@@ -1,28 +1,20 @@
-/**
- * Gossip Manager �?Cross-Bridge knowledge sync via P2P
- * 八卦协议管理器：通过 P2P 网络在多�?Bridge 之间同步居民知识
- *
- * Uses timestamp-based vector clock for conflict resolution.
- * Periodically gossips knowledge summaries; peers pull missing entries.
- * 时间戳向量时钟冲突解决。定期八卦知识摘要，对端拉取缺失条目�? */
+/** * Gossip Manager ?Cross-Bridge knowledge sync via P2P * ： P2P ?Bridge * * Uses timestamp-based vector clock for conflict resolution. * Periodically gossips knowledge summaries; peers pull missing entries. * 。，? */
 import { EventEmitter } from 'events';
 import { MessageType, createMessage } from './messages.js';
 import { vectorMemory } from '../core/vector-memory.js';
 
-const GOSSIP_INTERVAL_MS = 60_000; // �?60 秒广播一次摘�?const SYNC_BATCH_SIZE = 10;         // 每次同步最�?10 �?
+const GOSSIP_INTERVAL_MS = 60_000; // ?60 秒广播一次摘?const SYNC_BATCH_SIZE = 10;         // 每次同步最?10 ?
 class GossipManager extends EventEmitter {
   constructor(options = {}) {
     super();
     this._p2p = null;
-    this._peerClock = new Map();   // peerId �?last sync timestamp
+    this._peerClock = new Map();   // peerId ?last sync timestamp
     this._localClock = Date.now(); // last local change time
     this._timer = null;
     this._vectorMemory = options.vectorMemory || vectorMemory;
   }
 
-  /**
-   * Start gossip loop �?call after P2P is connected
-   * 启动八卦循环：在 P2P 连接后调用（幂等，可�?p2p 实例�?   */
+  /** * Start gossip loop ?call after P2P is connected * ： P2P （，?p2p ? */
   start(p2p) {
     const prevP2p = this._p2p;
     if (prevP2p && prevP2p !== p2p && this._handler) {
@@ -61,10 +53,7 @@ class GossipManager extends EventEmitter {
     this._peerClock.clear();
   }
 
-  /**
-   * Mark local knowledge as changed �?triggers next gossip cycle
-   * 标记本地知识有变化，触发下轮广播
-   */
+  /** * Mark local knowledge as changed ?triggers next gossip cycle * ， */
   markChanged() {
     this._localClock = Date.now();
   }
@@ -104,7 +93,7 @@ class GossipManager extends EventEmitter {
     if (!data) return;
 
     if (data.action === 'summary') {
-      // Remote peer has new entries �?request the ones we don't have
+      // Remote peer has new entries ?request the ones we don't have
       const missing = [];
       for (const entry of (data.entries || [])) {
         const local = this._vectorMemory._entries.find(e => e.id === entry.id);
@@ -122,7 +111,7 @@ class GossipManager extends EventEmitter {
     }
 
     else if (data.action === 'request') {
-      // Remote peer wants full entries �?send them
+      // Remote peer wants full entries ?send them
       const requested = [];
       for (const id of (data.ids || [])) {
         const entry = this._vectorMemory._entries.find(e => e.id === id);
@@ -144,7 +133,7 @@ class GossipManager extends EventEmitter {
     }
 
     else if (data.action === 'entries') {
-      // Received full entries �?store with conflict resolution
+      // Received full entries ?store with conflict resolution
       // LWW: if same fingerprint exists, keep newer timestamp
       let count = 0;
       for (const e of (data.entries || [])) {
@@ -159,7 +148,7 @@ class GossipManager extends EventEmitter {
         if (byFingerprint) {
           // Conflict detected: resolve by LWW
           if ((e.timestamp || 0) > (byFingerprint.timestamp || 0)) {
-            // Remote is newer �?replace local
+            // Remote is newer ?replace local
             Object.assign(byFingerprint, {
               text: e.text,
               timestamp: e.timestamp,

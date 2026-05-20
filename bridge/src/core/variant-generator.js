@@ -1,16 +1,11 @@
-/**
- * VariantGenerator �?问题变体生成器（纯内存）
- *
- * 从已解题目中提取结构，替换数字生成变体�? * 全部在内存中操作，不落盘�? */
+/** * VariantGenerator ?（） * * ，? * ，? */
 
 export class VariantGenerator {
   constructor() {
     this._generatedCount = 0;
   }
 
-  /**
-   * 从已解题目生成变�?   * @param {Array} solved - [{question, answer, domain}, ...]
-   * @param {number} countPerType - 每类型生成几个变�?   * @returns {Array} 生成的变体列�?   */
+  /** * ? * @param {Array} solved - [{question, answer, domain}, ...] * @param {number} countPerType - ? * @returns {Array} ? */
   generate(solved, countPerType = 3) {
     if (!solved || solved.length === 0) return [];
 
@@ -31,9 +26,7 @@ export class VariantGenerator {
     return generated;
   }
 
-  /**
-   * 生成单道题的变体
-   */
+  /** * */
   _generateVariants(problem, count, seenQs) {
     const nums = problem.question.match(/\d+/g)?.map(Number) || [];
     if (nums.length === 0) return [];
@@ -67,8 +60,7 @@ export class VariantGenerator {
     return variants;
   }
 
-  /**
-   * 数字扰动：�?0% 范围内随�?   */
+  /** * ：?0% ? */
   _vary(n) {
     if (n === 0) return Math.floor(Math.random() * 5) + 1;
     const factor = 0.5 + Math.random() * 0.6; // 0.5 ~ 1.1
@@ -76,9 +68,7 @@ export class VariantGenerator {
     return Math.max(1, Math.min(999, result)); // 1~999
   }
 
-  /**
-   * 模板替换数字（保持顺序）
-   */
+  /** * （） */
   _replaceNums(question, newNums) {
     let result = question;
     let idx = 0;
@@ -89,9 +79,7 @@ export class VariantGenerator {
     });
   }
 
-  /**
-   * 重新计算答案（用归纳发现的公式，或简单推算）
-   */
+  /** * （，） */
   _recompute(problem, newNums) {
     try {
       const origNums = problem.question.match(/\d+/g)?.map(Number) || [];
@@ -112,7 +100,7 @@ export class VariantGenerator {
         }
       }
 
-      // 模式2: 两数模式
+      //
       if (origNums.length === 2 && newNums.length === 2) {
         const sum = origNums[0] + origNums[1];
         const diff = Math.abs(origNums[0] - origNums[1]);
@@ -131,7 +119,7 @@ export class VariantGenerator {
         if (Math.abs(origAns - gauss) < 0.01) return newNums[0] * (newNums[0] + 1) / 2;
       }
 
-      // 模式4: 简单倍数关系
+      //
       if (origNums.length === 1 && newNums.length === 1) {
         const factor = origAns / origNums[0];
         if (factor > 0 && Math.abs(factor - Math.round(factor)) < 0.01) {
@@ -139,7 +127,7 @@ export class VariantGenerator {
         }
       }
 
-      // 模式5: 比例缩放
+      //
       if (origNums.length >= 2) {
         const scale = origAns / (origNums[0] || 1);
         if (!isNaN(scale)) return newNums[0] * scale;
@@ -149,7 +137,7 @@ export class VariantGenerator {
     return null;
   }
 
-  /** 获取已生成的数量 */
+  /** */
   count() {
     return this._generatedCount;
   }

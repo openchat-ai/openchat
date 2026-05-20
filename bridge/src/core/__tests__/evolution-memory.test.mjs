@@ -28,7 +28,7 @@ describe('EvolutionMemory', () => {
       const result = mem.recall('prefs:color');
       assert.ok(result);
       assert.strictEqual(result.value, 'blue');
-      assert.strictEqual(result.scope, 'prefs');
+      assert.strictEqual(result.metadata.scope, 'prefs');
     });
 
     test('recall returns null for non-existent key', () => {

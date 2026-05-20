@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
+import { DEFAULT_PORT, PORT_OFFSETS } from '../constants.js';
 
 const WISDOM_DIR = join(homedir(), '.openchat', 'wisdom');
 const PATHS_FILE = join(WISDOM_DIR, 'thinking-paths.json');
@@ -309,7 +310,7 @@ export class ThinkingPath {
   }
 
   _startCrossBridgeSync() {
-    const BRIDGE_PORTS = (process.env.BRIDGE_PORTS || '3800,3002,3003,3004,3005,3006,3007,3008').split(',').map(Number);
+    const BRIDGE_PORTS = (process.env.BRIDGE_PORTS || PORT_OFFSETS.BRIDGE_PORTS.map(o => DEFAULT_PORT + o).join(',')).split(',').map(Number);
     const sync = () => {
       for (const p of BRIDGE_PORTS) {
         if (p === this.port) continue;

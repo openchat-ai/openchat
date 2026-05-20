@@ -43,6 +43,9 @@ export class EvolutionMemory {
 
   // 记住一条信息
   remember(key, value, metadata = {}) {
+    const scope = metadata.scope || '_default';
+    const scopedKey = key.includes(':') ? key : `${scope}:${key}`;
+
     const memoryEntry = {
       value,
       timestamp: Date.now(),
@@ -52,7 +55,7 @@ export class EvolutionMemory {
       }
     };
 
-    this.memory.set(key, memoryEntry);
+    this.memory.set(scopedKey, memoryEntry);
     this.saveToConfig();
 
     return true;
@@ -71,20 +74,22 @@ export class EvolutionMemory {
   search(query, options = {}) {
     const results = [];
     const queryLower = query.toLowerCase();
-    
+
     for (const [key, entry] of this.memory) {
+      if (options.scope && !key.startsWith(`${options.scope}:`)) continue;
+
       // 检查键是否匹配
       if (key.toLowerCase().includes(queryLower)) {
         results.push({ key, ...entry });
         continue;
       }
-      
+
       // 检查值是否匹配（如果是字符串）
       if (typeof entry.value === 'string' && entry.value.toLowerCase().includes(queryLower)) {
         results.push({ key, ...entry });
         continue;
       }
-      
+
       // 检查元数据是否匹配
       if (entry.metadata && typeof entry.metadata === 'object') {
         for (const [metaKey, metaValue] of Object.entries(entry.metadata)) {
@@ -96,7 +101,7 @@ export class EvolutionMemory {
         }
       }
     }
-    
+
     // 根据时间戳排序（最新的在前）
     results.sort((a, b) => b.timestamp - a.timestamp);
     

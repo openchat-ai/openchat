@@ -37,6 +37,14 @@ export class AgentEngine {
     this.useRAG = options.useRAG !== false; // 默认启用 RAG
     this.useFunctionCalling = options.useFunctionCalling !== false; // 默认启用 FC
 
+    // 保存注入依赖
+    this.memoryManager = options.memoryManager || null;
+    this.sessionManager = options.sessionManager || null;
+    this.pluginManager = options.pluginManager || null;
+    this.agentMonitor = options.agentMonitor || null;
+    this.residentMemory = options.residentMemory || null;
+    this.PromptBuilder = options.PromptBuilder || null;
+
     // ✨ 集成质量检查系统
     this.qualityChecker = new QualityChecker(options.config || {});
     this.corrector = new Corrector(options.config || {});
@@ -255,20 +263,22 @@ export class AgentEngine {
    */
   async process(sessionId, userId, userMessage) {
     // 初始化 RAG 系统
-    if (this.useRAG && !memoryManager.initialized) {
-      await memoryManager.initialize();
+    const mm = this.memoryManager || memoryManager;
+    if (this.useRAG && !mm.initialized) {
+      await mm.initialize();
     }
 
     // [优化] 提前获取 session 和 provider，避免循环内重复获取
-    const session = sessionManager.getSession(sessionId);
+    const sm = this.sessionManager || sessionManager;
+    const session = sm.getSession(sessionId);
     if (!session) throw new Error(`Session ${sessionId} not found`);
-    const provider = sessionManager.getProvider(session.providerType);
+    const provider = sm.getProvider(session.providerType);
 
     // [RAG] 检索相关历史上下文
     let ragContext = [];
-    if (this.useRAG && memoryManager.useRAG) {
+    if (this.useRAG && mm.useRAG) {
       try {
-        ragContext = await memoryManager.retrieveRelevantContext(userMessage, {
+        ragContext = await mm.retrieveRelevantContext(userMessage, {
           userId,
           sessionId,
           topK: 5
@@ -282,7 +292,7 @@ export class AgentEngine {
       }
     }
 
-    let currentContext = await memoryManager.getContext(sessionId);
+    let currentContext = await mm.getContext(sessionId);
 
     // 如果有 RAG 上下文，构建增强上下文
     if (ragContext.length > 0) {
@@ -295,7 +305,7 @@ export class AgentEngine {
     }
 
     // 1. Append user message to memory
-    await memoryManager.addMessage(sessionId, 'user', userMessage);
+    await mm.addMessage(sessionId, 'user', userMessage);
 
     // 记录执行轨迹用于最终自检
     const executionTrace = {
@@ -356,8 +366,8 @@ export class AgentEngine {
 
             // 使用格式化后的结果
             const formattedResult = pluginManager.formatToolResult(toolName, toolResult);
-            await memoryManager.addMessage(sessionId, 'assistant', `[Tool Call] ${toolName}`);
-            await memoryManager.addMessage(sessionId, 'system', formattedResult);
+            await mm.addMessage(sessionId, 'assistant', `[Tool Call] ${toolName}`);
+            await mm.addMessage(sessionId, 'system', formattedResult);
 
             // [优化] 增量更新上下文，而非重新获取全部
             currentContext.push(
@@ -366,7 +376,7 @@ export class AgentEngine {
             );
           } catch (error) {
             executionTrace.actions.push({ tool: toolName, args, error: error.message, mode: 'fc' });
-            await memoryManager.addMessage(sessionId, 'system', `[Tool Error] ${toolName}: ${error.message}`);
+            await mm.addMessage(sessionId, 'system', `[Tool Error] ${toolName}: ${error.message}`);
             currentContext.push({ role: 'system', content: `[Tool Error] ${toolName}: ${error.message}` });
           }
         }
@@ -382,10 +392,9 @@ export class AgentEngine {
 
             executionTrace.actions.push({ tool: toolName, args, result: toolResult, mode: 'text' });
 
-            // 使用格式化后的结果
-            const formattedResult = pluginManager.formatToolResult(toolName, toolResult);
-            await memoryManager.addMessage(sessionId, 'assistant', `Action: ${toolName}`);
-            await memoryManager.addMessage(sessionId, 'system', formattedResult);
+            const formatted = pluginManager.formatToolResult(toolName, toolResult);
+            await mm.addMessage(sessionId, 'assistant', `Action: ${toolName}`);
+            await mm.addMessage(sessionId, 'system', formatted);
 
             // [优化] 增量更新上下文
             currentContext.push(
@@ -394,7 +403,7 @@ export class AgentEngine {
             );
           } catch (error) {
             executionTrace.actions.push({ tool: toolName, args, error: error.message, mode: 'text' });
-            await memoryManager.addMessage(sessionId, 'system', `Error executing ${toolName}: ${error.message}`);
+            await mm.addMessage(sessionId, 'system', `Error executing ${toolName}: ${error.message}`);
             currentContext.push({ role: 'system', content: `Error executing ${toolName}: ${error.message}` });
           }
         }
@@ -415,13 +424,12 @@ export class AgentEngine {
 
     const qualityReport = await this.performSelfVerification(executionTrace);
 
-    // 如果质量不达标，触发优化
     if (qualityReport && qualityReport.score < this.qualityThreshold) {
       console.log(`[Agent] 质量得分 ${qualityReport.score} < ${this.qualityThreshold}，开始自我优化...`);
       finalizedResponse = await this.selfOptimize(sessionId, userId, userMessage, finalizedResponse, qualityReport);
     }
 
-    await memoryManager.addMessage(sessionId, 'assistant', finalizedResponse);
+    await mm.addMessage(sessionId, 'assistant', finalizedResponse);
     return finalizedResponse;
   }
 

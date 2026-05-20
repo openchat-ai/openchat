@@ -3,8 +3,8 @@ import * as readline from 'readline';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import http from 'http';
 import os from 'os';
+import { DEFAULT_PORT, getMainPort } from './constants.js';
 import { sessionManager } from './session/session-manager.js';
 
 // 新增：REST API 服务器（31 个端点）
@@ -12,7 +12,6 @@ import { sessionManager } from './session/session-manager.js';
 let apiServer = null;
 import { executeCommand, commands } from './cli/commands.js';
 import { MessageBuilder, MessageType } from './protocol/message.js';
-import { WebSocketServer } from 'ws';
 import { router } from './core/router.js';
 import { initCore } from './core/handlers.js';
 import { CLIGateway, WSGateway } from './gateway/base.js';
@@ -69,8 +68,8 @@ const isPublic = hasPublicAddress() || !!savedBridge.advertiseHost;
 // 支持 --port 命令行参数覆盖配置
 const portArgIndex = args.findIndex(a => a.startsWith('--port='));
 const cliPort = portArgIndex !== -1 ? parseInt(args[portArgIndex].split('=')[1]) : null;
-const port = cliPort || savedBridge.port || 3000;
-const isMain = port === 3800 || process.argv.includes('--main');
+const port = cliPort || savedBridge.port || DEFAULT_PORT;
+const isMain = port === DEFAULT_PORT || process.argv.includes('--main');
 
 const dhtPort = savedBridge.dhtPort || 0;
 const localBootstrap = savedBridge.localBootstrap || [];
@@ -176,9 +175,7 @@ const COMMANDS = [
 class Bridge {
   constructor() {
     this.clientId = process.env.CLIENT_ID || crypto.randomUUID();
-    this.wss = null;
-    this.httpServer = null;
-    this.apiServer = null;  // 新增：REST API 服务器
+    this.apiServer = null;  // 统一 REST API 服务器
     this.clients = new Set();
     this.rl = null;
     this.startTime = Date.now();
@@ -313,7 +310,7 @@ class Bridge {
           console.log(`[P2P] 公网节点已注册到对等网络 (${publicIp})`);
           this._peerHeartbeat = setInterval(async () => {
             try { await registry.publishPeer(publishInfo); }
-            catch (e) { /* 静默失败 */ }
+            catch (e) { console.error('[Main] publish heartbeat failed:', e.message); }
           }, 60000);
         }
       }
@@ -342,12 +339,21 @@ class Bridge {
       }
     }
 
-    // 启动新增的 REST API 服务器（31 个端点）
+    // 启动统一 REST API 服务器（合并了原始 HTTP 服务）
     try {
-      const { default: APIServer } = await import('./api/server.js');
-      this.apiServer = new APIServer({ port: CONFIG.port + 1, swarm: this.p2p, deployEnabled: deployServerEnabled });
+      const { default: APIServer, setBridgeContext } = await import('./api/server.js');
+      this.apiServer = new APIServer({ port: CONFIG.port, swarm: this.p2p, deployEnabled: deployServerEnabled });
+      setBridgeContext(this);
       await this.apiServer.start();
-      console.log(`[API] REST 服务器: http://localhost:${CONFIG.port + 1}`);
+      // 挂载 WebSocket (聊天 + 信令) 到同一个 HTTP 服务
+      this.apiServer.setupWebSocket(this.apiServer.server);
+      // 设置 WS 消息处理器
+      this.apiServer.setWSMessageHandler((ws, msg) => {
+        this.handleWSMessage(ws, msg).catch(e => {
+          try { ws.send(JSON.stringify({ type: 'error', data: { message: e.message } })); } catch {}
+        });
+      });
+      console.log(`[API] 统一服务器: http://localhost:${CONFIG.port}`);
       console.log(`[API] 端点: /api/v1/agents, /api/v1/p2p, /api/v1/updates, /api/v1/skills, /api/v1/versions, /api/v1/resources`);
       // 启动 AI 居民调度器
       residentScheduler.start();
@@ -651,9 +657,9 @@ class Bridge {
       console.log(`[启动] API/P2R 初始化失败: ${e.message}`);
     }
 
-    // 无头模式：启动统一服务 (HTTP + WebSocket)
+    // 无头模式：日志输出
     if (CONFIG.headless) {
-      this.startServer();
+      // WebSocket 已在统一 API 服务器中启动
 
       // 公网节点自动补全 WS 信令地址（若未显式指定）
       if (!CONFIG.wsSignalingUrl && CONFIG.isPublic) {
@@ -706,691 +712,6 @@ class Bridge {
       this.signalRL = rl;
     }
   }
-
-  /**
-   * 统一服务（HTTP + WebSocket）
-   * HTTP API: 根路径
-   * WebSocket: /ws (聊天)
-   * WebSocket: /signaling (语音，预留)
-   */
-  startServer() {
-    // 创建 HTTP 服务器
-    this.httpServer = http.createServer(async (req, res) => {
-      // CORS
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-      if (req.method === 'OPTIONS') {
-        res.writeHead(204);
-        res.end();
-        return;
-      }
-
-      const url = new URL(req.url, `http://localhost:${CONFIG.port}`);
-      const pathname = url.pathname;
-
-      try {
-        // 路由处理
-        if (pathname === '/api/status' && req.method === 'GET') {
-          await this.handleStatus(req, res);
-        } else if (pathname === '/api/providers' && req.method === 'GET') {
-          await this.handleProviders(req, res);
-        } else if (pathname === '/api/sessions' && req.method === 'GET') {
-          await this.handleSessions(req, res);
-        } else if (pathname === '/api/chat' && req.method === 'POST') {
-          await this.handleChat(req, res);
-        } else if (pathname === '/api/chat/stream' && req.method === 'POST') {
-          await this.handleChatStream(req, res);
-        } else if (pathname === '/api/config' && req.method === 'GET') {
-          await this.handleGetConfig(req, res);
-        } else if (pathname === '/api/config' && req.method === 'POST') {
-          await this.handleSetConfig(req, res);
-        } else if (pathname === '/api/memory' && req.method === 'GET') {
-          await this.handleMemoryStats(req, res);
-        } else if (pathname === '/api/memory' && req.method === 'POST') {
-          await this.handleMemoryOp(req, res);
-        } else if (pathname === '/api/provider/connect' && req.method === 'POST') {
-          await this.handleProviderConnect(req, res);
-        } else if (pathname === '/api/provider/models' && req.method === 'GET') {
-          await this.handleProviderModels(req, res);
-        } else if (pathname === '/api/provider/set' && req.method === 'POST') {
-          await this.handleProviderSet(req, res);
-        } else if (pathname === '/api/agents' && req.method === 'GET') {
-          await this.handleAgentsList(req, res);
-        } else if (pathname === '/api/agents/history' && req.method === 'GET') {
-          await this.handleAgentsHistory(req, res);
-        } else if (pathname.startsWith('/api/agents/') && req.method === 'GET') {
-          await this.handleAgentStatus(req, res, pathname.replace('/api/agents/', ''));
-        } else if (pathname.startsWith('/api/agents/') && req.method === 'POST') {
-          await this.handleAgentAction(req, res, pathname.replace('/api/agents/', ''));
-        } else if (pathname === '/api/learning' && req.method === 'GET') {
-          await this.handleLearningStatus(req, res);
-        } else if (pathname === '/health' && req.method === 'GET') {
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ status: 'ok', uptime: Date.now() - this.startTime }));
-        } else if (pathname === '/peers' && req.method === 'GET') {
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          const peers = this.p2p ? [...this.p2p.connectedPeers.keys()].map(id => ({
-            peerId: id.slice(0, 8),
-            info: this.p2p.peerInfo.get(id) || {}
-          })) : [];
-          res.end(JSON.stringify({ peers }));
-        } else if (pathname === '/api/heartbeat' && req.method === 'POST') {
-          let body = '';
-          req.on('data', c => body += c);
-          req.on('end', () => {
-            try {
-              const p = JSON.parse(body);
-              if (this.learningCore?.guardian && p.port) {
-                this.learningCore.guardian.receiveHeartbeat(p.port);
-              }
-            } catch {}
-            res.writeHead(200);
-            res.end('ok');
-          });
-        } else if (pathname === '/api/dashboard' && req.method === 'GET') {
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          const lc = this.learningCore;
-          let pool=0, s=0, p=0, iq=0, age=0;
-          if (lc) {
-            try {
-              pool = lc.problemPool?.length || 0;
-              s = lc.solvedCount || 0;
-              p = pool - s;
-              iq = lc.iq || 0;
-              age = lc.age || 0;
-            } catch (e) { console.log('[Dash] load fail:', e.message); }
-          }
-          // 后备：直接从文件读取问题池和经验
-          if (pool === 0) {
-            try {
-              const { homedir } = await import('os');
-              const { join } = await import('path');
-              const { readFileSync, readdirSync, existsSync } = await import('fs');
-              const poolDir = join(homedir(), '.openchat', 'problem-pool');
-              if (existsSync(poolDir)) {
-                const files = readdirSync(poolDir).filter(f => f.endsWith('.json'));
-                for (const f of files) {
-                  const p = JSON.parse(readFileSync(join(poolDir, f), 'utf8'));
-                  pool += Array.isArray(p) ? p.length : 1;
-                }
-              }
-              const expDir = join(homedir(), '.openchat', 'experience');
-              if (existsSync(expDir)) {
-                s = readdirSync(expDir).filter(f => f.endsWith('.json')).length;
-              }
-            } catch (e) {}
-          }
-          iq = iq || 100;
-          let fairies = { 3002:0,3003:0,3004:0,3005:0,3006:0,3007:0 };
-          for (const port of [3002,3003,3004,3005,3006,3007]) {
-            try { 
-              const r = await fetch(`http://localhost:${port}/api/status`, { signal: AbortSignal.timeout(1000) });
-              fairies[port] = r.ok ? 1 : 0;
-            } catch { fairies[port] = 0; }
-          }
-          const data = { iq: iq || 100, age: age || pool, solved: s, poolSize: pool, pending: Math.max(0, pool - s), fairies };
-          res.end(JSON.stringify(data));
-        } else if (pathname === '/' && req.method === 'GET') {
-          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-          res.end(`<html lang="zh"><head><meta charset="utf-8"><title>OpenChat</title></head>
-<body style="background:#0a0a1a;color:#e0e0e0;font-family:monospace;padding:20px">
-<h1 style="color:#7c8aff">OpenChat Bridge</h1>
-<pre id="out" style="font-size:13px;line-height:1.6">Loading...</pre>
-<script>
-async function R(){
-  try{const d=await(await fetch('/api/dashboard')).json();
-  let h='IQ: <b style=color:#7c8aff>'+d.iq+'</b>  Age: <b style=color:#ffa502>'+d.age+'</b>  Solved: <b style=color:#2ed573>'+d.solved+'</b>  Pool: <b style=color:#4fc3f7>'+d.poolSize+'</b> (Pending: '+d.pending+')';
-  if(d.fairies){h+='\\n\\nSeven Fairies:\\n';for(const[p,s]of Object.entries(d.fairies))h+=p+': '+(s?'<b class=on>ON</b>':'<b class=off>OFF</b>')+' ';}
-  document.getElementById('out').innerHTML=h;
-  }catch(e){document.getElementById('out').textContent='Waiting...'}
-}R();setInterval(R,3000);
-</script></body></html>`);
-          }
-        } catch (e) {
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: e.message }));
-      }
-    });
-
-    // 挂载 WebSocket 服务器 (聊天)
-    this.wss = new WebSocketServer({
-      server: this.httpServer,
-      path: '/ws'
-    });
-
-    this.wss.on('connection', (ws) => {
-      console.log('[WS] 客户端已连接');
-      this.clients.add(ws);
-
-      ws.on('message', async (data) => {
-        try {
-          const msg = JSON.parse(data.toString());
-          await this.handleWSMessage(ws, msg);
-        } catch (e) {
-          ws.send(JSON.stringify({ type: 'error', data: { message: e.message } }));
-        }
-      });
-
-      ws.on('close', () => {
-        console.log('[WS] 客户端已断开');
-        this.clients.delete(ws);
-      });
-
-      ws.send(JSON.stringify({
-        type: MessageType.BRIDGE_HANDSHAKE,
-        data: {
-          clientId: this.clientId,
-          version: 2
-        }
-      }));
-    });
-
-    // WebRTC 信令 WebSocket（手机↔Bridge 的 SDP/ICE 交换路径）
-    this.signalingWss = new WebSocketServer({
-      server: this.httpServer,
-      path: '/signaling'
-    });
-
-    this.signalingWss.on('connection', (ws) => {
-      let registeredPeerId = null;
-      console.log('[Signaling] 客户端已连接');
-
-      ws.on('message', (data) => {
-        try {
-          const msg = JSON.parse(data.toString());
-
-          // 信令消息格式: { type: 'signaling_message', data: { ... } }
-          if (msg.type === 'signaling_message' && msg.data) {
-            const d = msg.data;
-
-            // 注册：手机告知自己的 peerId
-            if (d.action === 'register') {
-              registeredPeerId = d.peerId;
-              this.signalingRooms.set(registeredPeerId, ws);
-              console.log(`[Signaling] 节点已注册: ${registeredPeerId?.slice(0, 8) || registeredPeerId}...`);
-              ws.send(JSON.stringify({
-                type: 'signaling_message',
-                data: { action: 'registered', peerId: registeredPeerId }
-              }));
-              return;
-            }
-
-            // offer / answer / ice_candidate → 转发给目标 peer
-            if (d.toPeerId) {
-              const targetWs = this.signalingRooms.get(d.toPeerId);
-              if (targetWs && targetWs.readyState === 1) { // WebSocket.OPEN
-                targetWs.send(JSON.stringify(msg));
-              } else {
-                console.log(`[Signaling] 目标节点未连接: ${d.toPeerId?.slice(0, 8)}...`);
-                ws.send(JSON.stringify({
-                  type: 'signaling_message',
-                  data: { type: 'error', message: 'Target peer not available' }
-                }));
-              }
-              return;
-            }
-
-            console.log(`[Signaling] 未处理的消息类型: ${d.type || 'unknown'}`);
-          }
-        } catch (e) {
-          console.error('[Signaling] 解析错误:', e.message);
-        }
-      });
-
-      ws.on('close', () => {
-        console.log(`[Signaling] 客户端已断开: ${registeredPeerId?.slice(0, 8) || 'unknown'}...`);
-        if (registeredPeerId) {
-          this.signalingRooms.delete(registeredPeerId);
-        }
-      });
-
-      ws.on('error', (err) => {
-        console.error(`[Signaling] 错误: ${err.message}`);
-        if (registeredPeerId) {
-          this.signalingRooms.delete(registeredPeerId);
-        }
-      });
-    });
-
-    // 启动 HTTP 服务器
-    this.httpServer.listen(CONFIG.port, CONFIG.host);
-    console.log(`[HTTP] 正在监听 ${CONFIG.host}:${CONFIG.port}`);
-  }
-
-  async handleLearningStatus(req, res) {
-    const stats = this.learningCore ? this.learningCore.getStats() : { iq: 0, age: 0, solvedCount: 0 };
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(stats));
-  }
-
-  async handleStatus(req, res) {
-    const provider = persistentConfig.getPreference('currentProvider');
-    const model = persistentConfig.getPreference('currentModel');
-    const memStats = await memoryManager.getStats();
-
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      status: 'running',
-      uptime: Math.floor((Date.now() - this.startTime) / 1000),
-      currentProvider: provider,
-      currentModel: model,
-      wsClients: this.clients.size,
-      memory: memStats
-    }));
-  }
-
-  async handleProviders(req, res) {
-    // 使用新的统一 Provider 系统
-    const providers = providerRegistry.listAll();
-    const current = persistentConfig.getPreference('currentProvider');
-
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      current,
-      providers
-    }));
-  }
-
-  async handleSessions(req, res) {
-    const sessions = sessionManager.listSessions();
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ sessions }));
-  }
-
-  async handleChat(req, res) {
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', async () => {
-      try {
-        const { message, sessionId } = JSON.parse(body);
-
-        // 走 resident 调度器流程（分布式协作）
-        // 1. 先检查知识库
-        const kb = residentScheduler?._convergenceSystem?.kb;
-        let cachedAnswer = null;
-        if (kb) {
-          cachedAnswer = kb.answer('general', message);
-        }
-
-        if (cachedAnswer) {
-          // 知识库有答案，直接返回
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            response: cachedAnswer,
-            source: 'knowledge_base'
-          }));
-          return;
-        }
-
-        // 2. 没有答案，加入调度器让居民求解
-        const problemId = `chat_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
-        
-        if (residentScheduler) {
-          // 添加问题到调度器
-          residentScheduler.addProblem({
-            problemId,
-            domain: 'general',
-            question: message,
-            subQuestions: [],
-            from: 'api_chat',
-          });
-
-          // 等待一段时间让居民求解（最多 10 秒）
-          const maxWait = 10000;
-          const checkInterval = 500;
-          let waited = 0;
-          
-          while (waited < maxWait) {
-            await new Promise(r => setTimeout(r, checkInterval));
-            waited += checkInterval;
-            
-            // 检查是否已有解
-            const pending = residentScheduler._pendingProblems?.find(p => p.problemId === problemId);
-            if (pending?.status === 'done' && pending.answer) {
-              res.writeHead(200, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({
-                response: pending.answer,
-                source: 'residents_convergence'
-              }));
-              return;
-            }
-          }
-
-          // 超时，返回处理中
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            response: '问题已提交，正在求解中...',
-            source: 'residents_processing',
-            problemId
-          }));
-        } else {
-          // 没有调度器，回退到直接 LLM
-          throw new Error('Resident scheduler not available');
-        }
-      } catch (e) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: e.message }));
-      }
-    });
-  }
-
-  /**
-   * 流式聊天接口 (Server-Sent Events)
-   */
-  async handleChatStream(req, res) {
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', async () => {
-      try {
-        const { message, sessionId, provider, model } = JSON.parse(body);
-
-        // 设置 SSE 头
-        res.writeHead(200, {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
-          'Access-Control-Allow-Origin': '*'
-        });
-
-        // 发送 SSE 事件的辅助函数
-        const sendEvent = (event, data) => {
-          res.write(`event: ${event}\n`);
-          res.write(`data: ${JSON.stringify(data)}\n\n`);
-        };
-
-        // 如果没有 session，创建一个
-        let sid = sessionId;
-        if (!sid) {
-          const p = provider || persistentConfig.getPreference('currentProvider');
-          const m = model || persistentConfig.getPreference('currentModel');
-          sid = await sessionManager.createSession(p, m);
-        }
-
-        sendEvent('session', { sessionId: sid });
-
-        // 导入 agentEngine
-        const { agentEngine } = await import('./core/agent-engine.js');
-
-        // 使用流式处理
-        let fullContent = '';
-        await agentEngine.processStream(sid, 'default-user', message, (event) => {
-          switch (event.type) {
-            case 'thinking':
-              sendEvent('thinking', { iteration: event.iteration });
-              break;
-            case 'content':
-              fullContent += event.content;
-              sendEvent('content', { chunk: event.content });
-              break;
-            case 'tool_call':
-              sendEvent('tool_call', { tool: event.tool, args: event.args });
-              break;
-            case 'tool_result':
-              sendEvent('tool_result', { tool: event.tool, result: event.result });
-              break;
-            case 'complete':
-              sendEvent('complete', {
-                response: event.response || fullContent,
-                iterations: event.iterations
-              });
-              break;
-            case 'error':
-              sendEvent('error', { message: event.error || event.message });
-              break;
-          }
-        });
-
-        res.end();
-      } catch (e) {
-        res.write(`event: error\ndata: ${JSON.stringify({ message: e.message })}\n\n`);
-        res.end();
-      }
-    });
-  }
-
-  async handleGetConfig(req, res) {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      currentProvider: persistentConfig.getPreference('currentProvider'),
-      currentModel: persistentConfig.getPreference('currentModel'),
-      configuredProviders: persistentConfig.listProviders()
-    }));
-  }
-
-  async handleSetConfig(req, res) {
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', async () => {
-      try {
-        const { provider, model, apiKey } = JSON.parse(body);
-
-        if (apiKey) {
-          persistentConfig.setApiKey(provider, apiKey);
-        }
-        if (provider) {
-          persistentConfig.setPreference('currentProvider', provider);
-        }
-        if (model) {
-          persistentConfig.setPreference('currentModel', model);
-        }
-
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: true }));
-      } catch (e) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: e.message }));
-      }
-    });
-  }
-
-  async handleMemoryStats(req, res) {
-    const stats = await memoryManager.getStats();
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(stats));
-  }
-
-  async handleMemoryOp(req, res) {
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', async () => {
-      try {
-        const { action, fact, query } = JSON.parse(body);
-
-        if (action === 'remember' && fact) {
-          const id = await memoryManager.saveFact('default', fact);
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ success: true, id }));
-        } else if (action === 'recall' && query) {
-          const results = await memoryManager.queryFacts('default', query);
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ results }));
-        } else {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Invalid action' }));
-        }
-      } catch (e) {
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: e.message }));
-      }
-    });
-  }
-
-  /**
-   * 配置 Provider（新 API）
-   */
-  async handleProviderConnect(req, res) {
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', async () => {
-      try {
-        const { providerId, apiKey, baseUrl } = JSON.parse(body);
-
-        if (!providerId) {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'providerId required' }));
-          return;
-        }
-
-        const result = await providerRegistry.configure(providerId, { apiKey, baseUrl });
-
-        if (result.success) {
-          const models = providerRegistry.getModels(providerId);
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            success: true,
-            providerId,
-            modelCount: models.length,
-            models: models.slice(0, 20)  // 返回前 20 个模型
-          }));
-        } else {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: result.error }));
-        }
-      } catch (e) {
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: e.message }));
-      }
-    });
-  }
-
-  /**
-   * 获取 Provider 模型列表
-   */
-  async handleProviderModels(req, res) {
-    const url = new URL(req.url, `http://localhost:${CONFIG.port}`);
-    const providerId = url.searchParams.get('providerId');
-
-    if (!providerId) {
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'providerId required' }));
-      return;
-    }
-
-    try {
-      // 尝试刷新模型列表
-      const models = await providerRegistry.refreshModels(providerId);
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ providerId, models, count: models.length }));
-    } catch (e) {
-      // 返回缓存的模型
-      const models = providerRegistry.getModels(providerId);
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ providerId, models, count: models.length, cached: true }));
-    }
-  }
-  
-  /**
-   * 获取系统状态
-   */
-  getSystemStatus() {
-    if (this.stabilitySystem) {
-      return this.stabilitySystem.getSystemStatus();
-    }
-    return {
-      status: 'running',
-      uptime: Math.floor((Date.now() - this.startTime) / 1000),
-      components: ['basic']
-    };
-  }
-
-  /**
-   * 获取 Agent 列表和监控摘要
-   */
-  async handleAgentsList(req, res) {
-    const summary = agentMonitor.getSummary();
-
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(summary));
-  }
-
-  /**
-   * 获取 Agent 执行历史
-   */
-  async handleAgentsHistory(req, res) {
-    const url = new URL(req.url, `http://localhost:${CONFIG.port}`);
-    const limit = parseInt(url.searchParams.get('limit')) || 20;
-
-    const history = agentMonitor.getExecutionHistory(limit);
-
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ history }));
-  }
-
-  /**
-   * 获取单个 Agent 状态
-   */
-  async handleAgentStatus(req, res, agentId) {
-    const agent = agentMonitor.getAgent(agentId);
-
-    if (!agent) {
-      res.writeHead(404, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Agent not found' }));
-      return;
-    }
-
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(agent));
-  }
-
-  /**
-   * 执行 Agent 操作 (暂停/恢复/提供输入)
-   */
-  async handleAgentAction(req, res, agentId) {
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', async () => {
-      try {
-        const { action, input } = JSON.parse(body);
-
-        switch (action) {
-          case 'pause':
-            agentMonitor.pauseAgent(agentId);
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ success: true, agentId, action: 'paused' }));
-            break;
-
-          case 'resume':
-            agentMonitor.resumeAgent(agentId);
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ success: true, agentId, action: 'resumed' }));
-            break;
-
-          case 'input':
-            agentMonitor.provideHumanInput(agentId, input);
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ success: true, agentId, action: 'input_provided' }));
-            break;
-
-          default:
-            res.writeHead(400, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Unknown action. Use: pause, resume, input' }));
-        }
-      } catch (e) {
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: e.message }));
-      }
-    });
-  }
-
-  async autoConfigProviders(detectedTools) {
-    for (const tool of detectedTools) {
-      try {
-        const { createLocalProvider } = await import('./providers/local-provider.js');
-        const provider = createLocalProvider(tool.name, {
-          mode: 'command',
-          command: tool.command,
-          args: []
-        });
-        await provider.connect({ mode: 'command', command: tool.command, args: [] });
-        sessionManager.addProviderDirect(provider);
-      } catch (e) {
-        // Auto-configuration failed, skip silently
-      }
-    }
-  }
-
   async handleWSMessage(ws, msg) {
     const { type, data, sessionId } = msg;
 
@@ -1626,14 +947,13 @@ async function R(){
   _startFairyMonitor() {
     let downCount = 0;
     let isMainMode = false;
+    const mainPort = getMainPort();
     this._fairyMonTimer = setInterval(async () => {
-      // 主模式中：检查 3800 是否恢复
       if (isMainMode) {
         try {
-          const resp = await fetch('http://localhost:3800/api/status', { signal: AbortSignal.timeout(3000) });
+          const resp = await fetch(`http://localhost:${mainPort}/api/status`, { signal: AbortSignal.timeout(3000) });
           if (resp.ok) {
             console.log('[FairyMonitor] 🔄 主 Bridge 已恢复，归还主模式');
-            // 停止学习循环，退回仙女模式
             if (this._learningTimer) clearInterval(this._learningTimer);
             this._learningTimer = null;
             isMainMode = false;
@@ -1644,30 +964,29 @@ async function R(){
         return;
       }
 
-      // 非主模式：检查 3800 是否存活
       try {
-        const resp = await fetch('http://localhost:3800/api/status', { signal: AbortSignal.timeout(3000) });
+        const resp = await fetch(`http://localhost:${mainPort}/api/status`, { signal: AbortSignal.timeout(3000) });
         if (resp.ok) { downCount = 0; return; }
       } catch { downCount++; }
 
       if (downCount >= 3) {
         console.log('[FairyMonitor] 🔼 主 Bridge 失联，临时接管主模式');
         this._startLearningCore();
-        await this._reviveMain(3800);
+        await this._reviveMain(mainPort);
         isMainMode = true;
         downCount = 0;
       }
     }, 15000);
   }
 
-  async _reviveMain(port) {
+  async _reviveMain(mainPort) {
     try {
       const { spawn } = await import('child_process');
-      const child = spawn(process.execPath, ['src/main.js', `--port=${port}`], {
+      const child = spawn(process.execPath, ['src/main.js', `--port=${mainPort}`], {
         cwd: process.cwd(), detached: true, stdio: 'ignore'
       });
       child.unref();
-      console.log(`[FairyMonitor] 发送主 Bridge 复活命令 :${port}`);
+      console.log(`[FairyMonitor] 发送主 Bridge 复活命令 :${mainPort}`);
     } catch (e) {
       console.log(`[FairyMonitor] 复活失败: ${e.message}`);
     }
@@ -1675,9 +994,10 @@ async function R(){
 
   _startHeartbeat() {
     const myPort = this.body?.port || port || 0;
+    const mainPort = getMainPort();
     setInterval(async () => {
       try {
-        await fetch('http://localhost:3800/api/heartbeat', {
+        await fetch(`http://localhost:${mainPort}/api/heartbeat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ port: myPort }),
@@ -1707,19 +1027,7 @@ async function R(){
       this.signalRL.close();
     }
 
-    if (this.wss) {
-      this.wss.close();
-    }
-
-    if (this.signalingWss) {
-      this.signalingWss.close();
-    }
-
-    if (this.httpServer) {
-      this.httpServer.close();
-    }
-
-    // 关闭 REST API 服务器
+    // 关闭统一 REST API 服务器 (含 WebSocket)
     if (this.apiServer) {
       await this.apiServer.stop();
     }

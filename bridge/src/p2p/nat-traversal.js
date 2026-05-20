@@ -1,6 +1,4 @@
-/**
- * NAT Traversal Utilities �?STUN/TURN discovery + connectivity checks
- * NAT 穿透工具：STUN/TURN 发现 + 连通性检�? */
+/** * NAT Traversal Utilities ?STUN/TURN discovery + connectivity checks * NAT ：STUN/TURN + ? */
 import * as dgram from 'dgram';
 import * as crypto from 'crypto';
 
@@ -10,11 +8,7 @@ const STUN_SERVERS = [
   'stun:stunserver.org:3478',
 ];
 
-/**
- * Detect NAT type by querying a STUN server.
- * Returns one of: 'open', 'full-cone', 'restricted-cone', 'port-restricted', 'symmetric', 'unknown'
- * 通过 STUN 查询检�?NAT 类型
- */
+/** * Detect NAT type by querying a STUN server. * Returns one of: 'open', 'full-cone', 'restricted-cone', 'port-restricted', 'symmetric', 'unknown' * STUN ?NAT */
 function detectNatType(stunHost = 'stun.l.google.com', stunPort = 19302, timeout = 3000) {
   return new Promise((resolve) => {
     const socket = dgram.createSocket('udp4');
@@ -48,9 +42,7 @@ function detectNatType(stunHost = 'stun.l.google.com', stunPort = 19302, timeout
   });
 }
 
-/**
- * Get default ICE server config with STUN + optional TURN
- * 获取默认 ICE 服务器配置（STUN + 可�?TURN�? */
+/** * Get default ICE server config with STUN + optional TURN * ICE （STUN + ?TURN? */
 function getDefaultIceServers(turnConfig = null) {
   const servers = STUN_SERVERS.map(url => ({ urls: url }));
   if (turnConfig?.url) {

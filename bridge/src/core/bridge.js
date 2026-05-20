@@ -82,9 +82,9 @@ class Bridge {
     console.log('============================================================');
     console.log('');
 
-    try { this.stabilitySystem.start(); } catch (e) {}
+    try { this.stabilitySystem.start(); } catch (e) { console.error('[Bridge] stability system start failed:', e.message); }
 
-    try { await memoryManager.initialize(); } catch (e) {}
+    try { await memoryManager.initialize(); } catch (e) { console.error('[Bridge] memory manager init failed:', e.message); }
 
     try {
       const founder = createFounder();

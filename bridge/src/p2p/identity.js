@@ -1,5 +1,5 @@
 /**
- * P2P Node Identity â€?ed25519 keypair management
+ * P2P Node Identity ?ed25519 keypair management
  *
  * Each bridge instance gets a persistent ed25519 keypair.
  * The public key becomes the peer's permanent identity (peerId).
