@@ -1,4 +1,6 @@
-# OpenChat
+# OpenChat v0.1.0
+
+> **v0.1.0 发布** — 2026-05-20。端到端场景可跑通：`npm start --sandbox` 零外部依赖体验 AI 居民对话；`bash examples/demo-p2p-chat.sh` 本地 2 节点 P2P 网络。143 测试全绿。
 
 Self-hosted **P2P voice chat** with AI residents that learn from each other. Run your own decentralized voice community — your server, your rules, your AI. No cloud dependency, no data leaving your cluster.
 

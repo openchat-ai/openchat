@@ -417,9 +417,20 @@ const serializeMessage = (message) => {
   return JSON.stringify(message);
 };
 
+// 最大消息大小：1MB
+const MAX_MESSAGE_SIZE = 1024 * 1024;
+
 // 反序列化消息
 const deserializeMessage = (data) => {
   try {
+    if (typeof data === 'string' && data.length > MAX_MESSAGE_SIZE) {
+      logger.error(`[P2P] Message too large: ${data.length} bytes (max ${MAX_MESSAGE_SIZE})`);
+      return null;
+    }
+    if (Buffer.isBuffer(data) && data.length > MAX_MESSAGE_SIZE) {
+      logger.error(`[P2P] Message too large: ${data.length} bytes (max ${MAX_MESSAGE_SIZE})`);
+      return null;
+    }
     return JSON.parse(data);
   } catch (error) {
     logger.error(`[P2P] Message deserialization error: ${error.message}`);
