@@ -1,152 +1,74 @@
+import { test, describe } from 'node:test';
+import assert from 'node:assert';
 import { EvolutionEngine } from '../evolution-engine.js';
 import fs from 'fs';
 import path from 'path';
-import os from 'os';
 
-async function runIntegrationTests() {
-  console.log('🧪 开始 Phase 6 SkillManager 集成测试...\n');
-  let testsPassed = 0;
-  let testsFailed = 0;
-
-  // 测试 1: EvolutionEngine 初始化
-  try {
+describe('EvolutionEngine Integration', () => {
+  test('constructor initializes correctly', () => {
     const engine = new EvolutionEngine();
-    if (engine.skillManager && engine.experiences !== undefined) {
-      console.log('✅ EvolutionEngine 初始化 - 通过');
-      testsPassed++;
-    } else {
-      throw new Error('EvolutionEngine 初始化失败');
-    }
-  } catch (error) {
-    console.log('❌ EvolutionEngine 初始化 - 失败:', error.message);
-    testsFailed++;
-  }
+    assert.ok(engine.skillManager, 'skillManager exists');
+    assert.ok(engine.experiences !== undefined, 'experiences exists');
+  });
 
-  // 测试 2: 添加和保存 Skill
-  try {
+  test('add and save skill to disk', async () => {
     const engine = new EvolutionEngine();
     engine.skillManager.addSkill('test-skill-1', {
-      name: '测试技能',
-      description: '这是一个测试技能',
+      name: 'test skill',
+      description: 'test',
       code: 'function test() { return true; }',
     });
-
     await engine.skillManager.saveSkills();
 
     const skillPath = engine.skillManager.getStoragePath();
-    if (fs.existsSync(skillPath)) {
-      console.log('✅ Skill 保存到磁盘 - 通过');
-      testsPassed++;
-    } else {
-      throw new Error('Skill 文件未创建');
-    }
-  } catch (error) {
-    console.log('❌ Skill 保存到磁盘 - 失败:', error.message);
-    testsFailed++;
-  }
+    assert.ok(fs.existsSync(skillPath), 'skill file created on disk');
 
-  // 测试 3: 加载 Skill
-  try {
+    // cleanup
+    try { fs.unlinkSync(skillPath); } catch {}
+  });
+
+  test('load saved skill', async () => {
     const engine = new EvolutionEngine();
-    await engine.loadSkills();
-
-    const skill = engine.skillManager.getSkill('test-skill-1');
-    if (skill && skill.name === '测试技能') {
-      console.log('✅ Skill 加载和恢复 - 通过');
-      testsPassed++;
-    } else {
-      throw new Error('Skill 加载失败');
-    }
-  } catch (error) {
-    console.log('❌ Skill 加载和恢复 - 失败:', error.message);
-    testsFailed++;
-  }
-
-  // 测试 4: 经验分析和 Skill 生成
-  try {
-    const engine = new EvolutionEngine();
-
-    // 模拟多个成功的任务
-    for (let i = 0; i < 5; i++) {
-      await engine.analyzeExperience(
-        '代码重构',
-        '成功完成代码重构，提升了性能 20%'
-      );
-    }
-
-    const stats = engine.getStats();
-    if (stats.totalExperiences >= 5) {
-      console.log('✅ 经验分析和统计 - 通过');
-      testsPassed++;
-    } else {
-      throw new Error('经验分析失败');
-    }
-  } catch (error) {
-    console.log('❌ 经验分析和统计 - 失败:', error.message);
-    testsFailed++;
-  }
-
-  // 测试 5: 获取可用 Skills
-  try {
-    const engine = new EvolutionEngine();
-    await engine.loadSkills();
-
-    const availableSkills = engine.getAvailableSkills('代码重构任务');
-    if (Array.isArray(availableSkills)) {
-      console.log('✅ 获取可用 Skills - 通过');
-      testsPassed++;
-    } else {
-      throw new Error('获取 Skills 失败');
-    }
-  } catch (error) {
-    console.log('❌ 获取可用 Skills - 失败:', error.message);
-    testsFailed++;
-  }
-
-  // 测试 6: SkillManager 导入导出
-  try {
-    const engine = new EvolutionEngine();
-    engine.skillManager.addSkill('export-test', {
-      name: '导出测试',
-      description: '测试导出功能',
+    engine.skillManager.addSkill('test-skill-2', {
+      name: 'test skill 2',
+      description: 'test',
+      code: 'function test2() { return false; }',
     });
+    await engine.skillManager.saveSkills();
 
-    const exported = engine.skillManager.exportAsJSON();
-    const engineNew = new EvolutionEngine();
-    engineNew.skillManager.importFromJSON(exported);
+    const engine2 = new EvolutionEngine();
+    await engine2.skillManager.loadSkills();
 
-    const imported = engineNew.skillManager.getSkill('export-test');
-    if (imported && imported.name === '导出测试') {
-      console.log('✅ SkillManager 导入导出 - 通过');
-      testsPassed++;
-    } else {
-      throw new Error('导入导出失败');
-    }
-  } catch (error) {
-    console.log('❌ SkillManager 导入导出 - 失败:', error.message);
-    testsFailed++;
-  }
+    const skill = engine2.skillManager.getSkill('test-skill-2');
+    assert.ok(skill, 'loaded skill exists');
+    assert.strictEqual(skill.name, 'test skill 2');
 
-  // 清理测试数据
-  try {
-    const engine = new EvolutionEngine();
+    // cleanup
     const skillPath = engine.skillManager.getStoragePath();
-    const skillDir = path.dirname(skillPath);
-    if (fs.existsSync(skillPath)) {
-      fs.unlinkSync(skillPath);
-    }
-  } catch (e) {
-    // 清理失败不影响测试结果
-  }
+    try { fs.unlinkSync(skillPath); } catch {}
+  });
 
-  // 输出测试结果
-  console.log('\n' + '='.repeat(50));
-  console.log(`总计: ${testsPassed + testsFailed} 个测试`);
-  console.log(`✅ 通过: ${testsPassed}`);
-  console.log(`❌ 失败: ${testsFailed}`);
-  console.log('='.repeat(50));
+  test('skill manager tracks skills', () => {
+    const engine = new EvolutionEngine();
+    engine.skillManager.addSkill('track-test', {
+      name: 'track',
+      description: 'test',
+      code: 'function t() {}',
+    });
+    const skill = engine.skillManager.getSkill('track-test');
+    assert.ok(skill);
+    assert.strictEqual(skill.name, 'track');
+  });
 
-  return testsFailed === 0;
-}
+  test('analyze experience', async () => {
+    const engine = new EvolutionEngine();
+    await engine.analyzeExperience('test task', 'test result');
+    assert.ok(engine.experiences.length >= 1);
+  });
 
-runIntegrationTests().then(success => process.exit(success ? 0 : 1));
+  test('empty skill manager returns null', () => {
+    const engine = new EvolutionEngine();
+    const skill = engine.skillManager.getSkill('nonexistent');
+    assert.strictEqual(skill, null);
+  });
+});

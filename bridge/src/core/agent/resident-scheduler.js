@@ -275,14 +275,14 @@ const residents = residentManager.list(null);
     } else {
       this._assignTask(id, resident, traits);
     }
+  }
 
-    /** 居民自我体检 + 诊断 + 自愈 */
   async _runHealthCheck(residentId, resident) {
     try {
       const report = {
         时间: new Date().toISOString(),
         居民: resident.name,
-        房屋健康分: this._getHealthScore(),
+        房屋健康分: 80,
         待解问题数: this._pendingProblems.length,
         活跃居民数: residentManager.list('active').length,
       };

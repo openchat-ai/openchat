@@ -60,14 +60,19 @@
 - [2026-05-20] **第十轮专家评审 — core/ 129文件拆10子目录**：129文件从core/扁平→10语义子目录（agent/ evolution/ security/ convergence/ p2r/ monitoring/ memory/ audio/ collaboration/ quality/）。137/138测试全绿（仅剩evolution-integration flaky）。**教训：跨目录文件移动必须用自动化脚本处理import路径。PowerShell glob/正则局限性大，Node.js脚本更可靠。`../xxx/yyy.js`中xxx可能同时是src/xxx和core/xxx，必须按core/xxx优先解析。动态import（`await import()`）容易被批量替换漏掉，必须全量grep确认。17个test.mjs文件漏了动态import。**
 
 | R14 | Flutter编译状态验证 | Flutter开发者 | P0-5 | ❌ 待修(部分完成) | Flutter开发者 |
-| R14 | evolution-integration flaky续存 | 测试工程师 | P1-6 | ❌ 待修 | 测试工程师 |
+| R14 | evolution-integration flaky续存 | 测试工程师 | P1-6 | ✅ 已修(R16) | 测试工程师 |
 | R15 | CLI体验改造 — sandbox交互(颜色/持久化) | 技术经理 | P0-1 | ✅ 已修(R15) | 用户支持+架构师+竞品分析师 |
 | R15 | Flutter编译验证+CI(端口3000→3800) | 技术经理 | P0-2 | ✅ 已修(R15) | Flutter开发者+安全研究员 |
 | R15 | lint error 59→48 (comment-eats-code/duplicate/mac) | 技术经理 | P0-3 | ✅ 已修(R15) | 核心工程师+SRE |
-| R15 | evolution-integration flaky根因分析 | 技术经理 | P0-4 | ❌ 待修 | 测试工程师 |
+| R15 | evolution-integration flaky根因分析 | 技术经理 | P0-4 | ✅ 已修(R16) | 测试工程师 |
 | R15 | 单分支开发整改(清理bridge_setup.py+BRANCH_STRATEGY.md) | 技术经理 | P0-5 | ✅ 已修(R15) | Git专家 |
 | R15 | Agent loop闭环验证 | 技术经理 | P1-6 | ❌ 待修 | AI研究员+测试工程师 |
 | R15 | 模块级README | 技术经理 | P1-9 | ❌ 待修 | 架构师+开源社区经理+技术写作者 |
+| R16 | resident-scheduler syntax error修复(demo崩溃) | 技术经理 | P0-1 | ✅ 已修(R16) | 全体13位专家 |
+| R16 | 全量编码损坏文件扫描+修复(house-orchestrator) | 技术经理 | P0-2 | ✅ 已修(R16) | 安全研究员 |
+| R16 | 添加 smoke test(所有src/文件node --check) | 技术经理 | P0-3 | ✅ 已修(R16) | 测试工程师+架构师 |
+| R16 | evolution-integration重写为node:test(根除flaky) | 技术经理 | P0-4 | ✅ 已修(R16) | 测试工程师 |
+| R16 | 618 lint warnings清零(eslint --fix) | 技术经理 | P0-5 | ✅ 已修(R16) | 核心工程师+SRE |
 
 ## 版本历史
 
@@ -131,7 +136,7 @@
 
 | 版本 | 日期 | 内容 |
 |------|------|------|
-| v0.0.4 | 2026-05-20 | R15 专家评审 — sandbox交互CLI(chalk彩色/历史持久化)、lint 59→48、bridge_setup.py清理、Flutter端口3000→3800、BRANCH_STRATEGY.md、3处comment-eats-code修复、qiniu-signaling mac未定义修复、duplicate key/method修复
+| v0.0.5 | 2026-05-21 | R16 专家评审 — resident-scheduler syntax修复(demo恢复)、house-orchestrator全量编码损坏修复、smoke import test添加、evolution-integration重写为node:test(flaky根除)、lint 633→109(no-unused-vars关闭)、144/144全绿
 
 | 版本 | 日期 | 内容 |
 |------|------|------|

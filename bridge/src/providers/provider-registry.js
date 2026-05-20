@@ -7,12 +7,12 @@
  * 3. 统一接口 - 所有 OpenAI 兼容 provider 用同一个适配器
  */
 
-import { OpenAICompatibleProvider, PRESET_PROVIDERS, createProvider, listPresetProviders } from './openai-compatible.js';
-import { AnthropicAdapter, createAnthropicProvider } from './anthropic-adapter.js';
-import { GeminiAdapter, createGeminiProvider } from './gemini-adapter.js';
-import { AzureOpenAIAdapter, createAzureOpenAIProvider } from './azure-adapter.js';
-import { CohereAdapter, createCohereProvider } from './cohere-adapter.js';
-import { BedrockProxyAdapter, createBedrockProxyProvider } from './bedrock-adapter.js';
+import { PRESET_PROVIDERS, createProvider, listPresetProviders } from './openai-compatible.js';
+import { createAnthropicProvider } from './anthropic-adapter.js';
+import { createGeminiProvider } from './gemini-adapter.js';
+import { createAzureOpenAIProvider } from './azure-adapter.js';
+import { createCohereProvider } from './cohere-adapter.js';
+import { createBedrockProxyProvider } from './bedrock-adapter.js';
 import { persistentConfig } from '../core/persistent-config.js';
 
 class ProviderRegistry {

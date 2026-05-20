@@ -285,7 +285,7 @@ class BodyOrchestrator {
   }
 
   /**
-   * 娓呯悊鎴块棿锛氭竻鐞?workspace 涓繃鏈熸枃浠讹紙瓒呰繃 7 澶╋級
+   * Clean house workspace expired files (over 7 days)
    */
   cleanBody(maxAgeMs = 7 * 86400000) {
     if (!this.house) return 0;
@@ -302,15 +302,15 @@ class BodyOrchestrator {
             fs.unlinkSync(fp);
             cleaned++;
           }
-        } catch (e) { logger.warn('[IGNORE] 鍗曟枃浠跺け璐ヤ笉褰卞搷鏁翠綋: ' + (e?.message || '')); }
+        } catch (e) { logger.warn('[IGNORE] single file error: ' + (e?.message || '')); }
       }
-    } catch (e) { logger.warn('[IGNORE] 鐩綍鍙兘涓嶅瓨鍦?: ' + (e?.message || '')); }
-    if (cleaned > 0) logger.info(`[Body] 娓呯悊 ${cleaned} 涓繃鏈熷伐浣滄枃浠禶);
+    } catch (e) { logger.warn('[IGNORE] directory may not exist: ' + (e?.message || '')); }
+    if (cleaned > 0) logger.info(`[Body] cleaned ${cleaned} expired work files`);
     return cleaned;
   }
 
   /**
-   * 澶囦唤鎴块棿锛氬皢鏁翠釜 house 鐩綍鎵撳寘鍒?.openchat/backups/
+   * Backup body: pack house directory to .openchat/backups/
    */
   backupBody() {
     if (!this.house) return null;
@@ -337,39 +337,36 @@ class BodyOrchestrator {
     }
   }
 
-  /** 鏀堕泦 workspace 鎵€鏈夋枃浠跺唴瀹?*/
+  /** Collect all workspace files */
   _collectWorkspace() {
     const wsDir = this.house.workspace.dir();
     const files = {};
     try {
       for (const f of fs.readdirSync(wsDir)) {
         const fp = path.join(wsDir, f);
-        try { files[f] = fs.readFileSync(fp, 'utf8'); } catch (e) { logger.warn('[IGNORE] 璺宠繃: ' + (e?.message || '')); }
+        try { files[f] = fs.readFileSync(fp, 'utf8'); } catch (e) { logger.warn('[IGNORE] skip: ' + (e?.message || '')); }
       }
-    } catch (e) { logger.warn('[IGNORE] 绌虹洰褰?: ' + (e?.message || '')); }
+    } catch (e) { logger.warn('[IGNORE] empty directory: ' + (e?.message || '')); }
     return files;
   }
 
   /**
-   * P2R-S: 灞呮皯灏濊瘯杩涘寲浠ｇ爜 鈥?閫氳繃 SafeEvolution 鎻愭
-   *
-   * 灞呮皯涓嶇洿鎺ュ啓浠ｇ爜锛岃€屾槸鐢熸垚鎻愭锛堜粠鑷繁鐨?LLM 涓婁笅鏂囬噷浜у嚭锛?
-   * 褰撳墠鏈€灏忓寲瀹炵幇锛氬熀浜庡眳姘戠被鍨嬬敓鎴愯薄寰佹€ф敼鍔?
+   * P2R-S: resident tries to evolve code via SafeEvolution
    */
   async _evolve(resident, action) {
     if (!this.safeEvolution) return;
 
-    // 鍗?Bridge 妯″紡鏃?P2P 楠岃瘉鑰咃紝璺宠繃浠ｇ爜杩涘寲
+    // Skip code evolution in standalone Bridge mode (no P2P validators)
     if (!this.p2p || this.p2p.connectedPeers?.size === 0) {
       return;
     }
 
-    // 灞呮皯浠庤嚜韬搴︿骇鍑烘敼杩涙彁璁?
+    // Resident generates improvement proposals from own perspective
     const targets = [
-      { file: 'src/core/resident-manager.js',    hint: '浼樺寲灞呮皯鍒涘缓閫昏緫' },
-      { file: 'src/core/resident-scheduler.js',  hint: '浼樺寲璋冨害闂撮殧' },
-      { file: 'src/p2p/swarm.js',                hint: '浼樺寲杩炴帴绠＄悊' },
-      { file: 'src/core/house-orchestrator.js',  hint: '浼樺寲鍋ュ悍妫€鏌? },
+      { file: 'src/core/resident-manager.js',    hint: 'optimize resident creation logic' },
+      { file: 'src/core/resident-scheduler.js',  hint: 'optimize scheduling interval' },
+      { file: 'src/p2p/swarm.js',                hint: 'optimize connection management' },
+      { file: 'src/core/house-orchestrator.js',  hint: 'optimize health check' },
     ];
     const target = targets[Math.floor(Math.random() * targets.length)];
 
@@ -383,16 +380,14 @@ class BodyOrchestrator {
       currentContent = fs.readFileSync(path.join(projectRoot, target.file), 'utf8');
       oldHash = cryptoLib.createHash('sha256').update(currentContent).digest('hex');
     } catch (e) {
-      // 鏂囦欢鍙兘涓嶅瓨鍦紝璺宠繃
       return;
     }
 
-    // 鏈€灏忓寲鏀瑰姩锛氭坊鍔犱竴琛屾敞閲婏紙瀹夊叏銆佸彲璇嗗埆锛?
-    const newContent = currentContent + `\n// [P2R-S] 灞呮皯 ${resident.name}(${action.action}) 浜?${new Date().toISOString().slice(0, 19)} 鏍囪`;
+    const newContent = currentContent + `\n// [P2R-S] resident ${resident.name}(${action.action}) @${new Date().toISOString().slice(0, 19)}`;
 
     residentManager.addActivity(resident.id, {
       type: 'evolution_attempt',
-      message: `灏濊瘯鏀硅繘 ${target.file} (${action.desc})`,
+      message: `attempt to improve ${target.file} (${action.desc})`,
     });
 
     await this.safeEvolution.propose({
@@ -407,7 +402,7 @@ class BodyOrchestrator {
 }
 
 /**
- * 璁＄畻缁煎悎鍋ュ悍鍒嗭紙閲囬泦 + P2P锛?
+ * Compute composite health score (local + P2P)
  */
 function computeHealthScore(baseline, p2pPeers) {
   const mem = baseline.memoryUsage ? Math.max(0, 100 - (baseline.memoryUsage / 1024 ** 3) * 20) : 80;
@@ -416,16 +411,12 @@ function computeHealthScore(baseline, p2pPeers) {
 
   const score = Math.round(mem * 0.4 + cpu * 0.3 + p2p * 0.3);
   const alerts = [];
-  if (mem < 40) alerts.push('鍐呭瓨涓嶈冻');
-  if (cpu < 40) alerts.push('CPU 杩囬珮');
-  if (p2p < 30) alerts.push('P2P 瀛ょ珛');
+  if (mem < 40) alerts.push('low memory');
+  if (cpu < 40) alerts.push('high CPU');
+  if (p2p < 30) alerts.push('P2P isolated');
 
   return { score, alerts, components: { memory: mem, cpu, p2p } };
 }
 
 export { BodyOrchestrator, computeHealthScore };
 export default BodyOrchestrator;
-// [P2R-S] 灞呮皯 绠″(repair) 浜?2026-05-04T05:59:41 鏍囪
-// [P2R-S] 灞呮皯 绠″(repair) 浜?2026-05-04T06:00:38 鏍囪
-// [P2R-S] 灞呮皯 绠″(repair) 浜?2026-05-04T06:00:41 鏍囪
-// [P2R-S] 灞呮皯 绠″(repair) 浜?2026-05-04T06:00:53 鏍囪

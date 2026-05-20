@@ -159,8 +159,6 @@ export class SecuritySandbox {
    * 获取命令权限级别
    */
   getPermissionLevel(command) {
-    const cmd = command.trim().split(' ')[0];
-    
     if (this.config.whitelistedCommands.some(w => command.startsWith(w))) {
       return 'white';
     }
@@ -179,11 +177,7 @@ export class SecuritySandbox {
     // 这里应该是真实的沙盒执行逻辑
     // 但在当前实现中，我们模拟这个过程
     
-    // 添加超时限制
-    const timeout = options.timeout || this.config.maxTimeout;
-    
-    // 模拟执行
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       setTimeout(() => {
         // 模拟命令执行结果
         const mockResults = {
