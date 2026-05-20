@@ -258,12 +258,13 @@ class AdaptiveCompressor {
 
     // 简单预估：基于数据特征
     let estimated = 0.5; // 默认预估
+    let uniqueness = 0;
 
     // 检查是否是重复数据
     const str = data.toString();
     if (str.length > 100) {
       const uniqueChars = new Set(str).size;
-      const uniqueness = uniqueChars / str.length;
+      uniqueness = uniqueChars / str.length;
       estimated = 0.3 + (uniqueness * 0.5);
     }
 

@@ -211,8 +211,8 @@ const residents = residentManager.list(null);
   // ================== 居民决策 ==================
 
   _processResident(resident) {
-    // 无问题待解时，不调 LLM
-    return;
+    const id = resident.id || resident.name;
+    const traits = resident.traits || {};
 
     // 已达并发上限 → 跳过
     const running = this._residentAgentCount.get(id) || 0;
@@ -551,6 +551,8 @@ ${qt}`
     const config = this._buildAgentConfig(resident);
     const startTime = Date.now();
     let agent = null;
+    const roleNames = { decomposer: '分解者', solver: '求解者', reviewer: '审查者', decomp_audit: '分解审核员' };
+    const roleName = roleNames[role] || role;
 
     try {
       agent = await multiAgentCoordinator.spawnAgent(agentId, config);
@@ -913,9 +915,6 @@ ${rolePrompt}
           logger.info(`[P2R-K] 审查后处理失败: ${e.message}`);
         }
       }
-
-      const roleNames = { decomposer: '分解者', solver: '求解者', reviewer: '审查者', decomp_audit: '分解审核员' };
-      const roleName = roleNames[role] || role;
 
       residentManager.addActivity(residentId, {
         type: 'task_done',

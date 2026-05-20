@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
-import { EvolutionEngine } from '../evolution-engine.js';
+import { EvolutionEngine } from '../evolution/evolution-engine.js';
 import fs from 'fs';
 import path from 'path';
 

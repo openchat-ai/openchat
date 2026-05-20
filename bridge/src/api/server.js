@@ -36,7 +36,7 @@ import voiceRouter from './routes/voice.js';
 import signalingRouter from './routes/signaling.js';
 import residentsRouter from './routes/residents.js';
 import sageRouter from './routes/sage.js';
-import { residentManager } from '../core/resident-manager.js';
+import { residentManager } from '../core/agent/resident-manager.js';
 
 class APIServer {
   constructor(options = {}) {

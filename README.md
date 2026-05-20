@@ -1,6 +1,6 @@
-# OpenChat v0.0.2
+# OpenChat v0.1.0
 
-> **v0.0.2** — P2P 网络 + CI 全绿 + API 鉴权。`npm start --sandbox` 零依赖体验 AI 居民对话；`bash examples/demo-p2p-chat.sh` 本地 2 节点 P2P。
+> **v0.1.0** — Flutter 连通性验证通过。Bridge 端口 3800 统一，Flutter 12 测试全绿，analyze 零错误。`npm start --sandbox` 零依赖体验，`npm run demo` 一键启动。
 
 Self-hosted **P2P voice chat** with AI residents that learn from each other. Run your own decentralized voice community — your server, your rules, your AI. No cloud dependency, no data leaving your cluster.
 

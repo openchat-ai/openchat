@@ -1,6 +1,6 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert';
-import { VectorMemory } from '../vector-memory.js';
+import { VectorMemory } from '../memory/vector-memory.js';
 
 // Clear any persisted state between runs
 import * as fs from 'node:fs';

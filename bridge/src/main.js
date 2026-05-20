@@ -913,7 +913,7 @@ export class Bridge {
     // Print welcome once
     const pname = this.getPrompt();
     console.log('');
-    console.log('  OPENCHAT BRIDGE v0.0.2');
+    console.log('  OPENCHAT BRIDGE v0.1.0');
     if (pname) console.log(`  [${pname}]`);
     console.log('  输入 /help 查看命令列表，或直接开始聊天\n');
 

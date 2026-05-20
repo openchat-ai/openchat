@@ -17,6 +17,7 @@ export class LocalAiProvider {
     this.command = config.command;
     this.args = config.args || [];
     this.endpoint = config.endpoint;
+    this.model = config.model || 'default';
     
     if (this.mode === 'command') {
       if (!this.command) {
@@ -125,7 +126,7 @@ export class LocalAiProvider {
     const filteredMessages = messages.filter(m => m.role !== 'system');
 
     const requestBody = {
-      model: model || 'default',
+      model: this.model,
       messages: filteredMessages,
       stream: false
     };

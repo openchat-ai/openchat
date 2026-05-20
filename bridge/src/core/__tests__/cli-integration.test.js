@@ -1,4 +1,4 @@
-import EvolutionCLI from '../evolution-cli.js';
+import EvolutionCLI from '../evolution/evolution-cli.js';
 
 async function runCLIIntegrationTests() {
   console.log('🧪 开始 Phase 6 CLI 集成测试...\n');

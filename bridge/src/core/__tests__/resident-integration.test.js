@@ -1,7 +1,7 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert';
-import { residentManager } from '../resident-manager.js';
-import { EvolutionMemory } from '../evolution-memory.js';
+import { residentManager } from '../agent/resident-manager.js';
+import { EvolutionMemory } from '../evolution/evolution-memory.js';
 import { persistentConfig } from '../persistent-config.js';
 
 describe('resident integration', () => {

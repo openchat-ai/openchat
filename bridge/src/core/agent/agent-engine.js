@@ -195,8 +195,9 @@ export class AgentEngine {
         const match = content.match(/ACTION:\s*(\w+)\s*({.*})/);
         if (match) {
           const [, toolName, argsJson] = match;
+          let args;
           try {
-            const args = JSON.parse(argsJson);
+            args = JSON.parse(argsJson);
 
             onEvent({ type: AgentEvents.TOOL_CALL, tool: toolName, args, iteration, mode: 'text' });
 
