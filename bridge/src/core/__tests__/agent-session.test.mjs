@@ -8,7 +8,7 @@
 
 import { test, describe, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert';
-import { AgentSession, AGENT_STATES } from '../agent-session.js';
+import { AgentSession, AGENT_STATES } from '../agent/agent-session.js';
 
 describe('AgentSession', () => {
   describe('构造函数', () => {

@@ -36,7 +36,7 @@ class MockEvolutionMemory {
   remember = () => true;
 }
 
-const { AgentEngine, AgentEvents } = await import('../agent-engine.js');
+const { AgentEngine, AgentEvents } = await import('../agent/agent-engine.js');
 
 describe('AgentEngine', () => {
   function makeEngine(opts = {}) {
