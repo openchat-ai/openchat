@@ -13,3 +13,18 @@ jobs:
       - run: npm ci
       - run: npx eslint src/ --quiet
       - run: npm test
+
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bridge
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '24' }
+      - run: npm ci
+      - name: Verify npm pack
+        run: npm pack --dry-run
+      - name: Build Docker image
+        run: docker build -t openchat-bridge .

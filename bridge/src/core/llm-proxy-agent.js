@@ -8,7 +8,7 @@
  * 提供方启动时广播 LLM_AVAILABLE，并响应 LLM_PROVIDER_QUERY。
  */
 
-import { sessionManager } from '../session/session-manager.js';
+import { sessionManager } from './session-manager.js';
 import { persistentConfig } from './persistent-config.js';
 import { MessageType, createLLMProxyResponse, createLLMAvailableMessage, createLLMProviderQueryMessage } from '../p2p/messages.js';
 import logger from './logger.js';

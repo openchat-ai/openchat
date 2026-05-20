@@ -3,7 +3,8 @@
  * 监控模块入口
  */
 
-const healthCheck = require('./health-check.js');
+import { check, quickCheck } from './monitoring-health-check.js';
+const healthCheck = { check, quickCheck };
 const metrics = require('../api/middleware/metrics.js');
 
 /**

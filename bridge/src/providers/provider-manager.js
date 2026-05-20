@@ -5,7 +5,7 @@ import * as os from 'os';
 import logger from '../core/logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PROVIDERS_PATH = path.join(__dirname, '../config/provider-models.json');
+const PROVIDERS_PATH = path.join(__dirname, '../core/provider-models.json');
 
 // 运行时配置路径
 const RUNTIME_CONFIG_PATH = path.join(os.homedir(), '.openchat', 'config.json');

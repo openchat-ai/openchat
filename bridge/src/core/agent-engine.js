@@ -1,6 +1,6 @@
 import { pluginManager } from '../plugins/plugin-manager.js';
 import { memoryManager } from '../memory/memory-manager.js';
-import { sessionManager } from '../session/session-manager.js';
+import { sessionManager } from './session-manager.js';
 import { PromptBuilder } from './prompt-builder.js';
 import { agentMonitor } from './agent-monitor.js';
 import { QualityChecker, Corrector } from './quality-check-system.js';

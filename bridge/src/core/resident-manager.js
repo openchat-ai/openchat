@@ -321,9 +321,15 @@ export class ResidentManager extends EventEmitter {
     ];
 
     const MAX_ITERATIONS = 10;
+    const ITERATION_TIMEOUT = Math.max(Math.floor((timeout || 30000) / MAX_ITERATIONS), 5000);
+    const MAX_ACCUMULATED_TOKENS = (maxTokens || 2048) * MAX_ITERATIONS;
+    let accumulatedTokens = { prompt: 0, completion: 0, total: 0 };
 
     for (let i = 0; i < MAX_ITERATIONS; i++) {
-      const response = await this._llmCall(cotMessages, model, temperature, maxTokens, timeout);
+      const response = await this._llmCall(cotMessages, model, temperature, Math.min(maxTokens || 2048, MAX_ACCUMULATED_TOKENS - accumulatedTokens.total), ITERATION_TIMEOUT);
+      accumulatedTokens.prompt += response.tokens?.prompt || 0;
+      accumulatedTokens.completion += response.tokens?.completion || 0;
+      accumulatedTokens.total += response.tokens?.total || 0;
       const content = (response.content || '').trim();
 
       const toolCallMatch = content.match(/TOOL_CALL:\s*(\{.*\})/s);
@@ -343,7 +349,7 @@ export class ResidentManager extends EventEmitter {
         return {
           content: args?.answer || '',
           model: response.model,
-          tokens: response.tokens,
+          tokens: accumulatedTokens,
           cotIterations: i + 1,
           finished: true,
         };

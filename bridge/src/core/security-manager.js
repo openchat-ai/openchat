@@ -1,4 +1,4 @@
-import { SecuritySandbox } from './sandbox.js';
+import { SecuritySandbox } from './security-sandbox.js';
 
 /**
  * 安全管理器 - 统一管理 Agent 的安全措施

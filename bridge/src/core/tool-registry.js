@@ -1,5 +1,34 @@
 import { vectorMemory } from './vector-memory.js';
 import logger from './logger.js';
+import { evaluate } from 'mathjs';
+import { URL } from 'url';
+
+function isPrivateIP(hostname) {
+  const parts = hostname.split('.');
+  if (parts.length !== 4) return true;
+  const nums = parts.map(Number);
+  if (nums.some(isNaN)) return true;
+  if (nums[0] === 10) return true;
+  if (nums[0] === 127) return true;
+  if (nums[0] === 169 && nums[1] === 254) return true;
+  if (nums[0] === 172 && nums[1] >= 16 && nums[1] <= 31) return true;
+  if (nums[0] === 192 && nums[1] === 168) return true;
+  return false;
+}
+
+function validateUrl(raw) {
+  let parsed;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    return { valid: false, error: 'invalid URL' };
+  }
+  if (!/^https?:$/.test(parsed.protocol)) return { valid: false, error: 'only http/https allowed' };
+  if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.hostname === '0.0.0.0') return { valid: false, error: 'local addresses blocked' };
+  if (parsed.hostname === '[::1]') return { valid: false, error: 'local addresses blocked' };
+  if (isPrivateIP(parsed.hostname)) return { valid: false, error: 'private addresses blocked' };
+  return { valid: true, url: parsed };
+}
 
 class Tool {
   constructor(name, description, execute) {
@@ -31,6 +60,8 @@ class ToolRegistry {
       'Fetch content from a URL. Input: a URL string. Output: the text content of the page.',
       async ({ url }) => {
         if (!url) return { error: 'url is required' };
+        const validation = validateUrl(url);
+        if (!validation.valid) return { error: validation.error };
         try {
           const resp = await fetch(url, { signal: AbortSignal.timeout(10000) });
           const text = await resp.text();
@@ -47,7 +78,7 @@ class ToolRegistry {
       async ({ expression }) => {
         if (!expression) return { error: 'expression is required' };
         try {
-          const result = Function(`"use strict"; return (${expression})`)();
+          const result = evaluate(expression);
           return { result };
         } catch (e) {
           return { error: `invalid expression: ${e.message}` };

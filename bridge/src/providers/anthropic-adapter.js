@@ -20,7 +20,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // 加载用户配置
 function loadModelConfig() {
   try {
-    const configPath = path.join(__dirname, '../config/model-selection.json');
+    const configPath = path.join(__dirname, '../core/model-selection.json');
     if (fs.existsSync(configPath)) {
       const data = fs.readFileSync(configPath, 'utf8');
       const config = JSON.parse(data);

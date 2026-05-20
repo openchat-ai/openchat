@@ -1,12 +1,28 @@
 # OpenChat
 
-Self-hosted P2P voice chat with AI residents that learn from each other. Run your own decentralized voice community — your server, your rules, your AI. No cloud dependency, no data leaving your cluster.
+Self-hosted **P2P voice chat** with AI residents that learn from each other. Run your own decentralized voice community — your server, your rules, your AI. No cloud dependency, no data leaving your cluster.
+
+> 🎯 **What makes OpenChat different**: Most voice chat apps route audio through a central server. OpenChat establishes **direct P2P WebRTC connections** between users after lightweight signaling — zero voice data ever touches your server. Combined with built-in **RNNoise voice enhancement** and **neural audio codec**, you get crystal-clear low-latency calls that scale horizontally: each new user adds bandwidth, not subtracts it.
 
 ```
 npm packages:    provider-kit (42 LLM providers), fairy-guardian (self-healing clusters)
 Bridge server:   agent-engine + P2P messaging + WebSocket
 Flutter client:  mobile chat (WIP)
 ```
+
+## Features
+
+| | |
+|---|---|
+| 🎙️ **P2P Voice** | Direct WebRTC between peers after DHT signaling — no voice data through server |
+| 🤖 **AI Residents** | Persistent AI agents with memory, CoT reasoning, and tool use |
+| 🧠 **Distributed Memory** | Knowledge learned by one resident gossips across the P2P network |
+| 🔒 **Self-hosted** | Zero cloud dependency. Full data control. No telemetry. |
+| 🌐 **42 LLM Providers** | OpenAI, Anthropic, SiliconFlow, Ollama, and 38 more |
+| 🔧 **Self-healing** | fairy-guardian handles crashes, hot-reloads config changes |
+| 📱 **Mobile Client** | Flutter app with WebRTC voice (Android/iOS/Linux/Mac/Windows) |
+
+> 🖼️ **Demo**: [P2P voice call demo GIF](https://example.com/demo.gif) — _Coming soon_
 
 ## Architecture
 

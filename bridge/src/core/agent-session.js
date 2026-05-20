@@ -2,7 +2,7 @@ import { messageBus, MESSAGE_TYPES } from './message-bus.js';
 import { persistentConfig } from '../core/persistent-config.js';
 import { providerManager, PRESET_PROVIDERS, DEFAULT_PROVIDER } from '../providers/provider-manager.js';
 import { EvolutionEngine } from './evolution-engine.js';
-import { securityManager } from '../security/security-manager.js';
+import { securityManager } from './security-manager.js';
 import { ResponseParser } from './response-parser.js';
 import { ErrorClassifier } from './error-classifier.js';
 import { ContentAnalyzer } from './content-analyzer.js';

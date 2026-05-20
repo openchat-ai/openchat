@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 import logger from './logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const CONFIG_PATH = path.join(__dirname, '../config/model-selection.json');
+const CONFIG_PATH = path.join(__dirname, '../core/model-selection.json');
 
 /**
  * 模型选择器 - 根据任务复杂度智能选择模型和配置

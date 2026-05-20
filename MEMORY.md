@@ -50,6 +50,7 @@
 
 - [2026-05-20] **第五轮专家评审 — HTTP 路径统一 + 首次全绿**：测试从 98/98 推进到 120/120（第五轮 98→第六轮 120，最终全绿）。完成 5 项 P0 执行：Express 监听端口 3800，废弃 raw HTTP server，所有衍生端口以 3800 为基准。**教训：大量遗留代码（startServer 中的 ~250 行路由/WebSocket 逻辑）在首次 edit 时未完全匹配删除，因文件行号已因前序 edit 偏移。大段替换时必须用唯一匹配锚点（如 `}` + 下一方法签名）。**
 - [2026-05-20] **第七轮专家评审 — console.log→pino 结构化日志**：114→115 测试（全绿）。完成 7 轮共 29 项 P0。134 个文件批量替换 console.log → logger.info/warn/error，pino 集成带敏感数据脱敏。**教训：PowerShell `Set-Content -NoNewline` 会以错误编码写入文件，导致 UTF-8 多字节字符损坏。文件修改必须统一用 Node.js `fs.writeFileSync(file, content, 'utf-8')`。`pino.transport()` 创建 worker 线程会阻止 Node.js test runner 退出，必须用同步 pino API。**
+- [2026-05-20] **第八轮专家评审 — 安全加固+CoT+测试+目录精简**：128/128 全绿。完成 7 项 P0 执行：mathjs 替代 Function()、SSRF 防护、CoT 超时/token门禁、14 个 tool-registry 测试、src 目录 22→11、README 差异化描述、CI npm pack+docker build。**教训：大量目录合并涉及跨文件 import 路径更新，必须先 grep 所有引用再移动。`git stash` 可用于对比 pre-existing test failures 与引入的失败。**
 
 
 ## 专家意见跟踪
@@ -78,3 +79,10 @@
 | R6 | eval-report残留 | Git专家 | 清理+.gitignore | ✅ 已修(R7) | Git专家 |
 | R7 | console.log→pino结构化日志 | SRE/运维 | P0-1 替换134文件 | ✅ 已修(R7) | 测试工程师 |
 | R7 | AI居民CoT+tool-use | AI研究员 | P0-4 tool-registry + CoT loop | ✅ 已修(R7) | 核心工程师 |
+| R8 | calculate Function()构造器RCE | 安全研究员/核心工程师 | P0-1 mathjs替代 | ✅ 已修(R8) | 安全研究员 |
+| R8 | web_fetch SSRF无防护 | 安全研究员/核心工程师 | P0-2 URL验证+内网阻断 | ✅ 已修(R8) | 安全研究员 |
+| R8 | CoT无inter-iteration超时 | 核心工程师/AI研究员 | P0-3 per-iteration timeout+token门禁 | ✅ 已修(R8) | 核心工程师 |
+| R8 | tool-registry+CoT零测试 | 测试工程师 | P0-4 14个测试(128→128) | ✅ 已修(R8) | 测试工程师 |
+| R8 | src目录22个膨胀 | 架构师 | P0-5 22→11目录合并 | ✅ 已修(R8) | 架构师 |
+| R8 | README未突出P2P语音差异 | 竞品分析师/VC | P0-6 差异化描述+Features表格 | ✅ 已修(R8) | 竞品分析师 |
+| R8 | CI无构建产出验证 | SRE/运维 | P0-7 npm pack+docker build | ✅ 已修(R8) | SRE/运维 |

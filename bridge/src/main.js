@@ -5,13 +5,13 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { DEFAULT_PORT, getMainPort } from './constants.js';
-import { sessionManager } from './session/session-manager.js';
+import { sessionManager } from './core/session-manager.js';
 
 // 新增：REST API 服务器（31 个端点）
 // 使用动态 import 加载 CommonJS 模块
 let apiServer = null;
 import { executeCommand, commands } from './cli/commands.js';
-import { MessageBuilder, MessageType } from './protocol/message.js';
+import { MessageBuilder, MessageType } from './core/protocol-message.js';
 import { router } from './core/router.js';
 import { initCore } from './core/handlers.js';
 import { CLIGateway, WSGateway } from './gateway/base.js';

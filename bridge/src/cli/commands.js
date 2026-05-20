@@ -1,5 +1,5 @@
-import { MessageBuilder, MessageType } from '../protocol/message.js';
-import { sessionManager } from '../session/session-manager.js';
+import { MessageBuilder, MessageType } from '../core/protocol-message.js';
+import { sessionManager } from '../core/session-manager.js';
 import { processInput } from '../core/natural-language-parser.js';
 import { persistentConfig } from '../core/persistent-config.js';
 import { multiAgentCoordinator } from '../core/multi-agent-coordinator.js';
@@ -8,13 +8,13 @@ import { memoryManager } from '../memory/memory-manager.js';
 import { vectorStore } from '../memory/vector-store.js';
 import { embeddingService } from '../memory/embedding-service.js';
 import { hybridRetriever } from '../memory/hybrid-retriever.js';
-import { persistentStore } from '../storage/persistent-store.js';
+import { persistentStore } from '../core/persistent-store.js';
 import { EvolutionEngine } from '../core/evolution-engine.js';
 import { EvolutionMemory } from '../core/evolution-memory.js';
 import { socialConnector } from '../core/social-connector.js';
 import { knowledgeNetwork } from '../core/knowledge-network.js';
 import { CommunityManager } from '../core/community-manager.js';
-import { securityManager } from '../security/security-manager.js';
+import { securityManager } from '../core/security-manager.js';
 
 async function fetchLocalModels(providerName) {
   if (providerName === 'ollama-cloud' || providerName === 'ollama') {

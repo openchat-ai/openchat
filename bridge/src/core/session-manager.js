@@ -1,5 +1,5 @@
 import { createProvider } from '../providers/ai-provider.js';
-import { persistentStore } from '../storage/persistent-store.js';
+import { persistentStore } from './persistent-store.js';
 import { persistentConfig } from '../core/persistent-config.js';
 import logger from '../core/logger.js';
 
