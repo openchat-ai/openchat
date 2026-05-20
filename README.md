@@ -82,9 +82,18 @@ npm start              # → HTTP: localhost:3800, WS: /ws, Signaling: /signalin
 ### 第 6 步：运行测试
 
 ```bash
-npm test                # 120 tests (core + P2P + benchmarks)
+npm test                # 143 tests (core + P2P + benchmarks)
 npm run test:all        # 全部测试含 contract（需运行 Bridge）
 npm run test:watch      # 文件监听模式
+```
+
+### 第 7 步：体验 P2P 聊天 demo
+
+```bash
+bash examples/demo-p2p-chat.sh
+# 启动 2 个节点（端口 3801/3802）
+# 验证: curl http://localhost:3801/health
+#        curl http://localhost:3802/health
 ```
 
 ### （可选）Flutter 客户端

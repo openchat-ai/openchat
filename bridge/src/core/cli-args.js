@@ -12,6 +12,7 @@ import logger from './monitoring/logger.js';
 export function parseCliArgs(argv = process.argv) {
   const args = argv.slice(2);
   const savedBridge = persistentConfig.getBridgeConfig();
+  const isSandbox = args.includes('--sandbox');
   const isInteractive = args.includes('--cli') || args.includes('-i');
 
   const isHeadless = savedBridge.mode === 'cli' && !isInteractive ? false : !isInteractive;
@@ -146,6 +147,7 @@ export function parseCliArgs(argv = process.argv) {
     isMain,
     isNesting,
     isHeadless,
+    isSandbox,
     isInteractive,
     COMMANDS
   };

@@ -285,6 +285,24 @@ class Bridge {
 
     initCore();
 
+    // Sandbox mode: skip P2P, use mock LLM, show CLI directly
+    if (CONFIG.isSandbox) {
+      logger.info('[Sandbox] 沙箱模式 — 内建 mock LLM，无需外部网络');
+      forge.setLLMHandler(async (q) => {
+        const replies = [
+          '你好！我是 AI 居民小明。',
+          '我在思考你刚才的问题...',
+          '我觉得可以试试这个方案。',
+          '好的，我记下来了。',
+        ];
+        return replies[Math.floor(Math.random() * replies.length)];
+      });
+      // Skip P2P and API server setup
+      this._showDashboard(CONFIG);
+      this.setupHeadlessSignalHandlers();
+      return;
+    }
+
     // Phase 4: 启动 P2P 网络（在 API 服务器之前，以便注入 swarm 实例）
     initTracker.start('p2p');
     try {
