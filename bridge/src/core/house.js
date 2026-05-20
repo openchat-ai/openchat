@@ -77,7 +77,7 @@ class House {
       if (fs.existsSync(metaFile)) {
         return JSON.parse(fs.readFileSync(metaFile, 'utf8'));
       }
-    } catch { /* 忽略解析错误 */ }
+    } catch (e) { logger.warn('[IGNORE] 忽略解析错误: ' + (e?.message || '')); }
     return {
       houseId: this.houseId,
       bridgeId: this.bridgeId,
@@ -125,13 +125,13 @@ class House {
       list: () => {
         try {
           return fs.readdirSync(skillsDir).filter(f => f.endsWith('.json'));
-        } catch { return []; }
+        } catch (e) { logger.warn('[IGNORE] ' + (e?.message || '')); return []; }
       },
       get: (name) => this._readJson(`skills/${name}.json`, null),
       save: (name, data) => this._writeJson(`skills/${name}.json`, data),
       remove: (name) => {
         const file = path.join(this._baseDir, 'skills', `${name}.json`);
-        try { fs.unlinkSync(file); return true; } catch { return false; }
+        try { fs.unlinkSync(file); return true; } catch (e) { logger.warn('[IGNORE] ' + (e?.message || '')); return false; }
       },
     };
   }
@@ -142,11 +142,11 @@ class House {
     return {
       dir: () => wsDir,
       list: () => {
-        try { return fs.readdirSync(wsDir); } catch { return []; }
+        try { return fs.readdirSync(wsDir); } catch (e) { logger.warn('[IGNORE] ' + (e?.message || '')); return []; }
       },
       read: (name) => {
         const file = path.join(wsDir, name);
-        try { return fs.readFileSync(file, 'utf8'); } catch { return null; }
+        try { return fs.readFileSync(file, 'utf8'); } catch (e) { logger.warn('[IGNORE] ' + (e?.message || '')); return null; }
       },
       write: (name, content) => {
         const file = path.join(wsDir, name);
@@ -155,7 +155,7 @@ class House {
       },
       remove: (name) => {
         const file = path.join(wsDir, name);
-        try { fs.unlinkSync(file); return true; } catch { return false; }
+        try { fs.unlinkSync(file); return true; } catch (e) { logger.warn('[IGNORE] ' + (e?.message || '')); return false; }
       },
     };
   }
@@ -173,7 +173,7 @@ class House {
       if (fs.existsSync(file)) {
         return JSON.parse(fs.readFileSync(file, 'utf8'));
       }
-    } catch { /* 忽略 */ }
+    } catch (e) { logger.warn('[IGNORE] 忽略: ' + (e?.message || '')); }
     return defaultValue;
   }
 

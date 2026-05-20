@@ -349,7 +349,7 @@ const BUILTIN_STRATEGIES = [
             }
           }
         }
-      } catch {}
+      } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
       return null;
     }
   }
@@ -562,7 +562,7 @@ export class StrategyRegistry {
             keywordScore: c.keywordScore
           });
         }
-      } catch {}
+      } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
     }
 
     return solutions;
@@ -671,7 +671,7 @@ export class StrategyRegistry {
           }
         }
       }
-    } catch {}
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
   }
 
   _saveState() {
@@ -702,6 +702,6 @@ export class StrategyRegistry {
         updatedAt: Date.now()
       };
       writeFileSync(STRATEGY_FILE, JSON.stringify(data, null, 2));
-    } catch {}
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
   }
 }

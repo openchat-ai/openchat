@@ -1,3 +1,4 @@
+import logger from './logger.js';
 /**
  * InductiveReasoner — 归纳推理
  *
@@ -183,7 +184,7 @@ export class InductiveReasoner {
         if (!isNaN(predicted) && !isNaN(actual) && Math.abs(predicted - actual) < 0.01) {
           passed++;
         }
-      } catch {}
+      } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
     }
     return passed === group.length && passed >= 3;
   }

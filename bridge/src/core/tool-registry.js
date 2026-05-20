@@ -20,8 +20,7 @@ function validateUrl(raw) {
   let parsed;
   try {
     parsed = new URL(raw);
-  } catch {
-    return { valid: false, error: 'invalid URL' };
+  } catch (e) { logger.warn('[IGNORE] ' + (e?.message || '')); return { valid: false, error: 'invalid URL' };
   }
   if (!/^https?:$/.test(parsed.protocol)) return { valid: false, error: 'only http/https allowed' };
   if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.hostname === '0.0.0.0') return { valid: false, error: 'local addresses blocked' };

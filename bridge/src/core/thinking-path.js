@@ -1,3 +1,4 @@
+import logger from './logger.js';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
@@ -298,7 +299,7 @@ export class ThinkingPath {
       if (existsSync(this._deadEndsFile || DEAD_ENDS_FILE)) {
         this.deadEnds = JSON.parse(readFileSync(this._deadEndsFile || DEAD_ENDS_FILE, 'utf8'));
       }
-    } catch {}
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
   }
 
   _save() {
@@ -306,7 +307,7 @@ export class ThinkingPath {
       if (!existsSync(WISDOM_DIR)) mkdirSync(WISDOM_DIR, { recursive: true });
       writeFileSync(this._pathsFile, JSON.stringify(this.paths.slice(-500), null, 2));
       writeFileSync(this._deadEndsFile, JSON.stringify(this.deadEnds.slice(-200), null, 2));
-    } catch {}
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
   }
 
   _startCrossBridgeSync() {
@@ -324,7 +325,7 @@ export class ThinkingPath {
               }
             }
           }
-        } catch {}
+        } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
       }
       const otherDeadEnds = [];
       for (const p of BRIDGE_PORTS) {
@@ -339,7 +340,7 @@ export class ThinkingPath {
               }
             }
           }
-        } catch {}
+        } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
       }
       this.deadEnds = this.deadEnds.concat(otherDeadEnds);
       if (this.paths.length > 500) this.paths = this.paths.slice(-500);

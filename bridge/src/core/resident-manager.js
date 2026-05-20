@@ -65,9 +65,7 @@ function readAll() {
   try {
     const raw = fs.readFileSync(DATA_FILE, 'utf8');
     return JSON.parse(raw);
-  } catch {
-    return [];
-  }
+  } catch (e) { logger.warn('[IGNORE] ' + (e?.message || '')); return []; }
 }
 
 function writeAll(residents) {
@@ -340,8 +338,7 @@ export class ResidentManager extends EventEmitter {
       let parsed;
       try {
         parsed = JSON.parse(toolCallMatch[1]);
-      } catch {
-        return { ...response, cotIterations: i + 1 };
+      } catch (e) { logger.warn('[IGNORE] ' + (e?.message || '')); return { ...response, cotIterations: i + 1 };
       }
 
       const { tool, args } = parsed;

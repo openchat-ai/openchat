@@ -351,7 +351,7 @@ class Bridge {
       // 设置 WS 消息处理器
       this.apiServer.setWSMessageHandler((ws, msg) => {
         this.handleWSMessage(ws, msg).catch(e => {
-          try { ws.send(JSON.stringify({ type: 'error', data: { message: e.message } })); } catch {}
+          try { ws.send(JSON.stringify({ type: 'error', data: { message: e.message } })); } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
         });
       });
       logger.info(`[API] 统一服务器: http://localhost:${CONFIG.port}`);
@@ -510,7 +510,7 @@ class Bridge {
                 subQuestions: p.subQuestions || [],
                 from: data.from,
               });
-            } catch {}
+            } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
 
             // 3. 回复（先返回 KB 能回答的部分）
             const result = {
@@ -961,14 +961,14 @@ class Bridge {
             downCount = 0;
             return;
           }
-        } catch {}
+        } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
         return;
       }
 
       try {
         const resp = await fetch(`http://localhost:${mainPort}/api/status`, { signal: AbortSignal.timeout(3000) });
         if (resp.ok) { downCount = 0; return; }
-      } catch { downCount++; }
+      } catch (e) { logger.warn('[IGNORE] ' + (e?.message || '')); downCount++; }
 
       if (downCount >= 3) {
         logger.info('[FairyMonitor] 🔼 主 Bridge 失联，临时接管主模式');
@@ -1004,7 +1004,7 @@ class Bridge {
           body: JSON.stringify({ port: myPort }),
           signal: AbortSignal.timeout(2000)
         });
-      } catch {}
+      } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
     }, 10000);
   }
 

@@ -249,9 +249,7 @@ class P2PNet extends EventEmitter {
     let peerId;
     try {
       peerId = conn?.peer?.publicKey?.toString('hex') || crypto.randomBytes(8).toString('hex');
-    } catch {
-      peerId = crypto.randomBytes(8).toString('hex');
-    }
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || '')); peerId = crypto.randomBytes(8).toString('hex'); }
 
     logger.info(`[P2P] 新连接来自: ${peerId.slice(0, 8)}... (${info.client ? '客户端' : '服务端'})`);
 

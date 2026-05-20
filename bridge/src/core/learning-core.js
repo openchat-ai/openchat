@@ -191,9 +191,7 @@ this.age = Math.max(this.solvedCount, this.age);
     try {
       const result = this.kb.answer(problem.domain, problem.question);
       return result && result.verified;
-    } catch {
-      return false;
-    }
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || '')); return false; }
   }
 
   // ==================== 求解器选择 ====================
@@ -497,7 +495,7 @@ ${problem.context ? '背景：' + JSON.stringify(problem.context) : ''}
         const prompt = this.teacher.buildExtractPatternPrompt({ question: problem.question, domain: problem.domain, difficulty: problem.difficulty }, String(answer));
         // TeacherLLM 会在下次会话集成时异步调用，先记日志
         logger.info(`[Teacher] 准备提炼规则: ${problem.id}`);
-      } catch {}
+      } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
     }
 
     // SemanticNN 自监督训练
@@ -505,7 +503,7 @@ ${problem.context ? '背景：' + JSON.stringify(problem.context) : ''}
       try {
         const pairs = SemanticNN.generateData(problem.question);
         if (pairs.length) this.semanticNN.trainBatch(pairs);
-      } catch {}
+      } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
     }
 
     // 每10题归纳推理

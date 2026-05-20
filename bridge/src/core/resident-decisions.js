@@ -1,3 +1,4 @@
+import logger from './logger.js';
 /**
  * Resident Decisions — 性格 Archetype + 惯性 + 事件驱动
  *
@@ -569,7 +570,7 @@ export function actionPrompt(resident, action, context = {}) {
   try {
     const match = matchArchetype(t);
     archetypeCN = ARCHETYPES[match.primary.key]?.labelCN || '';
-  } catch { /* fallback */ }
+  } catch (e) { logger.warn('[IGNORE] fallback: ' + (e?.message || '')); }
 
   const archetypeLine = archetypeCN ? `你是个${archetypeCN}。` : '';
 
@@ -622,7 +623,7 @@ export function preferredHouseType(resident) {
   let archetypeKey = '';
   try {
     archetypeKey = matchArchetype(t).primary.key;
-  } catch { /* fallback to trait-based */ }
+  } catch (e) { logger.warn('[IGNORE] fallback to trait-based: ' + (e?.message || '')); }
 
   switch (archetypeKey) {
     case 'socialite': return 'neighbor';

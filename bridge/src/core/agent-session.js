@@ -639,8 +639,7 @@ export class AgentSession {
           const responseText = await response.text();
           try {
             data = JSON.parse(responseText);
-          } catch {
-            data = { error: { message: `HTTP ${status}: ${responseText.substring(0, 200)}` } };
+          } catch (e) { logger.warn('[IGNORE] ' + (e?.message || '')); data = { error: { message: `HTTP ${status }: ${responseText.substring(0, 200)}` } };
           }
 
           if (response.ok) {

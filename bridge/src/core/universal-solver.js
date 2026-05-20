@@ -1,3 +1,4 @@
+import logger from './logger.js';
 /**
  * UniversalSolver — 统一求解引擎
  *
@@ -377,7 +378,7 @@ export class UniversalSolver {
             candidates.push({ rule: name, answer, concept: rule.concept, confidence, difficulty: rule.difficulty });
           }
         }
-      } catch {}
+      } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
     }
 
     // 无规则命中时，用结构推演
@@ -529,7 +530,7 @@ return map[ruleName] || [];
    */
   injectRule(name, concept, matchFn, solveFn, difficulty = 2) {
     this.addConcept(concept, []);
-    this.rules.set(name, { name, concept, solve: (q) => { try { return matchFn(q) ? solveFn(q) : null; } catch { return null; } }, difficulty });
+    this.rules.set(name, { name, concept, solve: (q) => { try { return matchFn(q) ? solveFn(q) : null; } catch (e) { logger.warn('[IGNORE] ' + (e?.message || '')); return null; } }, difficulty });
   }
 
   getStats() {

@@ -182,7 +182,7 @@ class NodeStrategy extends LaunchStrategy {
     for (const [id] of this._children) {
       try {
         this._children.get(id).process.kill('SIGTERM');
-      } catch { /* ignore */ }
+      } catch (e) { logger.warn('[IGNORE] ignore: ' + (e?.message || '')); }
       this._children.delete(id);
     }
     logger.info('[NodeStrategy] 全部进程已关闭');
@@ -233,9 +233,7 @@ class PM2Strategy extends LaunchStrategy {
     try {
       execSync('pm2 --version', { stdio: 'ignore' });
       this._pm2Available = true;
-    } catch {
-      this._pm2Available = false;
-    }
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || '')); this._pm2Available = false; }
     return this._pm2Available;
   }
 
@@ -307,9 +305,7 @@ class PM2Strategy extends LaunchStrategy {
           restartCount: p.pm2_env?.restart_time,
           type: 'pm2',
         }));
-    } catch {
-      return [];
-    }
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || '')); return []; }
   }
 
   /**
@@ -392,9 +388,7 @@ function detectBestStrategy(options = {}) {
     execSync('pm2 --version', { stdio: 'ignore' });
     logger.info('[Launch] 检测到 PM2，使用 pm2 策略');
     return 'pm2';
-  } catch {
-    // fall through
-  }
+  } catch (e) { logger.warn('[IGNORE] // fall through: ' + (e?.message || '')); }
 
   // 2. 默认 Node 直启
   logger.info('[Launch] 未检测到 PM2，使用 node 策略');

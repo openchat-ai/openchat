@@ -77,7 +77,7 @@ export class FairyGossip {
           houseId: String(peer)
         });
         logger.info(`[FairyGossip] 吸收 ${peer} 的经验: ${data.problemId}`);
-      } catch {}
+      } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
     }
   }
 

@@ -302,9 +302,9 @@ class BodyOrchestrator {
             fs.unlinkSync(fp);
             cleaned++;
           }
-        } catch { /* 鍗曟枃浠跺け璐ヤ笉褰卞搷鏁翠綋 */ }
+        } catch (e) { logger.warn('[IGNORE] 鍗曟枃浠跺け璐ヤ笉褰卞搷鏁翠綋: ' + (e?.message || '')); }
       }
-    } catch { /* 鐩綍鍙兘涓嶅瓨鍦?*/ }
+    } catch (e) { logger.warn('[IGNORE] 鐩綍鍙兘涓嶅瓨鍦?: ' + (e?.message || '')); }
     if (cleaned > 0) logger.info(`[Body] 娓呯悊 ${cleaned} 涓繃鏈熷伐浣滄枃浠禶);
     return cleaned;
   }
@@ -344,9 +344,9 @@ class BodyOrchestrator {
     try {
       for (const f of fs.readdirSync(wsDir)) {
         const fp = path.join(wsDir, f);
-        try { files[f] = fs.readFileSync(fp, 'utf8'); } catch { /* 璺宠繃 */ }
+        try { files[f] = fs.readFileSync(fp, 'utf8'); } catch (e) { logger.warn('[IGNORE] 璺宠繃: ' + (e?.message || '')); }
       }
-    } catch { /* 绌虹洰褰?*/ }
+    } catch (e) { logger.warn('[IGNORE] 绌虹洰褰?: ' + (e?.message || '')); }
     return files;
   }
 

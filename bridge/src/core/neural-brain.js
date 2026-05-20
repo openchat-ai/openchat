@@ -9,6 +9,7 @@
  * 优化：SGD + 交叉熵损失
  */
 
+import logger from './logger.js';
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
@@ -38,7 +39,7 @@ export class NeuralBrain {
   }
 
   _ensureDir() {
-    try { if (!existsSync(BRAIN_DIR)) mkdirSync(BRAIN_DIR, { recursive: true }); } catch {}
+    try { if (!existsSync(BRAIN_DIR)) mkdirSync(BRAIN_DIR, { recursive: true }); } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
   }
 
   _initMatrix(rows, cols) {
@@ -261,7 +262,7 @@ export class NeuralBrain {
         epochs: this.epochs,
         accuracy: this.accuracy
       }));
-    } catch {}
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
   }
 
   _loadWeights() {
@@ -277,7 +278,7 @@ export class NeuralBrain {
           return true;
         }
       }
-    } catch {}
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
     return false;
   }
 
@@ -290,7 +291,7 @@ export class NeuralBrain {
       log.push({ samples: this.trainingSamples, accuracy: this.accuracy, time: Date.now() });
       if (log.length > 100) log = log.slice(-100);
       writeFileSync(TRAINING_LOG, JSON.stringify(log));
-    } catch {}
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
   }
 
   getStats() {

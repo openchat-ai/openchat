@@ -414,9 +414,7 @@ export class AgentMonitor {
       try {
         const historyData = await fs.readFile(HISTORY_FILE, 'utf8');
         this.executionHistory = JSON.parse(historyData);
-      } catch {
-        // 历史文件不存在
-      }
+      } catch (e) { logger.warn('[IGNORE] // 历史文件不存在: ' + (e?.message || '')); }
 
       const recoveredCount = Array.from(this.agents.values()).filter(a => a.recovered).length;
       if (recoveredCount > 0) {

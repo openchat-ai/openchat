@@ -1,3 +1,4 @@
+import logger from './logger.js';
 /** * VariantGenerator ?（） * * ，? * ，? */
 
 export class VariantGenerator {
@@ -132,7 +133,7 @@ export class VariantGenerator {
         const scale = origAns / (origNums[0] || 1);
         if (!isNaN(scale)) return newNums[0] * scale;
       }
-    } catch {}
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
 
     return null;
   }

@@ -22,7 +22,7 @@ export class TeacherLLM {
   }
 
   _ensureDir() {
-    try { if (!existsSync(RULES_DIR)) mkdirSync(RULES_DIR, { recursive: true }); } catch {}
+    try { if (!existsSync(RULES_DIR)) mkdirSync(RULES_DIR, { recursive: true }); } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
   }
 
   /**
@@ -124,7 +124,7 @@ function solve(question) {
         this.teacherCalls++;
         return json;
       }
-    } catch {}
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
     return null;
   }
 
@@ -136,7 +136,7 @@ function solve(question) {
       const m = content.match(/\{[\s\S]*\}/);
       if (!m) return null;
       return JSON.parse(m[0]);
-    } catch {}
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
     return null;
   }
 
@@ -158,7 +158,7 @@ function solve(question) {
         answer: null,
         source: 'llm_curriculum'
       }));
-    } catch {}
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
     return null;
   }
 

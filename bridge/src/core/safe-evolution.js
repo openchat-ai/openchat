@@ -340,7 +340,7 @@ class SafeEvolution {
         execSync(`node --check "${tmpFile}"`, { stdio: 'pipe', timeout: 5000 });
         return true;
       } finally {
-        try { fs.unlinkSync(tmpFile); } catch {}
+        try { fs.unlinkSync(tmpFile); } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
       }
     } catch (e) {
       return false;

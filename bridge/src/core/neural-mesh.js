@@ -27,8 +27,8 @@ export class NeuralMesh {
   }
 
   _ensureDirs() {
-    try { if (!existsSync(MESH_DIR)) mkdirSync(MESH_DIR, { recursive: true }); } catch {}
-    try { if (!existsSync(PEER_WEIGHTS_DIR)) mkdirSync(PEER_WEIGHTS_DIR, { recursive: true }); } catch {}
+    try { if (!existsSync(MESH_DIR)) mkdirSync(MESH_DIR, { recursive: true }); } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
+    try { if (!existsSync(PEER_WEIGHTS_DIR)) mkdirSync(PEER_WEIGHTS_DIR, { recursive: true }); } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
   }
 
   /**
@@ -137,11 +137,11 @@ export class NeuralMesh {
   }
 
   _saveLocal(data) {
-    try { writeFileSync(LOCAL_WEIGHTS, JSON.stringify(data)); } catch {}
+    try { writeFileSync(LOCAL_WEIGHTS, JSON.stringify(data)); } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
   }
 
   _savePeerWeights(peerId, data) {
-    try { writeFileSync(join(PEER_WEIGHTS_DIR, `${peerId}.json`), JSON.stringify(data)); } catch {}
+    try { writeFileSync(join(PEER_WEIGHTS_DIR, `${peerId}.json`), JSON.stringify(data)); } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
   }
 
   getStats() {

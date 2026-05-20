@@ -25,7 +25,7 @@ export class DataMiner {
 
   _ensureDirs() {
     for (const d of [DATA_DIR, VARIANT_DIR, MINED_DIR]) {
-      try { if (!existsSync(d)) mkdirSync(d, { recursive: true }); } catch {}
+      try { if (!existsSync(d)) mkdirSync(d, { recursive: true }); } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
     }
   }
 
@@ -81,7 +81,7 @@ export class DataMiner {
     try {
       const file = join(VARIANT_DIR, `batch_${Date.now()}.json`);
       writeFileSync(file, JSON.stringify(variants, null, 2));
-    } catch {}
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
   }
 
   // ==================== 第2路：LLM 量产 ====================
@@ -153,7 +153,7 @@ export class DataMiner {
     try {
       const file = join(MINED_DIR, `mined_${Date.now()}.json`);
       writeFileSync(file, JSON.stringify(problems, null, 2));
-    } catch {}
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
   }
 
   // ==================== 第3路：网页抓取 ====================

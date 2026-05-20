@@ -100,11 +100,11 @@ class Forge {
   }
 
   _log(traceId, event, detail) {
-    try { fs.appendFileSync(os.tmpdir() + '/forge-trace.log', `${Date.now()}|${traceId}|${event}|${(detail||'').substring(0,100)}\n`); } catch {}
+    try { fs.appendFileSync(os.tmpdir() + '/forge-trace.log', `${Date.now()}|${traceId}|${event}|${(detail||'').substring(0,100)}\n`); } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
   }
 
   _deadLetter(q, a) {
-    try { fs.appendFileSync(os.tmpdir() + '/forge-deadletter.log', `${Date.now()}|deadletter|${(q||'').substring(0,80)}|${(a||'').substring(0,80)}\n`); } catch {}
+    try { fs.appendFileSync(os.tmpdir() + '/forge-deadletter.log', `${Date.now()}|deadletter|${(q||'').substring(0,80)}|${(a||'').substring(0,80)}\n`); } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
   }
 }
 

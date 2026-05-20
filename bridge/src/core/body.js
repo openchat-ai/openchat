@@ -54,7 +54,7 @@ export class Body {
   }
 
   _ensureDir() {
-    try { if (!existsSync(BODY_DIR)) mkdirSync(BODY_DIR, { recursive: true }); } catch {}
+    try { if (!existsSync(BODY_DIR)) mkdirSync(BODY_DIR, { recursive: true }); } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
   }
 
   /** 心跳：每次 cycle 调用 */

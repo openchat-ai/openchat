@@ -6,6 +6,7 @@
  * 每轮自动优化 Agent prompt
  */
 
+import logger from './logger.js';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
@@ -25,18 +26,18 @@ export class SelfEvolution {
   }
 
   _ensureDir() {
-    try { if (!existsSync(EVO_DIR)) mkdirSync(EVO_DIR, { recursive: true }); } catch {}
+    try { if (!existsSync(EVO_DIR)) mkdirSync(EVO_DIR, { recursive: true }); } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
   }
 
   _load(file, fallback) {
     try {
       if (existsSync(file)) return JSON.parse(readFileSync(file, 'utf8'));
-    } catch {}
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
     return fallback;
   }
 
   _save(file, data) {
-    try { writeFileSync(file, JSON.stringify(data, null, 2)); } catch {}
+    try { writeFileSync(file, JSON.stringify(data, null, 2)); } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
   }
 
   /**

@@ -1,3 +1,4 @@
+import logger from './logger.js';
 /**
  * ConvergenceEngine — 分解竞标 + 快速收敛
  *
@@ -88,7 +89,7 @@ class ConvergenceEngine {
         if (progress >= this.minThreshold && elapsed < this.timeout) {
           return entry; // 这个分解收敛了
         }
-      } catch {}
+      } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
     });
 
     // 等全部完成或超时

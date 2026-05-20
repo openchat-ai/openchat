@@ -82,10 +82,10 @@ class KnowledgeBase {
           try {
             const raw = JSON.parse(fs.readFileSync(path.join(KNOWLEDGE_DIR, f), 'utf8'));
             count += (raw.entries || []).length;
-          } catch { /* 单个文件损坏不影响总数 */ }
+          } catch (e) { logger.warn('[IGNORE] 单个文件损坏不影响总数: ' + (e?.message || '')); }
         }
       }
-    } catch {}
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
     this._totalEntries = count;
     return count;
   }
@@ -107,7 +107,7 @@ class KnowledgeBase {
           const files = fs.readdirSync(KNOWLEDGE_DIR).filter(f => f.endsWith('.json') && !f.endsWith('.bak'));
           for (const f of files) count += (JSON.parse(fs.readFileSync(path.join(KNOWLEDGE_DIR, f), 'utf8')).entries || []).length;
         }
-      } catch {}
+      } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
       const store = new SQLiteStore(KNOWLEDGE_DIR, SQL);
       store.init(count > 0);
       // 如果有旧 JSON 数据，迁移
@@ -125,15 +125,13 @@ class KnowledgeBase {
           for (const f of files) {
             fs.renameSync(path.join(KNOWLEDGE_DIR, f), path.join(KNOWLEDGE_DIR, f + '.bak'));
           }
-        } catch {}
+        } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
         logger.info(`[KB] 已迁移 ${count} 条到 SQLite`);
       }
       return store;
-    } catch {
-      // sql.js 不可用 → 回退 JSON
+    } catch (e) { logger.warn('[IGNORE] // sql.js 不可用 → 回退 JSON
       logger.info('[KB] sql.js 不可用，使用 JSON 存储');
-      return new JSONStore(KNOWLEDGE_DIR);
-    }
+      return new JSONStore(KNOWLEDGE_DIR);: ' + (e?.message || '')); }
   }
 
   /** 旧版兼容：无参构造时调用 start() 等价于 init() */
@@ -298,7 +296,7 @@ class KnowledgeBase {
             if (fs.existsSync(solutionPath)) {
               return JSON.parse(fs.readFileSync(solutionPath, 'utf8'));
             }
-          } catch {}
+          } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
         }
         // 远程请求
         if (this.p2p) {
@@ -331,7 +329,7 @@ class KnowledgeBase {
       const dir = path.join(KNOWLEDGE_DIR, 'solutions');
       fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(path.join(dir, `${questionHash}.json`), JSON.stringify(solution, null, 2));
-    } catch {}
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
   }
 
   // ==================== P2P 同步 ====================
@@ -376,7 +374,7 @@ class KnowledgeBase {
         if (map && map.size > 0) {
           this._entries.set(domain, map);
         }
-      } catch {}
+      } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
     }
     this._loaded.add(domain);
   }
@@ -386,7 +384,7 @@ class KnowledgeBase {
     if (!map || !this._store) return;
     try {
       this._store.save(domain, [...map.values()]);
-    } catch {}
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
   }
 
   enforceLimit(domain) {
@@ -440,7 +438,7 @@ class JSONStore {
         map.set(entry.questionHash, entry);
       }
       return map;
-    } catch { return new Map(); }
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || '')); return new Map(); }
   }
 
   async loadAll() {
@@ -453,7 +451,7 @@ class JSONStore {
         const map = this.loadDomain(domain);
         if (map.size > 0) result.set(domain, map);
       }
-    } catch {}
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
     return result;
   }
 
@@ -477,7 +475,7 @@ class JSONStore {
         })),
         lastUpdated: Date.now(),
       }, null, 2));
-    } catch {}
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
   }
 }
 
@@ -535,7 +533,7 @@ class SQLiteStore {
       }
       stmt.free();
       return map;
-    } catch { return new Map(); }
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || '')); return new Map(); }
   }
 
   async loadAll() {
@@ -549,7 +547,7 @@ class SQLiteStore {
         result.set(row.domain, map);
       }
       stmt.free();
-    } catch {}
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
     return result;
   }
 
@@ -578,7 +576,7 @@ class SQLiteStore {
       }
       stmt.free();
       this.db.exec('COMMIT');
-    } catch {}
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
   }
 
   add(entry) {

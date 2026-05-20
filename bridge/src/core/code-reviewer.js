@@ -35,7 +35,7 @@ export class CodeReviewer {
   }
 
   _ensureDir() {
-    try { if (!existsSync(REVIEW_DIR)) mkdirSync(REVIEW_DIR, { recursive: true }); } catch {}
+    try { if (!existsSync(REVIEW_DIR)) mkdirSync(REVIEW_DIR, { recursive: true }); } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
   }
 
   /**
@@ -170,7 +170,7 @@ ${truncated}
     try {
       const file = join(REVIEW_DIR, `${review.problemId}_${Date.now()}.json`);
       writeFileSync(file, JSON.stringify(review, null, 2));
-    } catch {}
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
   }
 
   /**
@@ -191,10 +191,10 @@ ${truncated}
                 }
               }
             }
-          } catch {}
+          } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
         }
       }
-    } catch {}
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
     return all;
   }
 

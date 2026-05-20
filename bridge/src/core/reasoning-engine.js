@@ -60,10 +60,10 @@ export class ReasoningEngine {
           if (rule.match && rule.solve && rule.concept) {
             this.dynamicRules.push(rule);
           }
-        } catch {}
+        } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
       }
       logger.info(`[Reasoning] 加载 ${this.dynamicRules.length} 条 TeacherLLM 动态规则`);
-    } catch {}
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
   }
 
   /**
@@ -92,7 +92,7 @@ export class ReasoningEngine {
             return { solved: true, answer, method: 'teacher_rule:' + rule.concept };
           }
         }
-      } catch {}
+      } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
     }
 
     // 2. 精确模式匹配

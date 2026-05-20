@@ -94,9 +94,7 @@ class NodeIdentity {
       const verify = crypto.createVerify('sha256');
       verify.update(data);
       return verify.verify(publicKey, Buffer.from(signature, 'base64'));
-    } catch {
-      return false;
-    }
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || '')); return false; }
   }
 
   /**

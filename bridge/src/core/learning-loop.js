@@ -1,3 +1,4 @@
+import logger from './logger.js';
 export function startFairyMonitor() {
   // Fairy monitoring handled by BridgeSpawn + fairy-guardian
 }
@@ -10,6 +11,6 @@ export function startHeartbeat(bridge, myPort, mainPort) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ port: myPort })
       });
-    } catch {}
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
   }, 30000);
 }

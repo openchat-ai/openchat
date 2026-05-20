@@ -22,7 +22,7 @@ function evalSimple(expr) {
   const trimmed = expr.trim();
   if (!/^[\d+\-*/()., minmax]+$/.test(trimmed)) return NaN;
   try { return Function('"use strict"; return (' + trimmed + ')')(); }
-  catch { return NaN; }
+  catch (e) { logger.warn('[IGNORE] ' + (e?.message || '')); return NaN; }
 }
 
 /** 检测是否属于"最少取多少保证凑齐"类问题 */
@@ -286,9 +286,7 @@ const residents = residentManager.list(null);
       const mem = baseline.memoryUsage ? Math.max(0, 100 - (baseline.memoryUsage / 1024 ** 3) * 20) : 80;
       const cpu = baseline.cpuLoad ? Math.max(0, 100 - baseline.cpuLoad * 30) : 80;
       return Math.round(mem * 0.35 + cpu * 0.25 + Math.min(100, p2pPeers * 15 + 30) * 0.2 + Math.min(100, residentCount * 10 + 40) * 0.2);
-    } catch {
-      return 80; // 默认健康分
-    }
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || '')); return 80; // 默认健康分 }
   }
 
   /** 居民自我体检 + 诊断 + 自愈 */
@@ -337,7 +335,7 @@ const residents = residentManager.list(null);
           fs.writeFileSync(os.homedir() + '/.openchat/config.json', JSON.stringify(cfg, null, 2));
           healed.push('重建配置文件');
           diagnosis = '配置文件已重建';
-        } catch {}
+        } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
       }
 
       if (!kbOk) {
@@ -411,7 +409,7 @@ const residents = residentManager.list(null);
         return fn === 'min' ? String(Math.min(...nums)) : String(Math.max(...nums));
       });
       return evalSimple(expr);
-    } catch { return null; }
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || '')); return null; }
   }
 
   /** 题型路由：检测问题类型，分给对应的代码求解器 */
@@ -450,7 +448,7 @@ const residents = residentManager.list(null);
               return true;
             }
           }
-        } catch {}
+        } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
       }
     }
 
@@ -471,7 +469,7 @@ ${qt}`
         const parsed = JSON.parse(m[0]);
         if (parsed.items && parsed.items.length > 0) items = parsed.items;
       }
-    } catch {}
+    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); }
     if (items.length < 2) return false;
 
     const counts = items.map(i => i.count);
@@ -945,7 +943,7 @@ ${rolePrompt}
         message: `${roleName}失败 — ${error.message.substring(0, 60)}`,
       });
     } finally {
-      if (agent) { try { agent.cleanup(); } catch {} }
+      if (agent) { try { agent.cleanup(); } catch (e) { logger.warn('[IGNORE] ' + (e?.message || 'unknown error')); } }
       const count = this._residentAgentCount.get(residentId) || 1;
       if (count <= 1) this._residentAgentCount.delete(residentId);
       else this._residentAgentCount.set(residentId, count - 1);
