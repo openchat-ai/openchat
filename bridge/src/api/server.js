@@ -265,6 +265,25 @@ async function R(){
       let registeredPeerId = null;
       console.log('[Signaling] 客户端已连接 via Express');
       ws.on('message', (data) => {
+        // Binary frame → forward to target peer as-is
+        if (Buffer.isBuffer(data)) {
+          if (data.length < 3) return;
+          // Relay binary to target peer extracted from frame header
+          const frameType = data[2];
+          if (frameType === 0x01 || frameType === 0x03) {
+            // Audio/ACK frames relay to registered peerId
+            if (registeredPeerId && this.swarm) {
+              this._relayToNetwork({ raw: true, data: data }, ws);
+            }
+          }
+          // Forward binary frame to all peers on this bridge (for 1-to-1)
+          const targetWs = this._signalingRooms.get(registeredPeerId);
+          if (targetWs && targetWs.readyState === 1 && targetWs !== ws) {
+            targetWs.send(data);
+          }
+          return;
+        }
+
         try {
           const msg = JSON.parse(data.toString());
           if (msg.type === 'signaling_message' && msg.data) {
