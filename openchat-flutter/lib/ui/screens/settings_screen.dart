@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
+import '../../providers/config_provider.dart';
 import '../components/cards/app_cards.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -53,6 +54,9 @@ class SettingsScreen extends ConsumerWidget {
                 _buildSettingItem(Icons.person_outlined, '个人资料', '', theme.gradientPrimary[0], theme),
                 _buildSettingItem(Icons.security_outlined, '安全设置', '', theme.warning, theme),
                 _buildSettingItem(Icons.link_outlined, '绑定账号', '', theme.accent, theme),
+              ], theme),
+              _buildSection('连接', [
+                _BridgeUrlTile(theme: theme),
               ], theme),
               _buildSection('其他', [
                 _buildSettingItem(Icons.storage_outlined, '存储空间', '2.4 GB', theme.gradientAccent[0], theme),
@@ -515,6 +519,78 @@ class SettingsScreen extends ConsumerWidget {
         Icons.chevron_right,
         color: theme.textTertiary,
         size: 20,
+      ),
+    );
+  }
+}
+
+class _BridgeUrlTile extends ConsumerStatefulWidget {
+  final AppTheme theme;
+  const _BridgeUrlTile({required this.theme});
+
+  @override
+  ConsumerState<_BridgeUrlTile> createState() => _BridgeUrlTileState();
+}
+
+class _BridgeUrlTileState extends ConsumerState<_BridgeUrlTile> {
+  late TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: ref.read(configProvider).baseUrl);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final config = ref.watch(configProvider);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Bridge 地址', style: TextStyle(color: widget.theme.textSecondary, fontSize: 13)),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _controller,
+                  style: TextStyle(color: widget.theme.textPrimary),
+                  decoration: InputDecoration(
+                    hintText: 'http://192.168.1.100:3800',
+                    hintStyle: TextStyle(color: widget.theme.textTertiary),
+                    filled: true,
+                    fillColor: widget.theme.surface,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: widget.theme.textTertiary.withValues(alpha: 0.2)),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              TextButton(
+                onPressed: () {
+                  ref.read(configProvider.notifier).setBaseUrl(_controller.text);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('地址已更新'), duration: Duration(seconds: 2)),
+                  );
+                },
+                child: const Text('保存'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text('当前: ${config.baseUrl}', style: TextStyle(color: widget.theme.textTertiary, fontSize: 11)),
+        ],
       ),
     );
   }

@@ -58,8 +58,10 @@ jobs:
           restore-keys: gradle-${{ runner.os }}-
       - run: flutter pub get
       - name: Build APK
-        run: flutter build apk --release --target-platform android-arm64 --no-tree-shake-icons
+        run: |
+          flutter build apk --release --target-platform android-arm64 --no-tree-shake-icons
+          mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/openchat.apk
       - uses: actions/upload-artifact@v4
         with:
           name: openchat-apk
-          path: openchat-flutter/build/app/outputs/flutter-apk/*.apk
+          path: openchat-flutter/build/app/outputs/flutter-apk/openchat.apk
