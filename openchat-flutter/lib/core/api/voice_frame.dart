@@ -1,56 +1,72 @@
-/// Custom binary frame protocol for P2P voice
+/// OpenChat frame protocol, modeled after RFID reader frame format
 ///
-/// Frame format (binary):
-/// ┌─────┬──────┬────────┬──────────┬──────────┐
-/// │ MAG │ TYPE │ LEN(2) │ PAYLOAD  │ CRC(1)   │
-/// │ 2B  │ 1B   │ 2B     │ 0-65535  │ 1B       │
-/// └─────┴──────┴────────┴──────────┴──────────┘
+/// BB | TYPE(2) | LEN(2) | PAYLOAD(N) | CKSUM(1) | 7E
 ///
-/// MAG: 0xOC 0x7A (OpenChat magic)
-/// TYPE: 0x01=audio 0x02=signal 0x03=ack 0x04=route 0x05=ping 0x06=pong
-/// LEN: payload length (big-endian)
-/// CRC: XOR of all bytes in MAG+TYPE+LEN+PAYLOAD
+/// TYPE:
+///   00 01 = audio frame
+///   00 02 = signaling (call/accept/reject/gossip)
+///   00 03 = ack
+///   00 04 = route gossip
+///   01 XX = response/error
+///
+/// CKSUM = XOR sum of bytes from TYPE[0] to last PAYLOAD byte
+/// 7E = end marker (not included in checksum)
 
-class FrameType {
-  static const int audio = 0x01;
-  static const int signal = 0x02;
-  static const int ack = 0x03;
-  static const int route = 0x04;
-  static const int ping = 0x05;
-  static const int pong = 0x06;
-}
+class RfFrame {
+  static const int _start = 0xBB;
+  static const int _end = 0x7E;
 
-class VoiceFrame {
-  static const List<int> _magic = [0x0C, 0x7A];
-
-  final int type;
+  final int typeHi;
+  final int typeLo;
   final List<int> payload;
 
-  VoiceFrame(this.type, this.payload);
+  RfFrame(this.typeHi, this.typeLo, this.payload);
 
+  /// Encode to wire format: BB TYPE(2) LEN(2) PAYLOAD CKSUM 7E
   List<int> encode() {
     final len = payload.length;
-    final header = [..._magic, type, len >> 8, len & 0xFF];
-    final crc = _checksum([...header, ...payload]);
-    return [...header, ...payload, crc];
+    final body = [typeHi, typeLo, len >> 8, len & 0xFF, ...payload];
+    final cksum = body.fold(0, (s, b) => (s + b) & 0xFF);
+    return [_start, ...body, cksum, _end];
   }
 
-  static VoiceFrame? decode(List<int> data) {
-    if (data.length < 6) return null; // header(5) + crc(1)
-    if (data[0] != _magic[0] || data[1] != _magic[1]) return null;
+  /// Decode from wire format. Returns null if incomplete/corrupt.
+  static RfFrame? decode(List<int> data) {
+    if (data.length < 7) return null;          // BB(1) + TYPE(2) + LEN(2) + CKSUM(1) + 7E = min 7
+    if (data[0] != _start) return null;
+    if (data.last != _end) return null;
 
-    final type = data[2];
+    final typeHi = data[1];
+    final typeLo = data[2];
     final len = (data[3] << 8) | data[4];
-    if (data.length < 6 + len) return null; // incomplete
+
+    if (data.length < 7 + len) return null;    // Incomplete frame
 
     final payload = data.sublist(5, 5 + len);
-    final crc = data[5 + len];
-    if (_checksum([...data.sublist(0, 5 + len)]) != crc) return null;
+    final cksum = data[5 + len];
 
-    return VoiceFrame(type, payload);
+    // Verify checksum: sum from TYPE[0] to last payload byte
+    final body = [typeHi, typeLo, len >> 8, len & 0xFF, ...payload];
+    final expected = body.fold(0, (s, b) => (s + b) & 0xFF);
+    if (cksum != expected) return null;
+
+    return RfFrame(typeHi, typeLo, payload);
   }
 
-  static int _checksum(List<int> data) {
-    return data.fold(0, (sum, b) => sum ^ b);
-  }
+  /// Check if this is a response frame (type starts with 0x01)
+  bool get isResponse => typeHi == 0x01;
+  bool get isError => typeHi == 0x01 && typeLo == 0xFF;
+
+  /// Response payload helpers
+  int? get errorCode => isError && payload.length >= 1 ? payload[0] : null;
+}
+
+/// Frame type constants
+class FrameType {
+  static const audio = [0x00, 0x01];
+  static const signal = [0x00, 0x02];
+  static const ack = [0x00, 0x03];
+  static const route = [0x00, 0x04];
+  static const responseOk = [0x01, 0x00];
+  static const responseError = [0x01, 0xFF];
 }
