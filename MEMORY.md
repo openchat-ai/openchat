@@ -131,6 +131,23 @@
 | R14 | src/*.js 59项预存lint错误(no-undef/no-empty等) | SRE/运维 | P1-后续 | ✅ 已修(R15, 59→48) | SRE/运维 |
 | R14 | evolution-integration flaky续存 | 测试工程师 | P1-6 | ❌ 待修 | 测试工程师 |
 | R14 | Flutter编译状态验证 | Flutter开发者 | P0-5 | ❌ 待修(部分完成) | Flutter开发者 |
+| R17 | 测试超时 — `--test-force-exit` 修复 | 技术经理 | P0-1 | ✅ 已修(R17) | 测试工程师 |
+| R17 | lint no-undef 41 → 0 (commands.js 缺 import) | 技术经理 | P0-2 | ✅ 已修(R17) | 核心工程师 |
+| R17 | main.js start() 拆 lifecycle 方法 (_printBanner/_initCoreSystems/_enterSandboxMode) | 技术经理 | P0-3 | ✅ 已修(R17) | 架构师 |
+| R17 | core/ restructure import 路径修复 (agent-monitor/ai-personhood 等12处) | 技术经理 | P0-3 | ✅ 已修(R17) | 核心工程师 |
+| R17 | CI lint gate 加固 (--max-warnings=0) | 技术经理 | P0-2 | ✅ 已修(R17) | SRE/运维 |
+| R17 | evolution-memory.test.mjs import 路径修复 | 技术经理 | P0-1 | ✅ 已修(R17) | 测试工程师 |
+| R17 | resident-scheduler class 导出供测试 | 技术经理 | P0-1 | ✅ 已修(R17) | 测试工程师 |
+| R17 | agent-loop-e2e 3 个 scheduler 测试全部修复 | 技术经理 | P0-1 | ✅ 已修(R17) | 测试工程师 |
+| R17 | main.js 6 处空 catch 加 logger | 安全研究员 | P0-2 | ✅ 已修(R17) | 安全研究员 |
+
+## 关键指标（实时）
+
+- **测试**: 147/147 全绿（`--test-force-exit` 退出修复）
+- **Lint**: 0 errors, 34 warnings（main.js 空 catch 全部修复 + import 路径修正）
+- **Flutter**: 32 issues (0 error)，4 处 `use_build_context_synchronously` 待修
+- **Demo**: `npm run demo` 一键 sandbox 体验脚本正常
+- **P2P教程**: docs/p2p-voice-tutorial.md 完成
 
 ## 版本计划
 
@@ -141,7 +158,7 @@
 | v0.0.3 | 2026-05-20 | `npm run demo` + eslint flat config + P2P 教程 + 空 catch 修复 | ✅ |
 | v0.0.4 | 2026-05-20 | lint error 清零 + sandbox 不崩 + evolution flaky 根因修复 | ✅ |
 | v0.0.5 | 2026-05-21 | resident-scheduler 修复 + house-orchestrator 编码修复 + smoke test + 144/144 全绿 | ✅ |
-| **v0.1.0** | **2026-05-21** | **Flutter pub get + analyze 零 error + 12 测试全绿 + Bridge 端口 3800 统一** | **✅ 当前版本** |
-| v0.1.1 | — | CI 加 Flutter step + sandbox 预设对话 + PM2 路径修复 | ⏳ 下一轮 |
-| v0.2.0 | — | main.js 拆 LifecycleManager + Flutter API 集成测试 + 竞品对比 | ⏳ |
+| **v0.1.0** | **2026-05-21** | **Flutter pub get + analyze 零 error + 12 测试全绿 + Bridge 端口 3800 统一** | **✅** |
+| **v0.1.1** | **2026-05-21** | **lint error 清零 + main.js start() 拆 lifecycle 方法 + 测试 147/147 + CI 加固** | **✅ 当前版本** |
+| v0.2.0 | — | Flutter API 集成测试 + P2P 语音端到端 demo + 竞品对比 | ⏳ |
 | v0.3.0 | — | P2P 语音通话 demo + AI 居民端到端交互 | ⏳ |

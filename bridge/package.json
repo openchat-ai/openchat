@@ -15,7 +15,7 @@
     "pm2:stop": "pm2 delete openchat-bridge 2>/dev/null; exit 0",
     "pm2:status": "pm2 status",
     "eval:generalization": "node tools/eval-generalization.mjs",
-    "test": "node --experimental-test-module-mocks --test src/core/__tests__/*.test.mjs src/core/__tests__/*.test.js src/p2p/__tests__/*.test.js tests/benchmarks/*.js",
+    "test": "node --experimental-test-module-mocks --test --test-force-exit src/core/__tests__/*.test.mjs src/core/__tests__/*.test.js src/p2p/__tests__/*.test.js tests/benchmarks/*.js",
     "test:voice": "node --test tests/voice-demo.mjs",
     "test:watch": "node --test --watch src/core/__tests__/*.test.mjs src/core/__tests__/*.test.js src/p2p/__tests__/*.test.js tests/benchmarks/*.js",
     "test:idea": "node --test src/core/__tests__/*.test.mjs src/core/__tests__/*.test.js",

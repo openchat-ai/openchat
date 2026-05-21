@@ -1338,5 +1338,8 @@ ${resB.name} 的性格：勤奋度 ${pct(resB.traits?.diligence ?? 0.5)}，创�
 
 }
 
+// 导出类供测试
+export { ResidentScheduler };
+
 // 单例
 export const residentScheduler = new ResidentScheduler();

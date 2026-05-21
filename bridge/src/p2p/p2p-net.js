@@ -517,21 +517,25 @@ class P2PNet extends EventEmitter {
         case MessageType.INSIGHT_SHARE:
         case MessageType.PERFORMANCE_REPORT:
         case MessageType.SKILL_REQUEST:
-        // P2R
+        /* P2R */
+        /* eslint-disable-next-line no-fallthrough */
         case MessageType.BRIDGE_SPAWN:
         case MessageType.SAFE_HOUSE_VERIFY:
         case MessageType.BRIDGE_UPGRADE:
         case MessageType.RESIDENT_TRANSFER:
         case MessageType.HOUSE_SEEK:
         case MessageType.HOUSE_NEED:
-        // P2R-S: 安全自治
+        // falls through
+        /* P2R-S: 安全自治 */
         case MessageType.PROPOSE_CHANGE:
         case MessageType.VERIFY_RESULT:
         case MessageType.CHANGE_APPLIED:
-        // LLM 代理
+        // falls through
+        /* LLM 代理 */
         case MessageType.LLM_PROXY_REQUEST:
         case MessageType.LLM_PROXY_RESPONSE:
-        // LLM 代理：对等发现
+        // falls through
+        /* LLM 代理：对等发现 */
         case MessageType.LLM_AVAILABLE:
         case MessageType.LLM_PROVIDER_QUERY:
           this.emit(message.type, { from: peerId, payload: message.payload });

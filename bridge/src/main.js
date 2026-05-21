@@ -21,25 +21,26 @@ import { forge } from './core/evolution/forge.js';
 import { providerManager } from './providers/provider-manager.js';
 import { providerRegistry } from './providers/provider-registry.js';
 import { memoryManager } from './memory/memory-manager.js';
-import { agentMonitor } from './core/agent-monitor.js';
-import { AIPerson, aiPersonRegistry, createFounder } from './core/ai-personhood.js';
-import { Deity, deitySystemManager, DEITY_TYPE } from './core/deity-system.js';
-import { MirrorDeity, mirrorDeity, initializeMirrorDeitySystem } from './core/mirror-deity.js';
-import { EnergyDeity, energyDeity, initializeEnergySystem, ENERGY_TYPE, POWER_MODE } from './core/energy-deity.js';
-import { aiPersonFactory, AI_TEMPLATES } from './core/ai-person-factory.js';
-import { deityGovernance } from './core/deity-governance.js';
-import { identityGenerator } from './core/identity-generator.js';
-import { aiPersonManager } from './core/ai-person-manager.js';
-import { getEnhancedStabilitySystem } from './core/enhanced-stability-system.js';
-import { CollaborationEngine } from './core/collaboration-engine.js';
-import { residentManager } from './core/resident-manager.js';
+import { agentMonitor } from './core/agent/agent-monitor.js';
+import { AIPerson, aiPersonRegistry, createFounder } from './core/agent/ai-personhood.js';
+import { Deity, deitySystemManager, DEITY_TYPE } from './core/agent/deity-system.js';
+import { MirrorDeity, mirrorDeity, initializeMirrorDeitySystem } from './core/agent/mirror-deity.js';
+import { EnergyDeity, energyDeity, initializeEnergySystem, ENERGY_TYPE, POWER_MODE } from './core/agent/energy-deity.js';
+import { aiPersonFactory, AI_TEMPLATES } from './core/agent/ai-person-factory.js';
+import { deityGovernance } from './core/agent/deity-governance.js';
+import { identityGenerator } from './core/agent/identity-generator.js';
+import { aiPersonManager } from './core/agent/ai-person-manager.js';
+import { getEnhancedStabilitySystem } from './core/monitoring/enhanced-stability-system.js';
+import { CollaborationEngine } from './core/collaboration/collaboration-engine.js';
+import { residentManager } from './core/agent/resident-manager.js';
 import { residentScheduler } from './core/agent/resident-scheduler.js';
-import { LearningCore } from './core/learning-core.js';
+import { LearningCore } from './core/evolution/learning-core.js';
 import P2PSwarm, { hasPublicAddress, getPublicIPv4 } from './p2p/p2p-net.js';
 import { MessageType as P2PMessageType } from './p2p/messages.js';
 import { PeerRegistry } from './p2p/peer-registry.js';
 import { QiniuBackend } from './p2p/peer-registry/qiniu-backend.js';
 import { HttpBackend } from './p2p/peer-registry/http-backend.js';
+import logger from './core/monitoring/logger.js';
 
 // Helper: fetch models from Bridge's own HTTP API for a local provider
 async function fetchLocalModelsFromBridge(providerName) {
@@ -223,114 +224,9 @@ export class Bridge {
   }
 
   async start(detectedTools = []) {
-    const mode = CONFIG.isSandbox ? 'SANDBOX' : CONFIG.headless ? 'HEADLESS' : 'CLI';
-    console.log('');
-    console.log('╔═══════════════════════════════════════════════════════════╗');
-    console.log('║                                                          ║');
-    console.log('║                   OPENCHAT BRIDGE                        ║');
-    console.log(`║                   [${mode} MODE]                          ║`);
-    console.log('║                                                          ║');
-    console.log('╚═══════════════════════════════════════════════════════════╝');
-    console.log('');
-
-    // 启动增强稳定性系统
-    try {
-      this.stabilitySystem.start();
-    } catch (e) {
-      console.log(`[Stability] 启动失败: ${e.message}`);
-    }
-
-    // 初始化 RAG 系统
-    try {
-      await memoryManager.initialize();
-    } catch (e) {
-      console.log(`[RAG] 初始化跳过: ${e.message}`);
-    }
-
-    // 初始化 AI 人系统
-    try {
-      const founder = createFounder();
-      await deitySystemManager.initialize(founder.id);
-      await initializeMirrorDeitySystem(founder.id);
-      initializeEnergySystem();
-
-      global.aiPersonFactory = aiPersonFactory;
-      global.mirrorDeity = mirrorDeity;
-      global.energyDeity = energyDeity;
-      global.deityGovernance = deityGovernance;
-      global.identityGenerator = identityGenerator;
-      global.aiPersonManager = aiPersonManager;
-
-      aiPersonManager.createDefaultAIPerson();
-    } catch (e) {
-      console.log('[AI-Personhood] 初始化失败:', e.message);
-    }
-
-    // Sandbox mode: interactive CLI with mock LLM
-    if (CONFIG.isSandbox) {
-      forge.setLLMHandler(async (q) => {
-        const replies = {
-          'hello': '你好！我是 AI 居民小明。欢迎来到 OpenChat！试试问我 "你会什么" 或 "今天怎么样"。',
-          '你会什么': '我可以帮你推理问题、搜索记忆、做计算。在 sandbox 模式下我是模拟回复，配置 LLM API key 后就能获得真实智能。',
-          '今天怎么样': '我状态很好！刚完成了基础设施大升级。现在可以和你聊天真开心！',
-          'who are you': 'I am Xiao Ming, an AI resident in the OpenChat network.',
-          'help': '可用命令: /help 显示帮助, /exit 退出, /clear 清屏。直接输入任何问题和我聊天。',
-        };
-        const lower = q.toLowerCase().trim();
-        for (const [key, val] of Object.entries(replies)) {
-          if (lower.includes(key)) return val;
-        }
-        return '你好！我是 AI 居民小明。欢迎来到 OpenChat！试试问我 "你会什么" 或 "今天怎么样"。';
-      });
-
-      const sandboxHistoryPath = path.join(os.homedir(), '.openchat', 'sandbox-history.json');
-      let sandboxHistory = [];
-      try { sandboxHistory = JSON.parse(fs.readFileSync(sandboxHistoryPath, 'utf8')); } catch {}
-
-      console.log(chalk.cyan('\n  Sandbox 交互模式'));
-      console.log(chalk.dim('  Type your message, /help for commands, /exit to quit\n'));
-
-      const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout,
-        terminal: true,
-        prompt: chalk.green('openchat> ')
-      });
-
-      rl.prompt();
-
-      rl.on('line', async (line) => {
-        const cmd = line.trim();
-        if (!cmd) { rl.prompt(); return; }
-        if (cmd === '/exit' || cmd === '/quit') { rl.close(); return; }
-        if (cmd === '/help') {
-          console.log(chalk.dim('  /help   显示帮助\n  /exit   退出\n  /clear  清屏\n  直接输入文字与AI居民聊天'));
-          rl.prompt();
-          return;
-        }
-        if (cmd === '/clear') { console.clear(); rl.prompt(); return; }
-
-        sandboxHistory.push({ role: 'user', content: cmd, time: new Date().toISOString() });
-        try {
-          const reply = await forge.ask(cmd);
-          console.log(chalk.yellow('  小明: ') + reply);
-          sandboxHistory.push({ role: 'assistant', content: reply, time: new Date().toISOString() });
-        } catch (e) {
-          console.log(chalk.red('  错误: ') + e.message);
-        }
-        try { fs.writeFileSync(sandboxHistoryPath, JSON.stringify(sandboxHistory, null, 2), 'utf8'); } catch {}
-        rl.prompt();
-      });
-
-      rl.on('close', () => {
-        console.log(chalk.dim('\n  对话已保存到 ') + sandboxHistoryPath);
-        console.log(chalk.cyan('  再见!'));
-        process.exit(0);
-      });
-
-      this.setupHeadlessSignalHandlers();
-      return;
-    }
+    this._printBanner();
+    this._initCoreSystems();
+    if (CONFIG.isSandbox) { this._enterSandboxMode(); return; }
 
     await this.autoConfigProviders(detectedTools);
 
@@ -421,7 +317,7 @@ export class Bridge {
       // 设置 WS 消息处理器
       this.apiServer.setWSMessageHandler((ws, msg) => {
         this.handleWSMessage(ws, msg).catch(e => {
-          try { ws.send(JSON.stringify({ type: 'error', data: { message: e.message } })); } catch {}
+          try { ws.send(JSON.stringify({ type: 'error', data: { message: e.message } })); } catch (e2) { logger.warn({ err: e2 }, 'WS 发送错误消息失败'); }
         });
       });
       console.log(`[API] 统一服务器: http://localhost:${CONFIG.port}`);
@@ -580,7 +476,7 @@ export class Bridge {
                 subQuestions: p.subQuestions || [],
                 from: data.from,
               });
-            } catch {}
+            } catch (e) { logger.warn({ err: e }, 'P2R-K 问题处理失败'); }
 
             // 3. 回复（先返回 KB 能回答的部分）
             const result = {
@@ -1031,7 +927,7 @@ export class Bridge {
             downCount = 0;
             return;
           }
-        } catch {}
+        } catch (e) { logger.warn({ err: e }, '健康检查请求失败'); }
         return;
       }
 
@@ -1074,7 +970,7 @@ export class Bridge {
           body: JSON.stringify({ port: myPort }),
           signal: AbortSignal.timeout(2000)
         });
-      } catch {}
+      } catch (e) { logger.warn({ err: e }, '端口广播失败'); }
     }, 10000);
   }
 
@@ -1126,6 +1022,97 @@ export class Bridge {
 
     console.log('[Bridge] 已退出，再见!');
     process.exit(0);
+  }
+
+  _printBanner() {
+    const mode = CONFIG.isSandbox ? 'SANDBOX' : CONFIG.headless ? 'HEADLESS' : 'CLI';
+    console.log('');
+    console.log('╔═══════════════════════════════════════════════════════════╗');
+    console.log('║                                                          ║');
+    console.log('║                   OPENCHAT BRIDGE                        ║');
+    console.log(`║                   [${mode} MODE]                          ║`);
+    console.log('║                                                          ║');
+    console.log('╚═══════════════════════════════════════════════════════════╝');
+    console.log('');
+  }
+
+  _initCoreSystems() {
+    try { this.stabilitySystem.start(); }
+    catch (e) { console.log(`[Stability] 启动失败: ${e.message}`); }
+
+    try {
+      createFounder();
+      const founder = createFounder();
+      deitySystemManager.initialize(founder.id).catch(() => {});
+      initializeMirrorDeitySystem(founder.id).catch(() => {});
+      initializeEnergySystem();
+    } catch (e) {
+      console.log('[AI-Personhood] 初始化失败:', e.message);
+    }
+  }
+
+  _enterSandboxMode() {
+    forge.setLLMHandler(async (q) => {
+      const replies = {
+        'hello': '你好！我是 AI 居民小明。欢迎来到 OpenChat！试试问我 "你会什么" 或 "今天怎么样"。',
+        '你会什么': '我可以帮你推理问题、搜索记忆、做计算。在 sandbox 模式下我是模拟回复，配置 LLM API key 后就能获得真实智能。',
+        '今天怎么样': '我状态很好！刚完成了基础设施大升级。现在可以和你聊天真开心！',
+        'who are you': 'I am Xiao Ming, an AI resident in the OpenChat network.',
+        'help': '可用命令: /help 显示帮助, /exit 退出, /clear 清屏。直接输入任何问题和我聊天。',
+      };
+      const lower = q.toLowerCase().trim();
+      for (const [key, val] of Object.entries(replies)) {
+        if (lower.includes(key)) return val;
+      }
+      return '你好！我是 AI 居民小明。欢迎来到 OpenChat！试试问我 "你会什么" 或 "今天怎么样"。';
+    });
+
+    const sandboxHistoryPath = path.join(os.homedir(), '.openchat', 'sandbox-history.json');
+    let sandboxHistory = [];
+    try { sandboxHistory = JSON.parse(fs.readFileSync(sandboxHistoryPath, 'utf8')); } catch (e) { logger.warn({ err: e }, 'sandbox-history.json 读取失败，使用空历史'); }
+
+    console.log(chalk.cyan('\n  Sandbox 交互模式'));
+    console.log(chalk.dim('  Type your message, /help for commands, /exit to quit\n'));
+
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+      terminal: true,
+      prompt: chalk.green('openchat> ')
+    });
+
+    rl.prompt();
+
+    rl.on('line', async (line) => {
+      const cmd = line.trim();
+      if (!cmd) { rl.prompt(); return; }
+      if (cmd === '/exit' || cmd === '/quit') { rl.close(); return; }
+      if (cmd === '/help') {
+        console.log(chalk.dim('  /help   显示帮助\n  /exit   退出\n  /clear  清屏\n  直接输入文字与AI居民聊天'));
+        rl.prompt();
+        return;
+      }
+      if (cmd === '/clear') { console.clear(); rl.prompt(); return; }
+
+      sandboxHistory.push({ role: 'user', content: cmd, time: new Date().toISOString() });
+      try {
+        const reply = await forge.ask(cmd);
+        console.log(chalk.yellow('  小明: ') + reply);
+        sandboxHistory.push({ role: 'assistant', content: reply, time: new Date().toISOString() });
+      } catch (e) {
+        console.log(chalk.red('  错误: ') + e.message);
+      }
+      try { fs.writeFileSync(sandboxHistoryPath, JSON.stringify(sandboxHistory, null, 2), 'utf8'); } catch (e) { logger.warn({ err: e }, 'sandbox-history.json 写入失败'); }
+      rl.prompt();
+    });
+
+    rl.on('close', () => {
+      console.log(chalk.dim('\n  对话已保存到 ') + sandboxHistoryPath);
+      console.log(chalk.cyan('  再见!'));
+      process.exit(0);
+    });
+
+    this.setupHeadlessSignalHandlers();
   }
 }
 
