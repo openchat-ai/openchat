@@ -275,10 +275,18 @@ async function R(){
               ws.send(JSON.stringify({ type: 'signaling_message', data: { action: 'registered', peerId: registeredPeerId } }));
               return;
             }
+            if (d.action === 'audio-data' || d.action === 'route-gossip' || d.action === 'route-update') {
+              this._routeSignaling(d, ws);
+              return;
+            }
             if (d.toPeerId) {
               const target = this._signalingRooms.get(d.toPeerId);
-              if (target && target.readyState === 1) target.send(JSON.stringify(msg));
-              else ws.send(JSON.stringify({ type: 'signaling_message', data: { type: 'error', message: 'Target peer not available' } }));
+              if (target && target.readyState === 1) {
+                target.send(JSON.stringify(msg));
+              } else {
+                // Target not on this Bridge — forward via P2P network
+                this._relayToNetwork(d, ws);
+              }
               return;
             }
           }
@@ -286,7 +294,36 @@ async function R(){
       });
       ws.on('close', () => {
         if (registeredPeerId) this._signalingRooms.delete(registeredPeerId);
+        // Notify P2P network that this peer left
+        if (this.swarm && registeredPeerId) {
+          this.swarm.broadcast({ type: 'peer_left', peerId: registeredPeerId });
+        }
       });
+    });
+  }
+
+  /** Route audio/gossip messages — try local first, then P2P network */
+  _routeSignaling(data, ws) {
+    const toPeerId = data['toPeerId'];
+    if (!toPeerId) return;
+
+    const target = this._signalingRooms.get(toPeerId);
+    if (target && target.readyState === 1) {
+      target.send(JSON.stringify({ type: 'signaling_message', data: data }));
+      return;
+    }
+
+    // Forward via P2P network to the Bridge that has this peer
+    this._relayToNetwork(data, ws);
+  }
+
+  /** Forward signaling data through P2P network to remote Bridges */
+  _relayToNetwork(data, ws) {
+    if (!this.swarm) return;
+    this.swarm.broadcast({
+      type: 'signaling_relay',
+      fromBridge: this.swarm._peerId || 'unknown',
+      data: data,
     });
   }
 

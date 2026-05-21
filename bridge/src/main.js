@@ -550,6 +550,17 @@ export class Bridge {
           }
         });
 
+        // P2P 信令中继：从其他 Bridge 转发来的音频/信令数据
+        this.p2p.on('signaling_relay', (data) => {
+          const payload = data.payload || {};
+          const targetPeerId = payload.data?.toPeerId;
+          if (!targetPeerId || !this.apiServer) return;
+          const target = this.apiServer._signalingRooms?.get(targetPeerId);
+          if (target && target.readyState === 1) {
+            target.send(JSON.stringify({ type: 'signaling_message', data: payload.data }));
+          }
+        });
+
         // P2R: 广播消息（HOUSE_SEEK / HOUSE_NEED）
         this.p2p.on('HOUSE_SEEK', (data) => {
           const p = data.payload || {};
