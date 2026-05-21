@@ -27,9 +27,9 @@ describe('voice signaling', () => {
     const clientPath = join(__dirname, '..', '..', '..', '..', 'openchat-flutter', 'lib', 'core', 'api', 'voice_client.dart');
     assert.ok(existsSync(clientPath), 'voice_client.dart should exist');
     const content = readFileSync(clientPath, 'utf8');
-    assert.ok(content.includes('WebSocket'), 'should use WebSocket');
-    assert.ok(content.includes('sendAudio'), 'should send audio');
+    assert.ok(content.includes('VoiceRouter'), 'should use VoiceRouter');
     assert.ok(content.includes('audio-data'), 'should handle audio data');
     assert.ok(content.includes('AudioRecorder'), 'should capture mic');
+    assert.ok(content.includes('_onAudioData'), 'should process audio');
   });
 });
