@@ -1,6 +1,28 @@
 # OpenChat Flutter (Agent Console) 开发文档
 
-> **最后更新**: 2026-04-29
+> **最后更新**: 2026-05-21
+> **依赖**: Bridge 服务运行在 `localhost:3800`（`cd bridge && npm start`）
+
+## 快速开始
+
+```bash
+# 1. 启动 Bridge（新开终端）
+cd ../bridge
+npm install && npm start
+
+# 2. 启动 Flutter 客户端（新开终端）
+cd ../openchat-flutter
+flutter pub get
+flutter run
+# App 自动连接 http://localhost:3800
+```
+
+## 测试
+
+```bash
+flutter test          # 12 测试全绿
+flutter analyze       # 0 error
+```
 
 ## 1. 项目概览
 `openchat-flutter` 是一个全新的客户端，旨在将 OpenChat 从一个简单的聊天 App 升级为 **Multi-Agent 协作控制台**。它直接对接 `bridge` 的 `/api/v1` 架构，专注于 Agent 的生命周期管理和任务流展示。

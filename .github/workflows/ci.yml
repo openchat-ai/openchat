@@ -1,7 +1,7 @@
 name: CI
 on: [push, pull_request]
 jobs:
-  test:
+  bridge-test:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -14,7 +14,7 @@ jobs:
       - run: npm run lint -- --quiet
       - run: npm test
 
-  build:
+  bridge-build:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -28,3 +28,16 @@ jobs:
         run: npm pack --dry-run
       - name: Build Docker image
         run: docker build -t openchat-bridge .
+
+  flutter-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: openchat-flutter
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with: { flutter-version: '3.41' }
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test

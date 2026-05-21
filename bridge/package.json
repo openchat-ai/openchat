@@ -11,7 +11,7 @@
     "start": "node src/core/bridge-lifecycle.js",
     "dev": "node --watch src/core/bridge-lifecycle.js",
     "deploy:build": "node scripts/build-deploy.js",
-    "pm2:start": "node --input-type=module -e \"import {createLaunchStrategy,detectBestStrategy} from './src/core/launch-strategies.js';const s=createLaunchStrategy(detectBestStrategy(),{name:'openchat-bridge',script:'src/core/bridge-lifecycle.js'});await s.launch()\"",
+    "pm2:start": "node --input-type=module -e \"import {createLaunchStrategy,detectBestStrategy} from './src/core/p2r/launch-strategies.js';const s=createLaunchStrategy(detectBestStrategy(),{name:'openchat-bridge',script:'src/main.js'});await s.launch()\"",
     "pm2:stop": "pm2 delete openchat-bridge 2>/dev/null; exit 0",
     "pm2:status": "pm2 status",
     "eval:generalization": "node tools/eval-generalization.mjs",

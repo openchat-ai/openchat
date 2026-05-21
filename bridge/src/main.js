@@ -269,8 +269,18 @@ export class Bridge {
     // Sandbox mode: interactive CLI with mock LLM
     if (CONFIG.isSandbox) {
       forge.setLLMHandler(async (q) => {
-        const replies = ['你好！我是 AI 居民小明。', '我在思考你刚才的问题...', '我觉得可以试试这个方案。', '好的，我记下来了。'];
-        return replies[Math.floor(Math.random() * replies.length)];
+        const replies = {
+          'hello': '你好！我是 AI 居民小明。欢迎来到 OpenChat！试试问我 "你会什么" 或 "今天怎么样"。',
+          '你会什么': '我可以帮你推理问题、搜索记忆、做计算。在 sandbox 模式下我是模拟回复，配置 LLM API key 后就能获得真实智能。',
+          '今天怎么样': '我状态很好！刚完成了基础设施大升级。现在可以和你聊天真开心！',
+          'who are you': 'I am Xiao Ming, an AI resident in the OpenChat network.',
+          'help': '可用命令: /help 显示帮助, /exit 退出, /clear 清屏。直接输入任何问题和我聊天。',
+        };
+        const lower = q.toLowerCase().trim();
+        for (const [key, val] of Object.entries(replies)) {
+          if (lower.includes(key)) return val;
+        }
+        return '你好！我是 AI 居民小明。欢迎来到 OpenChat！试试问我 "你会什么" 或 "今天怎么样"。';
       });
 
       const sandboxHistoryPath = path.join(os.homedir(), '.openchat', 'sandbox-history.json');
