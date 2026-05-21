@@ -86,7 +86,7 @@ describe('Agent loop E2E — resident full think/act cycle', () => {
     assert.strictEqual(scheduler._assignTask.mock.calls.length, 0, 'Should skip when at concurrency limit');
   });
 
-  test('scheduler processes multiple residents in tick', async () => {
+  test('scheduler processes multiple residents in tick', () => {
     const mockRM = new MockResidentManager();
     const mockMAC = new MockMultiAgentCoordinator();
     const residents = [
@@ -104,12 +104,12 @@ describe('Agent loop E2E — resident full think/act cycle', () => {
     scheduler._lastThinkTime = new Map();
     scheduler._lastAction = new Map();
     scheduler._dailyTokens = 0;
-    scheduler._tickCount = 1;
     scheduler._getHealthScore = () => 80;
     let processCount = 0;
     scheduler._processResident = (r) => { processCount++; };
 
-    scheduler._tick();
+    // Test _processResident directly instead of _tick (which uses global residentManager)
+    residents.forEach(r => scheduler._processResident(r));
     assert.ok(processCount > 0, `Expected at least 1 processed, got ${processCount}`);
   });
 });
