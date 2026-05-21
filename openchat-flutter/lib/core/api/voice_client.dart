@@ -21,6 +21,17 @@ class VoiceClient {
   int _seq = 0;
   final _unacked = <int, _PendingFrame>{};
   Timer? _retryTimer;
+
+  // Network quality tracking
+  int _rttMs = 100;          // Estimated round-trip time
+  int _retriesInWindow = 0;  // Retries in last 10 frames
+  int _framesInWindow = 0;
+  int _frameSizeMs = 20;     // Current audio frame size (ms), starts at 20ms
+
+  // Adaptive frame sizes
+  static const int _frameMs = 20;    // Base recording frame
+  static const int _minSendMs = 10;  // Min send interval (bad network)
+  static const int _maxSendMs = 60;  // Max send interval (good network)
   String? _myPeerId;
   String? _currentPeerId;
   bool _isCalling = false;
@@ -67,8 +78,11 @@ class VoiceClient {
     if (await _recorder.hasPermission() != true) return;
     final stream = await _recorder.startStream(const RecordConfig(
       encoder: AudioEncoder.pcm16bits, numChannels: 1, sampleRate: 24000));
+    _audioAccumulator = Uint8List(0);
     stream?.listen(_onAudioData, onError: (_) => null);
   }
+
+  Uint8List _audioAccumulator = Uint8List(0);
 
   void _onAudioData(Uint8List pcm) async {
     if (!_isCalling || _currentPeerId == null) return;
