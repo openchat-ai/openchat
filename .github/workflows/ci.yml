@@ -1,5 +1,15 @@
 name: CI
-on: [push]
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      build-apk:
+        description: 'Build APK'
+        required: false
+        default: false
+        type: boolean
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -42,6 +52,7 @@ jobs:
       - run: flutter test
 
   flutter-apk:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     defaults:
       run:
