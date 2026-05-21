@@ -47,7 +47,7 @@
     "axios": "^1.15.0",
     "chalk": "^5.6.2",
     "cors": "^2.8.6",
-    "dotenv": "^17.4.1",
+    "dotenv": "^17.4.2",
     "express": "^4.22.1",
     "fairy-guardian": "file:../modules/fairy-guardian",
     "helmet": "^7.2.0",
