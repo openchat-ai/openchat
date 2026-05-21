@@ -28,9 +28,10 @@ describe('EvolutionEngine Integration', () => {
   });
 
   test('load saved skill', async () => {
+    const uid = 'ts-' + Date.now();
     const engine = new EvolutionEngine();
-    engine.skillManager.addSkill('test-skill-2', {
-      name: 'test skill 2',
+    engine.skillManager.addSkill(uid, {
+      name: 'test skill ' + uid,
       description: 'test',
       code: 'function test2() { return false; }',
     });
@@ -39,9 +40,9 @@ describe('EvolutionEngine Integration', () => {
     const engine2 = new EvolutionEngine();
     await engine2.skillManager.loadSkills();
 
-    const skill = engine2.skillManager.getSkill('test-skill-2');
+    const skill = engine2.skillManager.getSkill(uid);
     assert.ok(skill, 'loaded skill exists');
-    assert.strictEqual(skill.name, 'test skill 2');
+    assert.strictEqual(skill.name, 'test skill ' + uid);
 
     // cleanup
     const skillPath = engine.skillManager.getStoragePath();

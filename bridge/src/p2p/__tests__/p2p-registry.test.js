@@ -61,23 +61,18 @@ describe('TopicRegistry gossip sync', () => {
     assert.strictEqual(peers[0].peerId, 'peer-222');
   });
 
-  test('ttl expiry cleans stale peers', () => {
-    const nodeC = new TopicRegistry({ ttl: 1 });
+  test('ttl expiry cleans stale peers', async () => {
+    const nodeC = new TopicRegistry({ ttl: 500 });
     nodeC.setP2PSend(() => {});
     nodeC.announce('topic:temp', 'peer-stale', {});
 
     const before = nodeC._getLocalPeers('topic:temp');
     assert.strictEqual(before.length, 1);
 
-    return new Promise(resolve => {
-      setTimeout(() => {
-        nodeC._cleanup();
-        const after = nodeC._getLocalPeers('topic:temp');
-        assert.strictEqual(after.length, 0);
-        nodeC._timer?.unref?.();
-        resolve();
-      }, 5);
-    });
+    await new Promise(r => setTimeout(r, 600));
+    const after = nodeC._getLocalPeers('topic:temp');
+    assert.strictEqual(after.length, 0);
+    nodeC._timer?.unref?.();
   });
 });
 
