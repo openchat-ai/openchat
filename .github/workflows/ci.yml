@@ -10,7 +10,7 @@ jobs:
       run:
         working-directory: bridge
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
         with: { node-version: '24' }
       - run: npm ci
@@ -22,7 +22,7 @@ jobs:
       run:
         working-directory: bridge
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
         with: { node-version: '24' }
       - run: npm ci
@@ -34,7 +34,7 @@ jobs:
       run:
         working-directory: bridge
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
         with: { node-version: '24' }
       - run: npm ci
@@ -47,7 +47,7 @@ jobs:
       run:
         working-directory: openchat-flutter
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: subosito/flutter-action@v2
         with: { flutter-version: '3.41' }
       - run: flutter pub get
@@ -60,7 +60,7 @@ jobs:
       run:
         working-directory: openchat-flutter
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: subosito/flutter-action@v2
         with: { flutter-version: '3.41' }
       - run: flutter pub get
