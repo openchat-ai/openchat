@@ -23,13 +23,13 @@ describe('voice signaling', () => {
     assert.ok(serverFile.includes("/api/v1/voice"), 'server.js should mount /api/v1/voice');
   });
 
-  test('Flutter voice client exists and uses WebRTC', () => {
+  test('Flutter voice client exists and uses WebSocket', () => {
     const clientPath = join(__dirname, '..', '..', '..', '..', 'openchat-flutter', 'lib', 'core', 'api', 'voice_client.dart');
     assert.ok(existsSync(clientPath), 'voice_client.dart should exist');
     const content = readFileSync(clientPath, 'utf8');
-    assert.ok(content.includes('RTCPeerConnection'), 'should use RTCPeerConnection');
-    assert.ok(content.includes('createOffer'), 'should create offers');
-    assert.ok(content.includes('getUserMedia'), 'should capture media');
-    assert.ok(content.includes('onIceCandidate'), 'should handle ICE');
+    assert.ok(content.includes('WebSocket'), 'should use WebSocket');
+    assert.ok(content.includes('sendAudio'), 'should send audio');
+    assert.ok(content.includes('audio-data'), 'should handle audio data');
+    assert.ok(content.includes('AudioRecorder'), 'should capture mic');
   });
 });
