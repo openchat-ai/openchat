@@ -51,9 +51,9 @@ jobs:
       - uses: subosito/flutter-action@v2
         with: { flutter-version: '3.41' }
       - run: flutter pub get
-      - name: Build APK
-        run: flutter build apk --release
+      - name: Build APK (arm64 only, smaller)
+        run: flutter build apk --release --split-per-abi --target-platform android-arm64
       - uses: actions/upload-artifact@v4
         with:
           name: openchat-apk
-          path: openchat-flutter/build/app/outputs/flutter-apk/*.apk
+          path: openchat-flutter/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
