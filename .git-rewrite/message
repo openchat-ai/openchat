@@ -1,0 +1,8 @@
+refactor: lint 48→7 + 死代码删除+import修复 / lint 48→7 + dead file cleanup+import fix
+
+- 删除10个core/旧位置重复文件
+- 修复7处import路径(agent-monitor/handlers/learning-core等)
+- 修复knowledge-base.js编码损坏(catch块)
+- ESLint flat config: 非关键降warn
+- 剩余7个error: 5个parsing(编码损)+2个no-undef
+- 138测试全绿, sandbox可运行
