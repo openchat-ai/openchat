@@ -8,6 +8,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import http from 'http';
+import net from 'net';
 import * as path from 'path';
 import * as fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -347,6 +348,65 @@ async function R(){
   }
 
   async start() {
+    // Start raw TCP signaling server (port = Express port + 1)
+    this._tcpServer = net.createServer((socket) => {
+      let registeredPeerId = null;
+      socket.on('data', (buffer) => {
+        // Frame format: [type(1), targetLen(1), target, payload...]
+        // type: 1=register, 2=data, 3=forward
+        if (buffer.length < 2) return;
+        const type = buffer[0];
+        const targetLen = buffer[1];
+
+        if (type === 1) {
+          // Register: payload = peerId
+          registeredPeerId = buffer.subarray(2).toString('utf8').replace(/\0/g, '');
+          this._signalingRooms.set(registeredPeerId, socket);
+          // Send registration confirmation
+          socket.write(Buffer.from([0x01, 0x00]));
+          console.log('[TCP] Peer registered:', registeredPeerId?.slice(0, 8));
+          return;
+        }
+
+        if (type === 2 && targetLen > 0 && buffer.length >= 2 + targetLen + 1) {
+          const targetId = buffer.subarray(2, 2 + targetLen).toString('utf8');
+          const payload = buffer.subarray(2 + targetLen);
+          const target = this._signalingRooms.get(targetId);
+          if (target) {
+            target.write(Buffer.concat([Buffer.from([0x02, registeredPeerId?.length || 0, ...(registeredPeerId || '').split('').map(c => c.charCodeAt(0))]), payload]));
+          }
+          return;
+        }
+
+        // Raw binary frame (VoiceFrame format)
+        if (buffer.length >= 5 && buffer[0] === 0x0C && buffer[1] === 0x7A) {
+          const frameType = buffer[2];
+          if (frameType === 0x01 || frameType === 0x03) {
+            // Audio/ACK: relay to all other peers on this bridge
+            for (const [id, s] of this._signalingRooms) {
+              if (id !== registeredPeerId && s.readyState === 'open') {
+                s.write(buffer);
+              }
+            }
+          }
+        }
+      });
+
+      socket.on('close', () => {
+        if (registeredPeerId) {
+          this._signalingRooms.delete(registeredPeerId);
+          console.log('[TCP] Peer left:', registeredPeerId?.slice(0, 8));
+        }
+      });
+
+      socket.on('error', () => {});
+    });
+
+    const tcpPort = this.port + 1;
+    this._tcpServer.listen(tcpPort, () => {
+      console.log(`[Signaling] TCP server on port ${tcpPort}`);
+    });
+
     return new Promise((resolve, reject) => {
       try {
         this.server = this.app.listen(this.port, () => {
@@ -363,6 +423,7 @@ async function R(){
     if (this.server) {
       if (this.wss) this.wss.close();
       if (this.signalingWss) this.signalingWss.close();
+      if (this._tcpServer) this._tcpServer.close();
       return new Promise((resolve) => {
         this.server.close(() => {
           console.log('[API] Server stopped');
