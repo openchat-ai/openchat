@@ -43,3 +43,13 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Local build outputs (handled by CI, never build locally)
+# CI builds APK and uploads as artifact — delete local build artifacts
+android/build/
+android/.gradle/
+build/
+.dart_tool/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
