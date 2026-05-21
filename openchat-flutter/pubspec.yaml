@@ -16,11 +16,9 @@ dependencies:
   device_info_plus: ^10.1.0
   battery_plus: ^6.0.0
   connectivity_plus: ^6.0.0
-  flutter_webrtc: ^1.4.1
   freezed_annotation: ^2.4.1
   json_annotation: ^4.8.1
   equatable: ^2.0.5
-  web_socket_channel: ^3.0.2
   record: ^5.2.0
   audioplayers: ^6.1.0
 
