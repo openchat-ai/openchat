@@ -21,6 +21,8 @@ dependencies:
   json_annotation: ^4.8.1
   equatable: ^2.0.5
   web_socket_channel: ^3.0.2
+  record: ^5.2.0
+  audioplayers: ^6.1.0
 
 dev_dependencies:
   flutter_test:

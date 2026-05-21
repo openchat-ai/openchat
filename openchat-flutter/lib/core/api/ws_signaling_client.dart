@@ -29,6 +29,7 @@ class WsSignalingClient {
   String? get peerId => _peerId;
   String? get remotePeerId => _remotePeerId;
   String? get roomId => _roomId;
+  WebSocketChannel? get channel => _channel;
 
   WsSignalingClient({String host = 'localhost', int port = 3800, String? token})
       : _host = host, _port = port, _token = token;
