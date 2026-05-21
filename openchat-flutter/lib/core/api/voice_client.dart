@@ -5,6 +5,7 @@ import 'package:record/record.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'ws_signaling_client.dart';
 import 'voice_router.dart';
+import 'voice_frame.dart';
 import '../audio/audio_processor.dart';
 
 enum CallState { idle, calling, ringing, connected, ended }
@@ -16,9 +17,16 @@ class VoiceClient {
   WsSignalingClient? _wsSignaling;
   VoiceRouter? _router;
   StreamSubscription? _wsSub;
+  StreamSubscription? _binarySub;
   StreamSubscription? _audioSub;
   String? _currentPeerId;
   bool _isCalling = false;
+  int _seq = 0;
+
+  // Unacked frames for retransmission
+  final _unacked = <int, _PendingFrame>{};
+  Timer? _retryTimer;
+
   final _callStateCtrl = StreamController<CallState>.broadcast();
   Stream<CallState> get callState => _callStateCtrl.stream;
 
@@ -29,31 +37,29 @@ class VoiceClient {
     _router = VoiceRouter(peerId);
     await ws.connect(peerId);
     _wsSub = ws.events.listen(_onSignalingEvent);
+    _binarySub = ws.binaryData.listen(_handleBinaryFrame);
+    _retryTimer = Timer.periodic(const Duration(milliseconds: 500), _retryUnacked);
   }
 
   void call(String targetPeerId) {
     _currentPeerId = targetPeerId;
     _isCalling = true;
     _callStateCtrl.add(CallState.calling);
-    _wsSignaling!.callPeer(targetPeerId, 'route-${DateTime.now().millisecondsSinceEpoch}');
+    _sendFrame(FrameType.signal, utf8.encode(jsonEncode({'action': 'call-request', 'toPeerId': targetPeerId})));
   }
 
   void acceptCall() {
-    _wsSignaling?.acceptCall();
     _callStateCtrl.add(CallState.connected);
     _startAudio();
+    _sendFrame(FrameType.signal, utf8.encode(jsonEncode({'action': 'call-accept', 'toPeerId': _currentPeerId})));
   }
 
-  void rejectCall() {
-    _wsSignaling?.rejectCall();
-    _callStateCtrl.add(CallState.idle);
-  }
-
+  void rejectCall() { _callStateCtrl.add(CallState.idle); }
   void endCall() async {
     _isCalling = false;
     await _audioSub?.cancel();
     await _recorder.stop();
-    _wsSignaling?.endCall();
+    _retryTimer?.cancel();
     _callStateCtrl.add(CallState.idle);
     _currentPeerId = null;
   }
@@ -61,71 +67,82 @@ class VoiceClient {
   void _startAudio() async {
     if (await _recorder.hasPermission() != true) return;
     final stream = await _recorder.startStream(const RecordConfig(
-      encoder: AudioEncoder.pcm16bits,
-      numChannels: 1,
-      sampleRate: 24000,
-    ));
+      encoder: AudioEncoder.pcm16bits, numChannels: 1, sampleRate: 24000));
     _audioSub = stream?.listen(_onAudioData, onError: (_) => null);
   }
 
-  void _onAudioData(Uint8List pcmData) async {
-    if (!_isCalling || _currentPeerId == null || _wsSignaling == null || _router == null) return;
-    final processed = await _audioProcessor.processMicrophoneInput(pcmData);
+  void _onAudioData(Uint8List pcm) async {
+    if (!_isCalling || _currentPeerId == null || _router == null) return;
+    final processed = await _audioProcessor.processMicrophoneInput(pcm);
     if (processed == null) return;
 
-    final packet = _router!.buildAudioPacket(_currentPeerId!, base64Encode(processed));
-    _wsSignaling!.channel?.sink.add(jsonEncode(packet));
+    final seq = _seq++;
+    final payload = _router!.buildAudioPacket(_currentPeerId!, base64Encode(processed));
+    final frame = VoiceFrame(FrameType.audio, utf8.encode(jsonEncode(payload)));
+    _sendBinary(frame.encode());
+
+    // Track for retransmission
+    _unacked[seq] = _PendingFrame(data: frame.encode(), sentAt: DateTime.now(), retries: 0);
+  }
+
+  void _sendFrame(int type, List<int> payload) {
+    _sendBinary(VoiceFrame(type, payload).encode());
+  }
+
+  void _sendBinary(List<int> data) {
+    _wsSignaling?.channel?.sink.add(data);
   }
 
   void _onSignalingEvent(SignalingEvent event) {
-    final data = event.data;
-
+    // Handle as text frames for backward compat
     if (event.action == 'call-request') {
-      _currentPeerId = data['fromPeerId'] as String?;
+      _currentPeerId = event.data['fromPeerId'] as String?;
       _callStateCtrl.add(CallState.ringing);
     }
-
     if (event.action == 'call-accept') {
-      _currentPeerId = data['fromPeerId'] as String?;
+      _currentPeerId = event.data['fromPeerId'] as String?;
       _callStateCtrl.add(CallState.connected);
       _startAudio();
     }
+    if (event.action == 'call-reject' || event.action == 'call-end') endCall();
+  }
 
-    if (event.action == 'call-reject' || event.action == 'call-end') {
-      endCall();
+  void _handleBinaryFrame(List<int> raw) {
+    final frame = VoiceFrame.decode(raw);
+    if (frame == null) return;
+
+    if (frame.type == FrameType.audio) {
+      final data = jsonDecode(utf8.decode(frame.payload));
+      if (_router == null) return;
+      final result = _router!.handleIncoming(data['data']);
+      if (result == null) return;
+
+      // Send ack
+      _sendFrame(FrameType.ack, [data['data']['packetId']?.hashCode ?? 0 & 0xFF]);
+
+      final payload = result['payload'] as String?;
+      if (payload != null) _processReceived(base64Decode(payload));
     }
 
-    if (event.action == 'audio-data') {
-      _handleAudioPacket(data);
-    }
-
-    // Routing gossip
-    if (event.action == 'route-gossip') {
-      _router?.mergeGossip(List<Map<String, dynamic>>.from(data['routes']));
-    }
-
-    // Route update response
-    if (event.action == 'route-update') {
-      final target = data['fromPeerId'] as String?;
-      if (target != null) {
-        _router?.reportSuccess(target, data['latencyMs'] ?? 0);
-      }
+    if (frame.type == FrameType.ack && frame.payload.isNotEmpty) {
+      _unacked.remove(frame.payload[0]);
     }
   }
 
-  void _handleAudioPacket(Map<String, dynamic> data) {
-    if (_router == null) return;
-
-    // Try routing: forward if not for us, process if for us
-    final result = _router!.handleIncoming(data);
-    if (result == null) return; // Already forwarded or dropped
-
-    // This packet is for us
-    final payload = result['payload'] as String?;
-    if (payload != null) {
-      final decoded = base64Decode(payload);
-      _processReceived(decoded);
-    }
+  void _retryUnacked(Timer t) {
+    final now = DateTime.now();
+    _unacked.removeWhere((seq, p) {
+      if (p.retries >= 3 || now.difference(p.sentAt).inSeconds > 5) {
+        _router?.reportFailure(_currentPeerId ?? '');
+        return true; // Give up
+      }
+      if (now.difference(p.sentAt).inMilliseconds > 1000) {
+        _sendBinary(p.data);
+        p.retries++;
+        p.sentAt = now;
+      }
+      return false;
+    });
   }
 
   Future<void> _processReceived(Uint8List data) async {
@@ -135,23 +152,21 @@ class VoiceClient {
     }
   }
 
-  /// Send routing gossip periodically (caller's responsibility to schedule)
-  void sendGossip() {
-    if (_wsSignaling == null || _router == null) return;
-    final routes = _router!.getGossipPayload();
-    if (routes.isEmpty) return;
-    _wsSignaling!.channel?.sink.add(jsonEncode({
-      'type': 'signaling_message',
-      'data': {'action': 'route-gossip', 'routes': routes},
-    }));
-  }
-
   void dispose() {
     _wsSub?.cancel();
+    _binarySub?.cancel();
     _audioSub?.cancel();
+    _retryTimer?.cancel();
     _recorder.dispose();
     _player.dispose();
     _router?.dispose();
     _callStateCtrl.close();
   }
+}
+
+class _PendingFrame {
+  final List<int> data;
+  DateTime sentAt;
+  int retries;
+  _PendingFrame({required this.data, required this.sentAt, required this.retries});
 }

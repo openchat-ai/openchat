@@ -22,9 +22,11 @@ class WsSignalingClient {
   String? _roomId;
   final _eventController = StreamController<SignalingEvent>.broadcast();
   final _callStateController = StreamController<CallState>.broadcast();
+  final _binaryController = StreamController<List<int>>.broadcast();
 
   Stream<SignalingEvent> get events => _eventController.stream;
   Stream<CallState> get callState => _callStateController.stream;
+  Stream<List<int>> get binaryData => _binaryController.stream;
   bool get isConnected => _connected;
   String? get peerId => _peerId;
   String? get remotePeerId => _remotePeerId;
@@ -61,6 +63,12 @@ class WsSignalingClient {
   }
 
   void _onMessage(dynamic data) {
+    // Binary frame → forward to voice_client
+    if (data is List<int>) {
+      _binaryController.add(List<int>.from(data));
+      return;
+    }
+
     try {
       final json = jsonDecode(data as String) as Map<String, dynamic>;
       if (json['type'] != 'signaling_message') return;
