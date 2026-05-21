@@ -74,13 +74,13 @@ class VoiceClient {
   void _startAudioStream() async {
     if (await _recorder.hasPermission() != true) return;
 
-    await _recorder.startStream(const RecordConfig(
+    final stream = await _recorder.startStream(const RecordConfig(
       encoder: AudioEncoder.pcm16bits,
       numChannels: 1,
       sampleRate: 24000,
     ));
 
-    _recorderSub = _recorder.onStream().listen((data) {
+    _recorderSub = stream?.listen((data) {
       if (!_isCalling || _currentPeerId == null) return;
       _sendAudio(data);
     }, onError: (e) => null);
