@@ -83,6 +83,41 @@ class VoiceClient {
   }
 
   Uint8List _audioAccumulator = Uint8List(0);
+  int _lastSendTime = 0;
+
+  void _onAudioData(Uint8List pcm) async {
+    if (!_isCalling || _currentPeerId == null) return;
+
+    // Accumulate 20ms base frames
+    _audioAccumulator = Uint8List.fromList([..._audioAccumulator, ...pcm]);
+
+    // Compute target frame size based on network quality
+    int targetMs;
+    if (_rttMs < 100 && _retriesInWindow < 2) {
+      targetMs = 60;  // Good: large frame, higher quality
+    } else if (_rttMs < 300 && _retriesInWindow < 5) {
+      targetMs = 20;  // Fair: normal frame
+    } else {
+      targetMs = 10;  // Poor: small frame, higher chance
+    }
+
+    final targetBytes = targetMs * 480; // 24kHz × 16bit = 480 bytes per 10ms
+    if (_audioAccumulator.length < targetBytes) return;
+
+    final frame = Uint8List.fromList(_audioAccumulator.sublist(0, targetBytes));
+    _audioAccumulator = Uint8List.fromList(_audioAccumulator.sublist(targetBytes));
+
+    final processed = await _audioProcessor.processMicrophoneInput(frame);
+    if (processed == null) return;
+
+    if (_retriesInWindow > 0) _retriesInWindow--;
+    final seq = _seq++;
+    final encoded = base64Encode(processed);
+    final payload = utf8.encode(jsonEncode({'from': _myPeerId, 'to': _currentPeerId, 'data': encoded, 'seq': seq}));
+    final frameData = RfFrame(0x00, Cmd.audio, _escape7E(payload)).encode();
+    _socket?.add(frameData);
+    _unacked[seq] = _PendingFrame(data: frameData, sentAt: DateTime.now(), retries: 0);
+  }
 
   void _onAudioData(Uint8List pcm) async {
     if (!_isCalling || _currentPeerId == null) return;
@@ -91,30 +126,37 @@ class VoiceClient {
     final seq = _seq++;
     final encoded = base64Encode(processed);
     final payload = utf8.encode(jsonEncode({'from': _myPeerId, 'to': _currentPeerId, 'data': encoded, 'seq': seq}));
-    final frame = VoiceFrame(0x01, payload);
-    final raw = frame.encode();
+    final raw = RfFrame(0x00, 0x01, _escape7E(payload)).encode();
     _socket?.add(raw);
     _unacked[seq] = _PendingFrame(data: raw, sentAt: DateTime.now(), retries: 0);
   }
 
-  void _sendFrame(int type, List<int> payload) {
-    _socket?.add(VoiceFrame(type, payload).encode());
+  void _sendFrame(int type, List<int> param) {
+    _socket?.add(RfFrame(0x00, type, param).encode());
   }
 
   void _onData(List<int> raw) {
-    // Handle registration confirmation
     if (raw.length == 2 && raw[0] == 0x01 && raw[1] == 0x00) return;
 
-    final frame = VoiceFrame.decode(raw);
+    final unescaped = _unescape7E(raw);
+    final frame = RfFrame.decode(unescaped);
     if (frame == null) return;
 
-    if (frame.type == 0x03) { // ACK
-      if (frame.payload.isNotEmpty) _unacked.remove(frame.payload[0]);
+    if (frame.cmd == 0x03) { // ACK — measure RTT
+      if (frame.param.length >= 1) {
+        final ackedSeq = frame.param[0];
+        final pending = _unacked[ackedSeq];
+        if (pending != null) {
+          _rttMs = (_rttMs * 3 + DateTime.now().difference(pending.sentAt).inMilliseconds) ~/ 4;
+          _retriesInWindow = (_retriesInWindow + pending.retries) ~/ 2;
+        }
+        _unacked.remove(ackedSeq);
+      }
       return;
     }
 
-    if (frame.type == 0x01 || frame.type == 0x02) { // Audio or Signal
-      final json = jsonDecode(utf8.decode(frame.payload));
+    if (frame.cmd == 0x01 || frame.cmd == 0x02) { // Audio or Signal
+      final json = jsonDecode(utf8.decode(frame.param));
       final type = json['action'] ?? 'audio';
 
       if (type == 'call-request') {
@@ -156,6 +198,32 @@ class VoiceClient {
     if (decoded != null) {
       await _player.play(BytesSource(Uint8List.fromList(decoded)));
     }
+  }
+
+  /// Escape 0x7E → 0x7D 0x5E, 0x7D → 0x7D 0x5D
+  List<int> _escape7E(List<int> data) {
+    final out = <int>[];
+    for (final b in data) {
+      if (b == 0x7E) { out.addAll([0x7D, 0x5E]); }
+      else if (b == 0x7D) { out.addAll([0x7D, 0x5D]); }
+      else { out.add(b); }
+    }
+    return out;
+  }
+
+  /// Unescape 0x7D 0x5E → 0x7E, 0x7D 0x5D → 0x7D
+  List<int> _unescape7E(List<int> data) {
+    final out = <int>[];
+    for (int i = 0; i < data.length; i++) {
+      if (data[i] == 0x7D && i + 1 < data.length) {
+        if (data[i + 1] == 0x5E) { out.add(0x7E); i++; }
+        else if (data[i + 1] == 0x5D) { out.add(0x7D); i++; }
+        else { out.add(data[i]); }
+      } else {
+        out.add(data[i]);
+      }
+    }
+    return out;
   }
 
   void dispose() {
