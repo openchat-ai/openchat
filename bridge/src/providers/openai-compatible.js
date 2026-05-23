@@ -383,6 +383,7 @@ export const PRESET_PROVIDERS = {
     providerName: 'openrouter',
     baseUrl: 'https://openrouter.ai/api/v1',
     defaultModel: 'openrouter/free',
+    envVars: ['OPENROUTER_API_KEY'],
     description: '200+ 模型聚合平台'
   },
   groq: {
