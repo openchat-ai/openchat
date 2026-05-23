@@ -87,7 +87,9 @@ class QiniuDirectClient {
       canonicalUri = '/';
       params['prefix'] = prefix;
     } else {
-      canonicalUri = '/$_bucket/$key';
+      // Virtual-hosted style: endpoint = <bucket>.s3.<region>.qiniucs.com
+      // Path is /<key>, not /<bucket>/<key>
+      canonicalUri = '/$key';
     }
 
     final sortedKeys = params.keys.toList()..sort();
