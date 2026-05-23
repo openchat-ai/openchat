@@ -68,7 +68,7 @@ export class FairyGuardian {
       const r = await fetch(`http://localhost:${port}/api/learning`, { signal: c.signal });
       clearTimeout(t);
       return r.ok;
-    } catch (e) { logger.warn('[IGNORE] ' + (e?.message || '')); return false; }
+    } catch (e) { if (e?.name !== 'AbortError') logger.warn('[IGNORE] ' + (e?.message || '')); return false; }
   }
 
   _portListening(port) {
