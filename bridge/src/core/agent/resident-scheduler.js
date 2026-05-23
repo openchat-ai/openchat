@@ -210,6 +210,10 @@ const residents = residentManager.list(null);
 
   // ================== 居民决策 ==================
 
+  _getHealthScore() {
+    return 100;
+  }
+
   _processResident(resident) {
     const id = resident.id || resident.name;
     const traits = resident.traits || {};
