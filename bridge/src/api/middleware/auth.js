@@ -34,6 +34,7 @@ export const authMiddleware = (req, res, next) => {
   const validTokens = getValidTokens();
 
   if (validTokens.length === 0) {
+    console.warn('[Auth] No API tokens configured, allowing request');
     req.authenticated = true;
     return next();
   }
