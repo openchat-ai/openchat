@@ -226,42 +226,6 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
       } catch (_) {}
       if (sduiWidget != null) return sduiWidget;
     }
-        if (action == 'refresh') _pollUsers();
-        for (final u in _users) {
-          if (action == 'call:${u['peerId']}') {
-            _callUser(u['peerId'] as String);
-            return;
-          }
-        }
-      });
-      // Inject user list into config
-      if (_uiConfig!['children'] is List) {
-        for (int i = 0; i < (_uiConfig!['children'] as List).length; i++) {
-          final child = (_uiConfig!['children'] as List)[i];
-          if (child is Map && child['type'] == 'users_list') {
-            (_uiConfig!['children'] as List)[i] = {
-              'type': 'column', 'children': _users.map((u) => {
-                'type': 'button', 'content': u['peerId'],
-                'action': 'call:${u['peerId']}',
-                'pad': 4,
-              }).toList(),
-            };
-          }
-        }
-      }
-      final rendered = parser.parse(_uiConfig);
-      if (rendered != null) {
-        return Scaffold(
-          backgroundColor: theme.background,
-          appBar: AppBar(
-            backgroundColor: Colors.transparent, elevation: 0,
-            title: Text('People', style: TextStyle(color: theme.textPrimary)),
-            actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _pollUsers, color: theme.textSecondary)],
-          ),
-          body: rendered,
-        );
-      }
-    }
 
     // Fallback hardcoded UI
     return Scaffold(
