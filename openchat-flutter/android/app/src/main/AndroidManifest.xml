@@ -6,8 +6,7 @@
         android:label="OpenChat"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:extractNativeLibs="false"
-        android:compressNativeLibs="true">
+        android:extractNativeLibs="false">
         <activity
             android:name=".MainActivity"
             android:exported="true"
