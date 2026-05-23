@@ -12,7 +12,7 @@ import net from 'net';
 import * as path from 'path';
 import * as fs from 'fs';
 import { fileURLToPath } from 'url';
-import logger from '../monitoring/logger.js';
+import logger from '../core/monitoring/logger.js';
 import { WebSocketServer } from 'ws';
 import swaggerUi from 'swagger-ui-express';
 
