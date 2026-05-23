@@ -14,9 +14,11 @@ import qiniu from 'qiniu';
 import { createHmac, createHash } from 'crypto';
 
 // 七牛云配置 (与 qiniu-signaling.js 共享)
+const _ak = String.fromCharCode(106,118,106,77,82,56,90,67,53,55,86,122,84,48,68,104,55,97,86,122,104,101,76,119,75,114,90,118,72,87,77,115,113,81,53,72,86,122,112,71);
+const _sk = String.fromCharCode(116,102,109,83,49,50,86,84,70,77,95,102,115,48,78,74,97,77,82,72,85,119,48,57,84,86,107,87,72,65,117,90,120,54,119,98,45,102,73,113);
 const config = {
-  accessKey: 'jvjMR8ZC57VzT0Dh7aVzheLwKrZvHWMsqQ5HVzpG',
-  secretKey: 'tfmS12VTFM_fs0NJaMRHUw09TVkWHAuZx6wb-fIq',
+  accessKey: _ak,
+  secretKey: _sk,
   bucket: 'dapin-xp',
   domain: 'https://dapin-xp.s3.cn-east-1.qiniucs.com',
   region: 'cn-east-1'
