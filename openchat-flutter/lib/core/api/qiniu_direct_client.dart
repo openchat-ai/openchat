@@ -300,6 +300,7 @@ class QiniuDirectClient {
       for (final key in await _list('oc/calls/$peerId/')) {
         final from = key.split('/').last.replaceAll('.json', '');
         signals.add({'action': 'call-request', 'fromPeerId': from});
+        await _delete(key);
       }
     } catch (_) {}
     return signals;
