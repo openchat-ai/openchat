@@ -155,6 +155,7 @@ class QiniuDirectClient {
   Future<List<String>> _list(String prefix) async {
     String? url;
     if (qiniuListUsersUrl.isNotEmpty && prefix == 'oc/users/') url = qiniuListUsersUrl;
+    if (qiniuListCallsUrl.isNotEmpty && prefix.startsWith('oc/calls/')) url = qiniuListCallsUrl;
     if (qiniuListDebugUrl.isNotEmpty && prefix.startsWith('oc/debug/')) url = qiniuListDebugUrl;
     if (url != null) {
       final resp = await _client.get(Uri.parse(url));
@@ -314,7 +315,8 @@ class QiniuDirectClient {
   Future<Map?> fetchRemoteUi() async {
     try {
       final raw = await _get('oc/config/ui_people.json');
-      return jsonDecode(raw) as Map;
+      final parsed = jsonDecode(raw);
+      if (parsed is Map) return parsed;
     } catch (_) {}
     return null;
   }
@@ -375,13 +377,19 @@ class QiniuDirectClient {
   }
 
   Future<List<int>?> pollAudio() async {
-    for (final key in await _list('oc/audio/$peerId/')) {
-      try {
-        final msg = jsonDecode(await _get(key)) as Map<String, dynamic>;
-        if (msg['from'] == peerId) continue;
-        return base64Decode(msg['data'] as String);
-      } catch (_) {}
-    }
+    String? lastKey;
+    try {
+      for (final key in await _list('oc/audio/$peerId/')) {
+        lastKey = key;
+        final raw = await _get(key);
+        final msg = jsonDecode(raw);
+        if (msg is! Map || msg['from'] == peerId) continue;
+        final data = msg['data'];
+        if (data is! String) continue;
+        final decoded = base64Decode(data);
+        return decoded;
+      }
+    } catch (_) {}
     return null;
   }
 

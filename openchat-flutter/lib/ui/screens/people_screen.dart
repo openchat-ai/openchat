@@ -55,7 +55,8 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
         _error = null;
         _loading = false;
       });
-      _uiConfig = await _client!.fetchRemoteUi();
+      final newConfig = await _client!.fetchRemoteUi();
+      if (newConfig != null) _uiConfig = newConfig;
       final signals = await _client!.pollIncoming();
       for (final s in signals) {
         final from = s['fromPeerId'] as String?;
@@ -104,7 +105,13 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
           'client': _client,
         });
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Call failed'), duration: Duration(seconds: 2)),
+        );
+      }
+    }
   }
 
   @override
@@ -169,13 +176,56 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
     );
   }
 
+  Widget _buildSdui(AppTheme theme) {
+    final parser = SduiParser(onAction: (action) {
+      if (action == 'refresh') _pollUsers();
+      for (final u in _users) {
+        if (action == 'call:${u['peerId']}') {
+          _callUser(u['peerId'] as String);
+          return;
+        }
+      }
+    });
+    // Inject user list into config
+    if (_uiConfig!['children'] is List) {
+      for (int i = 0; i < (_uiConfig!['children'] as List).length; i++) {
+        final child = (_uiConfig!['children'] as List)[i];
+        if (child is Map && child['type'] == 'users_list') {
+          (_uiConfig!['children'] as List)[i] = {
+            'type': 'column', 'children': _users.map((u) => {
+              'type': 'button', 'content': u['peerId'],
+              'action': 'call:${u['peerId']}',
+              'pad': 4,
+            }).toList(),
+          };
+        }
+      }
+    }
+    final rendered = parser.parse(_uiConfig);
+    if (rendered == null) return const SizedBox();
+    return Scaffold(
+      backgroundColor: theme.background,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent, elevation: 0,
+        title: Text('People', style: TextStyle(color: theme.textPrimary)),
+        actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _pollUsers, color: theme.textSecondary)],
+      ),
+      body: rendered,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = ref.watch(currentThemeProvider);
 
     // If remote UI config exists, use SDUI
     if (_uiConfig != null && !_loading && _error == null) {
-      final parser = SduiParser(onAction: (action) {
+      Widget? sduiWidget;
+      try {
+        sduiWidget = _buildSdui(theme);
+      } catch (_) {}
+      if (sduiWidget != null) return sduiWidget;
+    }
         if (action == 'refresh') _pollUsers();
         for (final u in _users) {
           if (action == 'call:${u['peerId']}') {
