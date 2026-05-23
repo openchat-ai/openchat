@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
@@ -30,7 +31,7 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
   }
 
   Future<void> _init() async {
-    final peerId = 'phone_${DateTime.now().millisecondsSinceEpoch}';
+    final peerId = '${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(99999).toString().padLeft(5, '0')}';
     _client = QiniuDirectClient(peerId: peerId);
     try {
       await _client!.register().timeout(const Duration(seconds: 8));

@@ -44,14 +44,32 @@ class VoiceClient {
 
   Future<void> connect(String peerId) async {
     _myPeerId = peerId;
-    _socket = await Socket.connect(_host, _port, timeout: const Duration(seconds: 5));
+    for (int attempt = 0; attempt < 3; attempt++) {
+      try {
+        _socket = await Socket.connect(_host, _port, timeout: const Duration(seconds: 5));
+        break;
+      } catch (_) {
+        if (attempt < 2) await Future.delayed(Duration(seconds: 1 << attempt));
+        else rethrow;
+      }
+    }
     _connected = true;
 
     final reg = RfFrame(0x00, 0x02, utf8.encode(peerId)).encode();
     _socket!.add(reg);
 
-    _socket!.listen(_onTcpData, onError: (_) => _connected = false, onDone: () => _connected = false);
+    _socket!.listen(_onTcpData, onError: (_) => _reconnect(), onDone: () => _reconnect());
     _retryTimer = Timer.periodic(const Duration(milliseconds: 500), _retryUnacked);
+  }
+
+  Future<void> _reconnect() async {
+    _connected = false;
+    _socket?.close();
+    if (_myPeerId != null) {
+      try {
+        await connect(_myPeerId!);
+      } catch (_) {}
+    }
   }
 
   void call(String targetPeerId) async {
