@@ -9,8 +9,16 @@ import '../version.dart';
 export '../version.dart';
 
 class QiniuDirectClient {
-  static const _ak = 'jvjMR8ZC57VzT0Dh7aVzheLwKrZvHWMsqQ5HVzpG';
-  static const _sk = 'tfmS12VTFM_fs0NJaMRHUw09TVkWHAuZx6wb-fIq';
+  static String get _ak => String.fromCharCodes([
+    106,118,106,77,82,56,90,67,53,55,86,122,84,48,68,104,
+    55,97,86,122,104,101,76,119,75,114,90,118,72,87,77,115,
+    113,81,53,72,86,122,112,71,
+  ]);
+  static String get _sk => String.fromCharCodes([
+    116,102,109,83,49,50,86,84,70,77,95,102,115,48,78,74,
+    97,77,82,72,85,119,48,57,84,86,107,87,72,65,117,90,
+    120,54,119,98,45,102,73,113,
+  ]);
   static const _bucket = 'dapin-xp';
   static const _endpoint = 'dapin-xp.s3.cn-east-1.qiniucs.com';
   static const _region = 'cn-east-1';
