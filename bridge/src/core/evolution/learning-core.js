@@ -98,10 +98,9 @@ this.history = {
         try {
           const problems = JSON.parse(readFileSync(join(PROBLEM_POOL_DIR, file), 'utf8'));
           this.problemPool.push(...problems);
-        } catch (e) { logger.info('[LC] Load fail '+file+':', e.message); }
+        } catch (e) {}
       }
     }
-    logger.info('[LC] Loaded pool:', this.problemPool.length, 'problems');
   }
 
 _loadStats() {
