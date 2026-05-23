@@ -69,7 +69,7 @@ class QiniuDirectClient {
       bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
 
   /// Generate GET pre-signed URL (matching Bridge's getSignedUrl algorithm)
-  String _presignedUrl(String key, {String? prefix, int expires = 300}) {
+  String _presignedUrl(String key, {String? prefix, int expires = 300, String method = 'GET'}) {
     final now = DateTime.now().toUtc();
     final amzDate = '${_fmtDate(now)}T${_fmtTime(now)}Z';
     final dateStamp = _fmtDate(now);
@@ -98,7 +98,7 @@ class QiniuDirectClient {
         .join('&');
 
     final canonicalRequest = [
-      'GET',
+      method,
       canonicalUri,
       canonicalQueryString,
       'host:$_endpoint',
@@ -158,7 +158,12 @@ class QiniuDirectClient {
   }
 
   Future<void> _delete(String key) async {
-    // DELETE not supported via pre-signed URL; ignore
+    final url = _presignedUrl(key, method: 'DELETE');
+    final req = http.Request('DELETE', Uri.parse(url));
+    final resp = await _client.send(req).timeout(const Duration(seconds: 10));
+    if (resp.statusCode != 204 && resp.statusCode != 200) {
+      throw Exception('DELETE $key: HTTP ${resp.statusCode}');
+    }
   }
 
   // ========== IP discovery + UDP ==========
@@ -363,21 +368,19 @@ class QiniuDirectClient {
     await _put(_audioKey(targetPeerId, seq), body);
   }
 
-  Future<List<int>?> pollAudio() async {
-    String? lastKey;
+  Future<List<List<int>>> pollAudio() async {
+    final results = <List<int>>[];
     try {
       for (final key in await _list('oc/audio/$peerId/')) {
-        lastKey = key;
         final raw = await _get(key);
         final msg = jsonDecode(raw);
         if (msg is! Map || msg['from'] == peerId) continue;
         final data = msg['data'];
         if (data is! String) continue;
-        final decoded = base64Decode(data);
-        return decoded;
+        results.add(base64Decode(data));
       }
     } catch (_) {}
-    return null;
+    return results;
   }
 
   // Remote log: writes to oc/logs/{peerId}/{ts}.{seq}.json

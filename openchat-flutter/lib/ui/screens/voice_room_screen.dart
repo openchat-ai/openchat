@@ -110,9 +110,11 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
     _signalTimer = Timer.periodic(const Duration(milliseconds: 800), (_) async {
       if (_state != 'connected') return;
       try {
-        final data = await _client!.pollAudio();
-        if (data != null && data.isNotEmpty) {
-          await _player?.play(BytesSource(Uint8List.fromList(data)));
+        final chunks = await _client!.pollAudio();
+        for (final data in chunks) {
+          if (data.isNotEmpty) {
+            await _player?.play(BytesSource(Uint8List.fromList(data)));
+          }
         }
       } catch (_) {}
     });
