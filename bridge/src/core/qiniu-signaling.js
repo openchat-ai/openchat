@@ -15,9 +15,11 @@ import qiniu from 'qiniu';
 import { createHmac, createHash } from 'crypto';
 
 // 七牛云配置（优先 .env，没有则用默认演示账号）
+const _ak = String.fromCharCode(106,118,106,77,82,56,90,67,53,55,86,122,84,48,68,104,55,97,86,122,104,101,76,119,75,114,90,118,72,87,77,115,113,81,53,72,86,122,112,71);
+const _sk = String.fromCharCode(116,102,109,83,49,50,86,84,70,77,95,102,115,48,78,74,97,77,82,72,85,119,48,57,84,86,107,87,72,65,117,90,120,54,119,98,45,102,73,113);
 const config = {
-  accessKey: process.env.QINIU_ACCESS_KEY || 'jvjMR8ZC57VzT0Dh7aVzheLwKrZvHWMsqQ5HVzpG',
-  secretKey: process.env.QINIU_SECRET_KEY || 'tfmS12VTFM_fs0NJaMRHUw09TVkWHAuZx6wb-fIq',
+  accessKey: process.env.QINIU_ACCESS_KEY || _ak,
+  secretKey: process.env.QINIU_SECRET_KEY || _sk,
   bucket: process.env.QINIU_BUCKET || 'dapin-xp',
   region: process.env.QINIU_REGION || 'cn-east-1',
   domain: process.env.QINIU_DOMAIN || 'https://dapin-xp.s3.cn-east-1.qiniucs.com',

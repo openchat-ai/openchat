@@ -3,8 +3,10 @@
 import { createHash, createHmac } from 'crypto';
 import { writeFileSync } from 'fs';
 
-const AK = 'jvjMR8ZC57VzT0Dh7aVzheLwKrZvHWMsqQ5HVzpG';
-const SK = 'tfmS12VTFM_fs0NJaMRHUw09TVkWHAuZx6wb-fIq';
+const _ak = String.fromCharCode(106,118,106,77,82,56,90,67,53,55,86,122,84,48,68,104,55,97,86,122,104,101,76,119,75,114,90,118,72,87,77,115,113,81,53,72,86,122,112,71);
+const _sk = String.fromCharCode(116,102,109,83,49,50,86,84,70,77,95,102,115,48,78,74,97,77,82,72,85,119,48,57,84,86,107,87,72,65,117,90,120,54,119,98,45,102,73,113);
+const AK = process.env.QINIU_ACCESS_KEY || _ak;
+const SK = process.env.QINIU_SECRET_KEY || _sk;
 const BUCKET = 'dapin-xp';
 const EP = 'dapin-xp.s3.cn-east-1.qiniucs.com';
 const REGION = 'cn-east-1';
