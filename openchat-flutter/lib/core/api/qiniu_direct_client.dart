@@ -51,7 +51,7 @@ class QiniuDirectClient {
   String _uploadToken(String key) {
     final deadline = (DateTime.now().millisecondsSinceEpoch ~/ 1000) + 3600;
     final policy = jsonEncode({'scope': '$_bucket:$key', 'deadline': deadline});
-    final encoded = _base64UrlNoPad(utf8.encode(policy));
+    final encoded = _base64UrlKeepPad(utf8.encode(policy));
     final hmacSha1 = Hmac(sha1, utf8.encode(_sk))
         .convert(utf8.encode(encoded))
         .bytes;
