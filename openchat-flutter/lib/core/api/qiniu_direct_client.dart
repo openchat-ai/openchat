@@ -133,13 +133,13 @@ class QiniuDirectClient {
   Future<String> _get(String key) async {
     // Use Qiniu management API (rs.qiniu.com) with HMAC-SHA1 instead of S3 V4.
     // HMAC-SHA1 matches upload token algorithm, proven working.
-    final entry = _base64NoPad(utf8.encode('$_bucket:$key'));
+    final entry = _base64UrlNoPad(utf8.encode('$_bucket:$key'));
     final path = '/get/$entry';
     final signingStr = '$path\n';
     final hmacSha1 = Hmac(sha1, utf8.encode(_sk))
         .convert(utf8.encode(signingStr))
         .bytes;
-    final sig = _base64KeepPad(hmacSha1);
+    final sig = _base64UrlKeepPad(hmacSha1);
     final auth = 'QBox $_ak:$sig';
     final uri = Uri.https('rs.qiniu.com', path);
     final resp = await _client.get(uri, headers: {'Authorization': auth});
