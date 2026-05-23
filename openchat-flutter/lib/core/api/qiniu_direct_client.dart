@@ -131,25 +131,10 @@ class QiniuDirectClient {
       '${d.hour.toString().padLeft(2, '0')}${d.minute.toString().padLeft(2, '0')}${d.second.toString().padLeft(2, '0')}';
 
   Future<String> _get(String key) async {
-    // Use Qiniu management API (rs.qiniu.com) with HMAC-SHA1 instead of S3 V4.
-    // HMAC-SHA1 matches upload token algorithm, proven working.
-    final entry = _base64UrlNoPad(utf8.encode('$_bucket:$key'));
-    final path = '/get/$entry';
-    final signingStr = '$path\n';
-    final hmacSha1 = Hmac(sha1, utf8.encode(_sk))
-        .convert(utf8.encode(signingStr))
-        .bytes;
-    final sig = _base64UrlKeepPad(hmacSha1);
-    final auth = 'QBox $_ak:$sig';
-    final uri = Uri.https('rs.qiniu.com', path);
-    final resp = await _client.get(uri, headers: {'Authorization': auth});
+    final url = _presignedUrl(key);
+    final resp = await _client.get(Uri.parse(url));
     if (resp.statusCode != 200) throw Exception('GET $key: HTTP ${resp.statusCode}');
-    final json = jsonDecode(resp.body) as Map;
-    final dlUrl = json['url'] as String?;
-    if (dlUrl == null) throw Exception('GET $key: no url in response');
-    final data = await _client.get(Uri.parse(dlUrl));
-    if (data.statusCode != 200) throw Exception('GET $key data: HTTP ${data.statusCode}');
-    return data.body;
+    return resp.body;
   }
 
   Future<List<String>> _list(String prefix) async {
