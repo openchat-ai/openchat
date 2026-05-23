@@ -202,14 +202,7 @@ router.get('/learning', (req, res) => {
   }
 });
 
-// 11. 心跳
-router.post('/heartbeat', (req, res) => {
-  const { port } = req.body || {};
-  if (bridgeRef?.learningCore?.guardian && port) {
-    bridgeRef.learningCore.guardian.receiveHeartbeat(port);
-  }
-  res.json({ status: 'ok' });
-});
+// 11. 心跳（已禁用）
 
 // 12. Dashboard 数据
 router.get('/dashboard', async (req, res, next) => {
