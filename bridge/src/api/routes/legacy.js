@@ -20,20 +20,7 @@ export function setBridgeContext(bridge) {
   bridgeRef = bridge;
 }
 
-// 1. 状态检查 (扩展版)
-router.get('/status', async (req, res, next) => {
-  try {
-    const memStats = await memoryManager.getStats();
-    res.json({
-      status: 'running',
-      uptime: Math.floor(process.uptime()),
-      currentProvider: persistentConfig.getPreference('currentProvider'),
-      currentModel: persistentConfig.getPreference('currentModel'),
-      wsClients: bridgeRef?.clients?.size || 0,
-      memory: memStats
-    });
-  } catch (e) { next(e); }
-});
+// 1. 状态检查（已禁用）
 
 // 2. Provider 列表
 router.get('/providers', (req, res) => {
