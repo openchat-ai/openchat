@@ -86,8 +86,6 @@ jobs:
           path: ~/.gradle/caches
           key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: gradle-${{ runner.os }}-
-      - run: npm ci
-        working-directory: bridge
       - run: node ../scripts/gen-version.mjs lib/core/version.dart
       - run: flutter pub get
       - name: Build APK
