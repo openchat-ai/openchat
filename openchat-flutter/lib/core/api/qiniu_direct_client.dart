@@ -383,6 +383,28 @@ class QiniuDirectClient {
     return null;
   }
 
+  // Remote log: writes to oc/logs/{peerId}/{ts}.{seq}.json
+  // I read these from the server side to debug without user involvement.
+  int _logSeq = 0;
+  List<String> _logBuffer = [];
+  Timer? _logFlushTimer;
+
+  Future<void> _flushLog() async {
+    if (_logBuffer.isEmpty) return;
+    final batch = _logBuffer.take(20).join('\n');
+    _logBuffer = _logBuffer.skip(20).toList();
+    try {
+      await _put('oc/logs/$peerId/${DateTime.now().millisecondsSinceEpoch}.${_logSeq++}.json',
+          jsonEncode({'log': batch, 'ts': DateTime.now().millisecondsSinceEpoch}));
+    } catch (_) {}
+  }
+
+  void log(String level, String msg) {
+    _logBuffer.add('[$level] ${DateTime.now().toIso8601String()} $msg');
+    if (_logBuffer.length >= 20) _flushLog();
+    _logFlushTimer ??= Timer.periodic(const Duration(seconds: 30), (_) => _flushLog());
+  }
+
   // Demo mode: create a simulated peer so single phone can test
   Future<void> spawnDemoPeer() async {
     final demoId = 'demo_user';
@@ -394,6 +416,8 @@ class QiniuDirectClient {
   }
 
   void dispose() {
+    _logFlushTimer?.cancel();
+    _flushLog();
     _punchTimer?.cancel();
     _udp?.close();
     _client.close();
