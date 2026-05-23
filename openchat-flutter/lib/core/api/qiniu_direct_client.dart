@@ -42,7 +42,7 @@ class QiniuDirectClient {
 
   String _uploadToken(String key) {
     final deadline = (DateTime.now().millisecondsSinceEpoch ~/ 1000) + 3600;
-    final policy = jsonEncode({'scope': '$_bucket', 'deadline': deadline});
+    final policy = jsonEncode({'scope': '$_bucket:$key', 'deadline': deadline});
     final encoded = _base64UrlNoPad(utf8.encode(policy));
     final hmacSha1 = Hmac(sha1, utf8.encode(_sk))
         .convert(utf8.encode(encoded))
@@ -351,7 +351,7 @@ class QiniuDirectClient {
       } else {
         result = 'unknown_action';
       }
-      await _put('oc/debug/$peerId/result.json', jsonEncode({
+      await _put('oc/debug/$peerId/result_${DateTime.now().millisecondsSinceEpoch}.json', jsonEncode({
         'action': action, 'result': result, 'ts': DateTime.now().millisecondsSinceEpoch,
       }));
     }
