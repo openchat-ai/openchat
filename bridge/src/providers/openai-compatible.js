@@ -380,10 +380,9 @@ export const PRESET_PROVIDERS = {
     description: 'DeepSeek-V3, DeepSeek-Reasoner'
   },
   openrouter: {
-    name: 'OpenRouter',
-    nameCn: 'OpenRouter',
+    providerName: 'openrouter',
     baseUrl: 'https://openrouter.ai/api/v1',
-    defaultModel: 'openrouter/auto',
+    defaultModel: 'openrouter/free',
     description: '200+ 模型聚合平台'
   },
   groq: {

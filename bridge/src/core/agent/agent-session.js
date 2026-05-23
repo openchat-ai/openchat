@@ -459,7 +459,8 @@ export class AgentSession {
     }
 
     // Phase B: 无 API key → 自动回退到 Ollama（skipAuth，本地模型）
-    if (!apiKey) {
+    // OpenRouter free tier 不需要 key
+    if (!apiKey && providerName !== 'openrouter') {
       const ollamaConfig = providerManager.getProviderConfig('ollama');
       if (ollamaConfig) {
         logger.info('[Agent] API key 未配置，自动回退到 Ollama');
@@ -469,7 +470,7 @@ export class AgentSession {
       }
     }
 
-    if (!apiKey && providerName !== 'ollama') {
+    if (!apiKey && providerName !== 'ollama' && providerName !== 'openrouter') {
       return { content: 'No API key configured. Please set: config set <provider> <api_key>' };
     }
 
