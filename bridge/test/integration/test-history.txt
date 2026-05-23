@@ -1,0 +1,3 @@
+session list
+session history 188de243-800a-4b76-a341-9c45e6fc52c1
+exit

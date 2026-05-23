@@ -1,0 +1,49 @@
+#!/bin/sh
+# OpenChat 提交前自动测试
+
+echo "🔍 运行提交前检查..."
+
+# 0. Commit message lint
+echo "📝 检查 Commit message..."
+MSG=$(cat "$1" 2>/dev/null || echo "")
+if echo "$MSG" | grep -qiE "^(chore|fix|feat|docs|refactor|test):?\s*(end of day|收工|wip|tmp)\b"; then
+  echo "❌ Commit message 过于含糊（end of day / 收工 / wip / tmp），请写具体描述"
+  exit 1
+fi
+npx --no -- commitlint --edit $1 2>/dev/null || {
+  echo "❌ Commit message 格式错误，使用: feat/fix/refactor/test/docs/chore: description"
+  exit 1
+}
+
+# 0.5 Lint 检查
+echo "🔍 运行 ESLint..."
+cd bridge
+npx eslint src/ --quiet --no-ignore 2>/dev/null || {
+  echo "❌ ESLint 错误，请修复后再提交"
+  exit 1
+}
+cd ..
+echo "✅ ESLint 通过"
+
+# 1. Bridge 语法检查（秒级）
+echo "📦 检查 Bridge 语法..."
+cd bridge
+for file in src/core/agent/agent-session.js src/core/agent/agent-engine.js src/core/agent/agent-monitor.js src/main.js; do
+  if [ -f "$file" ]; then
+    node --check "$file" 2>/dev/null || {
+      echo "❌ 语法错误: $file"
+      exit 1
+    }
+  fi
+done
+echo "✅ Bridge 语法检查通过"
+
+# 2. 快速语法检查
+echo "🧪 检查新增/修改文件的语法..."
+git diff --cached --name-only --diff-filter=ACM | grep -E '\.(js|mjs)$' | while IFS= read -r f; do
+  node --check "$f" 2>/dev/null || { echo "❌ 语法错误: $f"; exit 1; }
+done
+echo "✅ 语法检查通过"
+
+echo ""
+echo "✅ 所有检查通过！继续提交..."

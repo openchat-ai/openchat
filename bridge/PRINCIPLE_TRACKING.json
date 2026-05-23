@@ -1,0 +1,55 @@
+{
+  "version": "1.0",
+  "lastUpdated": "2026-05-20",
+  "schema": {
+    "module": "affected module path",
+    "impactDomain": "functional characteristic tag, not file directory",
+    "rounds": ["R1", "R2"],
+    "status": "pending | resolved | scheme-changed",
+    "resolvedIn": "R?",
+    "action": "continue | scheme-change-required",
+    "votesForChange": 0
+  },
+  "tracked": [
+    {
+      "id": "core/main.js-start-split",
+      "module": "bridge/src/main.js",
+      "impactDomain": "core-startup-complexity",
+      "rounds": ["R9", "R10"],
+      "status": "pending",
+      "resolvedIn": null,
+      "action": "scheme-change-required",
+      "votesForChange": 0
+    },
+    {
+      "id": "test/evolution-integration-flaky",
+      "module": "bridge/test/evolution-integration.test.mjs",
+      "impactDomain": "testing-flaky",
+      "rounds": ["R9", "R10"],
+      "status": "pending",
+      "resolvedIn": null,
+      "action": "scheme-change-required",
+      "votesForChange": 0
+    },
+    {
+      "id": "docs/p2p-tutorial-demo",
+      "module": "docs/",
+      "impactDomain": "onboarding-p2p",
+      "rounds": ["R9", "R10"],
+      "status": "pending",
+      "resolvedIn": null,
+      "action": "continue",
+      "votesForChange": 0
+    },
+    {
+      "id": "ci/lint-integration",
+      "module": ".github/workflows/ci.yml",
+      "impactDomain": "ci-quality-gate",
+      "rounds": ["R10"],
+      "status": "pending",
+      "resolvedIn": null,
+      "action": "continue",
+      "votesForChange": 0
+    }
+  ]
+}

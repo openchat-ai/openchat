@@ -1,0 +1,10 @@
+{
+  "testEnvironment": "node",
+  "testMatch": ["**/*.test.js", "**/*.spec.js"],
+  "transform": {},
+  "moduleFileExtensions": ["js", "mjs", "cjs"],
+  "detectOpenHandles": true,
+  "forceExit": true,
+  "verbose": true,
+  "watchPathIgnorePatterns": ["<rootDir>/node_modules/", "<rootDir>/test-results/"]
+}

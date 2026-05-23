@@ -1,0 +1,32 @@
+{
+  "openrouter": {
+    "name": "OpenRouter",
+    "nameCn": "OpenRouter",
+    "baseUrl": "https://openrouter.ai/api/v1",
+    "chatEndpoint": "/chat/completions",
+    "defaultModel": "openrouter/auto",
+    "models": [],
+    "updatedAt": null,
+    "description": "200+ 模型聚合，支持 OpenAI 兼容格式"
+  },
+  "siliconflow": {
+    "name": "硅基流动",
+    "nameCn": "硅基流动",
+    "baseUrl": "https://api.siliconflow.cn/v1",
+    "chatEndpoint": "/chat/completions",
+    "defaultModel": "Qwen/Qwen2.5-72B-Instruct",
+    "models": [],
+    "updatedAt": null,
+    "description": "中国镜像源，高速稳定"
+  },
+  "deepseek": {
+    "name": "DeepSeek",
+    "nameCn": "DeepSeek",
+    "baseUrl": "https://api.deepseek.com/v1",
+    "chatEndpoint": "/chat/completions",
+    "defaultModel": "deepseek-chat",
+    "models": [],
+    "updatedAt": null,
+    "description": "DeepSeek 官方 API"
+  }
+}

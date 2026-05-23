@@ -1,0 +1,66 @@
+{
+  "modelSelection": {
+    "anthropic": {
+      "defaultModel": "[按次]claude-sonnet-4-5",
+      "smallFastModel": "[按次]claude-haiku-4-5",
+      "defaultHaikuModel": "[按次]claude-haiku-4-5",
+      "defaultSonnetModel": "[按次]claude-sonnet-4-5",
+      "defaultOpusModel": "[按次]claude-opus-4-6"
+    },
+    "deepseek": {
+      "defaultModel": "[按次]deepseek-ai/DeepSeek-V3.2",
+      "smallFastModel": "[按次]deepseek-ai/DeepSeek-V3.2-Lite"
+    },
+    "strategy": {
+      "modelSelectionStrategy": "dynamic",
+      "simpleTaskModel": "haiku",
+      "defaultTaskModel": "sonnet",
+      "complexTaskModel": "opus",
+      "thinkingEnabledForComplex": true,
+      "thinkingThreshold": 3,
+      "costOptimization": {
+        "haikuPercentage": 40,
+        "sonnetPercentage": 55,
+        "opusPercentage": 5,
+        "autoAdjustment": true,
+        "qualityThreshold": 4.0,
+        "dailyCostLimit": 10.0
+      }
+    },
+    "usageScenarios": {
+      "simpleTasks": {
+        "models": ["haiku"],
+        "examples": ["身份验证", "状态查询", "简单对话", "信息检索"]
+      },
+      "mediumTasks": {
+        "models": ["sonnet"],
+        "thinking": false,
+        "examples": ["工具执行", "代码生成", "问题解决", "AgentEngine循环"]
+      },
+      "complexTasks": {
+        "models": ["opus"],
+        "thinking": true,
+        "examples": ["架构设计", "复杂算法", "关键决策", "自我验证"]
+      }
+    },
+    "projectSpecific": {
+      "agentEngine": {
+        "recommendedModel": "sonnet",
+        "reason": "需要中等推理能力处理Think-Act-Verify循环"
+      },
+      "aiPersonSystem": {
+        "recommendedModel": "sonnet",
+        "reason": "需要遵守AI三定律的推理能力"
+      },
+      "memoryRetrieval": {
+        "recommendedModel": "haiku",
+        "reason": "简单检索任务，快速响应"
+      },
+      "selfVerification": {
+        "recommendedModel": "sonnet",
+        "thinking": true,
+        "reason": "质量评估需要深度思考"
+      }
+    }
+  }
+}
