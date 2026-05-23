@@ -47,7 +47,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
         final action = s['action'] as String?;
         final from = s['fromPeerId'] as String?;
         if (action == 'call-accept' && from == _targetPeerId) {
-          setState(() => _state = 'connected');
+          if (mounted) setState(() => _state = 'connected');
           _startAudio();
           return;
         }
@@ -59,23 +59,28 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
     } catch (_) {}
   }
 
+  bool _audioStarted = false;
+
   void _acceptCall() {
     _client?.sendSignal(_targetPeerId!, 'call-accept');
-    setState(() => _state = 'connected');
+    if (mounted) setState(() => _state = 'connected');
     _startAudio();
   }
 
   void _endCall() {
+    _audioStarted = false;
     _recordSub?.cancel();
     _recorder?.dispose();
     _player?.dispose();
     _client?.sendSignal(_targetPeerId!, 'call-end');
-    setState(() => _state = 'ended');
+    if (mounted) setState(() => _state = 'ended');
     _signalTimer?.cancel();
     Navigator.pop(context);
   }
 
   Future<void> _startAudio() async {
+    if (_audioStarted) return;
+    _audioStarted = true;
     _recorder = AudioRecorder();
     _player = AudioPlayer();
 
@@ -88,9 +93,12 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
     // Send: record → periodic send
     List<int> _buffer = [];
     _recordSub = stream.listen((chunk) {
+      if (_muted || _state != 'connected') {
+        _buffer.clear(); // discard while muted, prevent OOM
+        return;
+      }
       _buffer.addAll(chunk);
-      // Accumulate ~60ms before sending
-      if (_buffer.length >= 2880 && !_muted && _state == 'connected') {
+      if (_buffer.length >= 2880) {
         final frame = Uint8List.fromList(_buffer.take(2880).toList());
         _buffer = _buffer.skip(2880).toList();
         _client?.sendAudio(_targetPeerId!, frame, _audioSeq++);

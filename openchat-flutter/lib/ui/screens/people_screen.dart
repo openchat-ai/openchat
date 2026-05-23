@@ -39,14 +39,17 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
       _pollTimer = Timer.periodic(Duration(milliseconds: _client!.pollIntervalMs), (_) => _pollUsers());
       await _pollUsers();
     } catch (e) {
-      setState(() { _error = e.toString(); _loading = false; });
+      _client?.dispose();
+      if (mounted) setState(() { _error = e.toString(); _loading = false; });
     }
   }
 
   Future<void> _pollUsers() async {
+    if (!mounted) return;
     setState(() => _refreshing = true);
     try {
       final users = await _client!.discoverUsers();
+      if (!mounted) return;
       setState(() {
         _users = users.where((u) => u['peerId'] != _client!.peerId).toList();
         _error = null;
@@ -60,8 +63,10 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
       }
       await _client!.pollDebug();
     } catch (e) {
+      if (!mounted) return;
       setState(() => _error = e.toString());
     }
+    if (!mounted) return;
     setState(() => _refreshing = false);
   }
 
@@ -230,8 +235,8 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
                           style: TextStyle(color: theme.textTertiary, fontSize: 12)),
                       const SizedBox(height: 16),
                       ElevatedButton.icon(
-                        onPressed: () async {
-                          await _client?.spawnDemoPeer();
+                        onPressed: _client == null ? null : () async {
+                          await _client!.spawnDemoPeer();
                           await _pollUsers();
                         },
                         icon: const Icon(Icons.smart_toy_outlined, size: 16),
