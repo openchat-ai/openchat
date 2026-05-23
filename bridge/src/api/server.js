@@ -111,8 +111,8 @@ class APIServer {
       maxAge: 86400 // 24 hours
     }));
 
-    // 请求日志
-    this.app.use(morgan('combined'));
+    // 请求日志（跳过内部心跳/状态轮询）
+    this.app.use(morgan('combined', { skip: (req) => req.url === '/api/heartbeat' || req.url === '/api/status' }));
 
     // 请求体解析 - 限制大小
     this.app.use(express.json({ limit: '1mb' }));
