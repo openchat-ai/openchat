@@ -1,0 +1,29 @@
+#!/bin/sh
+
+BRANCH=$(git symbolic-ref HEAD 2>/dev/null | sed 's|refs/heads/||')
+
+# 1. Block direct push to master
+if [ "$BRANCH" = "master" ]; then
+  echo " [BLOCKED] Direct push to master is not allowed."
+  echo "   Create a feature branch and open a PR instead."
+  echo "   git checkout -b feat/your-feature"
+  exit 1
+fi
+
+# 2. Validate feature branch naming
+case "$BRANCH" in
+  feat/*|fix/*|release/*|chore/*|refactor/*) ;;
+  *)
+    echo " [WARN] Branch name '$BRANCH' doesn't follow convention: feat/*, fix/*, release/*, chore/*, refactor/*"
+    ;;
+esac
+
+echo "Running pre-push checks..."
+
+echo "  -> Bridge tests"
+cd bridge && npm test --silent 2>/dev/null || exit 1
+
+echo "  -> provider-kit tests"
+cd ../modules/provider-kit && npm test --silent 2>/dev/null || exit 1
+
+echo "All checks passed!"

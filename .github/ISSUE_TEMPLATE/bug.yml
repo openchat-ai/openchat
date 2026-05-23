@@ -1,0 +1,21 @@
+name: Bug Report
+description: Report a bug
+labels: [bug]
+body:
+  - type: textarea
+    attributes:
+      label: Description
+      description: What happened?
+  - type: textarea
+    attributes:
+      label: Steps to Reproduce
+  - type: textarea
+    attributes:
+      label: Expected Behavior
+  - type: textarea
+    attributes:
+      label: Environment
+      value: |
+        - OS:
+        - Node.js version:
+        - Bridge version:

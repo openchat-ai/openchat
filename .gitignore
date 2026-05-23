@@ -1,0 +1,78 @@
+# === Dependencies ===
+node_modules/
+.pub-cache/
+
+# === Environment & Secrets ===
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+**/secrets/
+**/credentials/
+
+# === Build Outputs ===
+/build
+/deploy
+dist/
+bridge/build/
+
+# === Flutter (CI builds APK, never local) ===
+openchat-flutter/build/
+openchat-flutter/android/build/
+openchat-flutter/android/.gradle/
+openchat-flutter/.dart_tool/
+openchat-flutter/.packages
+openchat-flutter/.flutter-plugins
+openchat-flutter/.flutter-plugins-dependencies
+openchat-flutter/pubspec.lock
+
+# === Flutter SDK (not needed locally, CI provides it) ===
+flutter/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# === IDE ===
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.iml
+
+# === OS ===
+.DS_Store
+Thumbs.db
+*.tmp
+*.log
+
+# === Runtime Data ===
+.openchat/
+
+# === Claude / AI ===
+.claude/
+AI_*.md
+PHASE*_SUMMARY.md
+FINAL_*.md
+CLAUDE_*.md
+STATUS_CONVENTION.md
+UPDATE_SUMMARY_*.md
+
+# === Bridge Auto-generated ===
+bridge/src/core/research-*
+bridge/src/core/analysis-*
+bridge/src/core/backups/
+bridge/src/core/age_increment*.js
+bridge/src/core/*.backup*
+bridge/eval-report-*.json
+*_detect_*.log
+
+# === Test Temp Files ===
+test-*.js
+tmp/
+eslint-out.txt
+eslint-report.json
+
+# Test artifacts
+bridge/replay-results/
+bridge/test-traces/

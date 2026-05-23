@@ -1,0 +1,145 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "OpenChat Bridge API",
+    "version": "1.0.0",
+    "description": "Decentralized AI resident platform API"
+  },
+  "servers": [{ "url": "http://localhost:3800" }],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health check",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": { "application/json": { "example": { "status": "running", "uptime": 3600, "version": "1.0.0" } } }
+          }
+        }
+      }
+    },
+    "/api/v1/residents": {
+      "get": {
+        "summary": "List residents",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Resident list",
+            "content": { "application/json": { "example": [{ "id": "uuid-123", "name": "alice", "status": "active", "traits": { "diligence": 0.9 } }] } }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create resident",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "content": { "application/json": { "example": { "name": "alice", "traits": { "diligence": 0.9 } } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Created",
+            "content": { "application/json": { "example": { "id": "uuid-123", "name": "alice", "status": "active" } } }
+          }
+        }
+      }
+    },
+    "/api/v1/agents": {
+      "get": {
+        "summary": "List agents",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Agent list",
+            "content": { "application/json": { "example": [{ "id": "agent-1", "type": "code-reviewer", "status": "idle" }] } }
+          }
+        }
+      }
+    },
+    "/api/v1/p2p/status": {
+      "get": {
+        "summary": "P2P network status",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "P2P status",
+            "content": { "application/json": { "example": { "peers": 5, "connected": 3, "topics": 12 } } }
+          }
+        }
+      }
+    },
+    "/api/v1/voice/offer": {
+      "post": {
+        "summary": "WebRTC offer",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "content": { "application/json": { "example": { "sdp": "v=0...", "type": "offer", "targetPeerId": "peer-abc" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "SDP answer",
+            "content": { "application/json": { "example": { "sdp": "v=0...", "type": "answer" } } }
+          }
+        }
+      }
+    },
+    "/api/v1/signaling": {
+      "get": {
+        "summary": "Signaling WebSocket upgrade",
+        "description": "Upgrades to WebSocket for real-time signaling"
+      }
+    },
+    "/api/v1/metrics": {
+      "get": {
+        "summary": "System metrics",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Metrics",
+            "content": { "application/json": { "example": { "requests": 1500, "avgLatency": 245, "errorRate": 0.02 } } }
+          }
+        }
+      }
+    },
+    "/api/v1/p2p/discover": {
+      "get": {
+        "summary": "Discover peers",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Peer list",
+            "content": { "application/json": { "example": { "peers": [{ "peerId": "abc123", "address": "192.168.1.5:3800", "topics": ["lobby"] }] } } }
+          }
+        }
+      }
+    },
+    "/api/v1/skills": {
+      "get": {
+        "summary": "List installed skills",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Skill list",
+            "content": { "application/json": { "example": [{ "name": "code-reviewer", "version": "1.0.0", "enabled": true }] } }
+          }
+        }
+      }
+    },
+    "/api/v1/updates": {
+      "get": {
+        "summary": "Check for updates",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Update status",
+            "content": { "application/json": { "example": { "current": "1.0.0", "latest": "1.0.1", "available": true } } }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "API_KEY" }
+    }
+  }
+}

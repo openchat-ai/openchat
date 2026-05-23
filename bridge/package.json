@@ -1,0 +1,75 @@
+{
+  "name": "openchat",
+  "version": "1.0.0",
+  "description": "Decentralized social network + AI residents platform - Bridge CLI",
+  "type": "module",
+  "main": "src/core/bridge-lifecycle.js",
+  "bin": {
+    "openchat": "./bin/openchat.js"
+  },
+  "scripts": {
+    "start": "node src/core/bridge-lifecycle.js",
+    "dev": "node --watch src/core/bridge-lifecycle.js",
+    "deploy:build": "node scripts/build-deploy.js",
+    "pm2:start": "node --input-type=module -e \"import {createLaunchStrategy,detectBestStrategy} from './src/core/p2r/launch-strategies.js';const s=createLaunchStrategy(detectBestStrategy(),{name:'openchat-bridge',script:'src/main.js'});await s.launch()\"",
+    "pm2:stop": "pm2 delete openchat-bridge 2>/dev/null; exit 0",
+    "pm2:status": "pm2 status",
+    "eval:generalization": "node tools/eval-generalization.mjs",
+    "test": "node --experimental-test-module-mocks --test --test-force-exit src/core/__tests__/*.test.mjs src/core/__tests__/*.test.js src/p2p/__tests__/*.test.js tests/benchmarks/*.js",
+    "test:voice": "node --test tests/voice-demo.mjs",
+    "test:watch": "node --test --watch src/core/__tests__/*.test.mjs src/core/__tests__/*.test.js src/p2p/__tests__/*.test.js tests/benchmarks/*.js",
+    "test:idea": "node --test src/core/__tests__/*.test.mjs src/core/__tests__/*.test.js",
+    "test:integration": "node --test test/integration/*.test.js",
+    "test:e2e": "node --test test/e2e/*.test.js",
+    "test:contract": "node --test tests/contract/*.test.js",
+    "test:llm-judge": "node test-utils/llm-judge.js",
+    "test:property": "node test-utils/property-test.js",
+    "test:replay": "node test-utils/replay-test.js",
+    "test:chaos": "node test-utils/chaos-test.js",
+    "test:coverage": "node --experimental-test-module-mocks --experimental-test-coverage --test src/core/__tests__/*.test.mjs src/core/__tests__/*.test.js",
+    "test:all": "node --experimental-test-module-mocks --test src/core/__tests__/*.test.mjs src/core/__tests__/*.test.js src/p2p/__tests__/*.test.js tests/benchmarks/*.js tests/contract/*.js",
+    "lint": "eslint src/",
+    "demo": "node scripts/demo.mjs",
+    "prepare": "husky"
+  },
+  "keywords": [
+    "p2p",
+    "decentralized",
+    "social",
+    "ai"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@jitsi/rnnoise-wasm": "^0.2.1",
+    "@openchat/provider-kit": "file:../modules/provider-kit",
+    "@shiguredo/rnnoise-wasm": "^2025.1.5",
+    "axios": "^1.15.0",
+    "chalk": "^5.6.2",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.1",
+    "express": "^4.22.1",
+    "fairy-guardian": "file:../modules/fairy-guardian",
+    "helmet": "^7.2.0",
+    "hyperswarm": "^4.17.0",
+    "joi": "^17.13.3",
+    "mathjs": "^15.2.0",
+    "morgan": "^1.10.1",
+    "onnxruntime-node": "^1.24.3",
+    "opusscript": "^0.1.1",
+    "pino": "^10.3.1",
+    "qiniu": "^7.15.2",
+    "swagger-ui-express": "^5.0.1",
+    "uuid": "^9.0.0",
+    "ws": "^8.16.0",
+    "zeromq": "^6.5.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.4",
+    "husky": "^9.1.7"
+  },
+  "optionalDependencies": {
+    "pm2": "^5.4.0",
+    "sql.js": "^1.10.0"
+  }
+}

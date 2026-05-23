@@ -1,0 +1,4 @@
+session create claude local
+chat <session_id> 你好
+session list
+exit
