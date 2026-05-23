@@ -337,11 +337,11 @@ export class Bridge {
 
         // P2R: 居民治家初始化（try 块防止 HouseOrchestrator 报错阻止后续初始化）
         try {
-        const { SafeEvolution } = await import('./core/safe-evolution.js');
-        const { BridgeSpawn } = await import('./core/bridge-spawn.js');
-        const { detectBestStrategy } = await import('./core/launch-strategies.js');
-        const { House } = await import('./core/house.js');
-        const { LLMProxyAgent } = await import('./core/llm-proxy-agent.js');
+        const { SafeEvolution } = await import('./core/security/safe-evolution.js');
+        const { BridgeSpawn } = await import('./core/p2r/bridge-spawn.js');
+        const { detectBestStrategy } = await import('./core/p2r/launch-strategies.js');
+        const { House } = await import('./core/p2r/house.js');
+        const { LLMProxyAgent } = await import('./core/p2r/llm-proxy-agent.js');
 
         const safeEvo = new SafeEvolution(this.p2p, this.p2p.peerId || 'bridge-1');
 
@@ -364,7 +364,7 @@ export class Bridge {
           }
         }
 
-        const { HouseOrchestrator } = await import('./core/house-orchestrator.js');
+        const { HouseOrchestrator } = await import('./core/p2r/house-orchestrator.js');
         this.houseOrchestrator = new HouseOrchestrator(this.p2p, this.p2p.peerId || 'bridge-1', safeEvo, this.house, bridgeSpawn);
         residentScheduler.houseOrchestrator = this.houseOrchestrator;
         this.safeEvolution = safeEvo;
@@ -386,17 +386,17 @@ export class Bridge {
 
         // P2R-K: 收敛引擎 — 问题分解→竞标→求解→择优
         try {
-          const { ProblemDecomposer } = await import('./core/problem-decomposer.js');
-          const { ConvergenceEngine } = await import('./core/convergence-engine.js');
-          const { SolutionEngine } = await import('./core/solution-engine.js');
-          const { SolutionOptimizer } = await import('./core/solution-optimizer.js');
+          const { ProblemDecomposer } = await import('./core/convergence/problem-decomposer.js');
+          const { ConvergenceEngine } = await import('./core/convergence/convergence-engine.js');
+          const { SolutionEngine } = await import('./core/convergence/solution-engine.js');
+          const { SolutionOptimizer } = await import('./core/convergence/solution-optimizer.js');
           this.problemDecomposer = new ProblemDecomposer();
           this.convergenceEngine = new ConvergenceEngine();
           this.solutionEngine = new SolutionEngine();
           this.solutionOptimizer = new SolutionOptimizer();
 
           // 注入收敛系统到居民调度器
-          const { residentScheduler } = await import('./core/resident-scheduler.js');
+          const { residentScheduler } = await import('./core/agent/resident-scheduler.js');
           residentScheduler.setConvergenceSystem(
             this.knowledgeBase,
             this.problemDecomposer,
@@ -498,7 +498,7 @@ export class Bridge {
 
             // 为迁入居民创建独立 House
             if (!this._migratedHouse) {
-              const { House: ImportedHouse } = await import('./core/house.js');
+              const { House: ImportedHouse } = await import('./core/p2r/house.js');
               const migratedHouseId = `${hostId}_migrated`;
               this._migratedHouse = new ImportedHouse(migratedHouseId, this.p2p?.peerId || 'bridge-1', hostId, 'migrated');
               await this._migratedHouse.init();
