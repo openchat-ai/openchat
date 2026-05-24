@@ -344,16 +344,8 @@ export class Bridge {
 
         // P2R-K: 收敛引擎（已禁用）
 
-        // 启动学习核心
-        this.learningCore = new LearningCore(this.knowledgeBase, this.p2p, port);
-        if (isMain) {
-          this._startLearningCore();
-          console.log(`[学习核心] 🌟 主模式 IQ=${this.learningCore.iq} Age=${this.learningCore.age} Solved=${this.learningCore.solvedCount}`);
-        } else {
-          console.log(`[学习核心] 🧚 仙女模式`);
-          this._startFairyMonitor();
-          this._startHeartbeat();
-        }
+        // 学习核心（已禁用）
+        this.learningCore = null;
 
         // P2R: 窟验证回复
         this.p2p.on('safe-house-verify', (data) => {
