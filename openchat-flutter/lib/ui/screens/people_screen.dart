@@ -1,3 +1,4 @@
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'dart:async';
 import 'dart:math';
@@ -31,7 +32,10 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
   }
 
   Future<void> _init() async {
-    final peerId = '${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(99999).toString().padLeft(5, '0')}';
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getString('peerId');
+    final peerId = stored ?? '${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(99999).toString().padLeft(5, '0')}';
+    if (stored == null) await prefs.setString('peerId', peerId);
     _client = QiniuDirectClient(peerId: peerId);
     try {
       await _client!.register().timeout(const Duration(seconds: 8));
