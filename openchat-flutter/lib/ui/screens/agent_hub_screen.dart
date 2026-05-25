@@ -4,7 +4,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/models/resident_model.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/resident_provider.dart';
-import '../../core/api/qiniu_direct_client.dart';
+import '../../core/sdui_config.dart';
 import 'resident_detail_screen.dart';
 import '../components/cards/app_cards.dart';
 
@@ -25,7 +25,7 @@ class _AgentHubScreenState extends ConsumerState<AgentHubScreen> {
   }
 
   Future<void> _loadConfig() async {
-    final cfg = await QiniuDirectClient.fetchConfigFile('oc/config/ui_agent.json');
+    final cfg = await SduiConfig.load('oc/config/ui_agent.json');
     if (mounted) setState(() => _uiConfig = cfg);
   }
 

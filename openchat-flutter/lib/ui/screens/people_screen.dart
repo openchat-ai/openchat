@@ -8,6 +8,7 @@ import '../../core/theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
 import '../../core/api/qiniu_direct_client.dart';
 import '../../core/sdui.dart';
+import '../../core/sdui_config.dart';
 
 class PeopleScreen extends ConsumerStatefulWidget {
   const PeopleScreen({super.key});
@@ -40,7 +41,7 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
     try {
       await _client!.register().timeout(const Duration(seconds: 8));
       await _client!.fetchConfig();
-      _uiConfig = await _client!.fetchRemoteUi();
+      _uiConfig = await SduiConfig.load('oc/config/ui_people.json', peerId: peerId);
       _pollTimer = Timer.periodic(Duration(milliseconds: _client!.pollIntervalMs), (_) => _pollUsers());
       await _pollUsers();
     } catch (e) {
@@ -60,7 +61,7 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
         _error = null;
         _loading = false;
       });
-      final newConfig = await _client!.fetchRemoteUi();
+      final newConfig = await SduiConfig.load('oc/config/ui_people.json', peerId: _client!.peerId);
       if (newConfig != null) _uiConfig = newConfig;
       final signals = await _client!.pollIncoming();
       for (final s in signals) {
