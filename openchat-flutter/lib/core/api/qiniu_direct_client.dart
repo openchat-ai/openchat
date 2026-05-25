@@ -402,7 +402,7 @@ class QiniuDirectClient {
       'data': base64Encode(data),
       'ts': DateTime.now().millisecondsSinceEpoch,
     });
-    await _put('oc/audio/$target/${peerId}_$seq.enc', body);
+    await _put('oc/audio/$targetPeerId/${peerId}_$seq.enc', body);
   }
 
   Future<List<Uint8List>> pollEncodedAudio() async {
