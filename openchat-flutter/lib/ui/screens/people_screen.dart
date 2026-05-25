@@ -149,6 +149,60 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
     );
   }
 
+  void _handleFileAction(String action) {
+    if (_client == null) return;
+    if (action.startsWith('file:list?')) {
+      final prefix = Uri.tryParse(action)?.queryParameters['prefix'] ?? '';
+      _client!.listFiles(prefix).then((files) {
+        if (!mounted) return;
+        showDialog(context: context, builder: (ctx) => AlertDialog(
+          title: Text('Files: $prefix'),
+          content: SizedBox(width: double.maxFinite,
+            child: ListView.builder(shrinkWrap: true, itemCount: files.length,
+              itemBuilder: (_, i) => ListTile(title: Text(files[i].split('/').last, style: const TextStyle(fontSize: 12)), dense: true)),
+          ),
+          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
+        ));
+      });
+    } else if (action.startsWith('file:delete?')) {
+      final key = Uri.tryParse(action)?.queryParameters['key'] ?? '';
+      if (key.isEmpty) return;
+      showDialog(context: context, builder: (ctx) => AlertDialog(
+        title: const Text('Delete?'), content: Text(key),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(onPressed: () { _client!.deleteFile(key); Navigator.pop(ctx); },
+            child: const Text('Delete', style: TextStyle(color: Colors.red))),
+        ],
+      ));
+    } else if (action.startsWith('file:get?')) {
+      final key = Uri.tryParse(action)?.queryParameters['key'] ?? '';
+      if (key.isEmpty) return;
+      _client!.readFile(key).then((data) {
+        if (!mounted || data == null) return;
+        showDialog(context: context, builder: (ctx) => AlertDialog(
+          title: Text(key.split('/').last),
+          content: SizedBox(width: double.maxFinite,
+            child: SingleChildScrollView(child: Text(data, style: const TextStyle(fontSize: 10)))),
+          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
+        ));
+      });
+    }
+  }
+
+  void _showDeviceInfo() {
+    if (_client == null) return;
+    showDialog(context: context, builder: (ctx) => AlertDialog(
+      title: const Text('Device Info'),
+      content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('Peer ID: ${_client!.peerId}'),
+        const SizedBox(height: 8),
+        Text('Poll: ${_client!.pollIntervalMs}ms'),
+      ]),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
+    ));
+  }
+
   @override
   void dispose() {
     _pollTimer?.cancel();
@@ -252,8 +306,11 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
           custom: {
             'settings': () => Navigator.pushNamed(context, '/theme'),
             'audio_files': () => _showAudioFiles(),
+            'device:info': () => _showDeviceInfo(),
           },
         );
+        // Handle generic file operations (file:list?prefix=..., file:delete?key=..., file:get?key=...)
+        _handleFileAction(action);
       },
     );
     // Inject user list into config
