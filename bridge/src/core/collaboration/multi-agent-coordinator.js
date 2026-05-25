@@ -1,4 +1,3 @@
-import { AgentSession } from '../agent/agent-session.js';
 import { messageBus, MESSAGE_TYPES } from '../message-bus.js';
 import { persistentConfig } from '../persistent-config.js';
 import { socialConnector } from './social-connector.js';
@@ -10,18 +9,13 @@ export class MultiAgentCoordinator {
     this.agents = new Map();
     this.taskQueue = [];
     this.completedTasks = [];
-    this.socialConnector = socialConnector; // 集成社交网络
-    this.knowledgeNetwork = knowledgeNetwork; // 使用全局知识网络实例
-    // Note: We'll initialize community manager separately to avoid circular dependency
-    this.communityManager = null; // Will be initialized later if needed
+    this.socialConnector = socialConnector;
+    this.knowledgeNetwork = knowledgeNetwork;
+    this.communityManager = null;
   }
 
   async spawnAgent(agentId, config = {}) {
-    const id = agentId || `agent-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const agent = new AgentSession(id, config);
-    await agent.initialize();
-    this.agents.set(id, agent);
-    return agent;
+    return null;
   }
 
   getAgent(agentId) {
