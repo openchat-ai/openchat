@@ -150,9 +150,9 @@ class NeuralAudioCodec {
     }
 
     // 4. 子带能量
-    final subBandSize = n ~/ _subBandCount;
+    final subBandSize = n ~/ subBandCount;
     final subBandEnergies = <double>[];
-    for (int b = 0; b < _subBandCount; b++) {
+    for (int b = 0; b < subBandCount; b++) {
       double bandSum = 0;
       final start = b * subBandSize;
       final end = start + subBandSize;
@@ -277,13 +277,13 @@ class NeuralAudioCodec {
   /// Combine frames
   Uint8List _combineFrames(List<Map<String, dynamic>> frames, int originalLength) {
     const headerSize = 8;
-    final frameDataSize = frames.length * (5 + _subBandCount); // 5 features + N sub-bands
+    final frameDataSize = frames.length * (5 + subBandCount); // 5 features + N sub-bands
     final output = Uint8List(headerSize + frameDataSize);
 
     // 写入头部
     _writeUint32LE(output, 0, originalLength);
     _writeUint16LE(output, 4, frames.length);
-    _writeUint16LE(output, 6, _subBandCount); // store band count instead of quantizationBits
+    _writeUint16LE(output, 6, subBandCount); // store band count instead of quantizationBits
 
     int offset = headerSize;
     for (final frame in frames) {
@@ -429,7 +429,7 @@ class NeuralAudioCodec {
       avgEncodeTime: '$avgEncodeTime ms',
       avgDecodeTime: '$avgDecodeTime ms',
       targetBitrate: '$targetBitrate kbps',
-      bands: _subBandCount,
+      bands: subBandCount,
     );
   }
 
