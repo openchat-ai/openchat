@@ -59,9 +59,16 @@ class QiniuDirectClient {
   }
 
   Future<void> _put(String key, String body) async {
-    final url = _presignedUrl(key, method: 'PUT');
-    final resp = await _client.put(Uri.parse(url), headers: {'Content-Type': 'application/json'}, body: body);
-    if (resp.statusCode != 200) throw Exception('PUT $key: HTTP ${resp.statusCode} ${resp.body}');
+    final uri = Uri.parse('https://upload-z0.qiniup.com/');
+    final request = http.MultipartRequest('POST', uri)
+      ..fields['token'] = _uploadToken(key)
+      ..fields['key'] = key
+      ..files.add(http.MultipartFile.fromString('file', body));
+    final streamed = await _client.send(request).timeout(const Duration(seconds: 15));
+    final resp = await http.Response.fromStream(streamed);
+    if (resp.statusCode != 200) {
+      throw Exception('PUT $key: HTTP ${resp.statusCode} ${resp.body}');
+    }
   }
 
   // ========== S3 V4 pre-signed URLs (for GET / LIST) ==========
