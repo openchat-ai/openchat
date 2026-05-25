@@ -114,8 +114,8 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
     _player = AudioPlayer();
     _processor = AudioProcessor(sampleRate: cfg.sampleRate, enableDenoise: cfg.denoise, enableCodec: cfg.mode != 'raw');
     await _processor!.initialize();
-    if (cfg.mode == 'raw') _processor!.setMode(AudioMode.raw);
     if (cfg.mode == 'opus') _processor!.setMode(AudioMode.opus);
+    if (cfg.mode == 'neural') _processor!.setMode(AudioMode.neural);
 
     if (await _recorder!.hasPermission() != true) return;
 
@@ -123,9 +123,11 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
       encoder: AudioEncoder.pcm16bits, numChannels: 1, sampleRate: cfg.sampleRate));
     if (stream == null) return;
 
-    // Send: record → process (RNNoise → AGC → Neural Codec) → upload
+    // Send: record → process → upload
     final bufSize = cfg.bufferBytes;
+    const fadeBytes = 240; // 5ms cross-fade @ 24000Hz 16bit mono
     List<int> _buffer = [];
+    Uint8List? _prevOverlap;
     _recordSub = stream.listen((chunk) async {
       if (_muted || _state != 'connected') {
         _buffer.clear();
@@ -133,8 +135,20 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
       }
       _buffer.addAll(chunk);
       if (_buffer.length >= bufSize) {
-        final frame = Uint8List.fromList(_buffer.take(bufSize).toList());
+        var frame = Uint8List.fromList(_buffer.take(bufSize).toList());
         _buffer = _buffer.skip(bufSize).toList();
+        // Cross-fade with previous chunk tail to avoid click
+        if (_prevOverlap != null) {
+          for (int i = 0; i < fadeBytes && i < frame.length; i += 2) {
+            final ratio = i / fadeBytes;
+            final prev = _prevOverlap[_prevOverlap.length - fadeBytes + i] | (_prevOverlap[_prevOverlap.length - fadeBytes + i + 1] << 8);
+            final curr = frame[i] | (frame[i + 1] << 8);
+            final blended = (prev * (1 - ratio) + curr * ratio).round().clamp(-32768, 32767);
+            frame[i] = blended & 0xFF;
+            frame[i + 1] = (blended >> 8) & 0xFF;
+          }
+        }
+        _prevOverlap = Uint8List.fromList(frame.sublist(frame.length - fadeBytes));
         final processed = await _processor?.processMicrophoneInput(frame);
         if (processed != null) {
           await _client?.sendEncodedAudio(_targetPeerId!, processed, _audioSeq++);
@@ -149,18 +163,29 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
       try {
         final chunks = await _client!.pollEncodedAudio();
         if (chunks.isEmpty) return;
-        // Decode and concatenate all chunks into one WAV
-        int totalLen = 0;
-        final decodedChunks = <Uint8List>[];
-        for (final chunk in chunks) {
-          final pcm = await _processor?.processReceivedAudio(chunk);
-          if (pcm != null) decodedChunks.add(pcm);
-          totalLen += pcm?.length ?? 0;
+        // Decode all chunks, concatenate with cross-fade, wrap in WAV
+        final decoded = <Uint8List>[];
+        int total = 0;
+        for (final c in chunks) {
+          final pcm = await _processor?.processReceivedAudio(c);
+          if (pcm != null) { decoded.add(pcm); total += pcm.length; }
         }
-        if (decodedChunks.isEmpty) return;
-        final merged = Uint8List(totalLen);
+        if (decoded.isEmpty) return;
+        final merged = Uint8List(total);
         int offset = 0;
-        for (final pcm in decodedChunks) {
+        for (int i = 0; i < decoded.length; i++) {
+          final pcm = decoded[i];
+          if (i > 0 && offset >= fadeBytes) {
+            // Cross-fade with previous chunk tail
+            for (int j = 0; j < fadeBytes && j < pcm.length && offset - fadeBytes + j >= 0; j += 2) {
+              final ratio = j / fadeBytes;
+              final prev = merged[offset - fadeBytes + j] | (merged[offset - fadeBytes + j + 1] << 8);
+              final curr = pcm[j] | (pcm[j + 1] << 8);
+              final blended = (prev * (1 - ratio) + curr * ratio).round().clamp(-32768, 32767);
+              merged[offset - fadeBytes + j] = blended & 0xFF;
+              merged[offset - fadeBytes + j + 1] = (blended >> 8) & 0xFF;
+            }
+          }
           merged.setRange(offset, offset + pcm.length, pcm);
           offset += pcm.length;
         }
