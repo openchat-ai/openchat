@@ -52,6 +52,7 @@ jobs:
 
   flutter-apk:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_apk }}
+    needs: [flutter-check, bridge-check]
     runs-on: ubuntu-latest
     permissions:
       contents: write
