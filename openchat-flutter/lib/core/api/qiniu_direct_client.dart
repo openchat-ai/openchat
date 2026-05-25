@@ -58,6 +58,17 @@ class QiniuDirectClient {
     return '$_ak:${_base64UrlKeepPad(hmacSha1)}:$encoded';
   }
 
+  // Qiniu private download URL (uses same HMAC-SHA1 as upload token, no clock skew)
+  String _downloadUrl(String key) {
+    final deadline = (DateTime.now().millisecondsSinceEpoch ~/ 1000) + 3600;
+    final signStr = '/$key?e=$deadline';
+    final hmacSha1 = Hmac(sha1, utf8.encode(_sk))
+        .convert(utf8.encode(signStr))
+        .bytes;
+    final token = '$_ak:${_base64UrlKeepPad(hmacSha1)}';
+    return 'https://$_endpoint$signStr&token=$token';
+  }
+
   Future<void> _put(String key, String body) async {
     final uri = Uri.parse('https://upload-z0.qiniup.com/');
     final request = http.MultipartRequest('POST', uri)
@@ -141,7 +152,7 @@ class QiniuDirectClient {
       '${d.hour.toString().padLeft(2, '0')}${d.minute.toString().padLeft(2, '0')}${d.second.toString().padLeft(2, '0')}';
 
   Future<String> _get(String key) async {
-    final url = _presignedUrl(key);
+    final url = _downloadUrl(key);
     final resp = await _client.get(Uri.parse(url));
     if (resp.statusCode != 200) throw Exception('GET $key: HTTP ${resp.statusCode}');
     return resp.body;
@@ -339,7 +350,13 @@ class QiniuDirectClient {
 
   static Future<Map?> fetchConfigFile(String path) async {
     try {
-      final url = _presignedUrl(path);
+      final deadline = (DateTime.now().millisecondsSinceEpoch ~/ 1000) + 3600;
+      final signStr = '/$path?e=$deadline';
+      final hmacSha1 = Hmac(sha1, utf8.encode(_sk))
+          .convert(utf8.encode(signStr))
+          .bytes;
+      final token = '$_ak:${base64.encode(hmacSha1).replaceAll('+', '-').replaceAll('/', '_')}';
+      final url = 'https://$_endpoint$signStr&token=$token';
       final resp = await http.get(Uri.parse(url));
       if (resp.statusCode == 200) return jsonDecode(resp.body) as Map?;
     } catch (_) {}
