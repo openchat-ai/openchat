@@ -124,7 +124,8 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
   void _handleFileAction(String action) {
     if (_client == null) return;
     if (action.startsWith('file:list?')) {
-      final prefix = Uri.tryParse(action)?.queryParameters['prefix'] ?? '';
+      final qIdx = action.indexOf('?');
+      final prefix = qIdx >= 0 ? Uri.splitQueryString(action.substring(qIdx + 1))['prefix'] ?? '' : '';
       _client!.listFiles(prefix).then((files) {
         if (!mounted) return;
         showDialog(context: context, builder: (ctx) => AlertDialog(
@@ -137,7 +138,8 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
         ));
       });
     } else if (action.startsWith('file:delete?')) {
-      final key = Uri.tryParse(action)?.queryParameters['key'] ?? '';
+      final qIdx = action.indexOf('?');
+      final key = qIdx >= 0 ? Uri.splitQueryString(action.substring(qIdx + 1))['key'] ?? '' : '';
       if (key.isEmpty) return;
       showDialog(context: context, builder: (ctx) => AlertDialog(
         title: const Text('Delete?'), content: Text(key),
@@ -148,7 +150,8 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
         ],
       ));
     } else if (action.startsWith('file:get?')) {
-      final key = Uri.tryParse(action)?.queryParameters['key'] ?? '';
+      final qIdx = action.indexOf('?');
+      final key = qIdx >= 0 ? Uri.splitQueryString(action.substring(qIdx + 1))['key'] ?? '' : '';
       if (key.isEmpty) return;
       _client!.readFile(key).then((data) {
         if (!mounted || data == null) return;
@@ -160,9 +163,11 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
         ));
       });
     } else if (action.startsWith('file:write?')) {
-      final params = Uri.tryParse(action)?.queryParameters;
-      final key = params?['key'] ?? '';
-      final value = params?['value'] ?? '';
+      final qIdx = action.indexOf('?');
+      if (qIdx < 0) return;
+      final params = Uri.splitQueryString(action.substring(qIdx + 1));
+      final key = params['key'] ?? '';
+      final value = params['value'] ?? '';
       if (key.isEmpty || value.isEmpty) return;
       _client!.writeFile(key, value).then((ok) {
         if (!mounted) return;
@@ -175,9 +180,11 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
   }
 
   Future<void> _handleConfigSet(String action) async {
-    final params = Uri.tryParse(action)?.queryParameters;
-    final key = params?['key'];
-    final value = params?['value'];
+    final qIdx = action.indexOf('?');
+    if (qIdx < 0) return;
+    final params = Uri.splitQueryString(action.substring(qIdx + 1));
+    final key = params['key'];
+    final value = params['value'];
     if (key == null || value == null) return;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(key, value);
