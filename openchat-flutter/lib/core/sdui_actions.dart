@@ -16,10 +16,10 @@ class SduiActions {
     }
     if (action.startsWith('dialog:')) {
       final parts = action.substring(7).split('|');
-      showDialog(context: context, builder: (_) => AlertDialog(
+      showDialog(context: context, builder: (ctx) => AlertDialog(
         title: Text(parts[0]),
         content: parts.length > 1 ? Text(parts[1]) : null,
-        actions: [TextButton(onPressed: () => Navigator.pop(_), child: const Text('OK'))],
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK'))],
       ));
       return;
     }
