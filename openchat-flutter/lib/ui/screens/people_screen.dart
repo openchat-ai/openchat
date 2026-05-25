@@ -121,6 +121,34 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
     }
   }
 
+  Future<void> _showAudioFiles() async {
+    if (_client == null) return;
+    final files = await _client!.listAudioFiles();
+    if (!mounted) return;
+    if (files.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No audio files')));
+      return;
+    }
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Audio Files'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: files.length,
+            itemBuilder: (_, i) => ListTile(
+              title: Text(files[i].split('/').last, style: const TextStyle(fontSize: 12)),
+              dense: true,
+            ),
+          ),
+        ),
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _pollTimer?.cancel();
@@ -221,7 +249,10 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
         SduiActions.handle(context, action,
           onRefresh: _pollUsers,
           onDemo: () => _client?.spawnDemoPeer().then((_) => _pollUsers()),
-          custom: {'settings': () => Navigator.pushNamed(context, '/theme')},
+          custom: {
+            'settings': () => Navigator.pushNamed(context, '/theme'),
+            'audio_files': () => _showAudioFiles(),
+          },
         );
       },
     );
