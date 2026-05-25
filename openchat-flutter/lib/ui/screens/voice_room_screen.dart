@@ -141,11 +141,14 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
         if (_prevOverlap != null) {
           for (int i = 0; i < fadeBytes && i < frame.length; i += 2) {
             final ratio = i / fadeBytes;
-            final prev = _prevOverlap[_prevOverlap.length - fadeBytes + i] | (_prevOverlap[_prevOverlap.length - fadeBytes + i + 1] << 8);
-            final curr = frame[i] | (frame[i + 1] << 8);
-            final blended = (prev * (1 - ratio) + curr * ratio).round().clamp(-32768, 32767);
-            frame[i] = blended & 0xFF;
-            frame[i + 1] = (blended >> 8) & 0xFF;
+            final pv = _prevOverlap[_prevOverlap.length - fadeBytes + i] | (_prevOverlap[_prevOverlap.length - fadeBytes + i + 1] << 8);
+            final cv = frame[i] | (frame[i + 1] << 8);
+            final ps = pv > 32767 ? pv - 65536 : pv;
+            final cs = cv > 32767 ? cv - 65536 : cv;
+            final blended = (ps * (1 - ratio) + cs * ratio).round().clamp(-32768, 32767);
+            final bv = blended < 0 ? blended + 65536 : blended;
+            frame[i] = bv & 0xFF;
+            frame[i + 1] = (bv >> 8) & 0xFF;
           }
         }
         _prevOverlap = Uint8List.fromList(frame.sublist(frame.length - fadeBytes));
@@ -179,11 +182,14 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
             // Cross-fade with previous chunk tail
             for (int j = 0; j < fadeBytes && j < pcm.length && offset - fadeBytes + j >= 0; j += 2) {
               final ratio = j / fadeBytes;
-              final prev = merged[offset - fadeBytes + j] | (merged[offset - fadeBytes + j + 1] << 8);
-              final curr = pcm[j] | (pcm[j + 1] << 8);
-              final blended = (prev * (1 - ratio) + curr * ratio).round().clamp(-32768, 32767);
-              merged[offset - fadeBytes + j] = blended & 0xFF;
-              merged[offset - fadeBytes + j + 1] = (blended >> 8) & 0xFF;
+              final pv = merged[offset - fadeBytes + j] | (merged[offset - fadeBytes + j + 1] << 8);
+              final cv = pcm[j] | (pcm[j + 1] << 8);
+              final ps = pv > 32767 ? pv - 65536 : pv;
+              final cs = cv > 32767 ? cv - 65536 : cv;
+              final blended = (ps * (1 - ratio) + cs * ratio).round().clamp(-32768, 32767);
+              final bv = blended < 0 ? blended + 65536 : blended;
+              merged[offset - fadeBytes + j] = bv & 0xFF;
+              merged[offset - fadeBytes + j + 1] = (bv >> 8) & 0xFF;
             }
           }
           merged.setRange(offset, offset + pcm.length, pcm);
