@@ -118,13 +118,14 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
     List<int> _buffer = [];
     _recordSub = stream.listen((chunk) {
       if (_muted || _state != 'connected') {
-        _buffer.clear(); // discard while muted, prevent OOM
+        _buffer.clear();
         return;
       }
       _buffer.addAll(chunk);
-      if (_buffer.length >= 2880) {
-        final frame = Uint8List.fromList(_buffer.take(2880).toList());
-        _buffer = _buffer.skip(2880).toList();
+      // Send every ~1s of audio (48000 bytes = 24000Hz * 2 bytes * 1s)
+      if (_buffer.length >= 48000) {
+        final frame = Uint8List.fromList(_buffer.take(48000).toList());
+        _buffer = _buffer.skip(48000).toList();
         _client?.sendAudio(_targetPeerId!, frame, _audioSeq++);
       }
     }, onError: (_) {});
@@ -135,11 +136,17 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
       if (_state != 'connected') return;
       try {
         final chunks = await _client!.pollAudio();
+        if (chunks.isEmpty) return;
+        // Concatenate all chunks into one WAV and play
+        int totalLen = chunks.fold(0, (s, c) => s + c.length);
+        final merged = Uint8List(totalLen);
+        int offset = 0;
         for (final data in chunks) {
-          if (data.isNotEmpty) {
-            await _player?.play(BytesSource(Uint8List.fromList(data)));
-          }
+          merged.setRange(offset, offset + data.length, data);
+          offset += data.length;
         }
+        await _player?.stop();
+        await _player?.play(BytesSource(merged));
       } catch (_) {}
     });
   }
