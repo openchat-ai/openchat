@@ -21,7 +21,6 @@ import { forge } from './core/evolution/forge.js';
 import { providerManager } from './providers/provider-manager.js';
 import { providerRegistry } from './providers/provider-registry.js';
 import { memoryManager } from './memory/memory-manager.js';
-import { agentMonitor } from './core/agent/agent-monitor.js';
 import { AIPerson, aiPersonRegistry, createFounder } from './core/agent/ai-personhood.js';
 import { Deity, deitySystemManager, DEITY_TYPE } from './core/agent/deity-system.js';
 import { MirrorDeity, mirrorDeity, initializeMirrorDeitySystem } from './core/agent/mirror-deity.js';
