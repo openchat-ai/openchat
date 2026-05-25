@@ -4,7 +4,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/models/resident_model.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/feed_provider.dart';
-import '../../core/api/qiniu_direct_client.dart';
+import '../../core/sdui_config.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -23,7 +23,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _loadConfig() async {
-    final cfg = await QiniuDirectClient.fetchConfigFile('oc/config/ui_home.json');
+    final cfg = await SduiConfig.load('oc/config/ui_home.json');
     if (mounted) setState(() => _uiConfig = cfg);
   }
 

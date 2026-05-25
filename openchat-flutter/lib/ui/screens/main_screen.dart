@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
-import '../../core/api/qiniu_direct_client.dart';
+import '../../core/sdui_config.dart';
 import 'home_screen.dart';
 import 'agent_hub_screen.dart';
 import 'people_screen.dart';
@@ -29,13 +29,8 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   }
 
   Future<void> _loadConfig() async {
-    final client = QiniuDirectClient(peerId: 'config');
-    try {
-      final cfg = await client.fetchMainUi();
-      if (mounted) setState(() => _mainUiConfig = cfg);
-    } catch (_) {} finally {
-      client.dispose();
-    }
+    final cfg = await SduiConfig.load('oc/config/ui_main.json');
+    if (mounted) setState(() => _mainUiConfig = cfg);
   }
 
   Widget _buildScreen(String name) {

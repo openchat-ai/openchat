@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/config_provider.dart';
-import '../../core/api/qiniu_direct_client.dart';
+import '../../core/sdui_config.dart';
 import '../../core/sdui.dart';
 import '../components/cards/app_cards.dart';
 import '../../core/version.dart';
@@ -25,7 +25,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _loadConfig() async {
-    final cfg = await QiniuDirectClient.fetchConfigFile('oc/config/ui_settings.json');
+    final cfg = await SduiConfig.load('oc/config/ui_settings.json');
     if (mounted) setState(() => _uiConfig = cfg);
   }
 
