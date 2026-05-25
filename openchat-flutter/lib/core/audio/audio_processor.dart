@@ -59,6 +59,7 @@ class AudioProcessor {
         _codec = NeuralAudioCodec(
           sampleRate: sampleRate,
           targetBitrate: 32,
+          subBandCount: 32,
         );
         await _codec!.initialize();
       }
