@@ -112,6 +112,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
     _player = AudioPlayer();
     _processor = AudioProcessor(sampleRate: 24000);
     await _processor!.initialize();
+    _processor!.setMode(AudioMode.raw);
 
     if (await _recorder!.hasPermission() != true) return;
 
