@@ -134,8 +134,6 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
       _client?.log('ERROR', 'LocalEcho error=$e');
     });
   }
-    }, onError: (_) {});
-  }
 
   Future<void> _startAudio() async {
     if (_audioStarted) return;
