@@ -120,7 +120,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
     _recordSub = stream.listen((chunk) {
       if (_state != 'connected') { buf.clear(); return; }
       buf.addAll(chunk);
-      while (buf.length >= echoDelay * 2) {
+      while (buf.length >= echoDelay) {
         final pcm = Uint8List.fromList(buf.take(echoDelay).toList());
         buf = buf.skip(echoDelay).toList();
         final wav = QiniuDirectClient.wavFromPcm(pcm);
