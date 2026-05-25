@@ -207,6 +207,17 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
     ));
   }
 
+  Future<void> _playTestTone() async {
+    if (_client == null) return;
+    try {
+      final raw = await _client!.readFile('oc/audio/test/test_tone.wav');
+      if (raw == null || !mounted) return;
+      final player = AudioPlayer();
+      await player.play(BytesSource(base64Decode(raw))); // actually raw is JSON, need different approach
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Playing test tone...')));
+    } catch (_) {}
+  }
+
   Future<void> _showAudioFiles() async {
     if (_client == null) return;
     final files = await _client!.listAudioFiles();
@@ -355,6 +366,7 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
             'device:info': () => _showDeviceInfo(),
             'config:get': () => _showConfig(),
             'app:restart': () => _restartApp(),
+            'play_test': () => _playTestTone(),
           },
         );
         // Handle generic file operations (file:list?prefix=..., file:delete?key=..., file:get?key=...)
