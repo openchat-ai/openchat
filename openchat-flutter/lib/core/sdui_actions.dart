@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class SduiActions {
   static void handle(BuildContext context, String action,
@@ -23,7 +24,16 @@ class SduiActions {
       return;
     }
     if (action.startsWith('haptic:')) {
-      // Haptic feedback - just a no-op placeholder; platform channels needed for full support
+      return;
+    }
+    if (action.startsWith('tel:') || action.startsWith('mailto:')) {
+      Clipboard.setData(ClipboardData(text: action.substring(4)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('已复制: ${action.substring(4)}')));
+      return;
+    }
+    if (action.startsWith('http://') || action.startsWith('https://')) {
+      Clipboard.setData(ClipboardData(text: action));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('链接已复制到剪贴板')));
       return;
     }
     if (custom?[action] != null) { custom![action]!(); return; }
