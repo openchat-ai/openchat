@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'sdui_fragment.dart';
 
 class SduiParser {
@@ -62,8 +63,31 @@ class SduiParser {
     });
   }
 
+  bool _eval(String condition) {
+    final m = RegExp(r'^(\w+)\s*(>=|<=|!=|==|>|<)\s*(\S+)$').firstMatch(condition.trim());
+    if (m == null) return true;
+    final v = _vars[m[1]!];
+    if (v == null) return false;
+    final op = m[2]!;
+    final r = m[3]!;
+    if (op == '==' || op == '!=') {
+      final eq = v.toString() == r;
+      return op == '==' ? eq : !eq;
+    }
+    final a = (v is num ? v : double.tryParse(v.toString())) ?? 0.0;
+    final b = double.tryParse(r) ?? 0.0;
+    switch (op) {
+      case '>': return a > b;
+      case '<': return a < b;
+      case '>=': return a >= b;
+      case '<=': return a <= b;
+    }
+    return true;
+  }
+
   Widget? parse(dynamic node) {
     if (node is! Map || node['type'] == null) return null;
+    if (node['if'] != null && !_eval(node['if'] as String)) return const SizedBox();
     switch (node['type']) {
       case 'column': return _column(node);
       case 'row': return _row(node);
@@ -77,12 +101,56 @@ class SduiParser {
       case 'divider': return const Divider();
       case 'image': return _image(node);
       case 'card': return _card(node);
+      case 'auto': return _auto(node);
+      case 'checkbox': return _checkbox(node);
+      case 'switch': return _switch(node);
+      case 'textfield': return _textfield(node);
       case 'sdui_fragment':
         final path = node['path'] as String?;
         if (path != null) return SduiFragmentWidget(path: path, onAction: onAction);
         return const SizedBox();
       default: return null;
     }
+  }
+
+  Widget _auto(Map m) {
+    final delay = (m['delay'] as num?)?.toInt() ?? 0;
+    final action = m['action'] as String?;
+    if (action != null) {
+      Future.delayed(Duration(milliseconds: delay), () => onAction?.call(action));
+    }
+    return const SizedBox();
+  }
+
+  Widget _checkbox(Map m) {
+    return CheckboxListTile(
+      value: m['checked'] == true,
+      title: Text(_v(m['label'] as String? ?? '')),
+      onChanged: m['action'] != null ? (_) => onAction?.call(m['action']) : null,
+    );
+  }
+
+  Widget _switch(Map m) {
+    return SwitchListTile(
+      value: m['active'] == true,
+      title: Text(_v(m['label'] as String? ?? '')),
+      onChanged: m['action'] != null ? (_) => onAction?.call(m['action']) : null,
+    );
+  }
+
+  Widget _textfield(Map m) {
+    final ctrl = TextEditingController(text: _v(m['value'] as String?));
+    return Padding(
+      padding: EdgeInsets.all((m['pad'] ?? 8).toDouble()),
+      child: TextField(
+        controller: ctrl,
+        decoration: InputDecoration(
+          hintText: _v(m['hint'] as String?),
+          border: const OutlineInputBorder(),
+        ),
+        onSubmitted: m['action'] != null ? (_) => onAction?.call(m['action']) : null,
+      ),
+    );
   }
 
   Widget _padding(Map m) {
@@ -113,7 +181,7 @@ class SduiParser {
   Widget _listTile(Map m) {
     return ListTile(
       leading: m['leadingIcon'] != null
-          ? Icon(_icons[m['leadingIcon']] ?? Icons.person,
+          ? Icon(icons[m['leadingIcon']] ?? Icons.person,
               color: _parseColor(m['leadingIconColor'] as String?))
           : null,
       title: m['title'] != null
@@ -125,11 +193,11 @@ class SduiParser {
       trailing: m['trailingIcon'] != null
           ? (m['trailingAction'] != null
               ? IconButton(
-                  icon: Icon(_icons[m['trailingIcon']] ?? Icons.arrow_forward,
+                  icon: Icon(icons[m['trailingIcon']] ?? Icons.arrow_forward,
                       color: _parseColor(m['trailingIconColor'] as String?)),
                   onPressed: () => onAction?.call(m['trailingAction']),
                 )
-              : Icon(_icons[m['trailingIcon']] ?? Icons.arrow_forward,
+              : Icon(icons[m['trailingIcon']] ?? Icons.arrow_forward,
                   color: _parseColor(m['trailingIconColor'] as String?)))
           : null,
       onTap: m['action'] != null ? () => onAction?.call(m['action']) : null,
