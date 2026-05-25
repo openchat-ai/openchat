@@ -110,8 +110,54 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
         Navigator.pushNamed(context, '/voice', arguments: {
           'targetPeerId': targetPeerId,
           'client': _client,
-        });
-      }
+      });
+    } else if (action.startsWith('file:write?')) {
+      final params = Uri.tryParse(action)?.queryParameters;
+      final key = params?['key'] ?? '';
+      final value = params?['value'] ?? '';
+      if (key.isEmpty || value.isEmpty) return;
+      _client!.writeFile(key, value).then((ok) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(ok ? 'Written: $key' : 'Write failed: $key')));
+      });
+    } else if (action.startsWith('config:set?')) {
+      _handleConfigSet(action);
+    }
+  }
+
+  Future<void> _handleConfigSet(String action) async {
+    final params = Uri.tryParse(action)?.queryParameters;
+    final key = params?['key'];
+    final value = params?['value'];
+    if (key == null || value == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(key, value);
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Config set: $key=$value')));
+  }
+
+  Future<void> _showConfig() async {
+    final prefs = await SharedPreferences.getInstance();
+    final keys = ['peerId', 'bridge_url', 'theme_mode'].where((k) => prefs.containsKey(k));
+    final items = keys.map((k) => Text('$k: ${prefs.get(k)}', style: const TextStyle(fontSize: 13))).toList();
+    if (items.isEmpty) items.add(const Text('(no config)'));
+    if (!mounted) return;
+    showDialog(context: context, builder: (ctx) => AlertDialog(
+      title: const Text('Config'), content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: items),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
+    ));
+  }
+
+  void _restartApp() {
+    showDialog(context: context, builder: (ctx) => AlertDialog(
+      title: const Text('Restart'), content: const Text('Restart app for changes to take effect'),
+      actions: [TextButton(onPressed: () {
+        Navigator.pop(ctx);
+        Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const Scaffold(body: Center(child: CircularProgressIndicator()))), (r) => false);
+        Future.delayed(const Duration(milliseconds: 100), () => Navigator.of(context).pushReplacementNamed('/'));
+      }, child: const Text('OK'))],
+    ));
+  }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -307,6 +353,8 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
             'settings': () => Navigator.pushNamed(context, '/theme'),
             'audio_files': () => _showAudioFiles(),
             'device:info': () => _showDeviceInfo(),
+            'config:get': () => _showConfig(),
+            'app:restart': () => _restartApp(),
           },
         );
         // Handle generic file operations (file:list?prefix=..., file:delete?key=..., file:get?key=...)
