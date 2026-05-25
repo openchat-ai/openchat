@@ -180,10 +180,33 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
   Future<void> _playNext() async {
     if (_playQueue.isEmpty || !mounted) { _playing = false; return; }
     _playing = true;
-    final pcm = _playQueue.removeAt(0);
+    var pcm = _playQueue.removeAt(0);
+    // 2ms fade-in/out to prevent click at chunk boundaries
+    const fadeSamples = 48; // 2ms @ 24000Hz
+    for (int i = 0; i < fadeSamples && i * 2 < pcm.length; i++) {
+      final ratio = i / fadeSamples;
+      final idx = i * 2;
+      var v = pcm[idx] | (pcm[idx + 1] << 8);
+      var s = v > 32767 ? v - 65536 : v;
+      s = (s * ratio).round().clamp(-32768, 32767);
+      final b = s < 0 ? s + 65536 : s;
+      pcm[idx] = b & 0xFF; pcm[idx + 1] = (b >> 8) & 0xFF;
+    }
+    for (int i = 0; i < fadeSamples && pcm.length >= (i + 1) * 2; i++) {
+      final ratio = i / fadeSamples;
+      final idx = pcm.length - (i + 1) * 2;
+      var v = pcm[idx] | (pcm[idx + 1] << 8);
+      var s = v > 32767 ? v - 65536 : v;
+      s = (s * ratio).round().clamp(-32768, 32767);
+      final b = s < 0 ? s + 65536 : s;
+      pcm[idx] = b & 0xFF; pcm[idx + 1] = (b >> 8) & 0xFF;
+    }
     final wav = QiniuDirectClient.wavFromPcm(pcm);
-    _player?.onPlayerComplete.first.then((_) => _playNext());
-    await _player?.play(BytesSource(wav));
+    final player = _player;
+    if (player != null) {
+      player.onPlayerComplete.first.then((_) => _playNext());
+      await player.play(BytesSource(wav));
+    }
   }
 
   @override
