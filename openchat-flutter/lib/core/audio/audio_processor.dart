@@ -7,6 +7,7 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'neural_audio_codec.dart';
 import 'audio_pipeline.dart';
+import 'opus_codec.dart';
 
 enum AudioMode {
   raw,        // 原始 PCM (256 kbps)
@@ -18,6 +19,7 @@ enum AudioMode {
 class AudioProcessor {
   NeuralAudioCodec? _codec;
   AudioPipeline? _pipeline;
+  OpusCodec? _opus;
 
   AudioMode _mode = AudioMode.neural;
   bool _isProcessing = false;
@@ -41,21 +43,25 @@ class AudioProcessor {
   AudioMode get mode => _mode;
 
   Future<void> initialize() async {
-    // Initialize Neural Codec
-    if (enableCodec) {
-      _codec = NeuralAudioCodec(
-        sampleRate: sampleRate,
-        targetBitrate: 32,
-      );
-      await _codec!.initialize();
-    }
-
     if (enableDenoise) {
       _pipeline = AudioPipeline(
         sampleRate: sampleRate,
         frameSize: 480,
       );
       await _pipeline!.initialize();
+    }
+
+    if (enableCodec) {
+      if (_mode == AudioMode.opus) {
+        _opus = OpusCodec(sampleRate: sampleRate);
+        await _opus!.initialize();
+      } else {
+        _codec = NeuralAudioCodec(
+          sampleRate: sampleRate,
+          targetBitrate: 32,
+        );
+        await _codec!.initialize();
+      }
     }
 
     _isProcessing = true;
@@ -78,8 +84,11 @@ class AudioProcessor {
       pcmData = processed.data;
     }
 
-    // 2. Neural Codec 编码
-    if (_codec != null && _mode != AudioMode.raw) {
+    // 2. 编码
+    if (_mode == AudioMode.opus && _opus != null) {
+      return _opus!.encode(pcmData);
+    }
+    if (_codec != null && _mode == AudioMode.neural) {
       final encoded = await _codec!.encode(pcmData);
       return encoded.data;
     }
@@ -92,13 +101,14 @@ class AudioProcessor {
   Future<Uint8List?> processReceivedAudio(Uint8List data) async {
     if (!_isProcessing) return null;
 
-    // Neural Codec 解码
-    if (_codec != null && _mode != AudioMode.raw) {
+    if (_mode == AudioMode.opus && _opus != null) {
+      return _opus!.decode(data);
+    }
+    if (_codec != null && _mode == AudioMode.neural) {
       try {
         final decoded = await _codec!.decode(data);
         return decoded.pcm;
       } catch (e) {
-        // 如果解码失败，可能是 raw 模式
         return data;
       }
     }
@@ -139,6 +149,7 @@ class AudioProcessor {
   void dispose() {
     _isProcessing = false;
     _codec?.destroy();
+    _opus?.destroy();
     _pipeline?.destroy();
     _speakingController.close();
     _audioLevelController.close();
