@@ -11,6 +11,7 @@ import '../../core/theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
 import '../../core/api/qiniu_direct_client.dart';
 import '../../core/audio/audio_processor.dart';
+import '../../core/audio/audio_config.dart';
 
 class VoiceRoomScreen extends ConsumerStatefulWidget {
   const VoiceRoomScreen({super.key});
@@ -108,19 +109,21 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
   Future<void> _startAudio() async {
     if (_audioStarted) return;
     _audioStarted = true;
+    final cfg = await AudioConfig.load();
     _recorder = AudioRecorder();
     _player = AudioPlayer();
-    _processor = AudioProcessor(sampleRate: 24000);
+    _processor = AudioProcessor(sampleRate: cfg.sampleRate, enableDenoise: cfg.denoise, enableCodec: cfg.mode != 'raw');
     await _processor!.initialize();
-    _processor!.setMode(AudioMode.raw);
+    if (cfg.mode == 'raw') _processor!.setMode(AudioMode.raw);
 
     if (await _recorder!.hasPermission() != true) return;
 
-    final stream = await _recorder!.startStream(const RecordConfig(
-      encoder: AudioEncoder.pcm16bits, numChannels: 1, sampleRate: 24000));
+    final stream = await _recorder!.startStream(RecordConfig(
+      encoder: AudioEncoder.pcm16bits, numChannels: 1, sampleRate: cfg.sampleRate));
     if (stream == null) return;
 
     // Send: record → process (RNNoise → AGC → Neural Codec) → upload
+    final bufSize = cfg.bufferBytes;
     List<int> _buffer = [];
     _recordSub = stream.listen((chunk) async {
       if (_muted || _state != 'connected') {
@@ -128,9 +131,9 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
         return;
       }
       _buffer.addAll(chunk);
-      if (_buffer.length >= 48000) {
-        final frame = Uint8List.fromList(_buffer.take(48000).toList());
-        _buffer = _buffer.skip(48000).toList();
+      if (_buffer.length >= bufSize) {
+        final frame = Uint8List.fromList(_buffer.take(bufSize).toList());
+        _buffer = _buffer.skip(bufSize).toList();
         final processed = await _processor?.processMicrophoneInput(frame);
         if (processed != null) {
           await _client?.sendEncodedAudio(_targetPeerId!, processed, _audioSeq++);
@@ -138,9 +141,9 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
       }
     }, onError: (_) {});
 
-    // Receive: poll every 800ms
+    // Receive: poll every cfg.pollMs
     _signalTimer?.cancel();
-    _signalTimer = Timer.periodic(const Duration(milliseconds: 800), (_) async {
+    _signalTimer = Timer.periodic(Duration(milliseconds: cfg.pollMs), (_) async {
       if (_state != 'connected') return;
       try {
         final chunks = await _client!.pollEncodedAudio();
