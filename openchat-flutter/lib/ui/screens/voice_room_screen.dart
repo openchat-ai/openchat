@@ -115,6 +115,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
     _processor = AudioProcessor(sampleRate: cfg.sampleRate, enableDenoise: cfg.denoise, enableCodec: cfg.mode != 'raw');
     await _processor!.initialize();
     if (cfg.mode == 'raw') _processor!.setMode(AudioMode.raw);
+    if (cfg.mode == 'opus') _processor!.setMode(AudioMode.opus);
 
     if (await _recorder!.hasPermission() != true) return;
 
