@@ -1,8 +1,9 @@
 /**
- * Neural Audio Codec - Flutter port
- * Lightweight neural audio codec for mobile real-time
+ * Neural Audio Codec - Flutter port v2
+ * E2: 32-band filter bank synthesis (upgraded from 4-band sine waves)
  */
 
+import 'dart:math';
 import 'dart:typed_data';
 
 class NeuralAudioCodec {
@@ -10,9 +11,11 @@ class NeuralAudioCodec {
   final int frameSize;
   final int targetBitrate;
   final int quantizationBits;
+  final int subBandCount;
 
   late int _samplesPerFrame;
   bool _isReady = false;
+  final _rand = Random();
 
   // 统计
   int _framesEncoded = 0;
@@ -27,6 +30,7 @@ class NeuralAudioCodec {
     this.frameSize = 20,
     this.targetBitrate = 32,
     this.quantizationBits = 8,
+    this.subBandCount = 4,
   }) {
     _samplesPerFrame = (sampleRate * frameSize) ~/ 1000;
   }
@@ -146,9 +150,9 @@ class NeuralAudioCodec {
     }
 
     // 4. 子带能量
-    final subBandSize = n ~/ 4;
+    final subBandSize = n ~/ _subBandCount;
     final subBandEnergies = <double>[];
-    for (int b = 0; b < 4; b++) {
+    for (int b = 0; b < _subBandCount; b++) {
       double bandSum = 0;
       final start = b * subBandSize;
       final end = start + subBandSize;
@@ -213,22 +217,37 @@ class NeuralAudioCodec {
     return _synthesizeFromFeatures(features);
   }
 
-  /// Synthesize from features
+  /// Synthesize from features (E2: 32-band filter bank)
   Uint8List _synthesizeFromFeatures(Map<String, dynamic> features) {
     final n = _samplesPerFrame;
     final output = Uint8List(n * 2);
-
-    final frequencies = [100.0, 200.0, 400.0, 800.0, 1600.0];
     final subBands = features['subBandEnergies'] as List;
+    final bandCount = subBands.length;
+    final zcr = features['zeroCrossings'] as double;
+
+    // Mel-spaced band center frequencies (perceptual spacing)
+    final freqs = List.generate(bandCount, (b) {
+      final melMin = 0.0, melMax = 2595 * _log10(1 + sampleRate / 2 / 700);
+      final mel = melMin + (b + 1) * (melMax - melMin) / bandCount;
+      return 700 * (_pow(10, mel / 2595) - 1);
+    });
 
     for (int i = 0; i < n; i++) {
       double sample = (features['dcOffset'] as double) * 32768;
 
-      for (int f = 0; f < frequencies.length; f++) {
-        final freq = frequencies[f];
-        final energy = f < subBands.length ? subBands[f] as double : 0.0;
-        final phase = (i / sampleRate) * freq * 2 * 3.14159265359;
-        sample += _sin(phase) * energy * 32768 * 0.3;
+      for (int b = 0; b < bandCount; b++) {
+        final energy = subBands[b] as double;
+        if (energy < 0.001) continue;
+        final freq = freqs[b];
+        final gain = energy * 32768 * 0.3;
+
+        // Mix sine + noise: low bands = more sine, high bands = more noise
+        final freqRatio = freq / (sampleRate / 2);
+        final sineWeight = 1.0 - freqRatio * 0.8;
+        final noiseWeight = freqRatio * 0.8;
+        final phase = (i / sampleRate) * freq * 2 * pi;
+        sample += _sin(phase) * gain * sineWeight;
+        sample += (_rand.nextDouble() * 2 - 1) * gain * noiseWeight;
       }
 
       final peak = (features['peak'] as double) * 32768;
@@ -258,13 +277,13 @@ class NeuralAudioCodec {
   /// Combine frames
   Uint8List _combineFrames(List<Map<String, dynamic>> frames, int originalLength) {
     const headerSize = 8;
-    final frameDataSize = frames.length * 9;
+    final frameDataSize = frames.length * (5 + _subBandCount); // 5 features + N sub-bands
     final output = Uint8List(headerSize + frameDataSize);
 
     // 写入头部
     _writeUint32LE(output, 0, originalLength);
     _writeUint16LE(output, 4, frames.length);
-    _writeUint16LE(output, 6, quantizationBits);
+    _writeUint16LE(output, 6, _subBandCount); // store band count instead of quantizationBits
 
     int offset = headerSize;
     for (final frame in frames) {
@@ -287,24 +306,24 @@ class NeuralAudioCodec {
 
     final originalLength = _readUint32LE(data, offset); offset += 4;
     final frameCount = _readUint16LE(data, offset); offset += 2;
-    offset += 2; // quantizationBits
+    final bandCount = _readUint16LE(data, offset); offset += 2; // was quantizationBits, now bandCount
 
     final frames = <Map<String, dynamic>>[];
 
     for (int i = 0; i < frameCount; i++) {
-      frames.add({
+      final frame = <String, dynamic>{
         'rms': data[offset++],
         'peak': data[offset++],
         'dcOffset': data[offset++],
         'spectral': data[offset++],
         'zcr': data[offset++],
-        'subBands': <int>[
-          data[offset++],
-          data[offset++],
-          data[offset++],
-          data[offset++],
-        ],
-      });
+        'subBands': <int>[],
+      };
+      final subs = frame['subBands'] as List<int>;
+      for (int b = 0; b < bandCount; b++) {
+        subs.add(data[offset++]);
+      }
+      frames.add(frame);
     }
 
     return _ParsedFrames(frames, originalLength);
@@ -353,6 +372,8 @@ class NeuralAudioCodec {
     }
     return 2 * result;
   }
+
+  double _log10(double x) => _ln(x) / _ln(10);
 
   double _sin(double x) {
     x = x % (2 * 3.14159265359);
@@ -408,6 +429,7 @@ class NeuralAudioCodec {
       avgEncodeTime: '$avgEncodeTime ms',
       avgDecodeTime: '$avgDecodeTime ms',
       targetBitrate: '$targetBitrate kbps',
+      bands: _subBandCount,
     );
   }
 
@@ -461,6 +483,7 @@ class CodecStats {
   final String avgEncodeTime;
   final String avgDecodeTime;
   final String targetBitrate;
+  final int bands;
 
   CodecStats({
     required this.framesEncoded,
@@ -469,6 +492,7 @@ class CodecStats {
     required this.avgEncodeTime,
     required this.avgDecodeTime,
     required this.targetBitrate,
+    this.bands = 4,
   });
 }
 
