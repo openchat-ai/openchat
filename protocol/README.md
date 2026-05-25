@@ -1,4 +1,4 @@
-# OpenChat 协议定义
+# PeerTalk 协议定义
 
 Bridge ↔ Client 通信协议规范。
 

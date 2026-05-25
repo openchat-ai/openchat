@@ -2,9 +2,9 @@
 
 > **版本**: 2.1 | **最后更新**: 2026-05-18 | **难度**: ⭐ 初级 | **⚠️ 部分描述与实际代码成熟度不符 (EvolutionEngine 为实验状态)**
 
-## 什么是 OpenChat？
+## 什么是 PeerTalk？
 
-OpenChat 是一个**去中心化 AI 居民平台**，包含 P2P 语音通讯、多 Agent 协作、WebRTC 实时音视频。
+PeerTalk 是一个**去中心化 AI 居民平台**，包含 P2P 语音通讯、多 Agent 协作、WebRTC 实时音视频。
 
 **核心特点：**
 - ✅ **完全自主** - AI 做所有决策，不需要人工指导
@@ -13,18 +13,11 @@ OpenChat 是一个**去中心化 AI 居民平台**，包含 P2P 语音通讯、�
 - ✅ **完整可追踪** - 所有操作都有详细的日志记录
 - ✅ **实时更新** - 支持热更新，修复实时生效而无需重启
 
-## 为什么需要 OpenChat？
+## 为什么需要 PeerTalk？
 
-**传统软件工具的困境：**
-```
-human → tells tool what to do
-tool → does exactly what told
-tool → waits for next instruction
-```
+**PeerTalk 的优势：**
 
-**OpenChat 的优势：**
-```
-OpenChat → discovers problems
+PeerTalk → discovers problems
         → learns from world
         → plans improvements
         → executes changes
@@ -36,7 +29,7 @@ OpenChat → discovers problems
 
 ### 1️⃣ EvolutionEngine（进化引擎）
 
-OpenChat 的心脏 — 一个自我进化的系统：
+PeerTalk 的心脏 — 一个自我进化的系统：
 
 ```
 自我诊断 ← 发现问题/机会
@@ -60,7 +53,7 @@ OpenChat 的心脏 — 一个自我进化的系统：
 
 ### 2️⃣ 100% AI 自主
 
-OpenChat 不是**辅助工具**，而是**独立开发者**：
+PeerTalk 不是**辅助工具**，而是**独立开发者**：
 
 - 自己分析需求和改进机会
 - 自己规划开发方案
@@ -85,7 +78,7 @@ OpenChat 不是**辅助工具**，而是**独立开发者**：
 
 ### 4️⃣ 国际顶级黑客级安全
 
-OpenChat 拥有黑客级的安全能力：
+PeerTalk 拥有黑客级的安全能力：
 
 - 不断尝试破解自己（对抗性测试）
 - 破解成功时智能修复
@@ -120,7 +113,7 @@ OpenChat 拥有黑客级的安全能力：
 
 ### 7️⃣ 智能决策分类系统
 
-OpenChat 能精确判断什么时候做什么：
+PeerTalk 能精确判断什么时候做什么：
 
 ```
 🟢 参数调整 (< 1分钟)
@@ -138,11 +131,11 @@ OpenChat 能精确判断什么时候做什么：
 
 ## 第一个程序：「自主修复一个 Bug」
 
-这展示了 OpenChat 如何自主工作：
+这展示了 PeerTalk 如何自主工作：
 
 **场景**：系统发现了一个 Bug
 
-**OpenChat 的自主流程**：
+**PeerTalk 的自主流程**：
 
 ```
 1️⃣ 自我诊断
@@ -202,7 +195,7 @@ OpenChat 能精确判断什么时候做什么：
 
 ## 与传统工具的根本区别
 
-| 方面 | 传统工具 | OpenChat |
+| 方面 | 传统工具 | PeerTalk |
 |------|---------|---------|
 | **决策者** | 人工决定 | AI 自动决定 |
 | **工作模式** | 被动执行 | 主动改进 |
@@ -232,6 +225,6 @@ OpenChat 能精确判断什么时候做什么：
 
 ---
 
-**💡 记住这一点**：OpenChat 不是让 AI 帮你开发。而是 AI 自己在开发，你是在观察和指导这个 AI 开发者。
+**💡 记住这一点**：PeerTalk 不是让 AI 帮你开发。而是 AI 自己在开发，你是在观察和指导这个 AI 开发者。
 
 **🎯 核心理念**：系统能完全独立工作，人工只在需要时出现。

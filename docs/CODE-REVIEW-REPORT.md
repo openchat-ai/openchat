@@ -1,4 +1,4 @@
-# OpenChat Bridge 代码审查报告
+# PeerTalk Bridge 代码审查报告
 
 **日期**: 2026-04-24
 **审查范围**: `F:\openchat\bridge`

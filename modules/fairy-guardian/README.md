@@ -182,4 +182,4 @@ await guardian.rollingRestart();
 
 ---
 
-Part of **[OpenChat](https://github.com/openchat-ai/openchat)** — decentralized AI resident platform · 去中心化 AI 居民平台
+Part of **[PeerTalk](https://github.com/peertalk-ai/peertalk)** — decentralized AI resident platform · 去中心化 AI 居民平台

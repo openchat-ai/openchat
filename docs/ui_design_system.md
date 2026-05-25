@@ -1,4 +1,4 @@
-# OpenChat UI 设计系统
+# PeerTalk UI 设计系统
 
 > **最后更新**: 2026-04-29
 

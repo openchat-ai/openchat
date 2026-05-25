@@ -1,18 +1,18 @@
 {
-  "name": "openchat",
+  "name": "peertalk",
   "version": "1.0.0",
   "description": "Decentralized social network + AI residents platform - Bridge CLI",
   "type": "module",
   "main": "src/core/bridge-lifecycle.js",
   "bin": {
-    "openchat": "./bin/openchat.js"
+    "peertalk": "./bin/peertalk.js"
   },
   "scripts": {
     "start": "node src/main.js",
     "dev": "node --watch src/main.js",
     "deploy:build": "node scripts/build-deploy.js",
-    "pm2:start": "node --input-type=module -e \"import {createLaunchStrategy,detectBestStrategy} from './src/core/p2r/launch-strategies.js';const s=createLaunchStrategy(detectBestStrategy(),{name:'openchat-bridge',script:'src/main.js'});await s.launch()\"",
-    "pm2:stop": "pm2 delete openchat-bridge 2>/dev/null; exit 0",
+    "pm2:start": "node --input-type=module -e \"import {createLaunchStrategy,detectBestStrategy} from './src/core/p2r/launch-strategies.js';const s=createLaunchStrategy(detectBestStrategy(),{name:'peertalk-bridge',script:'src/main.js'});await s.launch()\"",
+    "pm2:stop": "pm2 delete peertalk-bridge 2>/dev/null; exit 0",
     "pm2:status": "pm2 status",
     "eval:generalization": "node tools/eval-generalization.mjs",
     "test": "node --experimental-test-module-mocks --test --test-force-exit src/core/__tests__/*.test.mjs src/core/__tests__/*.test.js src/p2p/__tests__/*.test.js tests/benchmarks/*.js",
