@@ -181,13 +181,13 @@
 | B4 | 远程配置 + 轮询间隔可调 | ✅ 代码已提交 |
 | B5 | CHANGELOG + README 更新 | ✅ 已提交 |
 
-### 工作线 C：单机体验 — 随时可穿插
+### 工作线 C：SDUI 化 — 硬编码 UI 逐步迁移到远程配置
 | 版本 | 交付 | 状态 |
 |------|------|------|
-| C1 | Demo 模式（内建假用户，单机可测） | 🏗️ |
-| C2 | 刷新按钮反馈 + 错误诊断显示 | 🏗️ |
-| C3 | Settings 页远程配置化 | ⏳ |
-| C4 | People 页全部 SDUI 渲染 | ⏳ |
+| C1 | Audio mode 切换按钮（Raw/Opus/Neural）→ 纯 SDUI file:write | ✅ |
+| C2 | Voice room 通话界面（状态文字、mute/挂断按钮）→ SDUI 模板变量 | 📋 |
+| C3 | Settings/Home 页移除硬编码兜底 | 📋 |
+| C4 | 新建 UI 功能默认走 SDUI，不改 Dart | 📋 |
 
 ### 工作线 D：双机通话 — 依赖 A 线完成后
 | 版本 | 交付 | 状态 |
