@@ -13,8 +13,8 @@ class AudioPipeline {
 
   bool _rnnoiseReady = false;
   bool _enabledRNNOISE = true;
-  bool _enabledVAD = true;
-  bool _enabledAGC = true;
+  bool _enabledVAD = false;
+  bool _enabledAGC = false;
   bool _enabledHighPass = true;
 
   // 统计
