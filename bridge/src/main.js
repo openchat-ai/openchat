@@ -251,9 +251,8 @@ export class Bridge {
       };
       this.p2p = new P2PNet(p2pOpts);
       await this.p2p.start();
-      if (CONFIG.directListen > 0 && false) {
-        this.p2p.listenDirect(CONFIG.directListen);
-      }
+
+      // Direct TCP 监听已禁用
       console.log(`[P2P] 网络已启动`);
     } catch (p2pErr) {
       console.log(`[P2P] 启动失败: ${p2pErr.message}`);
