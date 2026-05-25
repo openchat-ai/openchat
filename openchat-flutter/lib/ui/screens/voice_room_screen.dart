@@ -117,15 +117,15 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
     if (stream == null) return;
     const echoDelay = 16000; // ~330ms buffer delay
     List<int> buf = [];
-    _recordSub = stream.listen((chunk) {
+    _recordSub = stream.listen((chunk) async {
       if (_state != 'connected') { buf.clear(); return; }
       buf.addAll(chunk);
       while (buf.length >= echoDelay) {
         final pcm = Uint8List.fromList(buf.take(echoDelay).toList());
         buf = buf.skip(echoDelay).toList();
         final wav = QiniuDirectClient.wavFromPcm(pcm);
-        _player?.stop();
-        _player?.play(BytesSource(wav));
+        await _player?.stop();
+        await _player?.play(BytesSource(wav));
       }
     }, onError: (_) {});
   }
@@ -147,7 +147,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
       encoder: AudioEncoder.pcm16bits, numChannels: 1, sampleRate: cfg.sampleRate));
     if (stream == null) return;
 
-    // Send: record → process → upload
+    // Send: record 鈫?process 鈫?upload
     final bufSize = cfg.bufferBytes;
     const fadeBytes = 240; // 5ms cross-fade @ 24000Hz 16bit mono
     List<int> _buffer = [];
