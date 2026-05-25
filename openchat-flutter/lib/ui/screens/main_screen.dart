@@ -2,37 +2,96 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
+import '../../core/api/qiniu_direct_client.dart';
 import 'home_screen.dart';
 import 'agent_hub_screen.dart';
 import 'people_screen.dart';
 import 'voice_room_screen.dart';
 import 'chat_list_screen.dart';
 import 'settings_screen.dart';
+
 final bottomNavIndexProvider = StateProvider<int>((ref) => 0);
 
-class MainScreen extends ConsumerWidget {
+class MainScreen extends ConsumerStatefulWidget {
   const MainScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MainScreen> createState() => _MainScreenState();
+}
+
+class _MainScreenState extends ConsumerState<MainScreen> {
+  Map? _mainUiConfig;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadConfig();
+  }
+
+  Future<void> _loadConfig() async {
+    final client = QiniuDirectClient(peerId: 'config');
+    try {
+      final cfg = await client.fetchMainUi();
+      if (mounted) setState(() => _mainUiConfig = cfg);
+    } catch (_) {} finally {
+      client.dispose();
+    }
+  }
+
+  Widget _buildScreen(String name) {
+    switch (name) {
+      case 'home': return const HomeScreen();
+      case 'agent': return const AgentHubScreen();
+      case 'people': return const PeopleScreen();
+      case 'chat': return const ChatListScreen();
+      case 'settings': return const SettingsScreen();
+      default: return Center(child: Text('Unknown: $name'));
+    }
+  }
+
+  ({IconData inactive, IconData active}) _resolveIcon(String name) {
+    switch (name) {
+      case 'home': return (inactive: Icons.home_outlined, active: Icons.home_rounded);
+      case 'agent': return (inactive: Icons.psychology_outlined, active: Icons.psychology_rounded);
+      case 'people': return (inactive: Icons.people_outline, active: Icons.people_rounded);
+      case 'chat': return (inactive: Icons.chat_bubble_outline, active: Icons.chat_bubble_rounded);
+      case 'settings': return (inactive: Icons.person_outline, active: Icons.person_rounded);
+      default: return (inactive: Icons.circle_outlined, active: Icons.circle_rounded);
+    }
+  }
+
+  static const _fallbackTabs = [
+    {'icon': 'home', 'label': '首页', 'screen': 'home'},
+    {'icon': 'agent', 'label': 'Agent', 'screen': 'agent'},
+    {'icon': 'people', 'label': '好友', 'screen': 'people'},
+    {'icon': 'chat', 'label': '聊天', 'screen': 'chat'},
+    {'icon': 'settings', 'label': '我的', 'screen': 'settings'},
+  ];
+
+  List<Map<String, dynamic>> _getTabs() {
+    final raw = _mainUiConfig?['tabs'];
+    if (raw is List && raw.isNotEmpty) {
+      return raw.cast<Map<String, dynamic>>();
+    }
+    return _fallbackTabs;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final currentIndex = ref.watch(bottomNavIndexProvider);
     final theme = ref.watch(currentThemeProvider);
+    final tabs = _getTabs();
+    final clampedIndex = currentIndex.clamp(0, tabs.length - 1);
 
     return Scaffold(
       extendBody: true,
       extendBodyBehindAppBar: true,
       backgroundColor: theme.background,
       body: IndexedStack(
-        index: currentIndex,
-        children: const [
-          HomeScreen(),
-          AgentHubScreen(),
-          PeopleScreen(),
-          ChatListScreen(),
-          SettingsScreen(),
-        ],
+        index: clampedIndex,
+        children: tabs.map((t) => _buildScreen(t['screen'] as String? ?? 'home')).toList(),
       ),
-      bottomNavigationBar: _buildBottomNav(context, ref, currentIndex, theme),
+      bottomNavigationBar: _buildBottomNav(context, clampedIndex, theme, tabs),
       floatingActionButton: FloatingActionButton(
         onPressed: () => Navigator.pushNamed(context, '/theme'),
         backgroundColor: theme.primary,
@@ -41,15 +100,7 @@ class MainScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildBottomNav(BuildContext context, WidgetRef ref, int currentIndex, AppTheme theme) {
-    final items = [
-      _NavItem(Icons.home_outlined, Icons.home_rounded, '首页'),
-      _NavItem(Icons.psychology_outlined, Icons.psychology_rounded, 'Agent'),
-      _NavItem(Icons.people_outline, Icons.people_rounded, '好友'),
-      _NavItem(Icons.chat_bubble_outline, Icons.chat_bubble_rounded, '聊天'),
-      _NavItem(Icons.person_outline, Icons.person_rounded, '我的'),
-    ];
-
+  Widget _buildBottomNav(BuildContext context, int currentIndex, AppTheme theme, List<Map<String, dynamic>> tabs) {
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -66,9 +117,12 @@ class MainScreen extends ConsumerWidget {
         borderRadius: BorderRadius.circular(24),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: items.asMap().entries.map((entry) {
+          children: tabs.asMap().entries.map((entry) {
             final index = entry.key;
             final item = entry.value;
+            final iconName = item['icon'] as String? ?? 'home';
+            final label = item['label'] as String? ?? '';
+            final icons = _resolveIcon(iconName);
             final isSelected = index == currentIndex;
 
             return GestureDetector(
@@ -95,14 +149,14 @@ class MainScreen extends ConsumerWidget {
                       scale: isSelected ? 1.2 : 1.0,
                       duration: const Duration(milliseconds: 200),
                       child: Icon(
-                        isSelected ? item.activeIcon : item.icon,
+                        isSelected ? icons.active : icons.inactive,
                         color: isSelected ? Colors.white : theme.textTertiary,
                         size: 22,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      item.label,
+                      label,
                       style: TextStyle(
                         color: isSelected ? Colors.white : theme.textTertiary,
                         fontSize: 9,
@@ -118,12 +172,4 @@ class MainScreen extends ConsumerWidget {
       ),
     );
   }
-}
-
-class _NavItem {
-  final IconData icon;
-  final IconData activeIcon;
-  final String label;
-  
-  _NavItem(this.icon, this.activeIcon, this.label);
 }
