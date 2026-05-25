@@ -427,6 +427,28 @@ class QiniuDirectClient {
     }
   }
 
+  // ========== Generic S3 operations (public wrappers for SDUI) ==========
+
+  Future<List<String>> listFiles(String prefix) async {
+    try { return await _list(prefix); } catch (_) { return []; }
+  }
+
+  Future<String?> readFile(String key) async {
+    try { return await _get(key); } catch (_) { return null; }
+  }
+
+  Future<bool> deleteFile(String key) async {
+    try { await _delete(key); return true; } catch (_) { return false; }
+  }
+
+  Future<bool> writeFile(String key, dynamic content) async {
+    try {
+      final body = content is String ? content : jsonEncode(content);
+      await _put(key, body);
+      return true;
+    } catch (_) { return false; }
+  }
+
   // Remote log: writes to oc/logs/{peerId}/{ts}.{seq}.json
   // I read these from the server side to debug without user involvement.
   int _logSeq = 0;
