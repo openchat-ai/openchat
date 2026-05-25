@@ -410,6 +410,23 @@ class QiniuDirectClient {
     return results;
   }
 
+  Future<List<String>> listAudioFiles() async {
+    try {
+      return await _list('oc/audio/$peerId/');
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>?> readAudioFile(String key) async {
+    try {
+      final raw = await _get(key);
+      return jsonDecode(raw) as Map<String, dynamic>?;
+    } catch (_) {
+      return null;
+    }
+  }
+
   // Remote log: writes to oc/logs/{peerId}/{ts}.{seq}.json
   // I read these from the server side to debug without user involvement.
   int _logSeq = 0;
