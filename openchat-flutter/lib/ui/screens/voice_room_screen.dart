@@ -110,23 +110,25 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
 
   Future<void> _startLocalEcho() async {
     _recorder = AudioRecorder();
-    _player = AudioPlayer();
+    _player = AudioPlayer()..setVolume(0.3); // 30% volume to suppress echo
     if (await _recorder!.hasPermission() != true) return;
     final stream = await _recorder!.startStream(const RecordConfig(
       encoder: AudioEncoder.pcm16bits, numChannels: 1, sampleRate: 24000));
     if (stream == null) return;
+    const echoDelay = 16000; // ~330ms buffer delay
     List<int> buf = [];
     _recordSub = stream.listen((chunk) {
       if (_state != 'connected') { buf.clear(); return; }
       buf.addAll(chunk);
-      // Record 3s then play back once
-      if (buf.length >= 144000) { // 3s @ 24000Hz 16bit
-        _recordSub?.cancel();
-        _recorder?.dispose();
-        final pcm = Uint8List.fromList(buf);
+      while (buf.length >= echoDelay * 2) {
+        final pcm = Uint8List.fromList(buf.take(echoDelay).toList());
+        buf = buf.skip(echoDelay).toList();
         final wav = QiniuDirectClient.wavFromPcm(pcm);
+        _player?.stop();
         _player?.play(BytesSource(wav));
       }
+    }, onError: (_) {});
+  }
     }, onError: (_) {});
   }
 
