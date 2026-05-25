@@ -251,7 +251,7 @@ export class Bridge {
       };
       this.p2p = new P2PNet(p2pOpts);
       await this.p2p.start();
-      if (CONFIG.directListen > 0) {
+      if (CONFIG.directListen > 0 && false) {
         this.p2p.listenDirect(CONFIG.directListen);
       }
       console.log(`[P2P] 网络已启动`);
