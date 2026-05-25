@@ -140,10 +140,11 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
         var frame = Uint8List.fromList(_buffer.take(bufSize).toList());
         _buffer = _buffer.skip(bufSize).toList();
         // Cross-fade with previous chunk tail to avoid click
-        if (_prevOverlap != null) {
+        final overlap = _prevOverlap;
+        if (overlap != null) {
           for (int i = 0; i < fadeBytes && i < frame.length; i += 2) {
             final ratio = i / fadeBytes;
-            final pv = _prevOverlap[_prevOverlap.length - fadeBytes + i] | (_prevOverlap[_prevOverlap.length - fadeBytes + i + 1] << 8);
+            final pv = overlap[overlap.length - fadeBytes + i] | (overlap[overlap.length - fadeBytes + i + 1] << 8);
             final cv = frame[i] | (frame[i + 1] << 8);
             final ps = pv > 32767 ? pv - 65536 : pv;
             final cs = cv > 32767 ? cv - 65536 : cv;
