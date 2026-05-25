@@ -1,4 +1,4 @@
-# OpenChat
+# PeerTalk
 
 Self-hosted P2P voice chat. Phone talks directly to Qiniu S3 — no server needed for voice.
 

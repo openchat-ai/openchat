@@ -1,4 +1,4 @@
-# OpenChat Flutter (Agent Console) 开发文档
+# PeerTalk Flutter (Agent Console) 开发文档
 
 > **最后更新**: 2026-05-21
 > **依赖**: Bridge 服务运行在 `localhost:3800`（`cd bridge && npm start`）
@@ -25,7 +25,7 @@ flutter analyze       # 0 error
 ```
 
 ## 1. 项目概览
-`openchat-flutter` 是一个全新的客户端，旨在将 OpenChat 从一个简单的聊天 App 升级为 **Multi-Agent 协作控制台**。它直接对接 `bridge` 的 `/api/v1` 架构，专注于 Agent 的生命周期管理和任务流展示。
+`openchat-flutter` 是一个全新的客户端，旨在将 PeerTalk 从一个简单的聊天 App 升级为 **Multi-Agent 协作控制台**。它直接对接 `bridge` 的 `/api/v1` 架构，专注于 Agent 的生命周期管理和任务流展示。
 
 ## 2. 架构设计
 ### 2.1 核心技术栈

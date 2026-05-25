@@ -1,4 +1,4 @@
-# OpenChat Roadmap
+# PeerTalk Roadmap
 
 ## ✅ Done
 

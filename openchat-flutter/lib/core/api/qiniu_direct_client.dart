@@ -149,9 +149,9 @@ class QiniuDirectClient {
 
   Future<List<String>> _list(String prefix) async {
     String? url;
+    // 硬编码 URL 只能用于精确匹配的公共前缀
+    // 调用方传 `oc/calls/{peerId}/` 时不能用 `prefix=oc/calls/` 的硬编码 URL
     if (qiniuListUsersUrl.isNotEmpty && prefix == 'oc/users/') url = qiniuListUsersUrl;
-    if (qiniuListCallsUrl.isNotEmpty && prefix.startsWith('oc/calls/')) url = qiniuListCallsUrl;
-    if (qiniuListDebugUrl.isNotEmpty && prefix.startsWith('oc/debug/')) url = qiniuListDebugUrl;
     if (url != null) {
       final resp = await _client.get(Uri.parse(url));
       if (resp.statusCode == 200) {

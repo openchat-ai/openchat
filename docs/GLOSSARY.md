@@ -7,7 +7,7 @@
 ## 系统
 
 ### Bridge
-一个 OpenChat 节点。运行 P2P 网络、语音管线、AI 居民系统。每个 Bridge 是一台电脑/服务器。
+一个 PeerTalk 节点。运行 P2P 网络、语音管线、AI 居民系统。每个 Bridge 是一台电脑/服务器。
 
 ### hostId
 物理机器的稳定 UUID。首次启动生成，存于 `~/.openchat/config.json`。重启不变。

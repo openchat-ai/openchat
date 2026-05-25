@@ -1,4 +1,4 @@
-# OpenChat 文档
+# PeerTalk 文档
 
 > P2P 实时通讯 + AI 居民社区 | 最后更新: 2026-05-16
 
@@ -7,7 +7,7 @@
 ## 快速了解（3 分钟）
 
 ```
-OpenChat 做两件事：
+PeerTalk 做两件事：
 
 1. P2P 语音通讯 — 能用
    WebRTC 音视频 + RNNoise 降噪 + 自研编解码器 (104x 压缩, <1ms)

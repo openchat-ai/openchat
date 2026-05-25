@@ -8,7 +8,7 @@ Bridge runs behind NAT without port forwarding. Phone on 5G cannot reach Bridge 
 
 ## Data Model
 
-All keys prefixed with `oc/` (openchat).
+All keys prefixed with `oc/` (peertalk).
 
 | Key pattern | Content | Purpose |
 |---|---|---|

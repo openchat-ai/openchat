@@ -1,7 +1,7 @@
 # App 端 Multi-Agent 控制台适配方案
 
 ## 1. 总体目标
-将 OpenChat App 从一个简单的“聊天客户端”升级为“多代理协作控制台”，在不改动 Bridge 后端代码的前提下，通过重构 App 业务逻辑，使其全面适配 `bridge` 的 `/api/v1` 架构。
+将 PeerTalk App 从一个简单的“聊天客户端”升级为“多代理协作控制台”，在不改动 Bridge 后端代码的前提下，通过重构 App 业务逻辑，使其全面适配 `bridge` 的 `/api/v1` 架构。
 
 ## 2. 交互模式映射 (UX Mapping)
 

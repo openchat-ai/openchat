@@ -182,7 +182,7 @@ pm2 start ecosystem.config.cjs
 
 ```bash
 npm run pm2:status     # pm2 status
-npm run pm2:stop       # pm2 delete openchat-bridge
+npm run pm2:stop       # pm2 delete peertalk-bridge
 ```
 
 ### 5.4 自动重启策略
@@ -362,7 +362,7 @@ deploy/
 **Windows `install.bat`** — 双击即用：
 ```bat
 @echo off
-title OpenChat Bridge
+title PeerTalk Bridge
 cd /d "%~dp0"
 set PATH=%~dp0;%PATH%
 start /b node bridge\src\main.js --save-config > bridge.log 2>&1

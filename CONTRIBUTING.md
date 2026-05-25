@@ -3,7 +3,7 @@
 ## Quick start
 
 ```bash
-git clone https://github.com/openchat-ai/openchat.git
+git clone https://github.com/peertalk-ai/peertalk.git
 cd bridge
 npm install
 npm test    # 60+ tests should pass

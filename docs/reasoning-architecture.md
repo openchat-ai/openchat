@@ -1,4 +1,4 @@
-# OpenChat Reasoning Architecture / 推理架构
+# PeerTalk Reasoning Architecture / 推理架构
 
 ## Dual-Engine Reasoning / 双引擎推理
 
