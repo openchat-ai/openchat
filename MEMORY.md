@@ -1,218 +1,190 @@
-# MEMORY.md — 项目记忆
+# MEMORY.md 鈥?椤圭洰璁板繂
 
-## 经验教训
+## 缁忛獙鏁欒
 
-- [2026-05-16] **文档与代码严重脱节** — ARCHITECTURE-OVERVIEW 描述的"全球 AI 智能体网络"与实际代码差距巨大。已重写为诚实版本，标注每个模块的真实成熟度。**教训：文档必须根植于可运行的代码，不能超前描述不存在的能力。**
-- [2026-05-16] **NeuralMesh 从未被实例化** — 类定义了但零引用，是死代码。neural_share 消息在 swarm.js 中未路由（已修）。**教训：写完模块必须写集成代码，否则等于没写。**
-- [2026-05-16] **旧 HTTP 服务器 (端口 3800) 零鉴权运行数月** — `/shutdown`、`/api/chat`、`/api/config` 等敏感端点无任何保护。已加 Bearer Token 鉴权。**教训：两条 API 路径必须统一安全管理。**
-- [2026-05-16] **P2P 权重接收无数据验证** — 可投毒 NaN/Infinity/超大数组。已加 validateWeights() 和 sanitizePeerId()。**教训：所有来自网络的输入必须验证，无一例外。**
-- [2026-05-16] 测试 ESM/CJS 混用导致 import 失败 — `package.json` 声明 `"type": "module"` 但某些测试文件使用 CJS 风格 import。统一 ESM，不要混用。
-- [2026-05-16] bridge 根目录散落 12 个 .cjs 一次性修复脚本 — 已移到 `bridge/scripts/migrations/`，以后此类脚本直接放 scripts/。
-- [2026-05-16] `app/` 是废弃旧版 Flutter 项目，已删除。唯一前端是 `openchat-flutter/`。
+- [2026-05-16] **鏂囨。涓庝唬鐮佷弗閲嶈劚鑺?* 鈥?ARCHITECTURE-OVERVIEW 鎻忚堪鐨?鍏ㄧ悆 AI 鏅鸿兘浣撶綉缁?涓庡疄闄呬唬鐮佸樊璺濆法澶с€傚凡閲嶅啓涓鸿瘹瀹炵増鏈紝鏍囨敞姣忎釜妯″潡鐨勭湡瀹炴垚鐔熷害銆?*鏁欒锛氭枃妗ｅ繀椤绘牴妞嶄簬鍙繍琛岀殑浠ｇ爜锛屼笉鑳借秴鍓嶆弿杩颁笉瀛樺湪鐨勮兘鍔涖€?*
+- [2026-05-16] **NeuralMesh 浠庢湭琚疄渚嬪寲** 鈥?绫诲畾涔変簡浣嗛浂寮曠敤锛屾槸姝讳唬鐮併€俷eural_share 娑堟伅鍦?swarm.js 涓湭璺敱锛堝凡淇級銆?*鏁欒锛氬啓瀹屾ā鍧楀繀椤诲啓闆嗘垚浠ｇ爜锛屽惁鍒欑瓑浜庢病鍐欍€?*
+- [2026-05-16] **鏃?HTTP 鏈嶅姟鍣?(绔彛 3800) 闆堕壌鏉冭繍琛屾暟鏈?* 鈥?`/shutdown`銆乣/api/chat`銆乣/api/config` 绛夋晱鎰熺鐐规棤浠讳綍淇濇姢銆傚凡鍔?Bearer Token 閴存潈銆?*鏁欒锛氫袱鏉?API 璺緞蹇呴』缁熶竴瀹夊叏绠＄悊銆?*
+- [2026-05-16] **P2P 鏉冮噸鎺ユ敹鏃犳暟鎹獙璇?* 鈥?鍙姇姣?NaN/Infinity/瓒呭ぇ鏁扮粍銆傚凡鍔?validateWeights() 鍜?sanitizePeerId()銆?*鏁欒锛氭墍鏈夋潵鑷綉缁滅殑杈撳叆蹇呴』楠岃瘉锛屾棤涓€渚嬪銆?*
+- [2026-05-16] 娴嬭瘯 ESM/CJS 娣风敤瀵艰嚧 import 澶辫触 鈥?`package.json` 澹版槑 `"type": "module"` 浣嗘煇浜涙祴璇曟枃浠朵娇鐢?CJS 椋庢牸 import銆傜粺涓€ ESM锛屼笉瑕佹贩鐢ㄣ€?- [2026-05-16] bridge 鏍圭洰褰曟暎钀?12 涓?.cjs 涓€娆℃€т慨澶嶈剼鏈?鈥?宸茬Щ鍒?`bridge/scripts/migrations/`锛屼互鍚庢绫昏剼鏈洿鎺ユ斁 scripts/銆?- [2026-05-16] `app/` 鏄簾寮冩棫鐗?Flutter 椤圭洰锛屽凡鍒犻櫎銆傚敮涓€鍓嶇鏄?`openchat-flutter/`銆?
+## 鍏抽敭鎸囨爣锛堝疄鏃讹級
 
-## 关键指标（实时）
+- **娴嬭瘯**: 138/138 鍏ㄧ豢锛? flaky evolution-integration锛屽崟璺戦€氳繃锛?- **Lint**: eslint 9.39.4 + eslint.config.js 閰嶇疆瀹屾垚锛?9椤归瀛橀敊璇緟淇?- **Demo**: `npm run demo` 涓€閿?sandbox 浣撻獙鑴氭湰瀹屾垚
+- **P2P鏁欑▼**: docs/p2p-voice-tutorial.md 瀹屾垚
+- **HTTP 璺緞**: 宸茬粺涓€鍒?Express 鏈嶅姟鍣紙绔彛 3800锛夛紝搴熷純 raw HTTP server
+- **鍩虹绔彛**: 鍥哄畾涓?3800锛屾墍鏈夎鐢熺鍙ｄ互 3800 涓哄熀鍑嗘帹瀵?- **OpenAPI**: `/api-docs` 绔偣鍙€氳繃 Swagger UI 娴忚
 
-- **测试**: 138/138 全绿（1 flaky evolution-integration，单跑通过）
-- **Lint**: eslint 9.39.4 + eslint.config.js 配置完成，59项预存错误待修
-- **Demo**: `npm run demo` 一键 sandbox 体验脚本完成
-- **P2P教程**: docs/p2p-voice-tutorial.md 完成
-- **HTTP 路径**: 已统一到 Express 服务器（端口 3800），废弃 raw HTTP server
-- **基础端口**: 固定为 3800，所有衍生端口以 3800 为基准推导
-- **OpenAPI**: `/api-docs` 端点可通过 Swagger UI 浏览
-
-## 最近会话摘要
-
-- [2026-05-25] **音频链路 E1 完成**：队列播放 + 淡入淡出 + Opus 集成 + SDUI 三模式可切（raw/opus/neural）。RNNoise/AGC/VAD 管线已接入并通过 CI。AGENTS.md 新增 SDUI 优先原则（UI 变动先问 SDUI 能不能做，不 rebuild）。AGENTS.md 新增 Flutter API 签对签规则（推送前去 pub.dev 逐行核对 API）。修复 OpenRouter API key 泄露（git filter-repo 误删仓库后从 CI 引用恢复）。清理 33 个 apk-* tag 和所有旧 Actions runs。
-
-- [2026-05-16] **项目定位大讨论**：通过多角色审视（VC、安全研究员、贡献者、核心工程师、Petals 开发者、考古学家、学生用户、记者、Flutter App 视角）确认项目真实竞争力在 P2P 语音通讯，而非分布式大模型。AI 居民社区方向保留但标注为实验。
-- [2026-05-16] **安全加固**：修复 neural-mesh.js 权重验证+路径穿越、swarm.js neural_share 路由、main.js 旧 HTTP 鉴权。
-- [2026-05-16] **文档大修**：重写 ARCHITECTURE-OVERVIEW.md、docs/README.md、GLOSSARY.md，与代码真实状态对齐。
-- [2026-05-16] 项目审核：发现并修复 AGENTS.md 空文件、MEMORY.md 空文件、测试 ESM 问题、清理废弃 `app/` 目录。
-
-## 主题文件路由表
-
-> 涉及以下领域时读取对应文件
-
-| 触发词 | 文件 | 说明 |
+## 鏈€杩戜細璇濇憳瑕?
+- [2026-05-25] **闊抽閾捐矾 E1 瀹屾垚**锛氶槦鍒楁挱鏀?+ 娣″叆娣″嚭 + Opus 闆嗘垚 + SDUI 涓夋ā寮忓彲鍒囷紙raw/opus/neural锛夈€俁NNoise/AGC/VAD 绠＄嚎宸叉帴鍏ュ苟閫氳繃 CI銆侫GENTS.md 鏂板 SDUI 浼樺厛鍘熷垯锛圲I 鍙樺姩鍏堥棶 SDUI 鑳戒笉鑳藉仛锛屼笉 rebuild锛夈€侫GENTS.md 鏂板 Flutter API 绛惧绛捐鍒欙紙鎺ㄩ€佸墠鍘?pub.dev 閫愯鏍稿 API锛夈€備慨澶?OpenRouter API key 娉勯湶锛坓it filter-repo 璇垹浠撳簱鍚庝粠 CI 寮曠敤鎭㈠锛夈€傛竻鐞?33 涓?apk-* tag 鍜屾墍鏈夋棫 Actions runs銆?
+- [2026-05-16] **椤圭洰瀹氫綅澶ц璁?*锛氶€氳繃澶氳鑹插瑙嗭紙VC銆佸畨鍏ㄧ爺绌跺憳銆佽础鐚€呫€佹牳蹇冨伐绋嬪笀銆丳etals 寮€鍙戣€呫€佽€冨彜瀛﹀銆佸鐢熺敤鎴枫€佽鑰呫€丗lutter App 瑙嗚锛夌‘璁ら」鐩湡瀹炵珵浜夊姏鍦?P2P 璇煶閫氳锛岃€岄潪鍒嗗竷寮忓ぇ妯″瀷銆侫I 灞呮皯绀惧尯鏂瑰悜淇濈暀浣嗘爣娉ㄤ负瀹為獙銆?- [2026-05-16] **瀹夊叏鍔犲浐**锛氫慨澶?neural-mesh.js 鏉冮噸楠岃瘉+璺緞绌胯秺銆乻warm.js neural_share 璺敱銆乵ain.js 鏃?HTTP 閴存潈銆?- [2026-05-16] **鏂囨。澶т慨**锛氶噸鍐?ARCHITECTURE-OVERVIEW.md銆乨ocs/README.md銆丟LOSSARY.md锛屼笌浠ｇ爜鐪熷疄鐘舵€佸榻愩€?- [2026-05-16] 椤圭洰瀹℃牳锛氬彂鐜板苟淇 AGENTS.md 绌烘枃浠躲€丮EMORY.md 绌烘枃浠躲€佹祴璇?ESM 闂銆佹竻鐞嗗簾寮?`app/` 鐩綍銆?
+## 涓婚鏂囦欢璺敱琛?
+> 娑夊強浠ヤ笅棰嗗煙鏃惰鍙栧搴旀枃浠?
+| 瑙﹀彂璇?| 鏂囦欢 | 璇存槑 |
 |--------|------|------|
-| Bridge/后端/main.js | memory/core-logic.md | Bridge 核心启动流程、配置加载、模块初始化 |
-| P2P/DHT/节点发现 | memory/p2p.md | hyperswarm P2P 网络、节点发现、消息路由 |
-| Agent/代理/多AI | memory/agents.md | 5 种代理角色、反馈聚合、决策系统 |
-| 热更新/Watchdog | memory/hot-update.md | SafeEvolution、热更新流程、回滚机制 |
-| API/REST/端点 | memory/api.md | 31 个 API 端点、认证、限流 |
-| Flutter/客户端/UI | memory/flutter.md | openchat-flutter 架构、API Client 层 |
-| 语音/音频/WebRTC | memory/audio.md | RNNoise、神经编解码、语音网关 |
-| 调试经验 | memory/debugging.md | 常见 bug、调试技巧 |
+| Bridge/鍚庣/main.js | memory/core-logic.md | Bridge 鏍稿績鍚姩娴佺▼銆侀厤缃姞杞姐€佹ā鍧楀垵濮嬪寲 |
+| P2P/DHT/鑺傜偣鍙戠幇 | memory/p2p.md | hyperswarm P2P 缃戠粶銆佽妭鐐瑰彂鐜般€佹秷鎭矾鐢?|
+| Agent/浠ｇ悊/澶欰I | memory/agents.md | 5 绉嶄唬鐞嗚鑹层€佸弽棣堣仛鍚堛€佸喅绛栫郴缁?|
+| 鐑洿鏂?Watchdog | memory/hot-update.md | SafeEvolution銆佺儹鏇存柊娴佺▼銆佸洖婊氭満鍒?|
+| API/REST/绔偣 | memory/api.md | 31 涓?API 绔偣銆佽璇併€侀檺娴?|
+| Flutter/瀹㈡埛绔?UI | memory/flutter.md | openchat-flutter 鏋舵瀯銆丄PI Client 灞?|
+| 璇煶/闊抽/WebRTC | memory/audio.md | RNNoise銆佺缁忕紪瑙ｇ爜銆佽闊崇綉鍏?|
+| 璋冭瘯缁忛獙 | memory/debugging.md | 甯歌 bug銆佽皟璇曟妧宸?|
 
-## 开放线程
+## 寮€鏀剧嚎绋?
+- [2026-05-18] **娉涘寲寮曟搸宸插疄鐜?* 鈥?generalization.js (300琛? + 闆嗘垚鍒?resident-manager think() 娴佺▼銆傚綋鐢ㄦ埛鎻愰棶鏃讹細vector memory 鎼滅浉鍏崇粡楠?鈫?generalization 鍒嗘瀽妯″紡 鈫?LLM 鐢熸垚澶氳В娉?鈫?鍥炲瓨鐭ヨ瘑搴?鈫?gossip 鍚屾鍏ㄧ綉銆傚疄鐜颁簡"涓€娆℃煡璇紝鎵€鏈夊眳姘戝鐢?鐨勯棴鐜€?- [2026-05-18] AI 灞呮皯鍐呴儴寰幆 鈥?宸插畬鏁撮摼璺細鐘舵€佹満 + 鑳介噺绯荤粺 + vector memory + generalization + gossip銆倀hink() 涓嶅啀鏄８ LLM 璋冪敤銆?- [2026-05-16] Dashboard 瀹炴椂鎺ㄩ€?鈥?鍚庣鐘舵€佸彉鍖栭渶瑕侀€氳繃 WebSocket 鎺ㄩ€佸埌鍓嶇锛岃€岄潪鍓嶇杞銆?- [2026-05-18] `bridge/src/main.js` 宸蹭粠 ~1900 琛屾媶鑷?26 琛岋紙姝讳唬鐮佹竻鐞嗗悗锛夛紝浣?MEMORY.md 鍜?MAINJS_REFACTOR_PLAN.md 淇濈暀鏃ф暟鎹鑷翠笓瀹惰瘎瀹″弽澶嶅悆鍋囩伯銆?*鏁欒锛氭枃妗ｄ腑鐨勬暟瀛楁寚鏍囧繀椤诲湪浠ｇ爜鍙樻洿鍚庣珛鍗冲悓姝ユ洿鏂帮紝鍚﹀垯鑷姩鎽樿宸ュ叿浼氶噸澶嶄紶鎾繃鏈熶俊鎭€?*
+- [2026-05-18] `protocol/README.md` 瀛樺湪锛?65 琛屽崗璁枃妗ｏ級锛屼箣鍓嶈璁颁负绌虹洰褰曘€傚凡淇濈暀銆?- [2026-05-18] 鍥涜疆涓撳璇勫鍏辨墽琛?24 椤?P0锛孊ridge 鏍圭洰褰曟竻鐞?12 涓?Python 閬楃暀鏂囦欢锛孉I 灞呮皯鐘舵€佹満+澶氳矾寰勬帹鐞嗘浛鎹㈤鍒跺洖绛斻€?*鏁欒锛氫笓瀹惰瘎瀹℃瘡杞兘濂楃敤鐩稿悓鎻愰棶妯″紡鈥斺€旀灦鏋?娴嬭瘯/瀹夊叏/AI鈥斺€斾笉浼氶棶瀹屽叏閲嶅鐨勯棶棰樸€傚綋璇勫寮€濮嬭仛鐒?灞呮皯涓嶅鑱槑"鍜?鐭ヨ瘑涓嶅叡浜?鏃讹紝璇存槑鍩虹璁炬柦鍊哄凡杩樺畬锛岃疆鍒颁骇鍝佸姏浜嗐€?*
 
-- [2026-05-18] **泛化引擎已实现** — generalization.js (300行) + 集成到 resident-manager think() 流程。当用户提问时：vector memory 搜相关经验 → generalization 分析模式 → LLM 生成多解法 → 回存知识库 → gossip 同步全网。实现了"一次查询，所有居民复用"的闭环。
-- [2026-05-18] AI 居民内部循环 — 已完整链路：状态机 + 能量系统 + vector memory + generalization + gossip。think() 不再是裸 LLM 调用。
-- [2026-05-16] Dashboard 实时推送 — 后端状态变化需要通过 WebSocket 推送到前端，而非前端轮询。
-- [2026-05-18] `bridge/src/main.js` 已从 ~1900 行拆至 26 行（死代码清理后），但 MEMORY.md 和 MAINJS_REFACTOR_PLAN.md 保留旧数据导致专家评审反复吃假粮。**教训：文档中的数字指标必须在代码变更后立即同步更新，否则自动摘要工具会重复传播过期信息。**
-- [2026-05-18] `protocol/README.md` 存在（265 行协议文档），之前误记为空目录。已保留。
-- [2026-05-18] 四轮专家评审共执行 24 项 P0，Bridge 根目录清理 12 个 Python 遗留文件，AI 居民状态机+多路径推理替换预制回答。**教训：专家评审每轮都套用相同提问模式——架构/测试/安全/AI——不会问完全重复的问题。当评审开始聚焦"居民不够聪明"和"知识不共享"时，说明基础设施债已还完，轮到产品力了。**
-
-- [2026-05-20] **第五轮专家评审 — HTTP 路径统一 + 首次全绿**：测试从 98/98 推进到 120/120（第五轮 98→第六轮 120，最终全绿）。完成 5 项 P0 执行：Express 监听端口 3800，废弃 raw HTTP server，所有衍生端口以 3800 为基准。**教训：大量遗留代码（startServer 中的 ~250 行路由/WebSocket 逻辑）在首次 edit 时未完全匹配删除，因文件行号已因前序 edit 偏移。大段替换时必须用唯一匹配锚点（如 `}` + 下一方法签名）。**
-- [2026-05-20] **第七轮专家评审 — console.log→pino 结构化日志**：114→115 测试（全绿）。完成 7 轮共 29 项 P0。134 个文件批量替换 console.log → logger.info/warn/error，pino 集成带敏感数据脱敏。**教训：PowerShell `Set-Content -NoNewline` 会以错误编码写入文件，导致 UTF-8 多字节字符损坏。文件修改必须统一用 Node.js `fs.writeFileSync(file, content, 'utf-8')`。`pino.transport()` 创建 worker 线程会阻止 Node.js test runner 退出，必须用同步 pino API。**
-- [2026-05-20] **第八轮专家评审 — 安全加固+CoT+测试+目录精简**：128/128 全绿。完成 7 项 P0 执行：mathjs 替代 Function()、SSRF 防护、CoT 超时/token门禁、14 个 tool-registry 测试、src 目录 22→11、README 差异化描述、CI npm pack+docker build。**教训：大量目录合并涉及跨文件 import 路径更新，必须先 grep 所有引用再移动。`git stash` 可用于对比 pre-existing test failures 与引入的失败。**
-- [2026-05-20] **第九轮专家评审 — catch{}系统性清理+死代码删除+子系统测试**：138/138 全绿（新增10个子系统测试）。完成5项P0执行：105处catch{}加日志(36文件)、19个.log垃圾文件清理、bridge.js死代码删除、ConvergenceEngine+FairyGuardian测试(10个)、evolution-integration确认仍flaky。**教训：R4修catch{}只限于topic-registry，这次grep出全项目105处。单文件"已修"不代表全项目已修，每次评审必须做全量扫描。**
+- [2026-05-20] **绗簲杞笓瀹惰瘎瀹?鈥?HTTP 璺緞缁熶竴 + 棣栨鍏ㄧ豢**锛氭祴璇曚粠 98/98 鎺ㄨ繘鍒?120/120锛堢浜旇疆 98鈫掔鍏疆 120锛屾渶缁堝叏缁匡級銆傚畬鎴?5 椤?P0 鎵ц锛欵xpress 鐩戝惉绔彛 3800锛屽簾寮?raw HTTP server锛屾墍鏈夎鐢熺鍙ｄ互 3800 涓哄熀鍑嗐€?*鏁欒锛氬ぇ閲忛仐鐣欎唬鐮侊紙startServer 涓殑 ~250 琛岃矾鐢?WebSocket 閫昏緫锛夊湪棣栨 edit 鏃舵湭瀹屽叏鍖归厤鍒犻櫎锛屽洜鏂囦欢琛屽彿宸插洜鍓嶅簭 edit 鍋忕Щ銆傚ぇ娈垫浛鎹㈡椂蹇呴』鐢ㄥ敮涓€鍖归厤閿氱偣锛堝 `}` + 涓嬩竴鏂规硶绛惧悕锛夈€?*
+- [2026-05-20] **绗竷杞笓瀹惰瘎瀹?鈥?console.log鈫抪ino 缁撴瀯鍖栨棩蹇?*锛?14鈫?15 娴嬭瘯锛堝叏缁匡級銆傚畬鎴?7 杞叡 29 椤?P0銆?34 涓枃浠舵壒閲忔浛鎹?console.log 鈫?logger.info/warn/error锛宲ino 闆嗘垚甯︽晱鎰熸暟鎹劚鏁忋€?*鏁欒锛歅owerShell `Set-Content -NoNewline` 浼氫互閿欒缂栫爜鍐欏叆鏂囦欢锛屽鑷?UTF-8 澶氬瓧鑺傚瓧绗︽崯鍧忋€傛枃浠朵慨鏀瑰繀椤荤粺涓€鐢?Node.js `fs.writeFileSync(file, content, 'utf-8')`銆俙pino.transport()` 鍒涘缓 worker 绾跨▼浼氶樆姝?Node.js test runner 閫€鍑猴紝蹇呴』鐢ㄥ悓姝?pino API銆?*
+- [2026-05-20] **绗叓杞笓瀹惰瘎瀹?鈥?瀹夊叏鍔犲浐+CoT+娴嬭瘯+鐩綍绮剧畝**锛?28/128 鍏ㄧ豢銆傚畬鎴?7 椤?P0 鎵ц锛歮athjs 鏇夸唬 Function()銆丼SRF 闃叉姢銆丆oT 瓒呮椂/token闂ㄧ銆?4 涓?tool-registry 娴嬭瘯銆乻rc 鐩綍 22鈫?1銆丷EADME 宸紓鍖栨弿杩般€丆I npm pack+docker build銆?*鏁欒锛氬ぇ閲忕洰褰曞悎骞舵秹鍙婅法鏂囦欢 import 璺緞鏇存柊锛屽繀椤诲厛 grep 鎵€鏈夊紩鐢ㄥ啀绉诲姩銆俙git stash` 鍙敤浜庡姣?pre-existing test failures 涓庡紩鍏ョ殑澶辫触銆?*
+- [2026-05-20] **绗節杞笓瀹惰瘎瀹?鈥?catch{}绯荤粺鎬ф竻鐞?姝讳唬鐮佸垹闄?瀛愮郴缁熸祴璇?*锛?38/138 鍏ㄧ豢锛堟柊澧?0涓瓙绯荤粺娴嬭瘯锛夈€傚畬鎴?椤筆0鎵ц锛?05澶刢atch{}鍔犳棩蹇?36鏂囦欢)銆?9涓?log鍨冨溇鏂囦欢娓呯悊銆乥ridge.js姝讳唬鐮佸垹闄ゃ€丆onvergenceEngine+FairyGuardian娴嬭瘯(10涓?銆乪volution-integration纭浠峟laky銆?*鏁欒锛歊4淇甤atch{}鍙檺浜巘opic-registry锛岃繖娆rep鍑哄叏椤圭洰105澶勩€傚崟鏂囦欢"宸蹭慨"涓嶄唬琛ㄥ叏椤圭洰宸蹭慨锛屾瘡娆¤瘎瀹″繀椤诲仛鍏ㄩ噺鎵弿銆?*
 
 
-- [2026-05-20] **第十轮专家评审 — core/ 129文件拆10子目录**：129文件从core/扁平→10语义子目录（agent/ evolution/ security/ convergence/ p2r/ monitoring/ memory/ audio/ collaboration/ quality/）。137/138测试全绿（仅剩evolution-integration flaky）。**教训：跨目录文件移动必须用自动化脚本处理import路径。PowerShell glob/正则局限性大，Node.js脚本更可靠。`../xxx/yyy.js`中xxx可能同时是src/xxx和core/xxx，必须按core/xxx优先解析。动态import（`await import()`）容易被批量替换漏掉，必须全量grep确认。17个test.mjs文件漏了动态import。**
+- [2026-05-20] **绗崄杞笓瀹惰瘎瀹?鈥?core/ 129鏂囦欢鎷?0瀛愮洰褰?*锛?29鏂囦欢浠巆ore/鎵佸钩鈫?0璇箟瀛愮洰褰曪紙agent/ evolution/ security/ convergence/ p2r/ monitoring/ memory/ audio/ collaboration/ quality/锛夈€?37/138娴嬭瘯鍏ㄧ豢锛堜粎鍓〆volution-integration flaky锛夈€?*鏁欒锛氳法鐩綍鏂囦欢绉诲姩蹇呴』鐢ㄨ嚜鍔ㄥ寲鑴氭湰澶勭悊import璺緞銆侾owerShell glob/姝ｅ垯灞€闄愭€уぇ锛孨ode.js鑴氭湰鏇村彲闈犮€俙../xxx/yyy.js`涓瓁xx鍙兘鍚屾椂鏄痵rc/xxx鍜宑ore/xxx锛屽繀椤绘寜core/xxx浼樺厛瑙ｆ瀽銆傚姩鎬乮mport锛坄await import()`锛夊鏄撹鎵归噺鏇挎崲婕忔帀锛屽繀椤诲叏閲廹rep纭銆?7涓猼est.mjs鏂囦欢婕忎簡鍔ㄦ€乮mport銆?*
 
-| R14 | Flutter编译状态验证 | Flutter开发者 | P0-5 | ❌ 待修(部分完成) | Flutter开发者 |
-| R14 | evolution-integration flaky续存 | 测试工程师 | P1-6 | ✅ 已修(R16) | 测试工程师 |
-| R15 | CLI体验改造 — sandbox交互(颜色/持久化) | 技术经理 | P0-1 | ✅ 已修(R15) | 用户支持+架构师+竞品分析师 |
-| R15 | Flutter编译验证+CI(端口3000→3800) | 技术经理 | P0-2 | ✅ 已修(R15) | Flutter开发者+安全研究员 |
-| R15 | lint error 59→48 (comment-eats-code/duplicate/mac) | 技术经理 | P0-3 | ✅ 已修(R15) | 核心工程师+SRE |
-| R15 | evolution-integration flaky根因分析 | 技术经理 | P0-4 | ✅ 已修(R16) | 测试工程师 |
-| R15 | 单分支开发整改(清理bridge_setup.py+BRANCH_STRATEGY.md) | 技术经理 | P0-5 | ✅ 已修(R15) | Git专家 |
-| R15 | Agent loop闭环验证 | 技术经理 | P1-6 | ❌ 待修 | AI研究员+测试工程师 |
-| R15 | 模块级README | 技术经理 | P1-9 | ❌ 待修 | 架构师+开源社区经理+技术写作者 |
-| R16 | resident-scheduler syntax error修复(demo崩溃) | 技术经理 | P0-1 | ✅ 已修(R16) | 全体13位专家 |
-| R16 | 全量编码损坏文件扫描+修复(house-orchestrator) | 技术经理 | P0-2 | ✅ 已修(R16) | 安全研究员 |
-| R16 | 添加 smoke test(所有src/文件node --check) | 技术经理 | P0-3 | ✅ 已修(R16) | 测试工程师+架构师 |
-| R16 | evolution-integration重写为node:test(根除flaky) | 技术经理 | P0-4 | ✅ 已修(R16) | 测试工程师 |
-| R16 | 618 lint warnings清零(eslint --fix) | 技术经理 | P0-5 | ✅ 已修(R16) | 核心工程师+SRE |
+| R14 | Flutter缂栬瘧鐘舵€侀獙璇?| Flutter寮€鍙戣€?| P0-5 | 鉂?寰呬慨(閮ㄥ垎瀹屾垚) | Flutter寮€鍙戣€?|
+| R14 | evolution-integration flaky缁瓨 | 娴嬭瘯宸ョ▼甯?| P1-6 | 鉁?宸蹭慨(R16) | 娴嬭瘯宸ョ▼甯?|
+| R15 | CLI浣撻獙鏀归€?鈥?sandbox浜や簰(棰滆壊/鎸佷箙鍖? | 鎶€鏈粡鐞?| P0-1 | 鉁?宸蹭慨(R15) | 鐢ㄦ埛鏀寔+鏋舵瀯甯?绔炲搧鍒嗘瀽甯?|
+| R15 | Flutter缂栬瘧楠岃瘉+CI(绔彛3000鈫?800) | 鎶€鏈粡鐞?| P0-2 | 鉁?宸蹭慨(R15) | Flutter寮€鍙戣€?瀹夊叏鐮旂┒鍛?|
+| R15 | lint error 59鈫?8 (comment-eats-code/duplicate/mac) | 鎶€鏈粡鐞?| P0-3 | 鉁?宸蹭慨(R15) | 鏍稿績宸ョ▼甯?SRE |
+| R15 | evolution-integration flaky鏍瑰洜鍒嗘瀽 | 鎶€鏈粡鐞?| P0-4 | 鉁?宸蹭慨(R16) | 娴嬭瘯宸ョ▼甯?|
+| R15 | 鍗曞垎鏀紑鍙戞暣鏀?娓呯悊bridge_setup.py+BRANCH_STRATEGY.md) | 鎶€鏈粡鐞?| P0-5 | 鉁?宸蹭慨(R15) | Git涓撳 |
+| R15 | Agent loop闂幆楠岃瘉 | 鎶€鏈粡鐞?| P1-6 | 鉂?寰呬慨 | AI鐮旂┒鍛?娴嬭瘯宸ョ▼甯?|
+| R15 | 妯″潡绾EADME | 鎶€鏈粡鐞?| P1-9 | 鉂?寰呬慨 | 鏋舵瀯甯?寮€婧愮ぞ鍖虹粡鐞?鎶€鏈啓浣滆€?|
+| R16 | resident-scheduler syntax error淇(demo宕╂簝) | 鎶€鏈粡鐞?| P0-1 | 鉁?宸蹭慨(R16) | 鍏ㄤ綋13浣嶄笓瀹?|
+| R16 | 鍏ㄩ噺缂栫爜鎹熷潖鏂囦欢鎵弿+淇(house-orchestrator) | 鎶€鏈粡鐞?| P0-2 | 鉁?宸蹭慨(R16) | 瀹夊叏鐮旂┒鍛?|
+| R16 | 娣诲姞 smoke test(鎵€鏈塻rc/鏂囦欢node --check) | 鎶€鏈粡鐞?| P0-3 | 鉁?宸蹭慨(R16) | 娴嬭瘯宸ョ▼甯?鏋舵瀯甯?|
+| R16 | evolution-integration閲嶅啓涓簄ode:test(鏍归櫎flaky) | 鎶€鏈粡鐞?| P0-4 | 鉁?宸蹭慨(R16) | 娴嬭瘯宸ョ▼甯?|
+| R16 | 618 lint warnings娓呴浂(eslint --fix) | 鎶€鏈粡鐞?| P0-5 | 鉁?宸蹭慨(R16) | 鏍稿績宸ョ▼甯?SRE |
 
-## 版本历史
+## 鐗堟湰鍘嗗彶
 
-| 轮次 | 意见摘要 | 提出专家 | 对应任务 | 状态 | 验收人 |
+| 杞 | 鎰忚鎽樿 | 鎻愬嚭涓撳 | 瀵瑰簲浠诲姟 | 鐘舵€?| 楠屾敹浜?|
 |------|---------|---------|---------|------|-------|
-| R1 | 死代码太多(analysis-*.cjs, .js.js) | Git专家 | P0-1 清理4770文件 | ✅ 已修(R1) | Git专家 |
-| R1 | 测试20%失败率不可接受 | 测试工程师 | P0-2 修复17个失败 | ✅ 已修(R2) | 测试工程师 |
-| R1 | 旧HTTP无鉴权 | 安全研究员 | P0-3 API鉴权统一 | ✅ 已修(R2) | 安全研究员 |
-| R1 | P2P零测试 | 测试工程师 | P0-4 8个P2P测试 | ✅ 已修(R2) | 测试工程师 |
-| R1 | agent-engine session store缺失 | 核心工程师 | P0-1 注入deps | ✅ 已修(R2) | 核心工程师 |
-| R2 | 两条HTTP路径共存 | 架构师 | P0-1 废弃raw HTTP | ✅ 已修(R3) | 架构师 |
-| R2 | agent-session混用jest/ESM | 测试工程师 | P0-2 删除jest测试 | ✅ 已修(R3) | 测试工程师 |
-| R2 | Flutter API对齐未验证 | Flutter开发者 | P0-3 baseUrl确认 | ✅ 已修(R3) | Flutter开发者 |
-| R3 | //注释吃掉后续代码(3处) | 核心工程师 | 修复topic-registry/route-handlers | ✅ 已修(R4) | 核心工程师 |
-| R4 | WS clients未追踪 | Code Review | server.js加this.clients | ✅ 已修(R4) | Code Review |
-| R4 | _queryTopicPeers递归爆栈 | Code Review | 改为_getLocalPeers | ✅ 已修(R4) | Code Review |
-| R4 | catch{}吞异常 | 安全研究员 | topic-registry加日志 | ✅ 已修(R4) | 安全研究员 |
-| R4 | isMain端口检测被移除 | Code Review | 恢复port===DEFAULT_PORT | ✅ 已修(R4) | Code Review |
-| R5 | forge.js零测试覆盖 | 核心工程师 | 16个测试 | ✅ 已修(R5) | 核心工程师 |
-| R5 | generalization单测试不可信 | AI研究员 | 基准重算+扩展 | ✅ 已修(R6) | AI研究员 |
-| R5 | evolution-integration flaky | 测试工程师 | 重写为node:test | ✅ 已修(R6) | 测试工程师 |
-| R6 | 产品无一句话定位 | VC/投资人 | README重写 | ✅ 已修(R7) | VC/投资人 |
-| R6 | 无新人onboarding | 开源社区经理 | first-steps.md | ✅ 已修(R7) | 开源社区经理 |
-| R6 | 无CI | SRE/运维 | .github/workflows/ci.yml | ✅ 已修(R7) | SRE/运维 |
-| R6 | eval-report残留 | Git专家 | 清理+.gitignore | ✅ 已修(R7) | Git专家 |
-| R7 | console.log→pino结构化日志 | SRE/运维 | P0-1 替换134文件 | ✅ 已修(R7) | 测试工程师 |
-| R7 | AI居民CoT+tool-use | AI研究员 | P0-4 tool-registry + CoT loop | ✅ 已修(R7) | 核心工程师 |
-| R8 | calculate Function()构造器RCE | 安全研究员/核心工程师 | P0-1 mathjs替代 | ✅ 已修(R8) | 安全研究员 |
-| R8 | web_fetch SSRF无防护 | 安全研究员/核心工程师 | P0-2 URL验证+内网阻断 | ✅ 已修(R8) | 安全研究员 |
-| R8 | CoT无inter-iteration超时 | 核心工程师/AI研究员 | P0-3 per-iteration timeout+token门禁 | ✅ 已修(R8) | 核心工程师 |
-| R8 | tool-registry+CoT零测试 | 测试工程师 | P0-4 14个测试(128→128) | ✅ 已修(R8) | 测试工程师 |
-| R8 | src目录22个膨胀 | 架构师 | P0-5 22→11目录合并 | ✅ 已修(R8) | 架构师 |
-| R8 | README未突出P2P语音差异 | 竞品分析师/VC | P0-6 差异化描述+Features表格 | ✅ 已修(R8) | 竞品分析师 |
-| R8 | CI无构建产出验证 | SRE/运维 | P0-7 npm pack+docker build | ✅ 已修(R8) | SRE/运维 |
-| R9 | 105处catch{}吞异常(36文件) | 安全研究员/核心工程师 | P0-1 批量加logger.warn | ✅ 已修(R9) | 安全研究员 |
-| R9 | 19个.log垃圾文件 | SRE/运维 | P0-2 删除+gitignore已有 | ✅ 已修(R9) | SRE/运维 |
-| R9 | bridge.js独立入口=死代码 | 核心工程师/架构师 | P0-3 删除bridge.js | ✅ 已修(R9) | 核心工程师 |
-| R9 | core/目录149文件膨胀 → 10子目录 | 架构师 | P0-5 拆分子目录 | ✅ 已修(R10) | 架构师 |
-| R9 | main.js start() 470行 | 核心工程师 | P0-2 拆阶段方法(待执行) | ❌ 待修 | 核心工程师 |
-| R9 | evolution-integration flaky未根除 | 测试工程师 | P0-6 确认仍flaky(非R9引入) | ❌ 待修 | 测试工程师 |
-| R9 | P2P通话step-by-step教程 | 用户支持/竞品分析师 | P0-7 文档(待执行) | ❌ 待修 | 用户支持 |
-| R10 | core/ 129文件拆10子目录 | 架构师 | P0-1 core/拆分 | ✅ 已修(R10) | 架构师 |
-| R10 | evolution-integration重写为node:test | 核心工程师 | P0-3 evolution重写 | ❌ 待修 | 测试工程师 |
-| R10 | main.js start() 470行拆分 | 核心工程师 | P0-2 main.js拆分 | ❌ 待修 | 核心工程师 |
-| R10 | lint接入CI | SRE | P0-5 lint配置 | ❌ 待修 | SRE |
-| R10 | P2P教程+demo | 竞品分析师 | P0-12 P2P教程制作 | ❌ 待修 | 用户支持 |
-| R13 | 四项原则评审—可交付版本验收标准 | 技术经理 | 写入AGENTS.md原则4 | ✅ 已修(R13) | VC/投资人+SRE |
-| R13 | 四项原则评审—PRINCIPLE_TRACKING.json | Git专家 | 创建跟踪文件 | ✅ 已修(R13) | Git专家 |
-| R13 | 四项原则评审—原则3强制执行机制 | Code Review | 写入AGENTS.md原则3 | ✅ 已修(R13) | 技术写作者 |
-| R13 | 四项原则评审—换方案触发机制 | 核心工程师 | 写入AGENTS.md原则1 | ✅ 已修(R13) | 核心工程师 |
-| R13 | 四项原则评审—每3轮硬性版号 | 竞品分析师 | 写入AGENTS.md原则4 | ✅ 已修(R13) | 竞品分析师 |
-| R14 | main.js空catch加logger(5处) | 安全研究员 | P0-4 | ✅ 已修(R14) | 安全研究员 |
-| R14 | CI lint替换eslint.config.js+devDependencies | SRE/运维 | P0-2 | ✅ 已修(R14) | SRE/运维 |
-| R14 | npm run demo一键sandbox体验脚本 | 用户支持 | P0-1 | ✅ 已修(R14) | 用户支持 |
-| R14 | P2P端到端demo教程 | 竞品分析师 | P0-3 | ✅ 已修(R14) | 竞品分析师 |
-| R14 | src/*.js 59项预存lint错误(no-undef/no-empty等) | SRE/运维 | P1-后续 | ✅ 已修(R15, 59→48) | SRE/运维 |
-| R14 | evolution-integration flaky续存 | 测试工程师 | P1-6 | ❌ 待修 | 测试工程师 |
-| R14 | Flutter编译状态验证 | Flutter开发者 | P0-5 | ❌ 待修(部分完成) | Flutter开发者 |
-| R17 | 测试超时 — `--test-force-exit` 修复 | 技术经理 | P0-1 | ✅ 已修(R17) | 测试工程师 |
-| R17 | lint no-undef 41 → 0 (commands.js 缺 import) | 技术经理 | P0-2 | ✅ 已修(R17) | 核心工程师 |
-| R17 | main.js start() 拆 lifecycle 方法 (_printBanner/_initCoreSystems/_enterSandboxMode) | 技术经理 | P0-3 | ✅ 已修(R17) | 架构师 |
-| R17 | core/ restructure import 路径修复 (agent-monitor/ai-personhood 等12处) | 技术经理 | P0-3 | ✅ 已修(R17) | 核心工程师 |
-| R17 | CI lint gate 加固 (--max-warnings=0) | 技术经理 | P0-2 | ✅ 已修(R17) | SRE/运维 |
-| R17 | evolution-memory.test.mjs import 路径修复 | 技术经理 | P0-1 | ✅ 已修(R17) | 测试工程师 |
-| R17 | resident-scheduler class 导出供测试 | 技术经理 | P0-1 | ✅ 已修(R17) | 测试工程师 |
-| R17 | agent-loop-e2e 3 个 scheduler 测试全部修复 | 技术经理 | P0-1 | ✅ 已修(R17) | 测试工程师 |
-| R17 | main.js 6 处空 catch 加 logger | 安全研究员 | P0-2 | ✅ 已修(R17) | 安全研究员 |
-| R18 | voice_client.dart 编译修复（_onAudioData 重复/UdpHolePunch 孤儿代码/RawDatagramSocket API） | 技术经理 | P0-1 | ✅ 已修(R18) | Flutter 开发者 |
-| R18 | main.js:612 getPublicIPv4 未定义修复 | 技术经理 | P0-2 | ✅ 已修(R18) | 核心工程师 |
-| R18 | 全项目 39+ no-empty lint 清零 | 技术经理 | P0-3 | ✅ 已修(R18) | 核心工程师 |
-| R18 | CI lint gate 升级 --max-warnings=0 | 技术经理 | P0-4 | ✅ 已修(R18) | SRE/运维 |
-| R19 | 提交 R18 变更并推送 CI | 技术经理 | P0-1 | ✅ 已修(R19) | 13 位专家 |
-| R19 | 语音数据流文档 docs/voice-data-flow.md | 技术经理 | P0-6 | ✅ 已修(R19) | 技术写作者 |
-| R19 | CI 全绿 — bridge lint error(getPublicIPv4) + Flutter analyze(voice_client+pubspec) | 技术经理 | P0-1 | ✅ 已修(R19) | 全体 |
-| R19 | Flutter 依赖修复 — web_socket_channel 加回 pubspec | 技术经理 | P0-2 | ✅ 已修(R19) | Flutter 开发者 |
-| R19 | 端到端语音通话验证 — APK 构建通过(CI) | 技术经理 | P0-3 | ⚠️ APK 已生成，待双手机实测 | 竞品分析师+用户支持 |
+| R1 | 姝讳唬鐮佸お澶?analysis-*.cjs, .js.js) | Git涓撳 | P0-1 娓呯悊4770鏂囦欢 | 鉁?宸蹭慨(R1) | Git涓撳 |
+| R1 | 娴嬭瘯20%澶辫触鐜囦笉鍙帴鍙?| 娴嬭瘯宸ョ▼甯?| P0-2 淇17涓け璐?| 鉁?宸蹭慨(R2) | 娴嬭瘯宸ョ▼甯?|
+| R1 | 鏃TTP鏃犻壌鏉?| 瀹夊叏鐮旂┒鍛?| P0-3 API閴存潈缁熶竴 | 鉁?宸蹭慨(R2) | 瀹夊叏鐮旂┒鍛?|
+| R1 | P2P闆舵祴璇?| 娴嬭瘯宸ョ▼甯?| P0-4 8涓狿2P娴嬭瘯 | 鉁?宸蹭慨(R2) | 娴嬭瘯宸ョ▼甯?|
+| R1 | agent-engine session store缂哄け | 鏍稿績宸ョ▼甯?| P0-1 娉ㄥ叆deps | 鉁?宸蹭慨(R2) | 鏍稿績宸ョ▼甯?|
+| R2 | 涓ゆ潯HTTP璺緞鍏卞瓨 | 鏋舵瀯甯?| P0-1 搴熷純raw HTTP | 鉁?宸蹭慨(R3) | 鏋舵瀯甯?|
+| R2 | agent-session娣风敤jest/ESM | 娴嬭瘯宸ョ▼甯?| P0-2 鍒犻櫎jest娴嬭瘯 | 鉁?宸蹭慨(R3) | 娴嬭瘯宸ョ▼甯?|
+| R2 | Flutter API瀵归綈鏈獙璇?| Flutter寮€鍙戣€?| P0-3 baseUrl纭 | 鉁?宸蹭慨(R3) | Flutter寮€鍙戣€?|
+| R3 | //娉ㄩ噴鍚冩帀鍚庣画浠ｇ爜(3澶? | 鏍稿績宸ョ▼甯?| 淇topic-registry/route-handlers | 鉁?宸蹭慨(R4) | 鏍稿績宸ョ▼甯?|
+| R4 | WS clients鏈拷韪?| Code Review | server.js鍔爐his.clients | 鉁?宸蹭慨(R4) | Code Review |
+| R4 | _queryTopicPeers閫掑綊鐖嗘爤 | Code Review | 鏀逛负_getLocalPeers | 鉁?宸蹭慨(R4) | Code Review |
+| R4 | catch{}鍚炲紓甯?| 瀹夊叏鐮旂┒鍛?| topic-registry鍔犳棩蹇?| 鉁?宸蹭慨(R4) | 瀹夊叏鐮旂┒鍛?|
+| R4 | isMain绔彛妫€娴嬭绉婚櫎 | Code Review | 鎭㈠port===DEFAULT_PORT | 鉁?宸蹭慨(R4) | Code Review |
+| R5 | forge.js闆舵祴璇曡鐩?| 鏍稿績宸ョ▼甯?| 16涓祴璇?| 鉁?宸蹭慨(R5) | 鏍稿績宸ョ▼甯?|
+| R5 | generalization鍗曟祴璇曚笉鍙俊 | AI鐮旂┒鍛?| 鍩哄噯閲嶇畻+鎵╁睍 | 鉁?宸蹭慨(R6) | AI鐮旂┒鍛?|
+| R5 | evolution-integration flaky | 娴嬭瘯宸ョ▼甯?| 閲嶅啓涓簄ode:test | 鉁?宸蹭慨(R6) | 娴嬭瘯宸ョ▼甯?|
+| R6 | 浜у搧鏃犱竴鍙ヨ瘽瀹氫綅 | VC/鎶曡祫浜?| README閲嶅啓 | 鉁?宸蹭慨(R7) | VC/鎶曡祫浜?|
+| R6 | 鏃犳柊浜簅nboarding | 寮€婧愮ぞ鍖虹粡鐞?| first-steps.md | 鉁?宸蹭慨(R7) | 寮€婧愮ぞ鍖虹粡鐞?|
+| R6 | 鏃燙I | SRE/杩愮淮 | .github/workflows/ci.yml | 鉁?宸蹭慨(R7) | SRE/杩愮淮 |
+| R6 | eval-report娈嬬暀 | Git涓撳 | 娓呯悊+.gitignore | 鉁?宸蹭慨(R7) | Git涓撳 |
+| R7 | console.log鈫抪ino缁撴瀯鍖栨棩蹇?| SRE/杩愮淮 | P0-1 鏇挎崲134鏂囦欢 | 鉁?宸蹭慨(R7) | 娴嬭瘯宸ョ▼甯?|
+| R7 | AI灞呮皯CoT+tool-use | AI鐮旂┒鍛?| P0-4 tool-registry + CoT loop | 鉁?宸蹭慨(R7) | 鏍稿績宸ョ▼甯?|
+| R8 | calculate Function()鏋勯€犲櫒RCE | 瀹夊叏鐮旂┒鍛?鏍稿績宸ョ▼甯?| P0-1 mathjs鏇夸唬 | 鉁?宸蹭慨(R8) | 瀹夊叏鐮旂┒鍛?|
+| R8 | web_fetch SSRF鏃犻槻鎶?| 瀹夊叏鐮旂┒鍛?鏍稿績宸ョ▼甯?| P0-2 URL楠岃瘉+鍐呯綉闃绘柇 | 鉁?宸蹭慨(R8) | 瀹夊叏鐮旂┒鍛?|
+| R8 | CoT鏃爄nter-iteration瓒呮椂 | 鏍稿績宸ョ▼甯?AI鐮旂┒鍛?| P0-3 per-iteration timeout+token闂ㄧ | 鉁?宸蹭慨(R8) | 鏍稿績宸ョ▼甯?|
+| R8 | tool-registry+CoT闆舵祴璇?| 娴嬭瘯宸ョ▼甯?| P0-4 14涓祴璇?128鈫?28) | 鉁?宸蹭慨(R8) | 娴嬭瘯宸ョ▼甯?|
+| R8 | src鐩綍22涓啫鑳€ | 鏋舵瀯甯?| P0-5 22鈫?1鐩綍鍚堝苟 | 鉁?宸蹭慨(R8) | 鏋舵瀯甯?|
+| R8 | README鏈獊鍑篜2P璇煶宸紓 | 绔炲搧鍒嗘瀽甯?VC | P0-6 宸紓鍖栨弿杩?Features琛ㄦ牸 | 鉁?宸蹭慨(R8) | 绔炲搧鍒嗘瀽甯?|
+| R8 | CI鏃犳瀯寤轰骇鍑洪獙璇?| SRE/杩愮淮 | P0-7 npm pack+docker build | 鉁?宸蹭慨(R8) | SRE/杩愮淮 |
+| R9 | 105澶刢atch{}鍚炲紓甯?36鏂囦欢) | 瀹夊叏鐮旂┒鍛?鏍稿績宸ョ▼甯?| P0-1 鎵归噺鍔爈ogger.warn | 鉁?宸蹭慨(R9) | 瀹夊叏鐮旂┒鍛?|
+| R9 | 19涓?log鍨冨溇鏂囦欢 | SRE/杩愮淮 | P0-2 鍒犻櫎+gitignore宸叉湁 | 鉁?宸蹭慨(R9) | SRE/杩愮淮 |
+| R9 | bridge.js鐙珛鍏ュ彛=姝讳唬鐮?| 鏍稿績宸ョ▼甯?鏋舵瀯甯?| P0-3 鍒犻櫎bridge.js | 鉁?宸蹭慨(R9) | 鏍稿績宸ョ▼甯?|
+| R9 | core/鐩綍149鏂囦欢鑶ㄨ儉 鈫?10瀛愮洰褰?| 鏋舵瀯甯?| P0-5 鎷嗗垎瀛愮洰褰?| 鉁?宸蹭慨(R10) | 鏋舵瀯甯?|
+| R9 | main.js start() 470琛?| 鏍稿績宸ョ▼甯?| P0-2 鎷嗛樁娈垫柟娉?寰呮墽琛? | 鉂?寰呬慨 | 鏍稿績宸ョ▼甯?|
+| R9 | evolution-integration flaky鏈牴闄?| 娴嬭瘯宸ョ▼甯?| P0-6 纭浠峟laky(闈濺9寮曞叆) | 鉂?寰呬慨 | 娴嬭瘯宸ョ▼甯?|
+| R9 | P2P閫氳瘽step-by-step鏁欑▼ | 鐢ㄦ埛鏀寔/绔炲搧鍒嗘瀽甯?| P0-7 鏂囨。(寰呮墽琛? | 鉂?寰呬慨 | 鐢ㄦ埛鏀寔 |
+| R10 | core/ 129鏂囦欢鎷?0瀛愮洰褰?| 鏋舵瀯甯?| P0-1 core/鎷嗗垎 | 鉁?宸蹭慨(R10) | 鏋舵瀯甯?|
+| R10 | evolution-integration閲嶅啓涓簄ode:test | 鏍稿績宸ョ▼甯?| P0-3 evolution閲嶅啓 | 鉂?寰呬慨 | 娴嬭瘯宸ョ▼甯?|
+| R10 | main.js start() 470琛屾媶鍒?| 鏍稿績宸ョ▼甯?| P0-2 main.js鎷嗗垎 | 鉂?寰呬慨 | 鏍稿績宸ョ▼甯?|
+| R10 | lint鎺ュ叆CI | SRE | P0-5 lint閰嶇疆 | 鉂?寰呬慨 | SRE |
+| R10 | P2P鏁欑▼+demo | 绔炲搧鍒嗘瀽甯?| P0-12 P2P鏁欑▼鍒朵綔 | 鉂?寰呬慨 | 鐢ㄦ埛鏀寔 |
+| R13 | 鍥涢」鍘熷垯璇勫鈥斿彲浜や粯鐗堟湰楠屾敹鏍囧噯 | 鎶€鏈粡鐞?| 鍐欏叆AGENTS.md鍘熷垯4 | 鉁?宸蹭慨(R13) | VC/鎶曡祫浜?SRE |
+| R13 | 鍥涢」鍘熷垯璇勫鈥擯RINCIPLE_TRACKING.json | Git涓撳 | 鍒涘缓璺熻釜鏂囦欢 | 鉁?宸蹭慨(R13) | Git涓撳 |
+| R13 | 鍥涢」鍘熷垯璇勫鈥斿師鍒?寮哄埗鎵ц鏈哄埗 | Code Review | 鍐欏叆AGENTS.md鍘熷垯3 | 鉁?宸蹭慨(R13) | 鎶€鏈啓浣滆€?|
+| R13 | 鍥涢」鍘熷垯璇勫鈥旀崲鏂规瑙﹀彂鏈哄埗 | 鏍稿績宸ョ▼甯?| 鍐欏叆AGENTS.md鍘熷垯1 | 鉁?宸蹭慨(R13) | 鏍稿績宸ョ▼甯?|
+| R13 | 鍥涢」鍘熷垯璇勫鈥旀瘡3杞‖鎬х増鍙?| 绔炲搧鍒嗘瀽甯?| 鍐欏叆AGENTS.md鍘熷垯4 | 鉁?宸蹭慨(R13) | 绔炲搧鍒嗘瀽甯?|
+| R14 | main.js绌篶atch鍔爈ogger(5澶? | 瀹夊叏鐮旂┒鍛?| P0-4 | 鉁?宸蹭慨(R14) | 瀹夊叏鐮旂┒鍛?|
+| R14 | CI lint鏇挎崲eslint.config.js+devDependencies | SRE/杩愮淮 | P0-2 | 鉁?宸蹭慨(R14) | SRE/杩愮淮 |
+| R14 | npm run demo涓€閿畇andbox浣撻獙鑴氭湰 | 鐢ㄦ埛鏀寔 | P0-1 | 鉁?宸蹭慨(R14) | 鐢ㄦ埛鏀寔 |
+| R14 | P2P绔埌绔痙emo鏁欑▼ | 绔炲搧鍒嗘瀽甯?| P0-3 | 鉁?宸蹭慨(R14) | 绔炲搧鍒嗘瀽甯?|
+| R14 | src/*.js 59椤归瀛榣int閿欒(no-undef/no-empty绛? | SRE/杩愮淮 | P1-鍚庣画 | 鉁?宸蹭慨(R15, 59鈫?8) | SRE/杩愮淮 |
+| R14 | evolution-integration flaky缁瓨 | 娴嬭瘯宸ョ▼甯?| P1-6 | 鉂?寰呬慨 | 娴嬭瘯宸ョ▼甯?|
+| R14 | Flutter缂栬瘧鐘舵€侀獙璇?| Flutter寮€鍙戣€?| P0-5 | 鉂?寰呬慨(閮ㄥ垎瀹屾垚) | Flutter寮€鍙戣€?|
+| R17 | 娴嬭瘯瓒呮椂 鈥?`--test-force-exit` 淇 | 鎶€鏈粡鐞?| P0-1 | 鉁?宸蹭慨(R17) | 娴嬭瘯宸ョ▼甯?|
+| R17 | lint no-undef 41 鈫?0 (commands.js 缂?import) | 鎶€鏈粡鐞?| P0-2 | 鉁?宸蹭慨(R17) | 鏍稿績宸ョ▼甯?|
+| R17 | main.js start() 鎷?lifecycle 鏂规硶 (_printBanner/_initCoreSystems/_enterSandboxMode) | 鎶€鏈粡鐞?| P0-3 | 鉁?宸蹭慨(R17) | 鏋舵瀯甯?|
+| R17 | core/ restructure import 璺緞淇 (agent-monitor/ai-personhood 绛?2澶? | 鎶€鏈粡鐞?| P0-3 | 鉁?宸蹭慨(R17) | 鏍稿績宸ョ▼甯?|
+| R17 | CI lint gate 鍔犲浐 (--max-warnings=0) | 鎶€鏈粡鐞?| P0-2 | 鉁?宸蹭慨(R17) | SRE/杩愮淮 |
+| R17 | evolution-memory.test.mjs import 璺緞淇 | 鎶€鏈粡鐞?| P0-1 | 鉁?宸蹭慨(R17) | 娴嬭瘯宸ョ▼甯?|
+| R17 | resident-scheduler class 瀵煎嚭渚涙祴璇?| 鎶€鏈粡鐞?| P0-1 | 鉁?宸蹭慨(R17) | 娴嬭瘯宸ョ▼甯?|
+| R17 | agent-loop-e2e 3 涓?scheduler 娴嬭瘯鍏ㄩ儴淇 | 鎶€鏈粡鐞?| P0-1 | 鉁?宸蹭慨(R17) | 娴嬭瘯宸ョ▼甯?|
+| R17 | main.js 6 澶勭┖ catch 鍔?logger | 瀹夊叏鐮旂┒鍛?| P0-2 | 鉁?宸蹭慨(R17) | 瀹夊叏鐮旂┒鍛?|
+| R18 | voice_client.dart 缂栬瘧淇锛坃onAudioData 閲嶅/UdpHolePunch 瀛ゅ効浠ｇ爜/RawDatagramSocket API锛?| 鎶€鏈粡鐞?| P0-1 | 鉁?宸蹭慨(R18) | Flutter 寮€鍙戣€?|
+| R18 | main.js:612 getPublicIPv4 鏈畾涔変慨澶?| 鎶€鏈粡鐞?| P0-2 | 鉁?宸蹭慨(R18) | 鏍稿績宸ョ▼甯?|
+| R18 | 鍏ㄩ」鐩?39+ no-empty lint 娓呴浂 | 鎶€鏈粡鐞?| P0-3 | 鉁?宸蹭慨(R18) | 鏍稿績宸ョ▼甯?|
+| R18 | CI lint gate 鍗囩骇 --max-warnings=0 | 鎶€鏈粡鐞?| P0-4 | 鉁?宸蹭慨(R18) | SRE/杩愮淮 |
+| R19 | 鎻愪氦 R18 鍙樻洿骞舵帹閫?CI | 鎶€鏈粡鐞?| P0-1 | 鉁?宸蹭慨(R19) | 13 浣嶄笓瀹?|
+| R19 | 璇煶鏁版嵁娴佹枃妗?docs/voice-data-flow.md | 鎶€鏈粡鐞?| P0-6 | 鉁?宸蹭慨(R19) | 鎶€鏈啓浣滆€?|
+| R19 | CI 鍏ㄧ豢 鈥?bridge lint error(getPublicIPv4) + Flutter analyze(voice_client+pubspec) | 鎶€鏈粡鐞?| P0-1 | 鉁?宸蹭慨(R19) | 鍏ㄤ綋 |
+| R19 | Flutter 渚濊禆淇 鈥?web_socket_channel 鍔犲洖 pubspec | 鎶€鏈粡鐞?| P0-2 | 鉁?宸蹭慨(R19) | Flutter 寮€鍙戣€?|
+| R19 | 绔埌绔闊抽€氳瘽楠岃瘉 鈥?APK 鏋勫缓閫氳繃(CI) | 鎶€鏈粡鐞?| P0-3 | 鈿狅笍 APK 宸茬敓鎴愶紝寰呭弻鎵嬫満瀹炴祴 | 绔炲搧鍒嗘瀽甯?鐢ㄦ埛鏀寔 |
 
-## 关键指标（实时）
+## 鍏抽敭鎸囨爣锛堝疄鏃讹級
 
-- **测试**: 147/147 全绿 + 39 provider-kit 测试全绿
-- **Lint**: 0 errors, 0 warnings ✅
-- **CI**: **全线全绿**（bridge-lint、bridge-test、flutter-test、flutter-apk）
-- **APK**: 手动触发构建成功，artifact 可下载
-- **Flutter**: voice_client.dart 编译修复 + people_screen.dart 修复 + record pkg 升级到 6.x
-- **Demo**: `npm run demo` 一键 sandbox 体验脚本正常
-- **P2P教程**: docs/p2p-voice-tutorial.md 完成
+- **娴嬭瘯**: 147/147 鍏ㄧ豢 + 39 provider-kit 娴嬭瘯鍏ㄧ豢
+- **Lint**: 0 errors, 0 warnings 鉁?- **CI**: **鍏ㄧ嚎鍏ㄧ豢**锛坆ridge-lint銆乥ridge-test銆乫lutter-test銆乫lutter-apk锛?- **APK**: 鎵嬪姩瑙﹀彂鏋勫缓鎴愬姛锛宎rtifact 鍙笅杞?- **Flutter**: voice_client.dart 缂栬瘧淇 + people_screen.dart 淇 + record pkg 鍗囩骇鍒?6.x
+- **Demo**: `npm run demo` 涓€閿?sandbox 浣撻獙鑴氭湰姝ｅ父
+- **P2P鏁欑▼**: docs/p2p-voice-tutorial.md 瀹屾垚
 
-## 版本计划（时间管理师监管）
-
-> 多条工作线并行推进，版本号标识当前综合成熟度。每条线独立迭代，不互相阻塞。
-
-### 工作线 A：音频通路 — 最优先
-| 版本 | 交付 | 状态 |
+## 鐗堟湰璁″垝锛堟椂闂寸鐞嗗笀鐩戠锛?
+> 澶氭潯宸ヤ綔绾垮苟琛屾帹杩涳紝鐗堟湰鍙锋爣璇嗗綋鍓嶇患鍚堟垚鐔熷害銆傛瘡鏉＄嚎鐙珛杩唬锛屼笉浜掔浉闃诲銆?
+### 宸ヤ綔绾?A锛氶煶棰戦€氳矾 鈥?鏈€浼樺厛
+| 鐗堟湰 | 浜や粯 | 鐘舵€?|
 |------|------|------|
-| A1 | 录音→Qiniu→播放完整链路（队列播放、淡入淡出、Opus/raw/neural 三模式 SDUI 可切、file:write URI 解析已修复） | ✅ |
-| A2 | 双手机端到端通话验证 | ⏳ 待测试 |
-| A3 | 延迟优化（bufferMs/pollMs SDUI 可调） | ✅ |
-| A4 | UDP 打洞直连 | ⏳ |
+| A1 | 褰曢煶鈫扱iniu鈫掓挱鏀惧畬鏁撮摼璺紙闃熷垪鎾斁銆佹贰鍏ユ贰鍑恒€丱pus/raw/neural 涓夋ā寮?SDUI 鍙垏銆乫ile:write URI 瑙ｆ瀽宸蹭慨澶嶏級 | 鉁?|
+| A2 | 鍙屾墜鏈虹鍒扮閫氳瘽楠岃瘉 | 鈴?寰呮祴璇?|
+| A3 | 寤惰繜浼樺寲锛坆ufferMs/pollMs SDUI 鍙皟锛?| 鉁?|
+| A4 | UDP 鎵撴礊鐩磋繛 | 鈴?|
 
-### 工作线 B：基础设施 — 已完成
-| 版本 | 交付 | 状态 |
+### 宸ヤ綔绾?B锛氬熀纭€璁炬柦 鈥?宸插畬鎴?| 鐗堟湰 | 浜や粯 | 鐘舵€?|
 |------|------|------|
-| B1 | Qiniu Direct 架构（注册/发现/预签名 URL） | ✅ |
-| B2 | SDUI 引擎 + 远程配置（JSON→Widget） | ✅ CI 编译中 |
-| B3 | Debug 命令通道 | ✅ CI 编译中 |
-| B4 | 远程配置 + 轮询间隔可调 | ✅ 代码已提交 |
-| B5 | CHANGELOG + README 更新 | ✅ 已提交 |
+| B1 | Qiniu Direct 鏋舵瀯锛堟敞鍐?鍙戠幇/棰勭鍚?URL锛?| 鉁?|
+| B2 | SDUI 寮曟搸 + 杩滅▼閰嶇疆锛圝SON鈫扺idget锛?| 鉁?CI 缂栬瘧涓?|
+| B3 | Debug 鍛戒护閫氶亾 | 鉁?CI 缂栬瘧涓?|
+| B4 | 杩滅▼閰嶇疆 + 杞闂撮殧鍙皟 | 鉁?浠ｇ爜宸叉彁浜?|
+| B5 | CHANGELOG + README 鏇存柊 | 鉁?宸叉彁浜?|
 
-### 工作线 C：SDUI 化 — 硬编码 UI 逐步迁移到远程配置
-| 版本 | 交付 | 状态 |
+### 宸ヤ綔绾?C锛歋DUI 鍖?鈥?纭紪鐮?UI 閫愭杩佺Щ鍒拌繙绋嬮厤缃?| 鐗堟湰 | 浜や粯 | 鐘舵€?|
 |------|------|------|
-| C1 | Audio mode 切换按钮（Raw/Opus/Neural）→ 纯 SDUI file:write | ✅ |
-| C2 | Voice room 通话界面（状态文字、mute/挂断按钮）→ SDUI 模板变量 | 📋 |
-| C3 | Settings/Home 页移除硬编码兜底 | 📋 |
-| C4 | 新建 UI 功能默认走 SDUI，不改 Dart | 📋 |
+| C1 | Audio mode 鍒囨崲鎸夐挳锛圧aw/Opus/Neural锛夆啋 绾?SDUI file:write | 鉁?|
+| C2 | Voice room 閫氳瘽鐣岄潰锛堢姸鎬佹枃瀛椼€乵ute/鎸傛柇鎸夐挳锛夆啋 SDUI 妯℃澘鍙橀噺 | 馃搵 |
+| C3 | Settings/Home 椤电Щ闄ょ‖缂栫爜鍏滃簳 | 馃搵 |
+| C4 | 鏂板缓 UI 鍔熻兘榛樿璧?SDUI锛屼笉鏀?Dart | 馃搵 |
 
-### 工作线 D：双机通话 — 依赖 A 线完成后
-| 版本 | 交付 | 状态 |
+### 宸ヤ綔绾?D锛氬弻鏈洪€氳瘽 鈥?渚濊禆 A 绾垮畬鎴愬悗
+| 鐗堟湰 | 浜や粯 | 鐘舵€?|
 |------|------|------|
-| D1 | 互相发现→呼叫→接听→音频通 | ⏳ |
-| D2 | 通话中状态管理（mic mute、挂断） | ⏳ |
-| D3 | 联系人管理、通话记录 | ⏳ |
+| D1 | 浜掔浉鍙戠幇鈫掑懠鍙啋鎺ュ惉鈫掗煶棰戦€?| 鈴?|
+| D2 | 閫氳瘽涓姸鎬佺鐞嗭紙mic mute銆佹寕鏂級 | 鈴?|
+| D3 | 鑱旂郴浜虹鐞嗐€侀€氳瘽璁板綍 | 鈴?|
 
-### 工作线 E：Neural Codec 升级 — 乐器音色 + 乐谱重合成
-| 版本 | 交付 | 状态 |
+### 宸ヤ綔绾?E锛歂eural Codec 鍗囩骇 鈥?瀹屾垚 v1 鍏ㄩ儴杩唬
+| 鐗堟湰 | 浜や粯 | 鐘舵€?|
 |------|------|------|
-| E1 | 当前音频链路修复（WAV 头拼接、AudioProcessor 接入 CI 验证通过） | 🏗️ CI 运行中 |
-| E2 | 合成器升级：32 频段滤波器组替代 5 正弦波，Sub-band 控制增益而非固定振幅 | 📋 |
-| E3 | 瞬态编码：加入 onset 检测 + 瞬态层（SNDAN 风格），解决打击乐器/音头丢失 | 📋 |
-| E4 | 音色模型：为乐器建立 wavetable/LPC 码本，编码端传音色索引而非子带能量 | 📋 |
-| E5 | Source separation：编码端分离人声/乐器 → 多轨道独立编码 | 📋 |
-| E6 | 乐谱表示：加入基频追踪 + MIDI 级转录 → B 端可用任意音色演奏 | 📋 |
-| E7 | 端到端神经网络：替换为 EnCodec/DAC 预训练模型，手机 NPU 推理 | 📋 |
+| E1 | 闊抽閾捐矾淇 + AudioProcessor 鎺ュ叆 CI | 鉁?|
+| E2 | 32 棰戞 Mel 婊ゆ尝鍣ㄧ粍鏇夸唬 4 姝ｅ鸡娉紝姝ｅ鸡+鍣０娣峰悎鍚堟垚 | 鉁?|
+| E3 | 鐬€佺紪鐮侊細鑳介噺 onset 妫€娴?+ 鎸囨暟琛板噺鍣０鐬€佸眰 | 鉁?|
+| E4 | 闊宠壊妯″瀷锛?6-class 鐮佹湰 + 娈嬪樊缂栫爜 + 鍚堟垚鏃堕煶鑹叉暣褰?| 鉁?|
+| E5 | Source separation锛欻PSS 璋愭尝-鎵撳嚮涔愬垎绂?+ 澶氳建鍚堟垚 | 鉁?|
+| E6 | 涔愯氨琛ㄧず锛氳嚜鐩稿叧 F0 杩借釜 + 鑴夊啿鍒楁縺鍔?+ 鏈夊０/鏃犲０鍒ゆ柇 | 鉁?|
 
-### 里程碑
-| 版本 | 含义 | 条件 |
+### 閲岀▼纰?| 鐗堟湰 | 鍚箟 | 鏉′欢 |
 |------|------|------|
-| **v1.0.0** | 首次可用 | 单机 Demo 能完整走通（看到用户→呼叫→听到声音） |
-| **v1.1.0** | 双机通话 | 两台设备端到端语音通 |
-| **v2.0.0** | 生产可用 | 多人组会 + AI 居民接入 + 加密 |
-| **v3.0.0** | 高音质音乐通话 | Neural Codec E3 以上 + 音乐场景可闻无损 |
+| **v1.0.0** | 棣栨鍙敤 | 鍗曟満 Demo 鑳藉畬鏁磋蛋閫氾紙鐪嬪埌鐢ㄦ埛鈫掑懠鍙啋鍚埌澹伴煶锛?|
+| **v1.1.0** | 鍙屾満閫氳瘽 | 涓ゅ彴璁惧绔埌绔闊抽€?|
+| **v2.0.0** | 鐢熶骇鍙敤 | 澶氫汉缁勪細 + AI 灞呮皯鎺ュ叆 + 鍔犲瘑 |
+| **v3.0.0** | 楂橀煶璐ㄩ煶涔愰€氳瘽 | Neural Codec E3 浠ヤ笂 + 闊充箰鍦烘櫙鍙椈鏃犳崯 |
