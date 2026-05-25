@@ -8,6 +8,8 @@ class SduiConfig {
   static const _allowedTypes = {
     'column', 'row', 'list', 'text', 'button', 'spacer',
     'icon', 'list_tile', 'padding', 'divider', 'image', 'card',
+    'sdui_fragment', 'auto', 'checkbox', 'switch', 'textfield',
+    'users_list',
   };
 
   /// Validate SDUI JSON structure to prevent malformed/crafted configs.

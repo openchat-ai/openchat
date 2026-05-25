@@ -385,11 +385,31 @@ class QiniuDirectClient {
   String _audioKey(String target, int seq) =>
       'oc/audio/$target/${peerId}_$seq.wav';
 
+  static List<int> _wavHeader(int dataLen) {
+    final h = List<int>.filled(44, 0);
+    h[0]=0x52;h[1]=0x49;h[2]=0x46;h[3]=0x46; // RIFF
+    final fs = 36 + dataLen;
+    h[4]=fs&0xFF;h[5]=(fs>>8)&0xFF;h[6]=(fs>>16)&0xFF;h[7]=(fs>>24)&0xFF;
+    h[8]=0x57;h[9]=0x41;h[10]=0x56;h[11]=0x45; // WAVE
+    h[12]=0x66;h[13]=0x6D;h[14]=0x74;h[15]=0x20; // "fmt "
+    h[16]=16;h[17]=0;h[18]=0;h[19]=0;
+    h[20]=1;h[21]=0; // PCM
+    h[22]=1;h[23]=0; // mono
+    h[24]=0x80;h[25]=0x5D;h[26]=0;h[27]=0; // 24000
+    h[28]=0x80;h[29]=0xBB;h[30]=0;h[31]=0; // 48000 byte rate
+    h[32]=2;h[33]=0; // block align
+    h[34]=16;h[35]=0; // 16 bit
+    h[36]=0x64;h[37]=0x61;h[38]=0x74;h[39]=0x61; // "data"
+    h[40]=dataLen&0xFF;h[41]=(dataLen>>8)&0xFF;h[42]=(dataLen>>16)&0xFF;h[43]=(dataLen>>24)&0xFF;
+    return h;
+  }
+
   Future<void> sendAudio(String targetPeerId, List<int> pcm, int seq) async {
+    final wav = [..._wavHeader(pcm.length), ...pcm];
     final body = jsonEncode({
       'from': peerId,
       'seq': seq,
-      'data': base64Encode(pcm),
+      'data': base64Encode(wav),
       'ts': DateTime.now().millisecondsSinceEpoch,
     });
     await _put(_audioKey(targetPeerId, seq), body);
