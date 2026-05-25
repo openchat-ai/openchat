@@ -383,7 +383,7 @@ class QiniuDirectClient {
       for (final key in await _list('oc/audio/$peerId/')) {
         final raw = await _get(key);
         final msg = jsonDecode(raw);
-        if (msg is! Map || msg['from'] == peerId) continue;
+        if (msg is! Map) continue;
         final data = msg['data'];
         if (data is! String) continue;
         results.add(base64Decode(data));
