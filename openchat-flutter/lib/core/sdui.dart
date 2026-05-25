@@ -8,7 +8,7 @@ class SduiParser {
   SduiParser({this.onAction, Map<String, dynamic>? vars})
       : _vars = vars ?? {};
 
-  static const _icons = {
+  static const icons = {
     'person': Icons.person,
     'person_outline': Icons.person_outline,
     'call': Icons.call,
@@ -74,6 +74,8 @@ class SduiParser {
       case 'list_tile': return _listTile(node);
       case 'padding': return _padding(node);
       case 'divider': return const Divider();
+      case 'image': return _image(node);
+      case 'card': return _card(node);
       default: return null;
     }
   }
@@ -97,7 +99,7 @@ class SduiParser {
   }
 
   Widget _icon(Map m) {
-    final d = _icons[m['icon'] as String?] ?? Icons.info;
+    final d = icons[m['icon'] as String?] ?? Icons.info;
     return Icon(d,
         color: _parseColor(m['color'] as String?),
         size: (m['size'] ?? 24).toDouble());
@@ -126,6 +128,40 @@ class SduiParser {
                   color: _parseColor(m['trailingIconColor'] as String?)))
           : null,
       onTap: m['action'] != null ? () => onAction?.call(m['action']) : null,
+    );
+  }
+
+  Widget _image(Map m) {
+    final url = m['url'] as String?;
+    if (url == null) return const SizedBox();
+    return Image.network(
+      _v(url),
+      width: (m['width'] as num?)?.toDouble(),
+      height: (m['height'] as num?)?.toDouble(),
+      fit: m['fit'] != null ? _parseFit(m['fit'] as String) : null,
+      errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 48),
+    );
+  }
+
+  BoxFit? _parseFit(String s) {
+    switch (s) {
+      case 'cover': return BoxFit.cover;
+      case 'contain': return BoxFit.contain;
+      case 'fill': return BoxFit.fill;
+      case 'fitWidth': return BoxFit.fitWidth;
+      case 'fitHeight': return BoxFit.fitHeight;
+      default: return BoxFit.contain;
+    }
+  }
+
+  Widget _card(Map m) {
+    return Card(
+      elevation: (m['elevation'] as num?)?.toDouble() ?? 1,
+      margin: EdgeInsets.all((m['margin'] as num?)?.toDouble() ?? 4),
+      child: Padding(
+        padding: EdgeInsets.all((m['padding'] as num?)?.toDouble() ?? 12),
+        child: parse(m['child']),
+      ),
     );
   }
 
@@ -164,6 +200,12 @@ class SduiParser {
 
   List<Widget> _children(dynamic list) {
     if (list is! List) return [];
-    return list.map((c) => parse(c) ?? const SizedBox()).toList();
+    return list.map((c) {
+      final w = parse(c) ?? const SizedBox();
+      if (c is Map && c['flex'] != null) {
+        return Expanded(flex: (c['flex'] as num).toInt(), child: w);
+      }
+      return w;
+    }).toList();
   }
 }

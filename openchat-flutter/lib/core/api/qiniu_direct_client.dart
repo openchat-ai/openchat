@@ -77,7 +77,7 @@ class QiniuDirectClient {
       bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
 
   /// Generate GET pre-signed URL (matching Bridge's getSignedUrl algorithm)
-  String _presignedUrl(String key, {String? prefix, int expires = 300, String method = 'GET'}) {
+  static String _presignedUrl(String key, {String? prefix, int expires = 300, String method = 'GET'}) {
     final now = DateTime.now().toUtc();
     final amzDate = '${_fmtDate(now)}T${_fmtTime(now)}Z';
     final dateStamp = _fmtDate(now);
@@ -135,9 +135,9 @@ class QiniuDirectClient {
     return '$base?$canonicalQueryString&X-Amz-Signature=$signature';
   }
 
-  String _fmtDate(DateTime d) =>
+  static String _fmtDate(DateTime d) =>
       '${d.year}${d.month.toString().padLeft(2, '0')}${d.day.toString().padLeft(2, '0')}';
-  String _fmtTime(DateTime d) =>
+  static String _fmtTime(DateTime d) =>
       '${d.hour.toString().padLeft(2, '0')}${d.minute.toString().padLeft(2, '0')}${d.second.toString().padLeft(2, '0')}';
 
   Future<String> _get(String key) async {
@@ -327,6 +327,15 @@ class QiniuDirectClient {
       final raw = await _get('oc/config/ui_main.json');
       final parsed = jsonDecode(raw);
       if (parsed is Map) return parsed;
+    } catch (_) {}
+    return null;
+  }
+
+  static Future<Map?> fetchConfigFile(String path) async {
+    try {
+      final url = _presignedUrl(path);
+      final resp = await http.get(Uri.parse(url));
+      if (resp.statusCode == 200) return jsonDecode(resp.body) as Map?;
     } catch (_) {}
     return null;
   }
