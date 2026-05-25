@@ -1,0 +1,92 @@
+﻿name: CI
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      build_apk:
+        description: 'Build APK (costs ~6 min)'
+        type: boolean
+        default: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  flutter-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: openchat-flutter
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with: { flutter-version: '3.41' }
+      - run: flutter pub get
+      - run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+  bridge-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bridge
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '24', cache: 'npm', cache-dependency-path: bridge/package-lock.json }
+      - run: npm ci
+      - run: npx eslint src/ --quiet
+      - run: npm test
+
+  bridge-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bridge
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '24' }
+      - run: npm ci
+      - run: npm pack
+
+  flutter-apk:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_apk }}
+    needs: [flutter-check, bridge-check]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    defaults:
+      run:
+        working-directory: openchat-flutter
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with: { flutter-version: '3.41' }
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle/caches
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+      - run: node ../scripts/gen-version.mjs lib/core/version.dart
+      - run: flutter pub get
+      - name: Build APK
+        run: |
+          flutter build apk --release --target-platform android-arm64 --split-debug-info=build/debug-info
+          mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/openchat.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: openchat-apk
+          path: openchat-flutter/build/app/outputs/flutter-apk/openchat.apk
+      - name: Publish Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: .
+        run: |
+          TAG="apk-$(date +%Y%m%d-%H%M%S)"
+          gh release create "$TAG" \
+            --title "OpenChat APK $(date +%Y-%m-%d)" \
+            --generate-notes \
+            "openchat-flutter/build/app/outputs/flutter-apk/openchat.apk"
