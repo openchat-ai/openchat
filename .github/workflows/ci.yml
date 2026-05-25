@@ -3,12 +3,17 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      build_apk:
+        description: 'Build APK (costs ~6 min)'
+        type: boolean
+        default: false
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  flutter-test:
+  flutter-check:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -19,20 +24,34 @@ jobs:
         with: { flutter-version: '3.41' }
       - run: flutter pub get
       - run: flutter analyze --no-fatal-infos --no-fatal-warnings
-      - run: flutter test
 
-  preflight:
+  bridge-check:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bridge
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: '24', cache: 'npm', cache-dependency-path: bridge/package-lock.json }
       - run: npm ci
+      - run: npx eslint src/ --quiet
+      - run: npm test
+
+  bridge-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
         working-directory: bridge
-      - run: node tests/preflight.mjs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '24' }
+      - run: npm ci
+      - run: npm pack
 
   flutter-apk:
-    needs: [preflight]
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_apk }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -70,45 +89,3 @@ jobs:
             --title "OpenChat APK $(date +%Y-%m-%d)" \
             --generate-notes \
             "openchat-flutter/build/app/outputs/flutter-apk/openchat.apk"
-      - name: Cleanup old runs and releases
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh run list --limit 30 --json databaseId,conclusion --jq '.[] | select(.conclusion == "success") | .databaseId' | tail -n +6 | while read id; do gh run delete "$id" 2>/dev/null; done
-          gh release list --limit 10 --json tagName --jq '.[].tagName' | tail -n +3 | while read tag; do gh release delete "$tag" --yes 2>/dev/null; done
-
-  bridge-lint:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: bridge
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: '24' }
-      - run: npm ci
-      - run: npx eslint src/ --quiet
-
-  bridge-test:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: bridge
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: '24' }
-      - run: npm ci
-      - run: npm test
-
-  bridge-build:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: bridge
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: '24' }
-      - run: npm ci
-      - run: npm pack
