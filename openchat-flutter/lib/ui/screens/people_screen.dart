@@ -9,6 +9,7 @@ import '../../providers/theme_provider.dart';
 import '../../core/api/qiniu_direct_client.dart';
 import '../../core/sdui.dart';
 import '../../core/sdui_config.dart';
+import '../../core/sdui_actions.dart';
 
 class PeopleScreen extends ConsumerStatefulWidget {
   const PeopleScreen({super.key});
@@ -211,26 +212,17 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
     final parser = SduiParser(
       vars: {'peerId': _client!.peerId, 'userCount': _users.length},
       onAction: (action) {
-        if (action == 'refresh') { _pollUsers(); return; }
-        if (action == 'demo') {
-          _client?.spawnDemoPeer().then((_) => _pollUsers());
-          return;
-        }
-        if (action == 'settings') {
-          Navigator.pushNamed(context, '/theme');
-          return;
-        }
-        if (action.startsWith('navigate:')) {
-          final route = action.substring(9);
-          Navigator.pushNamed(context, route);
-          return;
-        }
         for (final u in _users) {
           if (action == 'call:${u['peerId']}') {
             _callUser(u['peerId'] as String);
             return;
           }
         }
+        SduiActions.handle(context, action,
+          onRefresh: _pollUsers,
+          onDemo: () => _client?.spawnDemoPeer().then((_) => _pollUsers()),
+          custom: {'settings': () => Navigator.pushNamed(context, '/theme')},
+        );
       },
     );
     // Inject user list into config
