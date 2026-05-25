@@ -182,8 +182,37 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
   }
 
   Widget _buildSdui(AppTheme theme) {
+    // If no users online, show empty state with Demo button (via SDUI if config includes it, else fallback)
+    if (_users.isEmpty) {
+      return Scaffold(
+        backgroundColor: theme.background,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent, elevation: 0,
+          title: Text('People', style: TextStyle(color: theme.textPrimary)),
+          actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _pollUsers, color: theme.textSecondary)],
+        ),
+        body: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.person_outline, color: theme.textTertiary, size: 48),
+          const SizedBox(height: 16),
+          Text('No one online', style: TextStyle(color: theme.textSecondary)),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: _client == null ? null : () async {
+              await _client!.spawnDemoPeer();
+              await _pollUsers();
+            },
+            icon: const Icon(Icons.smart_toy_outlined, size: 16),
+            label: const Text('Demo'),
+          ),
+        ])),
+      );
+    }
     final parser = SduiParser(onAction: (action) {
-      if (action == 'refresh') _pollUsers();
+      if (action == 'refresh') { _pollUsers(); return; }
+      if (action == 'demo') {
+        _client?.spawnDemoPeer().then((_) => _pollUsers());
+        return;
+      }
       for (final u in _users) {
         if (action == 'call:${u['peerId']}') {
           _callUser(u['peerId'] as String);
@@ -223,9 +252,14 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
   Widget build(BuildContext context) {
     final theme = ref.watch(currentThemeProvider);
 
-    // TODO: re-enable SDUI after voice path verification
-    // If remote UI config exists, use SDUI (currently disabled for testing)
-    if (false && _uiConfig != null && !_loading && _error == null) {}
+    // If remote UI config exists, use SDUI (change ui_people.json in Qiniu to update UI without rebuild)
+    if (_uiConfig != null && !_loading && _error == null) {
+      Widget? sduiWidget;
+      try {
+        sduiWidget = _buildSdui(theme);
+      } catch (_) {}
+      if (sduiWidget != null) return sduiWidget;
+    }
 
     // Fallback hardcoded UI
     return Scaffold(
