@@ -59,16 +59,9 @@ class QiniuDirectClient {
   }
 
   Future<void> _put(String key, String body) async {
-    final uri = Uri.parse('https://upload-z0.qiniup.com/');
-    final request = http.MultipartRequest('POST', uri)
-      ..fields['token'] = _uploadToken(key)
-      ..fields['key'] = key
-      ..files.add(http.MultipartFile.fromString('file', body));
-    final streamed = await _client.send(request).timeout(const Duration(seconds: 10));
-    final resp = await http.Response.fromStream(streamed);
-    if (resp.statusCode != 200) {
-      throw Exception('PUT $key: HTTP ${resp.statusCode} ${resp.body}');
-    }
+    final url = _presignedUrl(key, method: 'PUT');
+    final resp = await _client.put(Uri.parse(url), headers: {'Content-Type': 'application/json'}, body: body);
+    if (resp.statusCode != 200) throw Exception('PUT $key: HTTP ${resp.statusCode} ${resp.body}');
   }
 
   // ========== S3 V4 pre-signed URLs (for GET / LIST) ==========
@@ -149,8 +142,8 @@ class QiniuDirectClient {
 
   Future<List<String>> _list(String prefix) async {
     String? url;
-    // 硬编码 URL 只能用于精确匹配的公共前缀
-    // 调用方传 `oc/calls/{peerId}/` 时不能用 `prefix=oc/calls/` 的硬编码 URL
+    // 纭紪鐮?URL 鍙兘鐢ㄤ簬绮剧‘鍖归厤鐨勫叕鍏卞墠缂€
+    // 璋冪敤鏂逛紶 `oc/calls/{peerId}/` 鏃朵笉鑳界敤 `prefix=oc/calls/` 鐨勭‖缂栫爜 URL
     if (qiniuListUsersUrl.isNotEmpty && prefix == 'oc/users/') url = qiniuListUsersUrl;
     if (url != null) {
       final resp = await _client.get(Uri.parse(url));
@@ -217,7 +210,7 @@ class QiniuDirectClient {
       });
     } catch (_) {
       // UDP not available (no INTERNET permission or restricted env)
-      // Continue without UDP — audio will use Qiniu relay fallback
+      // Continue without UDP 鈥?audio will use Qiniu relay fallback
     }
   }
 
@@ -315,7 +308,7 @@ class QiniuDirectClient {
   // ========== Remote config + debug ==========
   // I write config to oc/config/{peerId}.json (or oc/config/global.json)
   // Phone reads it every poll cycle and applies changes without rebuild.
-  // Debug commands: oc/debug/{peerId}/cmd.json → result in oc/debug/{peerId}/result.json
+  // Debug commands: oc/debug/{peerId}/cmd.json 鈫?result in oc/debug/{peerId}/result.json
 
   int pollIntervalMs = 3000; // Default 3s, overridable via remote config
 
