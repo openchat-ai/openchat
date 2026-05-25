@@ -207,6 +207,20 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
     ));
   }
 
+  Future<void> _setAudioMode(String mode) async {
+    final ok = await _client?.writeFile('oc/config/audio.json', {
+      'version': '1', 'mode': mode, 'sampleRate': 24000,
+      'bufferMs': 1000, 'pollMs': 800, 'denoise': false,
+    });
+    if (ok == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Switched to $mode, restarting...'),
+      ));
+      await Future.delayed(const Duration(seconds: 1));
+      _restartApp();
+    }
+  }
+
   Future<void> _showAudioFiles() async {
     if (_client == null) return;
     final files = await _client!.listAudioFiles();
@@ -355,6 +369,9 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
             'device:info': () => _showDeviceInfo(),
             'config:get': () => _showConfig(),
             'app:restart': () => _restartApp(),
+            'mode:raw': () => _setAudioMode('raw'),
+            'mode:opus': () => _setAudioMode('opus'),
+            'mode:neural': () => _setAudioMode('neural'),
           },
         );
         // Handle generic file operations (file:list?prefix=..., file:delete?key=..., file:get?key=...)
