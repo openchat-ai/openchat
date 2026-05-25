@@ -17,6 +17,12 @@
 
 ```bash
 # === Bridge 后端 ===
+
+### SDUI 优先原则
+- **任何 UI/行为/配置的变更，先判断能否用 SDUI JSON 或 file:write 实现。能，就不改代码。**
+- **调试通道优先**：`oc/debug/{peerId}/{action}.cmd` 文件可触发任意调试动作（ping/diag/exec），先看能否用这个实现。
+- **只有纯新增原生功能（新 codec、新硬件能力、新 native widget）才需要改 Dart 代码 + APK 构建。**
+- **每次想改代码前，先问自己三遍：这个能用 SDUI 做吗？能用 file:write 做吗？能用调试通道做吗？**
 cd bridge
 
 npm start                    # 启动 Bridge
