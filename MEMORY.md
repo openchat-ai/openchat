@@ -22,6 +22,8 @@
 
 ## 最近会话摘要
 
+- [2026-05-25] **音频链路 E1 完成**：队列播放 + 淡入淡出 + Opus 集成 + SDUI 三模式可切（raw/opus/neural）。RNNoise/AGC/VAD 管线已接入并通过 CI。AGENTS.md 新增 SDUI 优先原则（UI 变动先问 SDUI 能不能做，不 rebuild）。AGENTS.md 新增 Flutter API 签对签规则（推送前去 pub.dev 逐行核对 API）。修复 OpenRouter API key 泄露（git filter-repo 误删仓库后从 CI 引用恢复）。清理 33 个 apk-* tag 和所有旧 Actions runs。
+
 - [2026-05-16] **项目定位大讨论**：通过多角色审视（VC、安全研究员、贡献者、核心工程师、Petals 开发者、考古学家、学生用户、记者、Flutter App 视角）确认项目真实竞争力在 P2P 语音通讯，而非分布式大模型。AI 居民社区方向保留但标注为实验。
 - [2026-05-16] **安全加固**：修复 neural-mesh.js 权重验证+路径穿越、swarm.js neural_share 路由、main.js 旧 HTTP 鉴权。
 - [2026-05-16] **文档大修**：重写 ARCHITECTURE-OVERVIEW.md、docs/README.md、GLOSSARY.md，与代码真实状态对齐。
