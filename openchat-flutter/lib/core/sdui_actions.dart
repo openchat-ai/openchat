@@ -7,7 +7,14 @@ class SduiActions {
     if (action == 'refresh') { onRefresh?.call(); return; }
     if (action == 'demo') { onDemo?.call(); return; }
     if (action.startsWith('navigate:')) {
-      Navigator.pushNamed(context, action.substring(9));
+      final rest = action.substring(9);
+      final uri = Uri.tryParse(rest);
+      final route = uri?.path ?? rest;
+      if (uri != null && uri.hasQuery) {
+        Navigator.pushNamed(context, route, arguments: uri.queryParameters);
+      } else {
+        Navigator.pushNamed(context, route);
+      }
       return;
     }
     if (action.startsWith('snackbar:')) {
