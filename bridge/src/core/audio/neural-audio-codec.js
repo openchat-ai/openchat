@@ -1,516 +1,381 @@
-/**
- * Neural Audio Codec
- *
- * 轻量级神经音频编解码器
- * 目标: 手机上能实时运行
- * 流量: ~5-50 kbps (vs 原始 256 kbps)
- *
- * 实现方案:
- * 1. 帧处理: 20ms 帧
- * 2. 特征提取: 计算帧的能量、频谱特征
- * 3. 量化: 将特征映射到离散的 token
- * 4. 熵编码: 使用 Range Coding 进一步压缩
- *
- * 注意: 这是真实的编码实现，不是模拟
- *       未来可以替换为 EnCodec/SoundStream 等预训练模型
- */
-
 import { EventEmitter } from 'events';
 import logger from '../monitoring/logger.js';
 
 class NeuralAudioCodec extends EventEmitter {
   constructor(options = {}) {
     super();
-
-    // 编码配置
     this.config = {
-      // 采样率
       sampleRate: options.sampleRate || 24000,
-      // 帧大小 (ms) - 必须是 20ms 的倍数
       frameSize: options.frameSize || 20,
-      // 目标码率 (kbps) - 可调
       targetBitrate: options.targetBitrate || 32,
-      // 模式: 'quality' | 'balanced' | 'speed'
       mode: options.mode || 'balanced',
-      // 量化级别 (bits per token)
-      quantizationBits: options.quantizationBits || 8
+      quantizationBits: options.quantizationBits || 8,
+      subBandCount: options.subBandCount || 32,
     };
-
-    // 计算每帧的样本数
     this.samplesPerFrame = (this.config.sampleRate * this.config.frameSize) / 1000;
-
-    // 模型状态
     this.encoder = null;
     this.decoder = null;
     this.isReady = false;
+    this.stats = { framesEncoded: 0, framesDecoded: 0, totalInputBytes: 0, totalOutputBytes: 0, encodeTime: 0, decodeTime: 0 };
+    this.bitrateTable = { ultra: 48, high: 32, balanced: 24, low: 16, minimum: 8 };
 
-    // 统计
-    this.stats = {
-      framesEncoded: 0,
-      framesDecoded: 0,
-      totalInputBytes: 0,
-      totalOutputBytes: 0,
-      encodeTime: 0,
-      decodeTime: 0
-    };
+    // E3 transient state
+    this._prevFrameRms = 0;
+    this._transientHistory = [];
 
-    // 码率表
-    this.bitrateTable = {
-      ultra: 48,
-      high: 32,
-      balanced: 24,
-      low: 16,
-      minimum: 8
-    };
+    // E4 timbre codebook
+    this.timbreCount = 16;
+    this._timbreCodebook = this._initTimbreCodebook();
 
-    logger.info('[NeuralCodec] Initialized with config:', {
-      sampleRate: this.config.sampleRate,
-      frameSize: this.config.frameSize,
-      targetBitrate: this.config.targetBitrate,
-      samplesPerFrame: this.samplesPerFrame
+    // E5 HPSS state
+    this._prevHarmonic = [];
+    this._prevPercussive = [];
+
+    // E6 F0 tracking
+    this._prevF0 = 0;
+    this._f0Buffer = [];
+
+    logger.info('[NeuralCodec] Initialized with config:', { sampleRate: this.config.sampleRate, frameSize: this.config.frameSize, subBandCount: this.config.subBandCount });
+  }
+
+  _initTimbreCodebook() {
+    return Array.from({ length: this.timbreCount }, (_, i) => {
+      const base = 0.1 + i * 0.05;
+      return Array.from({ length: this.config.subBandCount }, (_, b) => {
+        const center = (b + 0.5) / this.config.subBandCount;
+        return base * (1 + 0.5 * Math.sin(center * Math.PI * (i + 1)));
+      });
     });
   }
 
-  /**
-   * 异步初始化
-   */
   async initialize() {
-    logger.info('[NeuralCodec] Initializing neural codec...');
-
-    // 初始化编码器/解码器状态
-    this.encoder = {
-      name: 'NeuralCodec-v1',
-      version: '1.0.0',
-      params: '2M',
-      inputShape: [1, this.samplesPerFrame],
-      quantizationBits: this.config.quantizationBits
-    };
-
-    this.decoder = {
-      name: 'NeuralCodec-v1-decoder',
-      version: '1.0.0'
-    };
-
+    this.encoder = { name: 'NeuralCodec-v2', version: '2.0.0', params: '2M', inputShape: [1, this.samplesPerFrame], quantizationBits: this.config.quantizationBits };
+    this.decoder = { name: 'NeuralCodec-v2-decoder', version: '2.0.0' };
     this.isReady = true;
-    logger.info('[NeuralCodec] Ready! (target: ' + this.config.targetBitrate + ' kbps)');
-
+    logger.info('[NeuralCodec] v2 ready (E2-E6: filterbank, transients, timbre, HPSS, F0)');
     return this;
   }
 
-  /**
-   * 编码: PCM → compressed bytes
-   *
-   * 处理流程:
-   * 1. 分帧
-   * 2. 计算特征 (能量、峰值、频谱质心)
-   * 3. 量化特征
-   * 4. 熵编码
-   */
+  // ===== Encode Pipeline =====
+
   async encode(pcmData) {
-    if (!this.isReady) {
-      throw new Error('Codec not initialized');
-    }
-
+    if (!this.isReady) throw new Error('Codec not initialized');
     const startTime = Date.now();
-
-    // 1. 分帧
     const frames = this.splitIntoFrames(pcmData);
     const encodedFrames = [];
 
-    // 2. 对每帧进行编码
     for (const frame of frames) {
-      const encodedFrame = this.encodeFrame(frame);
-      encodedFrames.push(encodedFrame);
+      const samples = this.bufferToSamples(frame);
+      const separated = this._hpssSeparate(samples);
+      const features = this.extractFeatures(separated.harmonic);
+      features.onset = this._detectOnset(features.rms);
+      const tc = this._classifyTimbre(features.subBandEnergies);
+      features.timbreIdx = tc.index;
+      features.timbreResidual = tc.residual;
+      const f0 = this._trackF0(samples);
+      features.f0 = f0;
+      features.voiced = f0 > 50 ? 1 : 0;
+      encodedFrames.push(this.quantizeFeatures(features));
     }
 
-    // 3. 合并帧数据 + 添加头部
     const output = this.combineFrames(encodedFrames, pcmData.length);
-
-    // 统计
     const encodeTime = Date.now() - startTime;
     this.stats.framesEncoded += frames.length;
     this.stats.totalInputBytes += pcmData.length;
     this.stats.totalOutputBytes += output.length;
     this.stats.encodeTime += encodeTime;
-
-    return {
-      data: output,
-      bitrate: this.calculateBitrate(output.length, pcmData.length),
-      encodeTime,
-      compressionRatio: pcmData.length / output.length,
-      frameCount: frames.length
-    };
+    return { data: output, bitrate: this.calculateBitrate(output.length, pcmData.length), encodeTime, compressionRatio: pcmData.length / output.length, frameCount: frames.length };
   }
 
-  /**
-   * 单帧编码
-   */
-  encodeFrame(frameData) {
-    // 计算特征
-    const features = this.extractFeatures(frameData);
+  // ===== Decode Pipeline =====
 
-    // 量化特征
-    const quantized = this.quantizeFeatures(features);
-
-    // 熵编码 (简化版: 直接返回量化值)
-    return quantized;
-  }
-
-  /**
-   * 提取音频特征
-   */
-  extractFeatures(pcmData) {
-    const samples = this.bufferToSamples(pcmData);
-    const n = samples.length;
-
-    // 1. 均方根能量 (RMS)
-    let sumSquares = 0;
-    let peak = 0;
-    let sum = 0;
-
-    for (let i = 0; i < n; i++) {
-      const s = samples[i];
-      sumSquares += s * s;
-      peak = Math.max(peak, Math.abs(s));
-      sum += s;
-    }
-
-    const rms = Math.sqrt(sumSquares / n);
-    const avg = sum / n;
-
-    // 2. 频谱质心 (简化版: 使用相邻样本差分)
-    let spectralSum = 0;
-    for (let i = 1; i < n; i++) {
-      spectralSum += Math.abs(samples[i] - samples[i - 1]);
-    }
-    const spectralCentroid = spectralSum / n;
-
-    // 3. 过零率
-    let zeroCrossings = 0;
-    for (let i = 1; i < n; i++) {
-      if ((samples[i] >= 0 && samples[i - 1] < 0) ||
-          (samples[i] < 0 && samples[i - 1] >= 0)) {
-        zeroCrossings++;
-      }
-    }
-
-    // 4. 子带能量 (分成4个子带)
-    const subBandSize = Math.floor(n / 4);
-    const subBandEnergies = [];
-    for (let b = 0; b < 4; b++) {
-      let bandSum = 0;
-      const start = b * subBandSize;
-      const end = Math.min(start + subBandSize, n);
-      for (let i = start; i < end; i++) {
-        bandSum += samples[i] * samples[i];
-      }
-      subBandEnergies.push(Math.sqrt(bandSum / (end - start)));
-    }
-
-    return {
-      rms: rms / 32768,  // 归一化
-      peak: peak / 32768,
-      dcOffset: avg / 32768,
-      spectralCentroid: spectralCentroid / 32768,
-      zeroCrossings: zeroCrossings / n,
-      subBandEnergies: subBandEnergies.map(e => e / 32768)
-    };
-  }
-
-  /**
-   * 量化特征
-   */
-  quantizeFeatures(features) {
-    const bits = this.config.quantizationBits;
-    const levels = Math.pow(2, bits);
-
-    // 简单的标量量化
-    const quantize = (value, min, max) => {
-      const normalized = (value - min) / (max - min);
-      const quantized = Math.round(normalized * (levels - 1));
-      return Math.max(0, Math.min(levels - 1, quantized));
-    };
-
-    return {
-      rms: quantize(features.rms, 0, 1),
-      peak: quantize(features.peak, 0, 1),
-      dcOffset: quantize(features.dcOffset, -0.1, 0.1),
-      spectral: quantize(features.spectralCentroid, 0, 0.5),
-      zcr: quantize(features.zeroCrossings, 0, 0.5),
-      subBands: features.subBandEnergies.map(e => quantize(e, 0, 1))
-    };
-  }
-
-  /**
-   * 解码: compressed bytes → PCM
-   */
   async decode(encodedData) {
-    if (!this.isReady) {
-      throw new Error('Codec not initialized');
-    }
-
+    if (!this.isReady) throw new Error('Codec not initialized');
     const startTime = Date.now();
-
-    // 1. 解析头部
     const { frames, originalLength } = this.parseFrames(encodedData);
-
-    // 2. 解码每帧
     const decodedFrames = frames.map(f => this.decodeFrame(f));
-
-    // 3. 合并帧
     const output = Buffer.concat(decodedFrames);
-
-    // 统计
     const decodeTime = Date.now() - startTime;
     this.stats.framesDecoded += frames.length;
     this.stats.decodeTime += decodeTime;
-
-    return {
-      pcm: output,
-      decodeTime,
-      originalLength
-    };
+    return { pcm: output, decodeTime, originalLength };
   }
 
-  /**
-   * 单帧解码
-   */
   decodeFrame(quantized) {
-    const bits = this.config.quantizationBits;
-    const levels = Math.pow(2, bits);
+    const features = this.dequantizeFeatures(quantized);
+    const n = this.samplesPerFrame;
+    const mainPcm = this.synthesizeFromFeatures(features);
+    const transients = this._synthesizeTransient(features.onset, n);
+    const timbreEnergies = this._applyTimbre(features.subBandEnergies, features.timbreIdx, features.timbreResidual);
 
-    // 反量化
-    const dequantize = (value, min, max) => {
-      return min + (value / (levels - 1)) * (max - min);
-    };
-
-    // 重建特征
-    const features = {
-      rms: dequantize(quantized.rms, 0, 1),
-      peak: dequantize(quantized.peak, 0, 1),
-      dcOffset: dequantize(quantized.dcOffset, -0.1, 0.1),
-      spectralCentroid: dequantize(quantized.spectral, 0, 0.5),
-      zeroCrossings: dequantize(quantized.zcr, 0, 0.5),
-      subBandEnergies: quantized.subBands.map(v => dequantize(v, 0, 1))
-    };
-
-    // 从特征重建音频 (简化版: 使用正弦波合成)
-    return this.synthesizeFromFeatures(features);
+    const output = Buffer.alloc(n * 2);
+    for (let i = 0; i < n; i++) {
+      const main = mainPcm.readInt16LE(i * 2);
+      const trans = transients.readInt16LE(i * 2);
+      const mixed = Math.max(-32768, Math.min(32767, main + trans));
+      output.writeInt16LE(mixed, i * 2);
+    }
+    return output;
   }
 
-  /**
-   * 从特征合成音频
-   */
+  // ===== E3: Transient =====
+
+  _detectOnset(normalizedRms) {
+    const threshold = 2.5;
+    const ratio = this._prevFrameRms > 0.001 ? normalizedRms / this._prevFrameRms : 1.0;
+    const onset = ratio > threshold ? Math.min(1.0, ratio / 10) : 0.0;
+    this._prevFrameRms = normalizedRms;
+    this._transientHistory.push(Math.round(onset * 255));
+    if (this._transientHistory.length > 10) this._transientHistory.shift();
+    return onset;
+  }
+
+  _synthesizeTransient(onsetStrength, n) {
+    const output = Buffer.alloc(n * 2);
+    if (onsetStrength < 0.01) return output;
+    const gain = onsetStrength * 32768 * 0.5;
+    for (let i = 0; i < n; i++) {
+      const env = Math.exp(-i / (n * 0.15));
+      const s = (Math.random() * 2 - 1) * gain * env;
+      output.writeInt16LE(Math.round(Math.max(-32768, Math.min(32767, s))), i * 2);
+    }
+    return output;
+  }
+
+  // ===== E4: Timbre =====
+
+  _classifyTimbre(energies) {
+    let bestIdx = 0, bestDist = Infinity;
+    for (let t = 0; t < this.timbreCount; t++) {
+      let dist = 0;
+      const cb = this._timbreCodebook[t];
+      for (let b = 0; b < energies.length && b < cb.length; b++) dist += (energies[b] - cb[b]) ** 2;
+      if (dist < bestDist) { bestDist = dist; bestIdx = t; }
+    }
+    return { index: bestIdx, residual: Math.min(1.0, bestDist / (energies.length || 1)) };
+  }
+
+  _applyTimbre(energies, timbreIdx, residual) {
+    if (timbreIdx >= this._timbreCodebook.length) return energies;
+    const cb = this._timbreCodebook[timbreIdx];
+    const blend = 1.0 - Math.min(1.0, residual) * 0.5;
+    return energies.map((e, b) => e * blend + (cb[b] || 0) * (1 - blend));
+  }
+
+  // ===== E5: HPSS =====
+
+  _hpssSeparate(samples) {
+    const n = samples.length;
+    const halfLen = 3;
+    const harmonic = new Array(n).fill(0);
+    const percussive = new Array(n).fill(0);
+    for (let i = 0; i < n; i++) {
+      const start = Math.max(0, i - halfLen), end = Math.min(n, i + halfLen + 1);
+      const win = samples.slice(start, end).sort((a, b) => a - b);
+      const med = win[Math.floor(win.length / 2)];
+      harmonic[i] = med;
+      percussive[i] = samples[i] - med;
+    }
+    this._prevHarmonic = harmonic;
+    this._prevPercussive = percussive;
+    return { harmonic, percussive };
+  }
+
+  // ===== E6: F0 Tracking =====
+
+  _trackF0(samples) {
+    const minLag = Math.floor(this.config.sampleRate / 800);
+    const maxLag = Math.floor(this.config.sampleRate / 50);
+    const n = samples.length;
+    const mean = samples.reduce((a, b) => a + b, 0) / n;
+    const centered = samples.map(s => s - mean);
+    let bestCorr = 0, bestLag = 0;
+    for (let lag = minLag; lag <= maxLag; lag += 2) {
+      let corr = 0, norm = 0;
+      for (let i = 0; i < n - lag; i++) { corr += centered[i] * centered[i + lag]; norm += centered[i] ** 2 + centered[i + lag] ** 2; }
+      if (norm > 0) corr /= Math.sqrt(norm);
+      if (corr > bestCorr) { bestCorr = corr; bestLag = lag; }
+    }
+    const f0 = bestCorr > 0.3 ? this.config.sampleRate / bestLag : 0.0;
+    this._f0Buffer.push(f0);
+    if (this._f0Buffer.length > 5) this._f0Buffer.shift();
+    const sorted = [...this._f0Buffer].sort((a, b) => a - b);
+    this._prevF0 = sorted[Math.floor(sorted.length / 2)];
+    return this._prevF0;
+  }
+
+  // ===== Extract & Quantize =====
+
+  extractFeatures(pcmData) {
+    const samples = this.bufferToSamples(pcmData);
+    const n = samples.length;
+    let sumSq = 0, peak = 0, sum = 0;
+    for (const s of samples) { sumSq += s * s; peak = Math.max(peak, Math.abs(s)); sum += s; }
+    const rms = Math.sqrt(sumSq / n);
+    const avg = sum / n;
+    let spectralSum = 0;
+    for (let i = 1; i < n; i++) spectralSum += Math.abs(samples[i] - samples[i - 1]);
+    const spectralCentroid = spectralSum / n;
+    let zeroCrossings = 0;
+    for (let i = 1; i < n; i++) if ((samples[i] >= 0 && samples[i - 1] < 0) || (samples[i] < 0 && samples[i - 1] >= 0)) zeroCrossings++;
+    const subBandSize = Math.floor(n / this.config.subBandCount);
+    const subBandEnergies = [];
+    for (let b = 0; b < this.config.subBandCount; b++) {
+      const start = b * subBandSize, end = Math.min(start + subBandSize, n);
+      let bandSum = 0;
+      for (let i = start; i < end; i++) bandSum += samples[i] * samples[i];
+      subBandEnergies.push(Math.sqrt(bandSum / (end - start)));
+    }
+    return { rms: rms / 32768, peak: peak / 32768, dcOffset: avg / 32768, spectralCentroid: spectralCentroid / 32768, zeroCrossings: zeroCrossings / n, subBandEnergies: subBandEnergies.map(e => e / 32768) };
+  }
+
+  quantizeFeatures(features) {
+    const qtz = (v, mn, mx) => Math.max(0, Math.min((1 << this.config.quantizationBits) - 1, Math.round(((v - mn) / (mx - mn)) * ((1 << this.config.quantizationBits) - 1))));
+    return {
+      rms: qtz(features.rms, 0, 1), peak: qtz(features.peak, 0, 1), dcOffset: qtz(features.dcOffset, -0.1, 0.1),
+      spectral: qtz(features.spectralCentroid, 0, 0.5), zcr: qtz(features.zeroCrossings, 0, 0.5),
+      subBands: features.subBandEnergies.map(e => qtz(e, 0, 1)),
+      onset: Math.round(features.onset * 255), timbreIdx: Math.max(0, Math.min(15, features.timbreIdx)),
+      timbreResidual: Math.round(features.timbreResidual * 255), f0: Math.round(features.f0 / 10), voiced: features.voiced,
+    };
+  }
+
+  dequantizeFeatures(quantized) {
+    const dq = (v, mn, mx) => mn + (v / ((1 << this.config.quantizationBits) - 1)) * (mx - mn);
+    return {
+      rms: dq(quantized.rms, 0, 1), peak: dq(quantized.peak, 0, 1), dcOffset: dq(quantized.dcOffset, -0.1, 0.1),
+      spectralCentroid: dq(quantized.spectral, 0, 0.5), zeroCrossings: dq(quantized.zcr, 0, 0.5),
+      subBandEnergies: quantized.subBands.map(v => dq(v, 0, 1)),
+      onset: (quantized.onset || 0) / 255, timbreIdx: quantized.timbreIdx || 0,
+      timbreResidual: (quantized.timbreResidual || 0) / 255, f0: (quantized.f0 || 0) * 10, voiced: quantized.voiced || 0,
+    };
+  }
+
+  // ===== E2: Synthesize =====
+
   synthesizeFromFeatures(features) {
     const n = this.samplesPerFrame;
     const output = Buffer.alloc(n * 2);
-
-    // 使用多个正弦波合成，模拟原始音频的频谱特性
-    const frequencies = [100, 200, 400, 800, 1600];
-    let sampleIndex = 0;
+    const bandCount = this.config.subBandCount;
+    const timbreEnergies = this._applyTimbre(features.subBandEnergies, features.timbreIdx || 0, features.timbreResidual || 0);
+    const freqs = Array.from({ length: bandCount }, (_, b) => {
+      const melMax = 2595 * Math.log10(1 + this.config.sampleRate / 2 / 700);
+      return 700 * (10 ** ((b + 1) * melMax / bandCount / 2595) - 1);
+    });
+    const f0 = features.f0 || 0;
+    const voiced = features.voiced || 0;
+    const pulsePeriod = f0 > 20 ? Math.round(this.config.sampleRate / f0) : 0;
 
     for (let i = 0; i < n; i++) {
       let sample = features.dcOffset * 32768;
-
-      // 添加各频率成分
-      for (let f = 0; f < frequencies.length; f++) {
-        const freq = frequencies[f];
-        const energy = features.subBandEnergies[f] || 0;
+      for (let b = 0; b < bandCount; b++) {
+        const energy = timbreEnergies[b] || 0;
+        if (energy < 0.001) continue;
+        const freq = freqs[b];
+        const gain = energy * 32768 * 0.3;
+        const freqRatio = freq / (this.config.sampleRate / 2);
+        const sineWeight = 1.0 - freqRatio * 0.8;
         const phase = (i / this.config.sampleRate) * freq * 2 * Math.PI;
-        sample += Math.sin(phase) * energy * 32768 * 0.3;
+        let excitation;
+        if (voiced > 0 && pulsePeriod > 0 && i % pulsePeriod < pulsePeriod * 0.3) excitation = Math.sin(phase);
+        else excitation = Math.random() * 2 - 1;
+        sample += Math.sin(phase) * gain * sineWeight * 0.7 + excitation * gain * (1 - sineWeight) * 0.3;
       }
-
-      // 添加峰值限制
       const peak = features.peak * 32768;
       if (sample > peak) sample = peak;
       if (sample < -peak) sample = -peak;
-
-      output.writeInt16LE(Math.round(sample), i * 2);
+      output.writeInt16LE(Math.round(Math.max(-32768, Math.min(32767, sample))), i * 2);
     }
-
     return output;
   }
 
-  /**
-   * 分帧
-   */
+  // ===== Frame I/O =====
+
   splitIntoFrames(pcmData) {
     const frames = [];
     const bytesPerFrame = this.samplesPerFrame * 2;
-
-    for (let offset = 0; offset + bytesPerFrame <= pcmData.length; offset += bytesPerFrame) {
+    for (let offset = 0; offset + bytesPerFrame <= pcmData.length; offset += bytesPerFrame)
       frames.push(pcmData.slice(offset, offset + bytesPerFrame));
-    }
-
     return frames;
   }
 
-  /**
-   * 合并帧数据
-   */
+  getFrameEncodedSize() { return 5 + this.config.subBandCount + 5; } // 5 features + N bands + onset/timbreIdx/timbreResidual/f0/voiced
+
   combineFrames(frames, originalLength) {
-    // 头部: 4 bytes (原始长度) + 2 bytes (帧数) + 2 bytes (配置)
     const headerSize = 8;
-    const frameDataSize = frames.reduce((sum, f) => sum + this.getFrameEncodedSize(f), 0);
-
-    const output = Buffer.alloc(headerSize + frameDataSize);
-    let offset = 0;
-
-    // 写入头部
-    output.writeUInt32LE(originalLength, offset); offset += 4;
-    output.writeUInt16LE(frames.length, offset); offset += 2;
-    output.writeUInt16LE(this.config.quantizationBits, offset); offset += 2;
-
-    // 写入帧数据
-    for (const frame of frames) {
-      const size = this.getFrameEncodedSize(frame);
-      this.writeFrameToBuffer(frame, output, offset);
-      offset += size;
+    const extraBytes = 5;
+    const frameSize = this.getFrameEncodedSize();
+    const output = Buffer.alloc(headerSize + frames.length * frameSize);
+    let off = 0;
+    output.writeUInt32LE(originalLength, off); off += 4;
+    output.writeUInt16LE(frames.length, off); off += 2;
+    output.writeUInt16LE(this.config.subBandCount + (extraBytes << 8), off); off += 2;
+    for (const f of frames) {
+      output.writeUInt8(f.rms, off++);
+      output.writeUInt8(f.peak, off++);
+      output.writeUInt8(f.dcOffset, off++);
+      output.writeUInt8(f.spectral, off++);
+      output.writeUInt8(f.zcr, off++);
+      for (const sb of f.subBands) output.writeUInt8(sb, off++);
+      output.writeUInt8(f.onset, off++);
+      output.writeUInt8(f.timbreIdx, off++);
+      output.writeUInt8(f.timbreResidual, off++);
+      output.writeUInt8(f.f0, off++);
+      output.writeUInt8(f.voiced, off++);
     }
-
     return output;
   }
 
-  /**
-   * 获取帧编码后的大小
-   */
-  getFrameEncodedSize(frame) {
-    // RMS(1) + Peak(1) + DC(1) + Spectral(1) + ZCR(1) + SubBands(4) = 9 bytes
-    return 9;
-  }
-
-  /**
-   * 写入帧到 buffer
-   */
   writeFrameToBuffer(frame, buffer, offset) {
-    buffer.writeUInt8(frame.rms, offset++);
-    buffer.writeUInt8(frame.peak, offset++);
-    buffer.writeUInt8(frame.dcOffset, offset++);
-    buffer.writeUInt8(frame.spectral, offset++);
-    buffer.writeUInt8(frame.zcr, offset++);
-    for (const sb of frame.subBands) {
-      buffer.writeUInt8(sb, offset++);
-    }
+    offset = this.getFrameEncodedSize(); // unused, handled in combineFrames
   }
 
-  /**
-   * 解析帧数据
-   */
   parseFrames(data) {
-    let offset = 0;
-
-    // 读取头部
-    const originalLength = data.readUInt32LE(offset); offset += 4;
-    const frameCount = data.readUInt16LE(offset); offset += 2;
-    const quantizationBits = data.readUInt16LE(offset); offset += 2;
-
-    // 读取帧
+    let off = 0;
+    const originalLength = data.readUInt32LE(off); off += 4;
+    const frameCount = data.readUInt16LE(off); off += 2;
+    const info = data.readUInt16LE(off); off += 2;
+    const bandCount = info & 0xFF;
     const frames = [];
-    const frameSize = 9;
-
     for (let i = 0; i < frameCount; i++) {
-      const frame = {
-        rms: data.readUInt8(offset++),
-        peak: data.readUInt8(offset++),
-        dcOffset: data.readInt8(offset++) / 128,
-        spectral: data.readUInt8(offset++),
-        zcr: data.readUInt8(offset++),
-        subBands: [
-          data.readUInt8(offset++),
-          data.readUInt8(offset++),
-          data.readUInt8(offset++),
-          data.readUInt8(offset++)
-        ]
-      };
+      const frame = { rms: data.readUInt8(off++), peak: data.readUInt8(off++), dcOffset: data.readUInt8(off++), spectral: data.readUInt8(off++), zcr: data.readUInt8(off++), subBands: [] };
+      for (let b = 0; b < bandCount; b++) frame.subBands.push(data.readUInt8(off++));
+      frame.onset = data.readUInt8(off++);
+      frame.timbreIdx = data.readUInt8(off++);
+      frame.timbreResidual = data.readUInt8(off++);
+      frame.f0 = data.readUInt8(off++);
+      frame.voiced = data.readUInt8(off++);
       frames.push(frame);
     }
-
     return { frames, originalLength };
   }
 
-  /**
-   * Buffer 转数组
-   */
   bufferToSamples(buffer) {
     const samples = [];
-    for (let i = 0; i < buffer.length; i += 2) {
-      samples.push(buffer.readInt16LE(i));
-    }
+    for (let i = 0; i < buffer.length; i += 2) samples.push(buffer.readInt16LE(i));
     return samples;
   }
 
-  /**
-   * 计算实际码率
-   */
   calculateBitrate(outputBytes, inputBytes) {
     const timeSeconds = inputBytes / 2 / this.config.sampleRate;
     return (outputBytes * 8 / 1000 / timeSeconds).toFixed(1);
   }
 
-  /**
-   * 设置目标码率
-   */
-  setBitrate(kbps) {
-    // 映射到最近的预设值
-    let mode = 'balanced';
-    for (const [key, value] of Object.entries(this.bitrateTable)) {
-      if (Math.abs(value - kbps) < 8) {
-        if (key === 'ultra') mode = 'quality';
-        else if (key === 'minimum') mode = 'speed';
-        break;
-      }
-    }
+  setBitrate(kbps) { this.config.targetBitrate = kbps; }
 
-    this.config.targetBitrate = kbps;
-    logger.info(`[NeuralCodec] Bitrate set to ${kbps} kbps (mode: ${mode})`);
-  }
-
-  /**
-   * 获取统计
-   */
   getStats() {
-    const avgEncodeTime = this.stats.framesEncoded > 0
-      ? (this.stats.encodeTime / this.stats.framesEncoded).toFixed(2)
-      : 0;
-    const avgDecodeTime = this.stats.framesDecoded > 0
-      ? (this.stats.decodeTime / this.stats.framesDecoded).toFixed(2)
-      : 0;
-
     return {
-      framesEncoded: this.stats.framesEncoded,
-      framesDecoded: this.stats.framesDecoded,
-      compressionRatio: this.stats.totalInputBytes > 0
-        ? (this.stats.totalInputBytes / this.stats.totalOutputBytes).toFixed(1) + 'x'
-        : 'N/A',
-      avgEncodeTime: avgEncodeTime + 'ms',
-      avgDecodeTime: avgDecodeTime + 'ms',
-      targetBitrate: this.config.targetBitrate + ' kbps',
-      mode: this.config.mode
+      framesEncoded: this.stats.framesEncoded, framesDecoded: this.stats.framesDecoded,
+      compressionRatio: this.stats.totalInputBytes > 0 ? (this.stats.totalInputBytes / this.stats.totalOutputBytes).toFixed(1) + 'x' : 'N/A',
+      avgEncodeTime: (this.stats.framesEncoded > 0 ? (this.stats.encodeTime / this.stats.framesEncoded).toFixed(2) : '0') + 'ms',
+      avgDecodeTime: (this.stats.framesDecoded > 0 ? (this.stats.decodeTime / this.stats.framesDecoded).toFixed(2) : '0') + 'ms',
+      targetBitrate: this.config.targetBitrate + ' kbps', mode: this.config.mode,
     };
   }
 
-  /**
-   * 估算24小时流量
-   */
-  estimateDailyTraffic() {
-    const kbps = this.config.targetBitrate;
-    const mbps = kbps * 24;
-    return {
-      kbps,
-      mbpsPerDay: mbps.toFixed(1),
-      gbPerDay: (mbps / 8000).toFixed(2)
-    };
-  }
+  estimateDailyTraffic() { const kbps = this.config.targetBitrate; return { kbps, mbpsPerDay: (kbps * 24).toFixed(1), gbPerDay: (kbps * 24 / 8000).toFixed(2) }; }
 
-  /**
-   * 销毁
-   */
-  destroy() {
-    this.encoder = null;
-    this.decoder = null;
-    this.isReady = false;
-    logger.info('[NeuralCodec] Destroyed');
-  }
+  destroy() { this.encoder = null; this.decoder = null; this.isReady = false; logger.info('[NeuralCodec] Destroyed'); }
 }
 
 export { NeuralAudioCodec };

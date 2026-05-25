@@ -124,7 +124,6 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
         final pcm = Uint8List.fromList(buf.take(echoDelay).toList());
         buf = buf.skip(echoDelay).toList();
         final wav = QiniuDirectClient.wavFromPcm(pcm);
-        _player?.stop();
         _player?.play(BytesSource(wav));
       }
     }, onError: (_) {});

@@ -12,6 +12,7 @@
 | **前端** | Flutter 3.41 + Riverpod 2.5 |
 | **存储** | Qiniu S3（上传 Token + 预签名 URL） |
 | **音频** | `record` + `audioplayers` |
+| **Codec 同步** | `neural_audio_codec.dart` ↔ `neural-audio-codec.js` 必须始终同步，改一个必须改另一个 |
 
 ## 关键命令
 
