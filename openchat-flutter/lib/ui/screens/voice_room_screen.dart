@@ -119,10 +119,11 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
     _recordSub = stream.listen((chunk) {
       if (_state != 'connected') { buf.clear(); return; }
       buf.addAll(chunk);
-      // Every 500ms, play back what was recorded 500ms ago (local echo)
-      if (buf.length >= 24000) { // 500ms
-        final pcm = Uint8List.fromList(buf.take(24000).toList());
-        buf = buf.skip(24000).toList();
+      // Record 3s then play back once
+      if (buf.length >= 144000) { // 3s @ 24000Hz 16bit
+        _recordSub?.cancel();
+        _recorder?.dispose();
+        final pcm = Uint8List.fromList(buf);
         final wav = QiniuDirectClient.wavFromPcm(pcm);
         _player?.play(BytesSource(wav));
       }
