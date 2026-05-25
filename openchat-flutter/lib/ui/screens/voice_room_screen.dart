@@ -129,8 +129,6 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
       }
     }, onError: (_) {});
   }
-    }, onError: (_) {});
-  }
 
   Future<void> _startAudio() async {
     if (_audioStarted) return;
