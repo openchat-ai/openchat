@@ -171,7 +171,8 @@ class QiniuDirectClient {
     if (resp.statusCode != 200) throw Exception('RS GET $key: HTTP ${resp.statusCode}');
     final info = jsonDecode(resp.body);
     if (info['url'] is String) {
-      final dlResp = await _client.get(Uri.parse(info['url']));
+      final dlUrl = (info['url'] as String).replaceFirst('http://', 'https://');
+      final dlResp = await _client.get(Uri.parse(dlUrl));
       if (dlResp.statusCode == 200) return dlResp.body;
     }
     throw Exception('RS GET $key: no download URL');
@@ -383,7 +384,8 @@ class QiniuDirectClient {
       if (resp.statusCode == 200) {
         final info = jsonDecode(resp.body);
         if (info['url'] is String) {
-          final dlResp = await http.get(Uri.parse(info['url']));
+          final dlUrl = (info['url'] as String).replaceFirst('http://', 'https://');
+          final dlResp = await http.get(Uri.parse(dlUrl));
           if (dlResp.statusCode == 200) return jsonDecode(dlResp.body) as Map?;
         }
       }
