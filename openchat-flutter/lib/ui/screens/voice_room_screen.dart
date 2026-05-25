@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:record/record.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
 import '../../core/api/qiniu_direct_client.dart';
@@ -30,12 +32,34 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
   @override
   void initState() {
     super.initState();
-    final args = ModalRoute.of(context)?.settings.arguments as Map?;
-    _targetPeerId = args?['targetPeerId'] as String?;
-    _client = args?['client'] as QiniuDirectClient?;
+    final args = ModalRoute.of(context)?.settings.arguments;
+    final argMap = args is Map ? Map<String, dynamic>.from(args) : {};
+    _targetPeerId = argMap['targetPeerId'] as String?;
+    _client = argMap['client'] as QiniuDirectClient?;
 
     if (_targetPeerId != null && _client != null) {
       _signalTimer = Timer.periodic(const Duration(seconds: 2), (_) => _pollResponse());
+    }
+
+    if (argMap['selfTest'] == 'true') {
+      _initSelfTest();
+    }
+  }
+
+  Future<void> _initSelfTest() async {
+    final prefs = await SharedPreferences.getInstance();
+    final peerId = prefs.getString('peerId') ?? '${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(99999).toString().padLeft(5, '0')}';
+    if (_client == null) _client = QiniuDirectClient(peerId: peerId);
+    await _client!.register();
+    _targetPeerId = peerId;
+    if (mounted) {
+      setState(() => _state = 'calling');
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted && _state == 'calling') {
+          setState(() => _state = 'connected');
+          _startAudio();
+        }
+      });
     }
   }
 
