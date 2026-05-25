@@ -207,19 +207,31 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
         ])),
       );
     }
-    final parser = SduiParser(onAction: (action) {
-      if (action == 'refresh') { _pollUsers(); return; }
-      if (action == 'demo') {
-        _client?.spawnDemoPeer().then((_) => _pollUsers());
-        return;
-      }
-      for (final u in _users) {
-        if (action == 'call:${u['peerId']}') {
-          _callUser(u['peerId'] as String);
+    final parser = SduiParser(
+      vars: {'peerId': _client!.peerId, 'userCount': _users.length},
+      onAction: (action) {
+        if (action == 'refresh') { _pollUsers(); return; }
+        if (action == 'demo') {
+          _client?.spawnDemoPeer().then((_) => _pollUsers());
           return;
         }
-      }
-    });
+        if (action == 'settings') {
+          Navigator.pushNamed(context, '/theme');
+          return;
+        }
+        if (action.startsWith('navigate:')) {
+          final route = action.substring(9);
+          Navigator.pushNamed(context, route);
+          return;
+        }
+        for (final u in _users) {
+          if (action == 'call:${u['peerId']}') {
+            _callUser(u['peerId'] as String);
+            return;
+          }
+        }
+      },
+    );
     // Inject user list into config
     if (_uiConfig!['children'] is List) {
       for (int i = 0; i < (_uiConfig!['children'] as List).length; i++) {
@@ -227,9 +239,13 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
         if (child is Map && child['type'] == 'users_list') {
           (_uiConfig!['children'] as List)[i] = {
             'type': 'column', 'children': _users.map((u) => {
-              'type': 'button', 'content': u['peerId'],
+              'type': 'list_tile',
+              'leadingIcon': 'person',
+              'title': u['peerId'],
+              'subtitle': 'Online',
+              'trailingIcon': 'call',
+              'trailingAction': 'call:${u['peerId']}',
               'action': 'call:${u['peerId']}',
-              'pad': 4,
             }).toList(),
           };
         }
