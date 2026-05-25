@@ -386,6 +386,42 @@ class QiniuDirectClient {
     }
   }
 
+  static Uint8List wavFromPcm(Uint8List pcm) {
+    final header = _wavHeader(pcm.length);
+    final wav = Uint8List(header.length + pcm.length);
+    wav.setRange(0, header.length, header);
+    wav.setRange(header.length, wav.length, pcm);
+    return wav;
+  }
+
+  // Encoded audio relay (neural codec, no WAV header)
+  Future<void> sendEncodedAudio(String targetPeerId, Uint8List data, int seq) async {
+    final body = jsonEncode({
+      'from': peerId,
+      'seq': seq,
+      'data': base64Encode(data),
+      'ts': DateTime.now().millisecondsSinceEpoch,
+    });
+    await _put('oc/audio/$target/${peerId}_$seq.enc', body);
+  }
+
+  Future<List<Uint8List>> pollEncodedAudio() async {
+    final results = <Uint8List>[];
+    try {
+      for (final key in await _list('oc/audio/$peerId/')) {
+        if (!key.endsWith('.enc')) continue;
+        final raw = await _get(key);
+        final msg = jsonDecode(raw);
+        if (msg is! Map) continue;
+        final data = msg['data'];
+        if (data is! String) continue;
+        results.add(Uint8List.fromList(base64Decode(data)));
+        await _delete(key);
+      }
+    } catch (_) {}
+    return results;
+  }
+
   // Audio relay via Qiniu (fallback)
 
   String _audioKey(String target, int seq) =>

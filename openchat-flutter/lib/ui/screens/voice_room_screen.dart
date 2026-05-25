@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
 import '../../core/api/qiniu_direct_client.dart';
+import '../../core/audio/audio_processor.dart';
 
 class VoiceRoomScreen extends ConsumerStatefulWidget {
   const VoiceRoomScreen({super.key});
@@ -28,6 +29,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
   AudioRecorder? _recorder;
   AudioPlayer? _player;
   StreamSubscription? _recordSub;
+  AudioProcessor? _processor;
 
   @override
   void initState() {
@@ -96,6 +98,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
     _recordSub?.cancel();
     _recorder?.dispose();
     _player?.dispose();
+    _processor?.dispose();
     _client?.sendSignal(_targetPeerId!, 'call-end');
     if (mounted) setState(() => _state = 'ended');
     _signalTimer?.cancel();
@@ -107,6 +110,8 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
     _audioStarted = true;
     _recorder = AudioRecorder();
     _player = AudioPlayer();
+    _processor = AudioProcessor(sampleRate: 24000);
+    await _processor!.initialize();
 
     if (await _recorder!.hasPermission() != true) return;
 
@@ -114,19 +119,21 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
       encoder: AudioEncoder.pcm16bits, numChannels: 1, sampleRate: 24000));
     if (stream == null) return;
 
-    // Send: record → periodic send
+    // Send: record → process (RNNoise → AGC → Neural Codec) → upload
     List<int> _buffer = [];
-    _recordSub = stream.listen((chunk) {
+    _recordSub = stream.listen((chunk) async {
       if (_muted || _state != 'connected') {
         _buffer.clear();
         return;
       }
       _buffer.addAll(chunk);
-      // Send every ~1s of audio (48000 bytes = 24000Hz * 2 bytes * 1s)
       if (_buffer.length >= 48000) {
         final frame = Uint8List.fromList(_buffer.take(48000).toList());
         _buffer = _buffer.skip(48000).toList();
-        _client?.sendAudio(_targetPeerId!, frame, _audioSeq++);
+        final processed = await _processor?.processMicrophoneInput(frame);
+        if (processed != null) {
+          await _client?.sendEncodedAudio(_targetPeerId!, processed, _audioSeq++);
+        }
       }
     }, onError: (_) {});
 
@@ -135,18 +142,26 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
     _signalTimer = Timer.periodic(const Duration(milliseconds: 800), (_) async {
       if (_state != 'connected') return;
       try {
-        final chunks = await _client!.pollAudio();
+        final chunks = await _client!.pollEncodedAudio();
         if (chunks.isEmpty) return;
-        // Concatenate all chunks into one WAV and play
-        int totalLen = chunks.fold(0, (s, c) => s + c.length);
+        // Decode and concatenate all chunks into one WAV
+        int totalLen = 0;
+        final decodedChunks = <Uint8List>[];
+        for (final chunk in chunks) {
+          final pcm = await _processor?.processReceivedAudio(chunk);
+          if (pcm != null) decodedChunks.add(pcm);
+          totalLen += pcm?.length ?? 0;
+        }
+        if (decodedChunks.isEmpty) return;
         final merged = Uint8List(totalLen);
         int offset = 0;
-        for (final data in chunks) {
-          merged.setRange(offset, offset + data.length, data);
-          offset += data.length;
+        for (final pcm in decodedChunks) {
+          merged.setRange(offset, offset + pcm.length, pcm);
+          offset += pcm.length;
         }
+        final wav = QiniuDirectClient.wavFromPcm(merged);
         await _player?.stop();
-        await _player?.play(BytesSource(merged));
+        await _player?.play(BytesSource(wav));
       } catch (_) {}
     });
   }
@@ -156,6 +171,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
     _recordSub?.cancel();
     _recorder?.dispose();
     _player?.dispose();
+    _processor?.dispose();
     _signalTimer?.cancel();
     super.dispose();
   }
