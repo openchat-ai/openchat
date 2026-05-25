@@ -322,6 +322,15 @@ class QiniuDirectClient {
     return null;
   }
 
+  Future<Map?> fetchMainUi() async {
+    try {
+      final raw = await _get('oc/config/ui_main.json');
+      final parsed = jsonDecode(raw);
+      if (parsed is Map) return parsed;
+    } catch (_) {}
+    return null;
+  }
+
   Future<void> fetchConfig() async {
     // Try device-specific config first, fall back to global
     for (final path in ['oc/config/$peerId.json', 'oc/config/global.json']) {
