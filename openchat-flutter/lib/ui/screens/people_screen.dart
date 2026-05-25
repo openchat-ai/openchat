@@ -110,6 +110,54 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
         Navigator.pushNamed(context, '/voice', arguments: {
           'targetPeerId': targetPeerId,
           'client': _client,
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Call failed'), duration: Duration(seconds: 2)),
+        );
+      }
+    }
+  }
+
+  void _handleFileAction(String action) {
+    if (_client == null) return;
+    if (action.startsWith('file:list?')) {
+      final prefix = Uri.tryParse(action)?.queryParameters['prefix'] ?? '';
+      _client!.listFiles(prefix).then((files) {
+        if (!mounted) return;
+        showDialog(context: context, builder: (ctx) => AlertDialog(
+          title: Text('Files: $prefix'),
+          content: SizedBox(width: double.maxFinite,
+            child: ListView.builder(shrinkWrap: true, itemCount: files.length,
+              itemBuilder: (_, i) => ListTile(title: Text(files[i].split('/').last, style: const TextStyle(fontSize: 12)), dense: true)),
+          ),
+          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
+        ));
+      });
+    } else if (action.startsWith('file:delete?')) {
+      final key = Uri.tryParse(action)?.queryParameters['key'] ?? '';
+      if (key.isEmpty) return;
+      showDialog(context: context, builder: (ctx) => AlertDialog(
+        title: const Text('Delete?'), content: Text(key),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(onPressed: () { _client!.deleteFile(key); Navigator.pop(ctx); },
+            child: const Text('Delete', style: TextStyle(color: Colors.red))),
+        ],
+      ));
+    } else if (action.startsWith('file:get?')) {
+      final key = Uri.tryParse(action)?.queryParameters['key'] ?? '';
+      if (key.isEmpty) return;
+      _client!.readFile(key).then((data) {
+        if (!mounted || data == null) return;
+        showDialog(context: context, builder: (ctx) => AlertDialog(
+          title: Text(key.split('/').last),
+          content: SizedBox(width: double.maxFinite,
+            child: SingleChildScrollView(child: Text(data, style: const TextStyle(fontSize: 10)))),
+          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
+        ));
       });
     } else if (action.startsWith('file:write?')) {
       final params = Uri.tryParse(action)?.queryParameters;
@@ -158,14 +206,6 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
       }, child: const Text('OK'))],
     ));
   }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Call failed'), duration: Duration(seconds: 2)),
-        );
-      }
-    }
-  }
 
   Future<void> _showAudioFiles() async {
     if (_client == null) return;
@@ -193,47 +233,6 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
         actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
       ),
     );
-  }
-
-  void _handleFileAction(String action) {
-    if (_client == null) return;
-    if (action.startsWith('file:list?')) {
-      final prefix = Uri.tryParse(action)?.queryParameters['prefix'] ?? '';
-      _client!.listFiles(prefix).then((files) {
-        if (!mounted) return;
-        showDialog(context: context, builder: (ctx) => AlertDialog(
-          title: Text('Files: $prefix'),
-          content: SizedBox(width: double.maxFinite,
-            child: ListView.builder(shrinkWrap: true, itemCount: files.length,
-              itemBuilder: (_, i) => ListTile(title: Text(files[i].split('/').last, style: const TextStyle(fontSize: 12)), dense: true)),
-          ),
-          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
-        ));
-      });
-    } else if (action.startsWith('file:delete?')) {
-      final key = Uri.tryParse(action)?.queryParameters['key'] ?? '';
-      if (key.isEmpty) return;
-      showDialog(context: context, builder: (ctx) => AlertDialog(
-        title: const Text('Delete?'), content: Text(key),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          TextButton(onPressed: () { _client!.deleteFile(key); Navigator.pop(ctx); },
-            child: const Text('Delete', style: TextStyle(color: Colors.red))),
-        ],
-      ));
-    } else if (action.startsWith('file:get?')) {
-      final key = Uri.tryParse(action)?.queryParameters['key'] ?? '';
-      if (key.isEmpty) return;
-      _client!.readFile(key).then((data) {
-        if (!mounted || data == null) return;
-        showDialog(context: context, builder: (ctx) => AlertDialog(
-          title: Text(key.split('/').last),
-          content: SizedBox(width: double.maxFinite,
-            child: SingleChildScrollView(child: Text(data, style: const TextStyle(fontSize: 10)))),
-          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
-        ));
-      });
-    }
   }
 
   void _showDeviceInfo() {
