@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'sdui_fragment.dart';
 
 class SduiParser {
   final void Function(String action)? onAction;
@@ -76,6 +77,10 @@ class SduiParser {
       case 'divider': return const Divider();
       case 'image': return _image(node);
       case 'card': return _card(node);
+      case 'sdui_fragment':
+        final path = node['path'] as String?;
+        if (path != null) return SduiFragmentWidget(path: path, onAction: onAction);
+        return const SizedBox();
       default: return null;
     }
   }

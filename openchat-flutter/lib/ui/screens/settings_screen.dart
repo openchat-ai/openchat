@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
@@ -17,11 +18,19 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Map? _uiConfig;
+  Timer? _configTimer;
 
   @override
   void initState() {
     super.initState();
     _loadConfig();
+    _configTimer = Timer.periodic(const Duration(seconds: 30), (_) => _loadConfig());
+  }
+
+  @override
+  void dispose() {
+    _configTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadConfig() async {
