@@ -62,7 +62,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
       Future.delayed(const Duration(seconds: 3), () {
         if (mounted && _state == 'calling') {
           setState(() => _state = 'connected');
-          _startAudio();
+          _startLocalEcho();
         }
       });
     }
@@ -106,6 +106,27 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
     if (mounted) setState(() => _state = 'ended');
     _signalTimer?.cancel();
     Navigator.pop(context);
+  }
+
+  Future<void> _startLocalEcho() async {
+    _recorder = AudioRecorder();
+    _player = AudioPlayer();
+    if (await _recorder!.hasPermission() != true) return;
+    final stream = await _recorder!.startStream(const RecordConfig(
+      encoder: AudioEncoder.pcm16bits, numChannels: 1, sampleRate: 24000));
+    if (stream == null) return;
+    List<int> buf = [];
+    _recordSub = stream.listen((chunk) {
+      if (_state != 'connected') { buf.clear(); return; }
+      buf.addAll(chunk);
+      // Every 500ms, play back what was recorded 500ms ago (local echo)
+      if (buf.length >= 24000) { // 500ms
+        final pcm = Uint8List.fromList(buf.take(24000).toList());
+        buf = buf.skip(24000).toList();
+        final wav = QiniuDirectClient.wavFromPcm(pcm);
+        _player?.play(BytesSource(wav));
+      }
+    }, onError: (_) {});
   }
 
   Future<void> _startAudio() async {
