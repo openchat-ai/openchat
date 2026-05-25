@@ -2,18 +2,36 @@
 on:
   push:
     branches: [main]
+    paths-ignore: ['docs/**', '**.md', '**.txt']
   workflow_dispatch:
     inputs:
       build_apk:
-        description: 'Build APK (costs ~6 min)'
+        description: 'Build APK'
         type: boolean
-        default: false
+        default: true
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      flutter: ${{ steps.filter.outputs.flutter }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            flutter:
+              - 'openchat-flutter/**'
+            bridge:
+              - 'bridge/**'
+
   flutter-check:
+    needs: changes
+    if: ${{ needs.changes.outputs.flutter == 'true' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -26,6 +44,8 @@ jobs:
       - run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
   bridge-check:
+    needs: changes
+    if: ${{ needs.changes.outputs.bridge == 'true' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -39,6 +59,8 @@ jobs:
       - run: npm test
 
   bridge-build:
+    needs: [changes, bridge-check]
+    if: ${{ needs.changes.outputs.bridge == 'true' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -51,8 +73,8 @@ jobs:
       - run: npm pack
 
   flutter-apk:
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_apk }}
-    needs: [flutter-check, bridge-check]
+    needs: [changes, flutter-check]
+    if: ${{ needs.changes.outputs.flutter == 'true' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
