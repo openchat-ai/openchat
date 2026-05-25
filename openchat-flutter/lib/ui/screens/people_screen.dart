@@ -339,6 +339,7 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
     }
     final parser = SduiParser(
       vars: {'peerId': _client!.peerId, 'userCount': _users.length},
+      onReadFile: (key) => _client!.readFile(key),
       onAction: (action) {
         for (final u in _users) {
           if (action == 'call:${u['peerId']}') {

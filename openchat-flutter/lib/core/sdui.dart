@@ -5,9 +5,10 @@ import 'sdui_fragment.dart';
 
 class SduiParser {
   final void Function(String action)? onAction;
+  final Future<String?> Function(String key)? onReadFile;
   final Map<String, dynamic> _vars;
 
-  SduiParser({this.onAction, Map<String, dynamic>? vars})
+  SduiParser({this.onAction, this.onReadFile, Map<String, dynamic>? vars})
       : _vars = vars ?? {};
 
   static const icons = {
@@ -109,6 +110,7 @@ class SduiParser {
         final path = node['path'] as String?;
         if (path != null) return SduiFragmentWidget(path: path, onAction: onAction);
         return const SizedBox();
+      case 's3_data': return _s3Data(node);
       default: return null;
     }
   }
@@ -120,6 +122,13 @@ class SduiParser {
       Future.delayed(Duration(milliseconds: delay), () => onAction?.call(action));
     }
     return const SizedBox();
+  }
+
+  Widget _s3Data(Map m) {
+    final key = m['key'] as String?;
+    final template = m['template'] as Map?;
+    if (key == null || template == null || onReadFile == null) return const SizedBox();
+    return _S3DataWidget(key: key, template: template, parser: this);
   }
 
   Widget _checkbox(Map m) {
@@ -280,5 +289,46 @@ class SduiParser {
       }
       return w;
     }).toList();
+  }
+}
+
+class _S3DataWidget extends StatefulWidget {
+  final String key;
+  final Map template;
+  final SduiParser parser;
+  const _S3DataWidget({required this.key, required this.template, required this.parser});
+
+  @override
+  State<_S3DataWidget> createState() => _S3DataWidgetState();
+}
+
+class _S3DataWidgetState extends State<_S3DataWidget> {
+  Map<String, dynamic>? _data;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final raw = await widget.parser.onReadFile?.call(widget.key);
+    if (raw == null) { if (mounted) setState(() => _error = 'Failed to load'); return; }
+    try {
+      final parsed = jsonDecode(raw);
+      if (parsed is Map) { if (mounted) setState(() => _data = Map<String, dynamic>.from(parsed)); }
+    } catch (_) { if (mounted) setState(() => _error = 'Invalid JSON'); }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_error != null) return Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 12));
+    if (_data == null) return const SizedBox(height: 1);
+    final sub = SduiParser(
+      onAction: widget.parser.onAction,
+      vars: _data!,
+    );
+    return sub.parse(widget.template) ?? const SizedBox();
   }
 }
