@@ -125,10 +125,10 @@ class SduiParser {
   }
 
   Widget _s3Data(Map m) {
-    final key = m['key'] as String?;
+    final s3Key = m['key'] as String?;
     final template = m['template'] as Map?;
-    if (key == null || template == null || onReadFile == null) return const SizedBox();
-    return _S3DataWidget(key: key, template: template, parser: this);
+    if (s3Key == null || template == null || onReadFile == null) return const SizedBox();
+    return _S3DataWidget(s3Key: s3Key, template: template, parser: this);
   }
 
   Widget _checkbox(Map m) {
@@ -293,10 +293,10 @@ class SduiParser {
 }
 
 class _S3DataWidget extends StatefulWidget {
-  final String key;
+  final String s3Key;
   final Map template;
   final SduiParser parser;
-  const _S3DataWidget({required this.key, required this.template, required this.parser});
+  const _S3DataWidget({required this.s3Key, required this.template, required this.parser, super.key});
 
   @override
   State<_S3DataWidget> createState() => _S3DataWidgetState();
@@ -313,7 +313,7 @@ class _S3DataWidgetState extends State<_S3DataWidget> {
   }
 
   Future<void> _load() async {
-    final raw = await widget.parser.onReadFile?.call(widget.key);
+    final raw = await widget.parser.onReadFile?.call(widget.s3Key);
     if (raw == null) { if (mounted) setState(() => _error = 'Failed to load'); return; }
     try {
       final parsed = jsonDecode(raw);
