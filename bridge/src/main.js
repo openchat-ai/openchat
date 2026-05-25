@@ -292,9 +292,7 @@ export class Bridge {
       });
       console.log(`[API] 统一服务器: http://localhost:${CONFIG.port}`);
       console.log(`[API] 端点: /api/v1/agents, /api/v1/p2p, /api/v1/updates, /api/v1/skills, /api/v1/versions, /api/v1/resources`);
-      // 启动 AI 居民调度器
-      residentScheduler.start();
-      console.log(`[调度器] 居民自主生活循环已启动`);
+      // 启动 AI 居民调度器（已禁用）
 
       // 注册 P2P 事件监听
       if (this.p2p) {
@@ -882,8 +880,7 @@ export class Bridge {
     // 停止 P2P 网络（在调度器之前）
     if (this.p2p) await this.p2p.stop();
 
-    // 停止居民调度器
-    residentScheduler.stop();
+    // 停止居民调度器（已禁用）
 
     console.log('[Bridge] 已退出，再见!');
     process.exit(0);
