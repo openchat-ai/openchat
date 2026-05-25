@@ -37,7 +37,7 @@ class SduiConfig {
     final cacheKey = 'sdui:$path';
     final versionKey = 'sdui_ver:$path';
 
-    Map? _fetch(String p) async {
+    Future<Map?> _fetch(String p) async {
       try {
         final raw = await QiniuDirectClient.fetchConfigFile(p);
         if (raw != null && isValid(raw)) {
