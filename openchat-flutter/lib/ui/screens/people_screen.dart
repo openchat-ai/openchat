@@ -223,14 +223,9 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
   Widget build(BuildContext context) {
     final theme = ref.watch(currentThemeProvider);
 
-    // If remote UI config exists, use SDUI
-    if (_uiConfig != null && !_loading && _error == null) {
-      Widget? sduiWidget;
-      try {
-        sduiWidget = _buildSdui(theme);
-      } catch (_) {}
-      if (sduiWidget != null) return sduiWidget;
-    }
+    // TODO: re-enable SDUI after voice path verification
+    // If remote UI config exists, use SDUI (currently disabled for testing)
+    if (false && _uiConfig != null && !_loading && _error == null) {}
 
     // Fallback hardcoded UI
     return Scaffold(
