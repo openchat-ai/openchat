@@ -31,6 +31,8 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
   AudioPlayer? _player;
   StreamSubscription? _recordSub;
   AudioProcessor? _processor;
+  final List<Uint8List> _playQueue = [];
+  bool _playing = false;
 
   @override
   void initState() {
@@ -159,47 +161,29 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
       }
     }, onError: (_) {});
 
-    // Receive: poll every cfg.pollMs
+    // Receive: poll every cfg.pollMs, queue chunks for sequential playback
     _signalTimer?.cancel();
     _signalTimer = Timer.periodic(Duration(milliseconds: cfg.pollMs), (_) async {
       if (_state != 'connected') return;
       try {
         final chunks = await _client!.pollEncodedAudio();
         if (chunks.isEmpty) return;
-        // Decode all chunks, concatenate with cross-fade, wrap in WAV
-        final decoded = <Uint8List>[];
-        int total = 0;
         for (final c in chunks) {
           final pcm = await _processor?.processReceivedAudio(c);
-          if (pcm != null) { decoded.add(pcm); total += pcm.length; }
+          if (pcm != null) _playQueue.add(pcm);
         }
-        if (decoded.isEmpty) return;
-        final merged = Uint8List(total);
-        int offset = 0;
-        for (int i = 0; i < decoded.length; i++) {
-          final pcm = decoded[i];
-          if (i > 0 && offset >= fadeBytes) {
-            // Cross-fade with previous chunk tail
-            for (int j = 0; j < fadeBytes && j < pcm.length && offset - fadeBytes + j >= 0; j += 2) {
-              final ratio = j / fadeBytes;
-              final pv = merged[offset - fadeBytes + j] | (merged[offset - fadeBytes + j + 1] << 8);
-              final cv = pcm[j] | (pcm[j + 1] << 8);
-              final ps = pv > 32767 ? pv - 65536 : pv;
-              final cs = cv > 32767 ? cv - 65536 : cv;
-              final blended = (ps * (1 - ratio) + cs * ratio).round().clamp(-32768, 32767);
-              final bv = blended < 0 ? blended + 65536 : blended;
-              merged[offset - fadeBytes + j] = bv & 0xFF;
-              merged[offset - fadeBytes + j + 1] = (bv >> 8) & 0xFF;
-            }
-          }
-          merged.setRange(offset, offset + pcm.length, pcm);
-          offset += pcm.length;
-        }
-        final wav = QiniuDirectClient.wavFromPcm(merged);
-        await _player?.stop();
-        await _player?.play(BytesSource(wav));
+        if (!_playing) _playNext();
       } catch (_) {}
     });
+  }
+
+  Future<void> _playNext() async {
+    if (_playQueue.isEmpty || !mounted) { _playing = false; return; }
+    _playing = true;
+    final pcm = _playQueue.removeAt(0);
+    final wav = QiniuDirectClient.wavFromPcm(pcm);
+    _player?.onPlayerComplete.first.then((_) => _playNext());
+    await _player?.play(BytesSource(wav));
   }
 
   @override
