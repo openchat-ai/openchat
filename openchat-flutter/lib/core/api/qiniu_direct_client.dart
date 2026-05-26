@@ -62,8 +62,8 @@ class QiniuDirectClient {
 
   QiniuDirectClient({required this.peerId});
 
-  // Upload method: false=S3 presigned PUT, true=Qiniu form upload
-  bool _useFormUpload = false;
+  // Upload method: true=Qiniu form upload (default, faster), false=S3 presigned PUT
+  bool _useFormUpload = true;
 
   // ========== Upload: S3 V4 presigned (default) or Qiniu form upload ==========
 
