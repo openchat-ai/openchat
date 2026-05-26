@@ -9,7 +9,7 @@ class SduiConfig {
     'column', 'row', 'list', 'text', 'button', 'spacer',
     'icon', 'list_tile', 'padding', 'divider', 'image', 'card',
     'sdui_fragment', 'auto', 'checkbox', 'switch', 'textfield',
-    'users_list',
+    'users_list', 's3_data',
   };
 
   /// Validate SDUI JSON structure to prevent malformed/crafted configs.
@@ -33,7 +33,7 @@ class SduiConfig {
   /// Load config with A/B testing, validation, cache, and rollback.
   /// [path] = 'oc/config/ui_settings.json'
   /// [peerId] = optional, enables A/B variant selection
-  /// Returns null → caller should use hardcoded fallback.
+  /// Returns null 鈫?caller should use hardcoded fallback.
   static Future<Map?> load(String path, {String? peerId}) async {
     final prefs = await SharedPreferences.getInstance();
     final cacheKey = 'sdui:$path';
@@ -69,7 +69,7 @@ class SduiConfig {
       try { final p = jsonDecode(cached); if (p is Map) return p; } catch (_) {}
     }
 
-    // 4. No valid config → hardcoded fallback
+    // 4. No valid config 鈫?hardcoded fallback
     return null;
   }
 
