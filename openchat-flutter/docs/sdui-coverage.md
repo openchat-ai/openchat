@@ -17,6 +17,10 @@
 | **resident_detail** | 🟡 标题 | ❌ | ❌ | 🟡 标题 | ❌ | ❌ |
 | **main_shell** | 🟡 FAB | 🟡 导航栏标签 | 🟡 导航栏图标 | 🟡 FAB 图标/动作 | ❌ | ❌ |
 
+### 配置文件
+
+所有页面优先读取 `oc/config/ui_app.json` 合并文件中的对应段落，也支持独立文件覆盖。
+
 ### 图例
 
 - **外壳** — Scaffold背景色、SafeArea、AppBar标题
