@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
 import '../../core/api/qiniu_direct_client.dart';
+import '../../core/sdui_config.dart';
 
 class TaskDetailScreen extends ConsumerStatefulWidget {
   final String agentId;
@@ -19,8 +20,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
   @override
   void initState() {
     super.initState();
-    QiniuDirectClient.fetchConfigFile('oc/config/ui_task_detail.json')
-        .then((m) { if (mounted && m is Map) setState(() => _sduiLayout = Map<String, dynamic>.from(m)); });
+    SduiConfig.load('task_detail').then((m) { if (mounted) setState(() => _sduiLayout = m); });
   }
 
   @override

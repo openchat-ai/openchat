@@ -7,6 +7,7 @@ import '../../providers/theme_provider.dart';
 import '../../providers/bridge_provider.dart';
 import '../../core/api/qiniu_direct_client.dart';
 import '../../core/sdui.dart';
+import '../../core/sdui_config.dart';
 import '../../core/version.dart';
 
 class DevIdeScreen extends ConsumerStatefulWidget {
@@ -24,8 +25,7 @@ class _DevIdeScreenState extends ConsumerState<DevIdeScreen> {
   @override
   void initState() {
     super.initState();
-    QiniuDirectClient.fetchConfigFile('oc/config/ui_dev_ide.json')
-        .then((m) { if (mounted && m is Map) setState(() => _sduiLayout = Map<String, dynamic>.from(m)); });
+    SduiConfig.load('dev_ide').then((m) { if (mounted) setState(() => _sduiLayout = m); });
   }
 
   @override

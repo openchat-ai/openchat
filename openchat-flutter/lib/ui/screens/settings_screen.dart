@@ -22,8 +22,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    QiniuDirectClient.fetchConfigFile('oc/config/ui_settings.json')
-        .then((m) { if (mounted && m is Map) setState(() => _sduiLayout = Map<String, dynamic>.from(m)); });
+    SduiConfig.load('settings').then((m) { if (mounted) setState(() => _sduiLayout = m); });
   }
 
   IconData _icon(String name) => SduiParser.icons[name] ?? Icons.circle_outlined;

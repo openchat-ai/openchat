@@ -8,6 +8,7 @@ import '../../providers/theme_provider.dart';
 import '../../providers/resident_provider.dart';
 import '../../providers/sage_provider.dart';
 import '../../core/api/qiniu_direct_client.dart';
+import '../../core/sdui_config.dart';
 import '../components/resident/resident_profile.dart';
 import '../components/resident/resident_family.dart';
 import '../components/resident/resident_agents.dart';
@@ -32,8 +33,7 @@ class _ResidentDetailScreenState extends ConsumerState<ResidentDetailScreen> {
   @override
   void initState() {
     super.initState();
-    QiniuDirectClient.fetchConfigFile('oc/config/ui_resident_detail.json')
-        .then((m) { if (mounted && m is Map) setState(() => _sduiLayout = Map<String, dynamic>.from(m)); });
+    SduiConfig.load('resident_detail').then((m) { if (mounted) setState(() => _sduiLayout = m); });
     _load();
   }
 

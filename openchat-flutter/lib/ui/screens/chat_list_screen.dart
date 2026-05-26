@@ -7,6 +7,7 @@ import '../../providers/bridge_provider.dart';
 import '../../core/api/bridge_ws_client.dart';
 import '../../core/api/qiniu_direct_client.dart';
 import '../../core/sdui.dart';
+import '../../core/sdui_config.dart';
 import 'chat_screen.dart' hide bridgeWsProvider;
 
 class ChatListScreen extends ConsumerStatefulWidget {
@@ -23,8 +24,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
   @override
   void initState() {
     super.initState();
-    QiniuDirectClient.fetchConfigFile('oc/config/ui_chat_list.json')
-        .then((m) { if (mounted && m is Map) setState(() => _sduiLayout = Map<String, dynamic>.from(m)); });
+    SduiConfig.load('chat_list').then((m) { if (mounted) setState(() => _sduiLayout = m); });
     _wsSub = ref.read(bridgeWsProvider).messages.listen((msg) {
       if (msg.type == 'message' && msg.data['message'] != null) {
         setState(() => _messages.insert(0, {'text': msg.data['message'], 'from': msg.data['from'] ?? 'peer'}));

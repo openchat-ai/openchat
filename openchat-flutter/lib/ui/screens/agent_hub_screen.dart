@@ -7,6 +7,7 @@ import '../../providers/theme_provider.dart';
 import '../../providers/resident_provider.dart';
 import '../../core/api/qiniu_direct_client.dart';
 import '../../core/sdui.dart';
+import '../../core/sdui_config.dart';
 import 'resident_detail_screen.dart';
 
 class AgentHubScreen extends ConsumerStatefulWidget {
@@ -22,8 +23,7 @@ class _AgentHubScreenState extends ConsumerState<AgentHubScreen> {
   @override
   void initState() {
     super.initState();
-    QiniuDirectClient.fetchConfigFile('oc/config/ui_agent.json')
-        .then((m) { if (mounted && m is Map) setState(() => _sduiLayout = Map<String, dynamic>.from(m)); });
+    SduiConfig.load('agent').then((m) { if (mounted) setState(() => _sduiLayout = m); });
   }
 
   @override

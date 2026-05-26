@@ -5,6 +5,7 @@ import '../../core/theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
 import '../../core/api/qiniu_direct_client.dart';
 import '../../core/sdui.dart';
+import '../../core/sdui_config.dart';
 
 class ThemeSelectorScreen extends ConsumerStatefulWidget {
   const ThemeSelectorScreen({super.key});
@@ -18,8 +19,7 @@ class _ThemeSelectorScreenState extends ConsumerState<ThemeSelectorScreen> {
   @override
   void initState() {
     super.initState();
-    QiniuDirectClient.fetchConfigFile('oc/config/ui_theme_selector.json')
-        .then((m) { if (mounted && m is Map && m['title'] is String) setState(() => _title = m['title'] as String); });
+    SduiConfig.load('theme_selector').then((m) { if (mounted && m['title'] is String) setState(() => _title = m['title'] as String); });
   }
 
   @override

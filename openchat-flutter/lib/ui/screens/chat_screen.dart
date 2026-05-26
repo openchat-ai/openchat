@@ -7,6 +7,7 @@ import '../../providers/bridge_provider.dart';
 import '../../core/api/bridge_ws_client.dart';
 import '../../core/api/qiniu_direct_client.dart';
 import '../../core/sdui.dart';
+import '../../core/sdui_config.dart';
 
 final bridgeWsProvider = Provider<BridgeWsClient>((ref) {
   final client = BridgeWsClient(port: 3800);
@@ -35,8 +36,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    QiniuDirectClient.fetchConfigFile('oc/config/ui_chat.json')
-        .then((m) { if (mounted && m is Map) setState(() => _sduiLayout = Map<String, dynamic>.from(m)); });
+    SduiConfig.load('chat').then((m) { if (mounted) setState(() => _sduiLayout = m); });
     _messages.addAll([
       {'sender': 'ai', 'text': '你好！有什么可以帮助你的？', 'time': '10:00'},
     ]);
