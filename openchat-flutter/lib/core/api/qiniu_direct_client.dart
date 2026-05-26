@@ -317,13 +317,19 @@ class QiniuDirectClient {
     return null;
   }
 
+  static final Map<String, Map> _configCache = {};
+
   static Future<Map?> fetchConfigFile(String path) async {
     try {
       final url = _presignedUrl(path);
       final resp = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 8));
-      if (resp.statusCode == 200) return jsonDecode(resp.body) as Map?;
+      if (resp.statusCode == 200) {
+        final data = jsonDecode(resp.body) as Map?;
+        if (data != null) _configCache[path] = data;
+        return data;
+      }
     } catch (_) {}
-    return null;
+    return _configCache[path];
   }
 
   Future<void> fetchConfig() async {
