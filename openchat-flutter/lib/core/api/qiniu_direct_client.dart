@@ -403,33 +403,11 @@ class QiniuDirectClient {
     return null;
   }
 
-  static Future<Map?> fetchConfigFile(String path, {bool useS3 = false}) async {
+  static Future<Map?> fetchConfigFile(String path) async {
     try {
-      if (useS3) {
-        final url = _presignedUrl(path);
-        final resp = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 8));
-        if (resp.statusCode == 200) return jsonDecode(resp.body) as Map?;
-      } else {
-        // Qiniu RS API (HMAC-SHA1), keep = padding
-        final entryStr = '$_bucket:$path';
-        final encodedEntry = base64.encode(utf8.encode(entryStr))
-            .replaceAll('+', '-').replaceAll('/', '_');
-        final hmacSha1 = Hmac(sha1, utf8.encode(_sk))
-            .convert(utf8.encode('/get/$encodedEntry\n'))
-            .bytes;
-        final sig = base64.encode(hmacSha1).replaceAll('+', '-').replaceAll('/', '_');
-        final token = '$_ak:$sig';
-        final resp = await http.get(Uri.parse('https://rs.qbox.me/get/$encodedEntry'),
-            headers: {'Authorization': 'QBox $token'}).timeout(const Duration(seconds: 8));
-        if (resp.statusCode == 200) {
-          final info = jsonDecode(resp.body);
-          if (info['url'] is String) {
-            final dlUrl = (info['url'] as String).replaceFirst('http://', 'https://');
-            final dlResp = await http.get(Uri.parse(dlUrl)).timeout(const Duration(seconds: 8));
-            if (dlResp.statusCode == 200) return jsonDecode(dlResp.body) as Map?;
-          }
-        }
-      }
+      final url = _presignedUrl(path);
+      final resp = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 8));
+      if (resp.statusCode == 200) return jsonDecode(resp.body) as Map?;
     } catch (_) {}
     return null;
   }
@@ -613,7 +591,10 @@ class QiniuDirectClient {
     try { await _delete(key); return true; } catch (_) { return false; }
   }
 
+  static const _allowedWritePrefixes = ['oc/config/', 'oc/debug/', 'oc/logs/'];
+
   Future<bool> writeFile(String key, dynamic content) async {
+    if (!_allowedWritePrefixes.any((p) => key.startsWith(p))) return false;
     try {
       final body = content is String ? content : jsonEncode(content);
       await _put(key, body);
