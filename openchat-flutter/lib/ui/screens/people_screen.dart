@@ -147,44 +147,17 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
   void _handleFileAction(String action) {
     if (_client == null) return;
     if (action.startsWith('file:list?')) {
-      final qIdx = action.indexOf('?');
-      final prefix = qIdx >= 0 ? Uri.splitQueryString(action.substring(qIdx + 1))['prefix'] ?? '' : '';
-      _client!.listFiles(prefix).then((files) {
-        if (!mounted) return;
-        showDialog(context: context, builder: (ctx) => AlertDialog(
-          title: Text('Files: $prefix'),
-          content: SizedBox(width: double.maxFinite,
-            child: ListView.builder(shrinkWrap: true, itemCount: files.length,
-              itemBuilder: (_, i) => ListTile(title: Text(files[i].split('/').last, style: const TextStyle(fontSize: 12)), dense: true)),
-          ),
-          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
-        ));
-      });
+      _client!.listFiles(params['prefix'] ?? '').then((files) { if (!mounted) return; _showSduiDialog({'type': 'column', 'children': [{'type': 'text', 'content': 'Files: ${params['prefix'] ?? ""}', 'style': {'bold': true}, 'pad': 8}, {'type': 'for_each', 'items': 'files', 'template': {'type': 'list_tile', 'title': '{{name}}'}}]}, {'files': files.map((f) => {'name': f.split('/').last}).toList()}); });
     } else if (action.startsWith('file:delete?')) {
-      final qIdx = action.indexOf('?');
-      final key = qIdx >= 0 ? Uri.splitQueryString(action.substring(qIdx + 1))['key'] ?? '' : '';
-      if (key.isEmpty) return;
-      showDialog(context: context, builder: (ctx) => AlertDialog(
-        title: const Text('Delete?'), content: Text(key),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          TextButton(onPressed: () { _client!.deleteFile(key); Navigator.pop(ctx); },
-            child: const Text('Delete', style: TextStyle(color: Colors.red))),
-        ],
-      ));
+      final key = params['key'] ?? ''; if (key.isEmpty) return;
+      _showSduiDialog({'type': 'column', 'children': [{'type': 'text', 'content': 'Delete?', 'style': {'bold': true}, 'pad': 8}, {'type': 'text', 'content': key, 'pad': 8}]}, {},
+        actions: [{'action': 'cancel', 'label': 'Cancel'}, {'action': 'del', 'label': 'Delete', 'color': '#F44336'}],
+        onAction: (a) { if (a == 'cancel') Navigator.of(context).pop(); if (a == 'del') { _client!.deleteFile(key); Navigator.of(context).pop(); } });
     } else if (action.startsWith('file:get?')) {
       final qIdx = action.indexOf('?');
       final key = qIdx >= 0 ? Uri.splitQueryString(action.substring(qIdx + 1))['key'] ?? '' : '';
       if (key.isEmpty) return;
-      _client!.readFile(key).then((data) {
-        if (!mounted || data == null) return;
-        showDialog(context: context, builder: (ctx) => AlertDialog(
-          title: Text(key.split('/').last),
-          content: SizedBox(width: double.maxFinite,
-            child: SingleChildScrollView(child: Text(data, style: const TextStyle(fontSize: 10)))),
-          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
-        ));
-      });
+      _client!.readFile(key).then((data) { if (!mounted || data == null) return; _showSduiDialog({'type': 'column', 'children': [{'type': 'text', 'content': key.split('/').last, 'style': {'bold': true}, 'pad': 8}, {'type': 'text', 'content': data, 'style': {'size': 10}}]}, {}); });
     } else if (action.startsWith('file:write?')) {
       final qIdx = action.indexOf('?');
       if (qIdx < 0) return;
@@ -217,24 +190,26 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
   Future<void> _showConfig() async {
     final prefs = await SharedPreferences.getInstance();
     final keys = ['peerId', 'bridge_url', 'theme_mode'].where((k) => prefs.containsKey(k));
-    final items = keys.map((k) => Text('$k: ${prefs.get(k)}', style: const TextStyle(fontSize: 13))).toList();
-    if (items.isEmpty) items.add(const Text('(no config)'));
-    if (!mounted) return;
-    showDialog(context: context, builder: (ctx) => AlertDialog(
-      title: const Text('Config'), content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: items),
-      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
+    final items = keys.map((k) => '$k: ${prefs.get(k)}').join('\n');
+    _showSduiDialog({'type': 'column', 'children': [{'type': 'text', 'content': items.isEmpty ? '(no config)' : items, 'style': {'size': 13}}]}, {});
+  }
+
+  /// Render a dialog via SDUI JSON.
+  Future<void> _showSduiDialog(Map layout, Map<String, dynamic> vars, {List<Map<String, String>>? actions, void Function(String)? onAction}) {
+    final parser = SduiParser(vars: vars, onAction: onAction);
+    return showDialog(context: context, builder: (ctx) => AlertDialog(
+      content: SizedBox(width: double.maxFinite, child: parser.parse(layout)),
+      actions: actions?.map((a) => TextButton(
+        onPressed: () => onAction?.call(a['action'] ?? ''),
+        child: Text(a['label'] ?? '', style: a['color'] != null ? TextStyle(color: Color(int.parse(a['color']!.replaceAll('#', '0xFF')))) : null),
+      )).toList() ?? [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
     ));
   }
 
   void _restartApp() {
-    showDialog(context: context, builder: (ctx) => AlertDialog(
-      title: const Text('Restart'), content: const Text('Restart app for changes to take effect'),
-      actions: [TextButton(onPressed: () {
-        Navigator.pop(ctx);
-        Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const Scaffold(body: Center(child: CircularProgressIndicator()))), (r) => false);
-        Future.delayed(const Duration(milliseconds: 100), () => Navigator.of(context).pushReplacementNamed('/'));
-      }, child: const Text('OK'))],
-    ));
+    _showSduiDialog({'type': 'column', 'children': [{'type': 'text', 'content': 'Restart app for changes to take effect', 'pad': 8}]}, {},
+      actions: [{'action': 'cancel', 'label': 'Cancel'}, {'action': 'restart', 'label': 'Restart', 'color': '#7C4DFF'}],
+      onAction: (a) { if (a == 'cancel') Navigator.of(context).pop(); if (a == 'restart') { Navigator.pop(context); Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const Scaffold(body: Center(child: CircularProgressIndicator()))), (r) => false); } });
   }
 
   Future<void> _showAudioFiles() async {
