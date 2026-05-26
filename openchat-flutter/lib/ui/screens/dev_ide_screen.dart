@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
+import '../../core/api/qiniu_direct_client.dart';
 
 class MarkerPoint {
   double x, y;
@@ -25,6 +27,7 @@ class DevIdeScreen extends ConsumerStatefulWidget {
 }
 
 class _DevIdeScreenState extends ConsumerState<DevIdeScreen> {
+  Map<String, dynamic>? _sduiLayout;
   bool _showPreview = true;
   bool _showOutline = true;
   bool _toolbarExpanded = true;
@@ -36,6 +39,13 @@ class _DevIdeScreenState extends ConsumerState<DevIdeScreen> {
   String? _selectedAgent;
   final TextEditingController _agentInputController = TextEditingController();
   final List<Map<String, String>> _agentMessages = [];
+
+  @override
+  void initState() {
+    super.initState();
+    QiniuDirectClient.fetchConfigFile('oc/config/ui_dev_ide.json')
+        .then((m) { if (mounted && m is Map) setState(() => _sduiLayout = Map<String, dynamic>.from(m)); });
+  }
 
   final List<CodeItem> _codeItems = [
     CodeItem('DevIdeScreen', 'class', 21),
@@ -213,7 +223,7 @@ class _DevIdeScreenState extends ConsumerState<DevIdeScreen> {
         children: [
           Icon(Icons.code, color: theme.info, size: 22),
           const SizedBox(width: 8),
-          Text('Dev IDE', style: TextStyle(color: theme.textPrimary, fontFamily: 'monospace', fontSize: 17)),
+          Text(_sduiLayout?['title'] as String? ?? 'Dev IDE', style: TextStyle(color: theme.textPrimary, fontFamily: 'monospace', fontSize: 17)),
           if (_toolbarExpanded) ...[
             const SizedBox(width: 20),
             _buildToolBtn(Icons.play_arrow, '运行', theme.success, theme),

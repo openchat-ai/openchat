@@ -1,16 +1,36 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
+import '../../core/api/qiniu_direct_client.dart';
 
-class TaskDetailScreen extends ConsumerWidget {
+class TaskDetailScreen extends ConsumerStatefulWidget {
   final String agentId;
-
   const TaskDetailScreen({super.key, required this.agentId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TaskDetailScreen> createState() => _TaskDetailScreenState();
+}
+
+class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
+  Map<String, dynamic>? _sduiLayout;
+
+  @override
+  void initState() {
+    super.initState();
+    QiniuDirectClient.fetchConfigFile('oc/config/ui_task_detail.json')
+        .then((m) { if (mounted && m is Map) setState(() => _sduiLayout = Map<String, dynamic>.from(m)); });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = ref.watch(currentThemeProvider);
+    final t = _sduiLayout ?? {};
+    final title = t['title'] as String? ?? '任务详情';
+    final statusLabel = t['statusLabel'] as String? ?? '状态';
+    final infoLabel = t['infoLabel'] as String? ?? '基本信息';
+    final resultLabel = t['resultLabel'] as String? ?? '执行结果';
 
     return Scaffold(
       backgroundColor: theme.background,
@@ -18,9 +38,7 @@ class TaskDetailScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Text(
-          '任务详情',
-          style: TextStyle(
+        title: Text(title, style: TextStyle(
             color: theme.textPrimary,
             fontSize: 20,
             fontWeight: FontWeight.w600,
@@ -245,12 +263,11 @@ class TaskDetailScreen extends ConsumerWidget {
   }
 
   Widget _buildInfoSection(AppTheme theme) {
+    final infoLabel = _sduiLayout?['infoLabel'] as String? ?? '基本信息';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '基本信息',
-          style: TextStyle(
+        Text(infoLabel, style: TextStyle(
             color: theme.textPrimary,
             fontSize: 16,
             fontWeight: FontWeight.w600,
