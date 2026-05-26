@@ -6,6 +6,12 @@
 
 ## 快速开始
 
+### 已有 APK（最快路径）
+1. [下载最新 APK](https://github.com/openchat-ai/openchat/releases)
+2. 安装后输入任意 `peerId` 点击 Connect
+3. 看到 "Online" 表示已连接到 Bridge → 完成
+
+### 从源码运行
 ```bash
 # 1. 启动 Bridge（新开终端）
 cd ../bridge
@@ -17,6 +23,9 @@ flutter pub get
 flutter run
 # App 自动连接 http://localhost:3800
 ```
+
+> 首次使用？看 [`docs/first-steps.md`](docs/first-steps.md) 完整上手指南。
+> P2P 语音通话详细流程见 [`docs/p2p-voice-tutorial.md`](docs/p2p-voice-tutorial.md)。
 
 ## 测试
 
