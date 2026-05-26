@@ -15,6 +15,19 @@
 | **Codec 同步** | `neural_audio_codec.dart` ↔ `neural-audio-codec.js` 必须始终同步，改一个必须改另一个 |
 | **Qiniu API 兼容表** | 手机端只能用 S3 端点（`*.s3.qiniucs.com`），不能用 RS 管理 API（`rs.qbox.me`）。S3 V4 预签名签名方式全部可用（GET/LIST/DELETE），上传用表单上传（Qiniu token）。参见 `qiniu\:api-table` |
 
+## Qiniu API 兼容表
+
+| 操作 | API 方式 | 端点 | 手机端 | 说明 |
+|------|---------|------|--------|------|
+| **上传** (PUT) | Qiniu 表单上传 + upload token | `upload-z0.qiniup.com` | ✅ | 和 S3 无关，用 Qiniu 原生 token |
+| **下载** (GET) | S3 V4 预签名 URL | `*.s3.<region>.qiniucs.com` | ✅ | V4 签名，需要 UNSIGNED-PAYLOAD |
+| **列目录** (LIST) | S3 V4 预签名 URL | `*.s3.<region>.qiniucs.com` | ✅ | `prefix` 参数，同 GET 签名 |
+| **删除** (DELETE) | S3 V4 预签名 URL | `*.s3.<region>.qiniucs.com` | ✅ | V4 签名 + method=DELETE |
+| **RS stat** | QBox token `rs.qbox.me` | `rs.qbox.me` | ❌ | 手机端连不通 |
+| **RS get** | QBox token `rs.qbox.me` | `rs.qbox.me` | ❌ | 同上 |
+| **RS delete** | QBox token `rs.qbox.me` | `rs.qbox.me` | ❌ | 同上 |
+| **管理 API ** | QBox token | `rs.qbox.me` | ❌ | 仅服务端可用 |
+
 ## 关键命令
 
 ```bash
