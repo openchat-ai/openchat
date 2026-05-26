@@ -9,20 +9,40 @@ import '../version.dart';
 export '../version.dart';
 
 class QiniuDirectClient {
-  static String get _ak => String.fromCharCodes([
+  static String _ak = '';
+  static String _sk = '';
+  static String _bucket = 'dapin-xp';
+  static String _endpoint = 'dapin-xp.s3.cn-east-1.qiniucs.com';
+  static String _region = 'cn-east-1';
+  static const _service = 's3';
+
+  static String get __ak => _ak.isEmpty ? (_ak = String.fromCharCodes([
     106,118,106,77,82,56,90,67,53,55,86,122,84,48,68,104,
     55,97,86,122,104,101,76,119,75,114,90,118,72,87,77,115,
     113,81,53,72,86,122,112,71,
-  ]);
-  static String get _sk => String.fromCharCodes([
+  ])) : _ak;
+  static String get __sk => _sk.isEmpty ? (_sk = String.fromCharCodes([
     116,102,109,83,49,50,86,84,70,77,95,102,115,48,78,74,
     97,77,82,72,85,119,48,57,84,86,107,87,72,65,117,90,
     120,54,119,98,45,102,73,113,
-  ]);
-  static const _bucket = 'dapin-xp';
-  static const _endpoint = 'dapin-xp.s3.cn-east-1.qiniucs.com';
-  static const _region = 'cn-east-1';
-  static const _service = 's3';
+  ])) : _sk;
+
+  static Future<void> initFromBridge(String bridgeUrl) async {
+    try {
+      final resp = await http.get(Uri.parse('$bridgeUrl/api/v1/config/storage-config'))
+          .timeout(const Duration(seconds: 5));
+      if (resp.statusCode == 200) {
+        final cfg = jsonDecode(resp.body) as Map;
+        if (cfg['accessKey'] is String && (cfg['accessKey'] as String).isNotEmpty) _ak = cfg['accessKey'] as String;
+        if (cfg['secretKey'] is String && (cfg['secretKey'] as String).isNotEmpty) _sk = cfg['secretKey'] as String;
+        if (cfg['bucket'] is String) _bucket = cfg['bucket'] as String;
+        if (cfg['endpoint'] is String) _endpoint = cfg['endpoint'] as String;
+        if (cfg['region'] is String) _region = cfg['region'] as String;
+      }
+    } catch (_) {}
+    if (_ak.isEmpty) __ak;
+    if (_sk.isEmpty) __sk;
+  }
 
   final String peerId;
   final http.Client _client = http.Client();
@@ -58,7 +78,7 @@ class QiniuDirectClient {
 
     final params = <String, String>{
       'X-Amz-Algorithm': 'AWS4-HMAC-SHA256',
-      'X-Amz-Credential': '$_ak/$dateStamp/$_region/$_service/aws4_request',
+      'X-Amz-Credential': '${__ak}/$dateStamp/$_region/$_service/aws4_request',
       'X-Amz-Date': amzDate,
       'X-Amz-Expires': expires.toString(),
       'X-Amz-SignedHeaders': 'host',
@@ -98,7 +118,7 @@ class QiniuDirectClient {
     ].join('\n');
 
     // AWS V4 signing key chain
-    final kDate = Hmac(sha256, utf8.encode('AWS4$_sk')).convert(utf8.encode(dateStamp)).bytes;
+    final kDate = Hmac(sha256, utf8.encode('AWS4${__sk}')).convert(utf8.encode(dateStamp)).bytes;
     final kRegion = Hmac(sha256, kDate).convert(utf8.encode(_region)).bytes;
     final kService = Hmac(sha256, kRegion).convert(utf8.encode(_service)).bytes;
     final kSigning = Hmac(sha256, kService).convert(utf8.encode('aws4_request')).bytes;

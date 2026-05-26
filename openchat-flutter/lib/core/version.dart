@@ -1,2 +1,2 @@
-// Auto-generated. Do not edit.
-const appVersion = 'apk-20260526T000352';
+// Version: updated by CI (gen-version.mjs) or manual release
+const appVersion = 'v0.2.0-alpha';
