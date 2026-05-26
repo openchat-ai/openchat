@@ -8,7 +8,6 @@ import '../../providers/resident_provider.dart';
 import '../../core/api/qiniu_direct_client.dart';
 import '../../core/sdui.dart';
 import 'resident_detail_screen.dart';
-import '../components/cards/app_cards.dart';
 
 class AgentHubScreen extends ConsumerStatefulWidget {
   const AgentHubScreen({super.key});
@@ -52,13 +51,52 @@ class _AgentHubScreenState extends ConsumerState<AgentHubScreen> {
           child: residentsAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => _buildEmptyState(theme, _sduiLayout?['errorState'] as Map? ?? {'icon': 'error', 'title': '加载失败'}),
-            data: (residents) => CustomScrollView(
-              slivers: [
-                _buildStatsHeader(theme, residents),
-                _buildSectionTitle(theme, _sduiLayout?['sectionTitle'] as String? ?? '居民名单', residents.length),
-                _buildResidentList(theme, residents),
-              ],
-            ),
+            data: (residents) {
+              final residentItems = residents.map((r) => {
+                'id': r.id.toString(),
+                'name': r.name,
+                'status': r.status,
+                'home': r.home,
+                'isActive': r.isActive.toString(),
+                'isDeleted': r.isDeleted.toString(),
+                'daysSince': _daysSince(r.createdAt).toString(),
+                'avatar': r.name.isNotEmpty ? r.name[0] : '?',
+              }).toList();
+              final listLayout = _sduiLayout?['listLayout'] as Map?;
+              if (listLayout != null) {
+                final sl = _sduiLayout?['stats'] as Map?;
+                final active = residents.where((r) => r.isActive).length;
+                final sleeping = residents.where((r) => r.status == 'sleeping').length;
+                final deleted = residents.where((r) => r.isDeleted).length;
+                final parser = SduiParser(onAction: (a) {
+                  if (a == 'create') _showCreateDialog(context, theme);
+                  else if (a.startsWith('navigate:')) Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => ResidentDetailScreen(residentId: a.substring(9))));
+                  else if (a.startsWith('delete:')) {
+                    final id = a.substring(7);
+                    final r = residents.where((x) => x.id.toString() == id).firstOrNull;
+                    if (r != null) _confirmDelete(context, r);
+                  }
+                }, vars: {
+                  'items': residentItems,
+                  'active': active.toString(),
+                  'sleeping': sleeping.toString(),
+                  'deleted': deleted.toString(),
+                  'sectionTitle': _sduiLayout?['sectionTitle'] as String? ?? '居民名单',
+                  'statsIcon1': sl?['icon1'] ?? 'active',
+                  'statsLabel1': sl?['label1'] ?? '活跃',
+                  'statsIcon2': sl?['icon2'] ?? 'sleep',
+                  'statsLabel2': sl?['label2'] ?? '休眠',
+                  'statsIcon3': sl?['icon3'] ?? 'check',
+                  'statsLabel3': sl?['label3'] ?? '已注销',
+                });
+                final widget = parser.parse(listLayout);
+                if (widget != null) {
+                  return SingleChildScrollView(child: widget);
+                }
+              }
+              return _buildFallbackList(theme, residents);
+            },
           ),
         ),
       ),
@@ -99,58 +137,11 @@ class _AgentHubScreenState extends ConsumerState<AgentHubScreen> {
     );
   }
 
-  Widget _buildStatsHeader(AppTheme theme, List<Resident> residents) {
-    final active = residents.where((r) => r.isActive).length;
-    final sleeping = residents.where((r) => r.status == 'sleeping').length;
-    final deleted = residents.where((r) => r.isDeleted).length;
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Row(children: [
-          Expanded(child: StatCard(label: '活跃', value: '$active', icon: Icons.play_circle_outline,
-            color: theme.success, onTap: () {})),
-          const SizedBox(width: 12),
-          Expanded(child: StatCard(label: '休眠', value: '$sleeping', icon: Icons.pending_outlined,
-            color: theme.warning, onTap: () {})),
-          const SizedBox(width: 12),
-          Expanded(child: StatCard(label: '已注销', value: '$deleted', icon: Icons.check_circle_outline,
-            color: theme.info, onTap: () {})),
-        ]),
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle(AppTheme theme, String title, int count) {
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        child: Row(children: [
-          Text(title, style: TextStyle(color: theme.textPrimary, fontSize: 18, fontWeight: FontWeight.w600)),
-          const SizedBox(width: 8),
-          Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(color: theme.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
-            child: Text('$count', style: TextStyle(color: theme.primary, fontSize: 12, fontWeight: FontWeight.w600))),
-        ]),
-      ),
-    );
-  }
-
-  Widget _buildResidentList(AppTheme theme, List<Resident> residents) {
+  Widget _buildFallbackList(AppTheme theme, List<Resident> residents) {
     if (residents.isEmpty) return _buildEmptyState(theme, _sduiLayout?['emptyState'] as Map?);
-    return SliverPadding(
-      padding: const EdgeInsets.all(16),
-      sliver: SliverList(delegate: SliverChildBuilderDelegate(
-        (context, index) => _buildResidentCard(context, theme, residents[index]),
-        childCount: residents.length,
-      )),
-    );
-  }
-
-  Widget _buildResidentCard(BuildContext context, AppTheme theme, Resident resident) {
-    final isActive = resident.isActive;
-    return GestureDetector(
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ResidentDetailScreen(residentId: resident.id))),
-      child: Container(
+    return ListView(padding: const EdgeInsets.all(16), children: residents.map((r) {
+      final isActive = r.isActive;
+      return Container(
         margin: const EdgeInsets.only(bottom: 16), padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: theme.surface.withValues(alpha: 0.5),
@@ -158,68 +149,16 @@ class _AgentHubScreenState extends ConsumerState<AgentHubScreen> {
           border: Border.all(color: isActive ? theme.gradientPrimary[0].withValues(alpha: 0.4)
             : theme.textTertiary.withValues(alpha: 0.08), width: 1)),
         child: Row(children: [
-          _buildResidentAvatar(theme, resident),
+          Text(r.name.isNotEmpty ? r.name[0] : '?',
+            style: TextStyle(color: theme.textPrimary, fontSize: 24, fontWeight: FontWeight.bold)),
           const SizedBox(width: 16),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Text(resident.name, style: TextStyle(color: theme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
-              if (isActive) ...[
-                const SizedBox(width: 8),
-                Container(width: 8, height: 8,
-                  decoration: BoxDecoration(color: theme.success, borderRadius: BorderRadius.circular(4))),
-              ],
-              if (resident.isDeleted) ...[
-                const SizedBox(width: 8),
-                Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(color: theme.textTertiary.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(4)),
-                  child: Text('已注销', style: TextStyle(color: theme.textTertiary, fontSize: 10))),
-              ],
-            ]),
-            const SizedBox(height: 6),
-            Text('ID: ${resident.id} · ${resident.home}', style: TextStyle(color: theme.textTertiary, fontSize: 12)),
-            const SizedBox(height: 10),
-            Row(children: [
-              _buildTag(resident.status, theme.gradientPrimary[0], theme),
-              const SizedBox(width: 6),
-              _buildTag('${_daysSince(resident.createdAt)} 天', theme.gradientPrimary[1], theme),
-            ]),
+            Text(r.name, style: TextStyle(color: theme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
+            Text('ID: ${r.id} · ${r.home}', style: TextStyle(color: theme.textTertiary, fontSize: 12)),
           ])),
-          if (!resident.isDeleted)
-            GestureDetector(
-              onTap: () => _confirmDelete(context, resident),
-              child: Icon(Icons.delete_outline_rounded, color: theme.textTertiary, size: 20)),
         ]),
-      ),
-    );
-  }
-
-  Widget _buildResidentAvatar(AppTheme theme, Resident resident) {
-    final colors = [
-      theme.gradientPrimary,
-      [theme.success, theme.success.withValues(alpha: 0.7)],
-      [theme.warning, theme.warning.withValues(alpha: 0.7)],
-      [theme.info, theme.info.withValues(alpha: 0.7)],
-      [Colors.purple, Colors.purple.withValues(alpha: 0.7)],
-    ];
-    final palette = colors[resident.id % colors.length];
-    return Container(
-      width: 60, height: 60,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: palette),
-        borderRadius: BorderRadius.circular(theme.radiusMedium - 4)),
-      child: Center(child: Text(resident.name.isNotEmpty ? resident.name[0] : '?',
-        style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold))),
-    );
-  }
-
-  Widget _buildTag(String text, Color color, AppTheme theme) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.3), width: 1)),
-      child: Text(text, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w500)),
-    );
+      );
+    }).toList());
   }
 
   Widget _buildCreateButton(AppTheme theme) {
