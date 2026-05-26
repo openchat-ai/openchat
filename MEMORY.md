@@ -233,3 +233,6 @@
 | R2 | voice_room 状态文本远程化（Calling/Connected 等抽取到 ui_voice.json） | Flutter 开发者 | P0-1 | ✅ 已修(R2) | Flutter 开发者 |
 | R2 | audio.json 新增 DSP 常量（fadeBytes/fadeSamples/demoDelayMs） | Qiniu/S3 专家 | P0-4 | ✅ 已修(R2) | Qiniu/S3 专家 |
 | R2 | 来电弹窗文本远程化（incomingTitle/incomingBody/acceptLabel/declineLabel） | 用户支持 | P0-3 | ✅ 已修(R2) | 用户支持 |
+| R3 | AudioConfig/VoiceUiConfig 换方案：`Map<String,dynamic>` 泛型包装，新增字段零 Dart 改动 | 架构师 | P0-1 | ✅ 已修(R3) | 架构师 |
+| R3 | 空 catch 吞异常修复（`log()` 记录错误） | 安全研究员 | P0-2 | ✅ 已修(R3) | 安全研究员 |
+| R3 | 版号宣布：v0.1.0-alpha | 技术经理 | — | ✅ 已宣布(R3) | 技术经理 |
