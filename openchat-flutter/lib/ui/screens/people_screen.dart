@@ -65,6 +65,8 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
   @override
   void dispose() {
     _pollTimer?.cancel();
+    _client?.unregister();
+    _client?.dispose();
     super.dispose();
   }
 
@@ -116,7 +118,7 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
               }).then((_) => _startPoll());
             },
             child: Text(_uiVoice.acceptLabel),
-          },
+          ),
         ],
       ),
     );
@@ -273,15 +275,7 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
         Text('Poll: ${_client!.pollIntervalMs}ms'),
       ]),
       actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
-    ));
-  }
-
-  @override
-  void dispose() {
-    _pollTimer?.cancel();
-    _client?.unregister();
-    _client?.dispose();
-    super.dispose();
+      ));
   }
 
   Widget _buildErrorView(AppTheme theme) {
