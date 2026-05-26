@@ -9,10 +9,30 @@ class SduiConfig {
     'column', 'row', 'list', 'text', 'button', 'spacer',
     'icon', 'list_tile', 'padding', 'divider', 'image', 'card',
     'sdui_fragment', 'auto', 'checkbox', 'switch', 'textfield',
-    'users_list', 's3_data',
+    'users_list', 's3_data', 'for_each',
   };
 
-  /// Validate SDUI JSON structure to prevent malformed/crafted configs.
+  /// Compile-time default configs (used when network is unavailable).
+  /// Each entry is a [pageName] → default Map.
+  static const Map<String, Map<String, dynamic>> defaults = {
+    'ui_voice': {'callingText': 'Calling {peer}...', 'connectedText': 'Connected to {peer}', 'endedText': 'Call ended', 'mutedLabel': 'MUTED', 'relayLabel': 'Qiniu relay'},
+    'ui_audio': {'mode': 'raw', 'sampleRate': 24000, 'bufferMs': 1000, 'pollMs': 800, 'fadeBytes': 240, 'fadeSamples': 48, 'demoDelayMs': 3000},
+    'ui_main': {'tabs': [{'icon': 'home', 'label': '首页', 'screen': 'home'}, {'icon': 'people', 'label': '好友', 'screen': 'people'}, {'icon': 'chat', 'label': '聊天', 'screen': 'chat'}, {'icon': 'settings', 'label': '我的', 'screen': 'settings'}]},
+    'ui_settings': {'title': 'SETTINGS', 'sections': []},
+    'ui_home': {'title': '社区动态'},
+    'ui_chat': {'title': 'Chat'},
+    'ui_agent': {'title': 'AI 居民'},
+    'ui_chat_list': {'title': 'Messages'},
+    'ui_task_detail': {'title': '任务详情'},
+    'ui_dev_ide': {'title': 'Dev Console', 'tabs': []},
+    'ui_theme_selector': {'title': '主题设置'},
+    'ui_resident_detail': {'title': '居民档案'},
+    'global': {'spacing': {'xs': 4, 'sm': 8, 'md': 12, 'lg': 16, 'xl': 24, 'xxl': 32}, 'radius': {'sm': 8, 'md': 12, 'lg': 16, 'xl': 20}},
+  };
+
+  /// Get default config for a page name.
+  static Map<String, dynamic> defaultFor(String page) => Map<String, dynamic>.from(defaults[page] ?? {});
+
   static bool isValid(dynamic node, [int depth = 0]) {
     if (depth > _maxDepth) return false;
     if (node is! Map) return false;
@@ -30,50 +50,42 @@ class SduiConfig {
     return true;
   }
 
-  /// Load config with A/B testing, validation, cache, and rollback.
-  /// [path] = 'oc/config/ui_settings.json'
-  /// [peerId] = optional, enables A/B variant selection
-  /// Returns null → caller should use hardcoded fallback.
-  static Future<Map?> load(String path, {String? peerId}) async {
+  /// Unified load: tries ui_app.json[page] → ui_{page}.json → compile-time default.
+  /// [page] = 'settings', 'home', 'agent', etc. (without 'ui_' prefix).
+  static Future<Map<String, dynamic>> load(String page) async {
+    const individualPath = 'oc/config/ui_$page.json';
     final prefs = await SharedPreferences.getInstance();
-    final cacheKey = 'sdui:$path';
-    final versionKey = 'sdui_ver:$path';
+    final cacheKey = 'sdui:$page';
 
-    Future<Map?> _fetch(String p) async {
-      try {
-        final raw = await QiniuDirectClient.fetchConfigFile(p);
-        if (raw != null && isValid(raw)) {
-          await prefs.setString(cacheKey, jsonEncode(raw));
-          await prefs.setString(versionKey, raw['version']?.toString() ?? '1');
-          return raw;
-        }
-      } catch (_) {}
-      return null;
-    }
+    // Try individual file first (fast path)
+    try {
+      final raw = await QiniuDirectClient.fetchConfigFile(individualPath);
+      if (raw != null && isValid(raw)) {
+        await prefs.setString(cacheKey, jsonEncode(raw));
+        return Map<String, dynamic>.from(raw);
+      }
+    } catch (_) {}
 
-    // 1. A/B variant (only if peerId available)
-    if (peerId != null) {
-      final variant = peerId.hashCode % 10 < 5 ? 'a' : 'b';
-      final vp = path.replaceFirst('.json', '_$variant.json');
-      final result = await _fetch(vp);
-      if (result != null) return result;
-    }
+    // Fallback: merged ui_app.json
+    try {
+      final appRaw = await QiniuDirectClient.fetchConfigFile('oc/config/ui_app.json');
+      if (appRaw is Map && appRaw[page] is Map && isValid(appRaw[page])) {
+        final data = Map<String, dynamic>.from(appRaw[page] as Map);
+        await prefs.setString(cacheKey, jsonEncode(data));
+        return data;
+      }
+    } catch (_) {}
 
-    // 2. Default path
-    final result = await _fetch(path);
-    if (result != null) return result;
-
-    // 3. Rollback: last cached config
+    // Rollback: cached
     final cached = prefs.getString(cacheKey);
     if (cached != null) {
-      try { final p = jsonDecode(cached); if (p is Map) return p; } catch (_) {}
+      try { final p = jsonDecode(cached); if (p is Map) return Map<String, dynamic>.from(p); } catch (_) {}
     }
 
-    // 4. No valid config → hardcoded fallback
-    return null;
+    // Fallback: compile-time default
+    return defaultFor(page);
   }
 
-  /// Clear cached configs (for testing / forced refresh)
   static Future<void> clearCache() async {
     final prefs = await SharedPreferences.getInstance();
     final keys = prefs.getKeys().where((k) => k.startsWith('sdui:'));

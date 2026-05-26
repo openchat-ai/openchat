@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
 import '../../core/api/qiniu_direct_client.dart';
+import '../../core/sdui_config.dart';
 import 'home_screen.dart';
 import 'agent_hub_screen.dart';
 import 'people_screen.dart';
@@ -27,8 +28,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   @override
   void initState() {
     super.initState();
-    QiniuDirectClient.fetchConfigFile('oc/config/ui_main.json')
-        .then((m) { if (mounted && m is Map) setState(() => _sduiLayout = Map<String, dynamic>.from(m)); });
+    SduiConfig.load('main').then((m) { if (mounted) setState(() => _sduiLayout = m); });
   }
 
   Widget _buildScreen(String name) {

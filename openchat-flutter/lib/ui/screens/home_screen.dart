@@ -7,6 +7,7 @@ import '../../providers/theme_provider.dart';
 import '../../providers/feed_provider.dart';
 import '../../core/api/qiniu_direct_client.dart';
 import '../../core/sdui.dart';
+import '../../core/sdui_config.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -21,8 +22,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    QiniuDirectClient.fetchConfigFile('oc/config/ui_home.json')
-        .then((m) { if (mounted && m is Map) setState(() => _sduiLayout = Map<String, dynamic>.from(m)); });
+    SduiConfig.load('home').then((m) { if (mounted) setState(() => _sduiLayout = m); });
   }
 
   IconData _iconForType(String type) {

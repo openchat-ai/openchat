@@ -14,6 +14,7 @@ import '../../core/audio/audio_processor.dart';
 import '../../core/audio/audio_config.dart';
 import '../../core/ui_voice_config.dart';
 import '../../core/sdui.dart';
+import '../../core/sdui_config.dart';
 
 class VoiceRoomScreen extends ConsumerStatefulWidget {
   const VoiceRoomScreen({super.key});
@@ -49,8 +50,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
     _client = argMap['client'] as QiniuDirectClient?;
 
     VoiceUiConfig.load().then((c) { if (mounted) setState(() => _uiVoice = c); });
-    QiniuDirectClient.fetchConfigFile('oc/config/ui_room_sdui.json')
-        .then((m) { if (mounted && m is Map) setState(() => _sduiLayout = Map<String, dynamic>.from(m)); });
+    SduiConfig.load('voice').then((m) { if (mounted) setState(() => _sduiLayout = m); });
 
     if (_targetPeerId != null && _client != null) {
       _signalTimer = Timer.periodic(const Duration(seconds: 2), (_) => _pollResponse());
