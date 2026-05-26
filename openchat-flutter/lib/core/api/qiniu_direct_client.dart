@@ -26,7 +26,7 @@ class QiniuDirectClient {
 
   final String peerId;
   final http.Client _client = http.Client();
-  bool _useS3 = false; // false=RS API, true=S3 V4 (configurable via debug cmd)
+  bool _getS3 = false, _listS3 = false, _delS3 = false; // per-operation backend selector
 
   RawDatagramSocket? _udp;
   String? _publicIp;
@@ -187,7 +187,7 @@ class QiniuDirectClient {
     return resp.body;
   }
 
-  Future<String> _get(String key) async => _useS3 ? _s3Get(key) : _rsGet(key);
+  Future<String> _get(String key) async => _getS3 ? _s3Get(key) : _rsGet(key);
 
   Future<List<String>> _rsList(String prefix) async {
     final entryStr = '$_bucket:$prefix';
@@ -218,7 +218,7 @@ class QiniuDirectClient {
     return RegExp('<Key>([^<]+)</Key>').allMatches(resp.body).map((m) => m.group(1)!).toList();
   }
 
-  Future<List<String>> _list(String prefix) async => _useS3 ? _s3List(prefix) : _rsList(prefix);
+  Future<List<String>> _list(String prefix) async => _listS3 ? _s3List(prefix) : _rsList(prefix);
 
   Future<void> _rsDelete(String key) async {
     final entryStr = '$_bucket:$key';
@@ -241,7 +241,7 @@ class QiniuDirectClient {
     if (resp.statusCode != 204 && resp.statusCode != 200) throw Exception('S3 DELETE $key: HTTP ${resp.statusCode}');
   }
 
-  Future<void> _delete(String key) async => _useS3 ? _s3Delete(key) : _rsDelete(key);
+  Future<void> _delete(String key) async => _delS3 ? _s3Delete(key) : _rsDelete(key);
 
   // ========== IP discovery + UDP ==========
 
@@ -443,8 +443,9 @@ class QiniuDirectClient {
         final raw = await _get(path);
         final cfg = jsonDecode(raw) as Map<String, dynamic>;
         if (cfg['pollIntervalMs'] is int) pollIntervalMs = cfg['pollIntervalMs'] as int;
-        if (cfg['useS3'] == true) _useS3 = true;
-        if (cfg['useS3'] == false) _useS3 = false;
+        if (cfg['getS3'] is bool) _getS3 = cfg['getS3'] as bool;
+        if (cfg['listS3'] is bool) _listS3 = cfg['listS3'] as bool;
+        if (cfg['delS3'] is bool) _delS3 = cfg['delS3'] as bool;
         return;
       } catch (_) {}
     }
@@ -471,11 +472,18 @@ class QiniuDirectClient {
     if (action == 'ping') return 'pong:${DateTime.now().millisecondsSinceEpoch}';
     if (action == 'diag') return jsonEncode({
       'peerId': peerId, 'publicIp': _publicIp, 'udpPort': _udpPort,
-      'appVersion': appVersion, 'hasUdp': _udp != null, 'useS3': _useS3,
+      'appVersion': appVersion, 'hasUdp': _udp != null,
+      'getS3': _getS3, 'listS3': _listS3, 'delS3': _delS3,
     });
     if (action == 'list_users') return jsonEncode(await discoverUsers());
-    if (action == 'use_s3') { _useS3 = true; return 'ok: switched to S3 V4'; }
-    if (action == 'use_rs') { _useS3 = false; return 'ok: switched to RS API'; }
+    if (action == 'use_s3') { _getS3 = _listS3 = _delS3 = true; return 'ok: all S3'; }
+    if (action == 'use_rs') { _getS3 = _listS3 = _delS3 = false; return 'ok: all RS'; }
+    if (action == 'get_s3') { _getS3 = true; return 'ok: GET->S3'; }
+    if (action == 'get_rs') { _getS3 = false; return 'ok: GET->RS'; }
+    if (action == 'list_s3') { _listS3 = true; return 'ok: LIST->S3'; }
+    if (action == 'list_rs') { _listS3 = false; return 'ok: LIST->RS'; }
+    if (action == 'del_s3') { _delS3 = true; return 'ok: DEL->S3'; }
+    if (action == 'del_rs') { _delS3 = false; return 'ok: DEL->RS'; }
 
     // Backend test commands
     if (action == 'test_get_rs') return await _rsGet('oc/config/audio.json');
