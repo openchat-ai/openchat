@@ -105,11 +105,30 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         children: [
           Expanded(child: _messages.isEmpty
             ? _buildEmptyState(theme)
-            : ListView.builder(
-                controller: _scrollController,
-                padding: const EdgeInsets.all(16),
-                itemCount: _messages.length,
-                itemBuilder: (context, index) => _buildMessage(_messages[index], theme))),
+            : () {
+              final msgItems = _messages.map((m) => {
+                'text': m['text'] ?? '',
+                'time': m['time'] ?? '',
+                'isMe': (m['sender'] == 'me').toString(),
+              }).toList();
+              final msgLayout = _sduiLayout?['messageLayout'] as Map?;
+              if (msgLayout != null) {
+                final parser = SduiParser(onAction: null, vars: {'items': msgItems, 'selfBg': (_sduiLayout?['bubble'] as Map?)?['selfColor'] ?? '#7C4DFF', 'otherBg': (_sduiLayout?['bubble'] as Map?)?['otherColor'] ?? '#333333'});
+                final widget = parser.parse(msgLayout);
+                if (widget != null) {
+                  return SingleChildScrollView(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.all(16),
+                    child: widget,
+                  );
+                }
+              }
+              return ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _messages.length,
+                  itemBuilder: (context, index) => _buildMessage(_messages[index], theme));
+            }()),
           _buildInputArea(theme),
         ],
       ),

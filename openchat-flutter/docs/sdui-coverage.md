@@ -9,9 +9,9 @@
 | **people** | 🟡 AppBar | ✅ | ✅ | ✅ | ✅ | ❌ |
 | **chat_list** | 🟡 AppBar | ✅ | ✅ | ✅ | ❌ | ❌ |
 | **home** | 🟡 AppBar | 🟡 for_each | ❌ | 🟡 标题/空状态/类型颜色 | 🟡 via for_each | ❌ |
-| **agent_hub** | 🟡 外壳 | ❌ | ❌ | 🟡 标题/统计标签/弹窗/空状态 | ❌ | ❌ |
-| **theme_selector** | 🟡 标题 | ❌ | ❌ | 🟡 标题 | ❌ | ❌ |
-| **chat** | 🟡 标题 | 🟡 气泡样式 | 🟡 气泡颜色/圆角 | 🟡 输入占位 | ❌ | ❌ |
+| **agent_hub** | 🟡 外壳 | 🟡 for_each | ❌ | 🟡 标题/统计标签/弹窗/空状态 | 🟡 via for_each | ❌ |
+| **theme_selector** | ✅ 外壳 | ✅ for_each | 🟡 颜色 | 🟡 标题 | ✅ via for_each | ❌ |
+| **chat** | 🟡 标题 | 🟡 for_each | 🟡 气泡颜色/圆角 | 🟡 输入占位 | 🟡 via for_each | ❌ |
 | **task_detail** | 🟡 标题 | ❌ | ❌ | 🟡 标题/节标签 | ❌ | ❌ |
 | **dev_ide** | ✅ 外壳 | ✅ 标签栏 | ❌ | ✅ 标题/标签 | ❌ | ❌ |
 | **resident_detail** | 🟡 标题 | ❌ | ❌ | 🟡 标题 | ❌ | ❌ |
