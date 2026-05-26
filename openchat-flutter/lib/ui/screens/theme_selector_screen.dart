@@ -1,13 +1,28 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
+import '../../core/api/qiniu_direct_client.dart';
 
-class ThemeSelectorScreen extends ConsumerWidget {
+class ThemeSelectorScreen extends ConsumerStatefulWidget {
   const ThemeSelectorScreen({super.key});
+  @override
+  ConsumerState<ThemeSelectorScreen> createState() => _ThemeSelectorScreenState();
+}
+
+class _ThemeSelectorScreenState extends ConsumerState<ThemeSelectorScreen> {
+  String _title = '主题设置';
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  void initState() {
+    super.initState();
+    QiniuDirectClient.fetchConfigFile('oc/config/ui_theme_selector.json')
+        .then((m) { if (mounted && m is Map && m['title'] is String) setState(() => _title = m['title'] as String); });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final currentTheme = ref.watch(currentThemeProvider);
     final currentIndex = ref.watch(currentThemeIndexProvider);
     final themeList = AppTheme.all;
@@ -16,7 +31,7 @@ class ThemeSelectorScreen extends ConsumerWidget {
       backgroundColor: currentTheme.background,
       appBar: AppBar(
         backgroundColor: currentTheme.surface,
-        title: Text('主题设置', style: TextStyle(color: currentTheme.textPrimary)),
+        title: Text(_title, style: TextStyle(color: currentTheme.textPrimary)),
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: currentTheme.textPrimary),
           onPressed: () => Navigator.pop(context),
@@ -34,34 +49,21 @@ class ThemeSelectorScreen extends ConsumerWidget {
             color: theme.surface,
             child: ListTile(
               leading: Container(
-                width: 40,
-                height: 40,
+                width: 40, height: 40,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: theme.gradientPrimary,
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                  gradient: LinearGradient(colors: theme.gradientPrimary,
+                    begin: Alignment.topLeft, end: Alignment.bottomRight),
+                  borderRadius: BorderRadius.circular(8)),
               ),
-              title: Text(
-                theme.name,
-                style: TextStyle(
-                  color: theme.textPrimary,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                ),
-              ),
-              subtitle: Text(
-                '${theme.gradientPrimary.length} colors',
-                style: TextStyle(color: theme.textTertiary, fontSize: 12),
-              ),
+              title: Text(theme.name,
+                style: TextStyle(color: theme.textPrimary,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+              subtitle: Text('${theme.gradientPrimary.length} colors',
+                style: TextStyle(color: theme.textTertiary, fontSize: 12)),
               trailing: isSelected
                   ? Icon(Icons.check_circle, color: theme.success)
                   : const SizedBox(),
-              onTap: () {
-                ref.read(currentThemeIndexProvider.notifier).state = index;
-              },
+              onTap: () => ref.read(currentThemeIndexProvider.notifier).state = index,
             ),
           );
         },
