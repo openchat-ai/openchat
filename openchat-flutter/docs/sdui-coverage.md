@@ -14,7 +14,7 @@
 | **chat** | 🟡 标题 | 🟡 for_each | 🟡 气泡颜色/圆角 | 🟡 输入占位 | 🟡 via for_each | ❌ |
 | **task_detail** | 🟡 标题 | 🟡 状态/信息项 | ❌ | 🟡 标题/状态/信息标签 | 🟡 statusItems/infoItems | ❌ |
 | **dev_ide** | ✅ 外壳 | ✅ 标签栏 | ❌ | ✅ 标题/标签 | ❌ | ❌ |
-| **resident_detail** | 🟡 标题 | ❌ | ❌ | 🟡 标题 | ❌ | ❌ |
+| **resident_detail** | ✅ 外壳+标签 | 🟡 5子模块组件化 | ❌ | 🟡 标题/标签 | 🟡 子模块数据 | ❌ |
 | **main_shell** | 🟡 FAB | 🟡 导航栏标签 | 🟡 导航栏图标 | 🟡 FAB 图标/动作 | ❌ | ❌ |
 
 ### 配置文件
