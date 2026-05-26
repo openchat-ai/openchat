@@ -63,17 +63,6 @@ class QiniuDirectClient {
     return '$_ak:${_base64UrlKeepPad(hmacSha1)}:$encoded';
   }
 
-  // Qiniu private download URL (uses same HMAC-SHA1 as upload token, no clock skew)
-  String _downloadUrl(String key) {
-    final deadline = (DateTime.now().millisecondsSinceEpoch ~/ 1000) + 3600;
-    final signStr = '/$key?e=$deadline';
-    final hmacSha1 = Hmac(sha1, utf8.encode(_sk))
-        .convert(utf8.encode(signStr))
-        .bytes;
-    final token = '$_ak:${_base64UrlKeepPad(hmacSha1)}';
-    return 'https://$_endpoint$signStr&token=$token';
-  }
-
   Future<void> _rsPut(String key, String body) async {
     final uri = Uri.parse('https://upload-z0.qiniup.com/');
     final request = http.MultipartRequest('POST', uri)
@@ -87,7 +76,8 @@ class QiniuDirectClient {
 
   Future<void> _s3Put(String key, String body) async {
     final url = _presignedUrl(key, method: 'PUT');
-    final resp = await _client.put(Uri.parse(url), headers: {'Content-Type': 'application/json'}, body: body);
+    final resp = await _client.put(Uri.parse(url), headers: {'Content-Type': 'application/json'}, body: body)
+        .timeout(const Duration(seconds: 10));
     if (resp.statusCode != 200) throw Exception('S3 PUT $key: HTTP ${resp.statusCode}');
   }
 
@@ -164,7 +154,7 @@ class QiniuDirectClient {
 
   // ===== Dual backend: RS API (default) vs S3 V4 =====
   // RS API uses HMAC-SHA1 (no clock skew), S3 V4 uses HMAC-SHA256 presigned URLs
-  // Switch via debug cmd 'use_s3' / 'use_rs', persist via oc/config/global.json
+  // Backend selected per-operation via debug cmds or oc/config/global.json
 
   Future<String> _rsGet(String key) async {
     final entryStr = '$_bucket:$key';
@@ -176,11 +166,12 @@ class QiniuDirectClient {
     final sig = base64.encode(hmacSha1).replaceAll('+', '-').replaceAll('/', '_');
     final token = '$_ak:$sig';
     final resp = await _client.get(Uri.parse('https://rs.qbox.me/get/$encodedEntry'),
-        headers: {'Authorization': 'QBox $token'});
+        headers: {'Authorization': 'QBox $token'}).timeout(const Duration(seconds: 8));
     if (resp.statusCode != 200) throw Exception('RS GET $key: HTTP ${resp.statusCode}');
     final info = jsonDecode(resp.body);
     if (info['url'] is String) {
-      final dlResp = await _client.get(Uri.parse((info['url'] as String).replaceFirst('http://', 'https://')));
+      final dlResp = await _client.get(Uri.parse((info['url'] as String).replaceFirst('http://', 'https://')))
+          .timeout(const Duration(seconds: 8));
       if (dlResp.statusCode == 200) return dlResp.body;
     }
     throw Exception('RS GET $key: no download URL');
@@ -188,7 +179,7 @@ class QiniuDirectClient {
 
   Future<String> _s3Get(String key) async {
     final url = _presignedUrl(key);
-    final resp = await _client.get(Uri.parse(url));
+    final resp = await _client.get(Uri.parse(url)).timeout(const Duration(seconds: 8));
     if (resp.statusCode != 200) throw Exception('S3 GET $key: HTTP ${resp.statusCode}');
     return resp.body;
   }
@@ -205,7 +196,7 @@ class QiniuDirectClient {
     final sig = base64.encode(hmacSha1).replaceAll('+', '-').replaceAll('/', '_');
     final token = '$_ak:$sig';
     final resp = await _client.get(Uri.parse('https://rs.qbox.me/list?bucket=$_bucket&prefix=$prefix'),
-        headers: {'Authorization': 'QBox $token'});
+        headers: {'Authorization': 'QBox $token'}).timeout(const Duration(seconds: 8));
     if (resp.statusCode != 200) throw Exception('RS LIST $prefix: HTTP ${resp.statusCode}');
     final info = jsonDecode(resp.body);
     return (info['items'] as List?)?.map((e) => (e as Map)['key'] as String).toList() ?? [];
@@ -215,11 +206,11 @@ class QiniuDirectClient {
     String? url;
     if (qiniuListUsersUrl.isNotEmpty && prefix == 'oc/users/') url = qiniuListUsersUrl;
     if (url != null) {
-      final resp = await _client.get(Uri.parse(url));
+      final resp = await _client.get(Uri.parse(url)).timeout(const Duration(seconds: 8));
       if (resp.statusCode == 200) return RegExp('<Key>([^<]+)</Key>').allMatches(resp.body).map((m) => m.group(1)!).toList();
     }
     final fallback = _presignedUrl(prefix, prefix: prefix);
-    final resp = await _client.get(Uri.parse(fallback));
+    final resp = await _client.get(Uri.parse(fallback)).timeout(const Duration(seconds: 8));
     if (resp.statusCode != 200) throw Exception('S3 LIST $prefix: HTTP ${resp.statusCode}');
     return RegExp('<Key>([^<]+)</Key>').allMatches(resp.body).map((m) => m.group(1)!).toList();
   }
@@ -236,7 +227,8 @@ class QiniuDirectClient {
     final sig = base64.encode(hmacSha1).replaceAll('+', '-').replaceAll('/', '_');
     final token = '$_ak:$sig';
     final resp = await _client.post(Uri.parse('https://rs.qbox.me/delete/$encodedEntry'),
-        headers: {'Authorization': 'QBox $token', 'Content-Length': '0'});
+        headers: {'Authorization': 'QBox $token', 'Content-Length': '0'})
+        .timeout(const Duration(seconds: 8));
     if (resp.statusCode != 200 && resp.statusCode != 204) throw Exception('RS DELETE $key: HTTP ${resp.statusCode}');
   }
 
@@ -416,7 +408,7 @@ class QiniuDirectClient {
     try {
       if (useS3) {
         final url = _presignedUrl(path);
-        final resp = await http.get(Uri.parse(url));
+        final resp = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 8));
         if (resp.statusCode == 200) return jsonDecode(resp.body) as Map?;
       } else {
         // Qiniu RS API (HMAC-SHA1), keep = padding
@@ -429,12 +421,12 @@ class QiniuDirectClient {
         final sig = base64.encode(hmacSha1).replaceAll('+', '-').replaceAll('/', '_');
         final token = '$_ak:$sig';
         final resp = await http.get(Uri.parse('https://rs.qbox.me/get/$encodedEntry'),
-            headers: {'Authorization': 'QBox $token'});
+            headers: {'Authorization': 'QBox $token'}).timeout(const Duration(seconds: 8));
         if (resp.statusCode == 200) {
           final info = jsonDecode(resp.body);
           if (info['url'] is String) {
             final dlUrl = (info['url'] as String).replaceFirst('http://', 'https://');
-            final dlResp = await http.get(Uri.parse(dlUrl));
+            final dlResp = await http.get(Uri.parse(dlUrl)).timeout(const Duration(seconds: 8));
             if (dlResp.statusCode == 200) return jsonDecode(dlResp.body) as Map?;
           }
         }
@@ -480,11 +472,9 @@ class QiniuDirectClient {
     if (action == 'diag') return jsonEncode({
       'peerId': peerId, 'publicIp': _publicIp, 'udpPort': _udpPort,
       'appVersion': appVersion, 'hasUdp': _udp != null,
-      'getS3': _getS3, 'listS3': _listS3, 'delS3': _delS3,
+      'putS3': _putS3, 'getS3': _getS3, 'listS3': _listS3, 'delS3': _delS3,
     });
     if (action == 'list_users') return jsonEncode(await discoverUsers());
-    if (action == 'use_s3') { _getS3 = _listS3 = _delS3 = true; return 'ok: all S3'; }
-    if (action == 'use_rs') { _getS3 = _listS3 = _delS3 = false; return 'ok: all RS'; }
     if (action == 'put_s3') { _putS3 = true; return 'ok: PUT->S3'; }
     if (action == 'put_rs') { _putS3 = false; return 'ok: PUT->RS'; }
     if (action == 'get_s3') { _getS3 = true; return 'ok: GET->S3'; }
