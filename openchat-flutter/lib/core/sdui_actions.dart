@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'sdui.dart';
 
 class SduiActions {
   static void handle(BuildContext context, String action,
@@ -10,15 +12,25 @@ class SduiActions {
       final rest = action.substring(9);
       final uri = Uri.tryParse(rest);
       final route = uri?.path ?? rest;
-      if (uri != null && uri.hasQuery) {
-        Navigator.pushNamed(context, route, arguments: uri.queryParameters);
-      } else {
-        Navigator.pushNamed(context, route);
-      }
+      Navigator.pushNamed(context, route, arguments: uri != null && uri.hasQuery ? uri.queryParameters : null);
       return;
     }
     if (action.startsWith('snackbar:')) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(action.substring(9))));
+      return;
+    }
+    if (action.startsWith('sdui_dialog:')) {
+      final encoded = action.substring(12);
+      try {
+        final layout = jsonDecode(utf8.decode(base64Decode(encoded)));
+        if (layout is Map) {
+          showDialog(context: context, builder: (ctx) => AlertDialog(
+            content: SizedBox(width: double.maxFinite, child: SduiParser(onAction: (a) {
+              Navigator.pop(ctx);
+            }).parse(layout)),
+          ));
+        }
+      } catch (_) {}
       return;
     }
     if (action.startsWith('dialog:')) {
@@ -30,17 +42,15 @@ class SduiActions {
       ));
       return;
     }
-    if (action.startsWith('haptic:')) {
-      return;
-    }
+    if (action.startsWith('haptic:')) { return; }
     if (action.startsWith('tel:') || action.startsWith('mailto:')) {
       Clipboard.setData(ClipboardData(text: action.substring(4)));
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('已复制: ${action.substring(4)}')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Copied: ${action.substring(4)}')));
       return;
     }
     if (action.startsWith('http://') || action.startsWith('https://')) {
       Clipboard.setData(ClipboardData(text: action));
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('链接已复制到剪贴板')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Link copied')));
       return;
     }
     if (custom?[action] != null) { custom![action]!(); return; }
