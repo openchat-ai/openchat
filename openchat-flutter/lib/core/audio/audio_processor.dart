@@ -21,8 +21,7 @@ class AudioProcessor {
   AudioPipeline? _pipeline;
   OpusCodec? _opus;
 
-  AudioMode _mode = AudioMode.neural;
-  bool _isProcessing = false;
+  AudioMode _mode;
 
   final _speakingController = StreamController<bool>.broadcast();
   final _audioLevelController = StreamController<double>.broadcast();
@@ -36,7 +35,8 @@ class AudioProcessor {
     this.sampleRate = 24000,
     this.enableDenoise = true,
     this.enableCodec = true,
-  });
+    AudioMode mode = AudioMode.raw,
+  }) : _mode = mode;
 
   Stream<bool> get speakingEvents => _speakingController.stream;
   Stream<double> get audioLevel => _audioLevelController.stream;

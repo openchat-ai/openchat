@@ -132,9 +132,8 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> with SduiPage
       _audioCfg = cfg;
       _recorder = AudioRecorder();
       _player = AudioPlayer();
-      _processor = AudioProcessor(sampleRate: cfg.sampleRate, enableDenoise: cfg.denoise, enableCodec: cfg.mode != 'raw');
-      if (cfg.mode == 'opus' && _processor != null) _processor!.setMode(AudioMode.opus);
-      if (cfg.mode == 'neural' && _processor != null) _processor!.setMode(AudioMode.neural);
+      final modeEnum = cfg.mode == 'opus' ? AudioMode.opus : cfg.mode == 'neural' ? AudioMode.neural : AudioMode.raw;
+      _processor = AudioProcessor(sampleRate: cfg.sampleRate, enableDenoise: cfg.denoise, enableCodec: cfg.mode != 'raw', mode: modeEnum);
       await _processor?.initialize();
 
       if (await _recorder!.hasPermission() != true) { _audioStarted = false; return; }
