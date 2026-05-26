@@ -241,33 +241,28 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
     if (_client == null) return;
     final items = await _client!.listAudioFilesWithSize();
     if (!mounted) return;
-    if (items.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No audio files')));
-      return;
-    }
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Audio Files'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: items.length,
-            itemBuilder: (_, i) {
-              final size = items[i]['size'] as int? ?? 0;
-              final sizeStr = size >= 1024 ? '${(size / 1024).toStringAsFixed(1)}KB' : '${size}B';
-              return ListTile(
-                title: Text((items[i]['key'] as String? ?? '').split('/').last, style: const TextStyle(fontSize: 12)),
-                trailing: Text(sizeStr, style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodySmall?.color)),
-                dense: true,
-              );
-            },
-          ),
-        ),
-        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
-      ),
-    );
+    final parser = SduiParser(vars: {
+      'files': items.map((f) => {
+        'name': (f['key'] as String? ?? '').split('/').last,
+        'size': () {
+          final s = f['size'] as int? ?? 0;
+          return s >= 1024 ? '${(s / 1024).toStringAsFixed(1)}KB' : '${s}B';
+        }(),
+      }).toList(),
+    }, onAction: null);
+    final layout = {
+      'type': 'column', 'children': [
+        {'type': 'text', 'content': 'Audio Files', 'style': {'size': 18, 'bold': true}, 'pad': 16},
+        {'type': 'for_each', 'items': 'files', 'template': {
+          'type': 'list_tile', 'title': '{{name}}', 'trailingIcon': 'info', 'trailingIconColor': '#9E9E9E',
+        }},
+      ],
+    };
+    if (!mounted) return;
+    showDialog(context: context, builder: (ctx) => AlertDialog(
+      content: SizedBox(width: double.maxFinite, child: parser.parse(layout)),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
+    ));
   }
 
   void _showDeviceInfo() {
