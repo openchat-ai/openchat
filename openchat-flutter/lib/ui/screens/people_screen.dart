@@ -10,6 +10,7 @@ import '../../core/api/qiniu_direct_client.dart';
 import '../../core/sdui.dart';
 import '../../core/sdui_config.dart';
 import '../../core/sdui_actions.dart';
+import '../../core/ui_voice_config.dart';
 
 class PeopleScreen extends ConsumerStatefulWidget {
   const PeopleScreen({super.key});
@@ -27,9 +28,12 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
   Timer? _pollTimer;
   Map? _uiConfig;
 
+  VoiceUiConfig _uiVoice = const VoiceUiConfig();
+
   @override
   void initState() {
     super.initState();
+    VoiceUiConfig.load().then((c) { if (mounted) setState(() => _uiVoice = c); });
     _init();
   }
 
@@ -98,10 +102,10 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        title: const Text('Incoming Call'),
-        content: Text('$fromPeerId is calling...'),
+        title: Text(_uiVoice.incomingTitle),
+        content: Text(_uiVoice.incomingBody_(fromPeerId)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Decline')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(_uiVoice.declineLabel)),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(ctx);
@@ -111,8 +115,8 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
                 'client': _client,
               }).then((_) => _startPoll());
             },
-            child: const Text('Accept'),
-          ),
+            child: Text(_uiVoice.acceptLabel),
+          },
         ],
       ),
     );
