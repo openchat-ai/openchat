@@ -1,30 +1,23 @@
-import 'dart:convert';
+import 'dart:developer' show log;
 import 'api/qiniu_direct_client.dart';
 
 class VoiceUiConfig {
-  final String callingText;
-  final String ringingText;
-  final String connectedText;
-  final String endedText;
-  final String mutedLabel;
-  final String relayLabel;
-  final String incomingTitle;
-  final String incomingBody;
-  final String acceptLabel;
-  final String declineLabel;
+  final Map<String, dynamic> raw;
 
-  const VoiceUiConfig({
-    this.callingText = 'Calling {peer}...',
-    this.ringingText = 'Incoming call...',
-    this.connectedText = 'Connected to {peer}',
-    this.endedText = 'Call ended',
-    this.mutedLabel = 'MUTED',
-    this.relayLabel = 'Qiniu relay',
-    this.incomingTitle = 'Incoming Call',
-    this.incomingBody = '{peer} is calling...',
-    this.acceptLabel = 'Accept',
-    this.declineLabel = 'Decline',
-  });
+  const VoiceUiConfig([this.raw = const {}]);
+
+  String getString(String key, String def) => raw[key] is String ? raw[key] as String : def;
+
+  String get callingText => getString('callingText', 'Calling {peer}...');
+  String get ringingText => getString('ringingText', 'Incoming call...');
+  String get connectedText => getString('connectedText', 'Connected to {peer}');
+  String get endedText => getString('endedText', 'Call ended');
+  String get mutedLabel => getString('mutedLabel', 'MUTED');
+  String get relayLabel => getString('relayLabel', 'Qiniu relay');
+  String get incomingTitle => getString('incomingTitle', 'Incoming Call');
+  String get incomingBody => getString('incomingBody', '{peer} is calling...');
+  String get acceptLabel => getString('acceptLabel', 'Accept');
+  String get declineLabel => getString('declineLabel', 'Decline');
 
   String calling(String peer) => callingText.replaceAll('{peer}', peer);
   String connected(String peer) => connectedText.replaceAll('{peer}', peer);
@@ -34,19 +27,9 @@ class VoiceUiConfig {
     try {
       final raw = await QiniuDirectClient.fetchConfigFile('oc/config/ui_voice.json');
       if (raw == null) return const VoiceUiConfig();
-      return VoiceUiConfig(
-        callingText: raw['callingText'] as String? ?? 'Calling {peer}...',
-        ringingText: raw['ringingText'] as String? ?? 'Incoming call...',
-        connectedText: raw['connectedText'] as String? ?? 'Connected to {peer}',
-        endedText: raw['endedText'] as String? ?? 'Call ended',
-        mutedLabel: raw['mutedLabel'] as String? ?? 'MUTED',
-        relayLabel: raw['relayLabel'] as String? ?? 'Qiniu relay',
-        incomingTitle: raw['incomingTitle'] as String? ?? 'Incoming Call',
-        incomingBody: raw['incomingBody'] as String? ?? '{peer} is calling...',
-        acceptLabel: raw['acceptLabel'] as String? ?? 'Accept',
-        declineLabel: raw['declineLabel'] as String? ?? 'Decline',
-      );
-    } catch (_) {
+      return VoiceUiConfig(raw);
+    } catch (e) {
+      log('VoiceUiConfig.load error: $e');
       return const VoiceUiConfig();
     }
   }
