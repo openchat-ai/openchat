@@ -167,6 +167,11 @@
 | R22 | COMPILATION_BOUNDARY.md 重写：85%+诚实列出 APK 场景+决策树修正 | 技术写作者 | P0-5 | ✅ 已修(R22) | 技术写作者 |
 | R22 | AGENTS.md "95%→85%" | 技术写作者 | P0-5 | ✅ 已修(R22) | 技术写作者 |
 | R22 | AK/SK + endpoint/region 硬编码（仍需 APK） | 架构师/安全研究员/Qiniu专家/SRE/竞品分析师 | P0-1 | ❌ 待修(需 Bridge 端签名代理) | 安全研究员 |
+| R23 | Bridge GET /api/v1/config/storage-config 端点 + Flutter initFromBridge() 运行时下发凭证 | 架构师/安全研究员/Qiniu专家/SRE/竞品分析师 | P0-1 | ✅ 已修(R23) | 安全研究员 |
+| R23 | _handleAction 可扩展（_customActions map + exec: prefix） | 架构师/Flutter开发者/核心工程师/竞品分析师/开源社区经理 | P0-2 | ✅ 已修(R22) | 架构师 |
+| R23 | CI flutter-build 拆分（analyze-only × build-only）+ 所有 catch 日志 | 时间管理师/测试工程师/SRE | P0-3/4 | ✅ 已修(R23) | SRE/运维 |
+| R23 | 版本宣布 v0.2.0-alpha（硬性版号 R12 过期后首次宣告） | 时间管理师/竞品分析师 | P0-5 | ✅ 已修(R23) | 时间管理师 |
+| R23 | docs/sdui-quickstart.md — 5 分钟改 UI 指南 | 用户支持/技术写作者/开源社区经理 | P0-8 | ✅ 已修(R23) | 用户支持 |
 | R21 | CI workflow_dispatch 默认 build_apk: false + 条件检查 inputs.build_apk | 测试工程师/SRE/Git专家 | P0-4 | ✅ 已修(R21) | 测试工程师 |
 | R21 | COMPILATION_BOUNDARY.md 诚实标注 voice_room 非 SDUI（P0-2 12票承认"当前无法零APK"） | 技术写作者/竞品分析师 | P1-7 | ✅ 已修(R21) | 技术写作者 |
 | R20 | ui_design_system.md 更新日期 + 清理旧版引用 | 技术写作者/竞品分析师 | P2-12 | ✅ 已修(R20) | 技术写作者 |

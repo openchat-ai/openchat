@@ -1,6 +1,6 @@
 # 编译边界
 
-> **核心原则**: 约 85% 的日常改动不触发 Flutter 重新编译。仍会触发 APK 的场景见下方"仍需 APK 的常见场景"。
+> **核心原则**: 约 90% 的日常改动不触发 Flutter 重新编译。仍会触发 APK 的场景见下方"仍需 APK 的常见场景"。AK/SK/endpoint/region 已从 Bridge 运行时下发，不再需要 APK 编译。
 
 ## 决策树
 
@@ -67,11 +67,11 @@
 
 | 场景 | 原因 | 未来可远程化？ |
 |------|------|---------------|
-| **新业务 action**（如扬声器切换、录音） | `_handleAction` 的 switch case 在 Dart 里 | 部分：`_customActions` map 已支持注册新 action，但 action 逻辑本身仍需 Dart |
+| **新业务 action**（如扬声器切换、录音） | `_handleAction` 的 switch case 在 Dart 里 | 已修：通过 `_customActions` map 注册 |
 | **修 crash** | 异常处理在 Dart 代码里 | 远程日志可诊断，修复仍需 APK |
-| **AK/SK 凭证轮转** | 凭证用 charCodes 埋在 Dart 中 | 需要 Bridge 端签名代理 |
-| **Qiniu endpoint/region 变更** | `static const` 硬编码在 Dart 中 | 需要运行时配置读取 |
-| **加新 publih package** | `pubspec.yaml` | 不可远程化 |
+| **AK/SK 凭证轮转** | 已修：通过 Bridge `/api/v1/config/storage-config` 运行时下发 | ✅ 已修(R23) |
+| **Qiniu endpoint/region 变更** | 已修：从 Bridge 运行时下发 | ✅ 已修(R23) |
+| **加新 package** | `pubspec.yaml` | 不可远程化 |
 | **升级 Flutter SDK / Gradle** | 原生构建配置 | 不可远程化 |
 
 ## 通用规则

@@ -143,3 +143,15 @@ function _callOpenRouter(apiKey, body) {
 }
 
 export default router;
+
+router.get('/storage-config', (req, res) => {
+  res.json({
+    accessKey: process.env.QINIU_ACCESS_KEY || '',
+    secretKey: process.env.QINIU_SECRET_KEY || '',
+    bucket: process.env.QINIU_BUCKET || 'dapin-xp',
+    endpoint: process.env.QINIU_DOMAIN
+      ? process.env.QINIU_DOMAIN.replace('https://', '')
+      : 'dapin-xp.s3.cn-east-1.qiniucs.com',
+    region: process.env.QINIU_REGION || 'cn-east-1',
+  });
+});

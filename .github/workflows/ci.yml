@@ -28,11 +28,11 @@ jobs:
       flutter:
         - 'openchat-flutter/**'
       flutter-build:
-        - 'openchat-flutter/lib/**/*.dart'
         - 'openchat-flutter/pubspec.yaml'
         - 'openchat-flutter/pubspec.lock'
         - 'openchat-flutter/android/**'
         - 'openchat-flutter/ios/**'
+        - 'openchat-flutter/lib/**/*.dart'
       bridge:
               - 'bridge/**'
 
