@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:async';
 import '../../core/theme/app_theme.dart';
@@ -15,7 +15,7 @@ class ChatListScreen extends ConsumerStatefulWidget {
   ConsumerState<ChatListScreen> createState() => _ChatListScreenState();
 }
 
-class _ChatListScreenState extends ConsumerState<ChatListScreen> with SduiPageState {
+class _ChatListScreenState extends ConsumerState<ChatListScreen> with AppSduiPageState {
   @override
   String get sduiPage => 'chat_list';
   StreamSubscription? _wsSub;

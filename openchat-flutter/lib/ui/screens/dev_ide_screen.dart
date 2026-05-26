@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,7 +15,7 @@ class DevIdeScreen extends ConsumerStatefulWidget {
   ConsumerState<DevIdeScreen> createState() => _DevIdeScreenState();
 }
 
-class _DevIdeScreenState extends ConsumerState<DevIdeScreen> with SduiPageState {
+class _DevIdeScreenState extends ConsumerState<DevIdeScreen> with AppSduiPageState {
   @override
   String get sduiPage => 'dev_ide';
   int _tab = 0;

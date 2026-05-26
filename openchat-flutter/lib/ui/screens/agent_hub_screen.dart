@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
@@ -16,7 +16,7 @@ class AgentHubScreen extends ConsumerStatefulWidget {
   ConsumerState<AgentHubScreen> createState() => _AgentHubScreenState();
 }
 
-class _AgentHubScreenState extends ConsumerState<AgentHubScreen> with SduiPageState {
+class _AgentHubScreenState extends ConsumerState<AgentHubScreen> with AppSduiPageState {
   @override
   String get sduiPage => 'agent';
 
@@ -24,7 +24,7 @@ class _AgentHubScreenState extends ConsumerState<AgentHubScreen> with SduiPageSt
   Widget build(BuildContext context) {
     final theme = ref.watch(currentThemeProvider);
     final residentsAsync = ref.watch(residentProvider);
-    final title = sduiLayout['title'] as String? ?? 'AI 居民';
+    final title = sduiLayout['title'] as String? ?? 'AI 灞呮皯';
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -44,7 +44,7 @@ class _AgentHubScreenState extends ConsumerState<AgentHubScreen> with SduiPageSt
         child: SafeArea(
           child: residentsAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => _buildEmptyState(theme, sduiLayout['errorState'] as Map? ?? {'icon': 'error', 'title': '加载失败'}),
+            error: (e, _) => _buildEmptyState(theme, sduiLayout['errorState'] as Map? ?? {'icon': 'error', 'title': '鍔犺浇澶辫触'}),
             data: (residents) {
               final residentItems = residents.map((r) => {
                 'id': r.id.toString(),
@@ -76,13 +76,13 @@ class _AgentHubScreenState extends ConsumerState<AgentHubScreen> with SduiPageSt
                   'active': active.toString(),
                   'sleeping': sleeping.toString(),
                   'deleted': deleted.toString(),
-                  'sectionTitle': sduiLayout['sectionTitle'] as String? ?? '居民名单',
+                  'sectionTitle': sduiLayout['sectionTitle'] as String? ?? '灞呮皯鍚嶅崟',
                   'statsIcon1': sl?['icon1'] ?? 'active',
-                  'statsLabel1': sl?['label1'] ?? '活跃',
+                  'statsLabel1': sl?['label1'] ?? '娲昏穬',
                   'statsIcon2': sl?['icon2'] ?? 'sleep',
-                  'statsLabel2': sl?['label2'] ?? '休眠',
+                  'statsLabel2': sl?['label2'] ?? '浼戠湢',
                   'statsIcon3': sl?['icon3'] ?? 'check',
-                  'statsLabel3': sl?['label3'] ?? '已注销',
+                  'statsLabel3': sl?['label3'] ?? '宸叉敞閿€',
                 });
                 final widget = parser.parse(listLayout);
                 if (widget != null) {
@@ -103,7 +103,7 @@ class _AgentHubScreenState extends ConsumerState<AgentHubScreen> with SduiPageSt
       return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
         Icon(Icons.person_outline, color: theme.textTertiary, size: 64),
         const SizedBox(height: 16),
-        Text('还没有 AI 居民', style: TextStyle(color: theme.textSecondary, fontSize: 16)),
+        Text('杩樻病鏈?AI 灞呮皯', style: TextStyle(color: theme.textSecondary, fontSize: 16)),
       ]));
     }
     final parser = SduiParser(vars: {}, onAction: null);
@@ -148,7 +148,7 @@ class _AgentHubScreenState extends ConsumerState<AgentHubScreen> with SduiPageSt
           const SizedBox(width: 16),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(r.name, style: TextStyle(color: theme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
-            Text('ID: ${r.id} · ${r.home}', style: TextStyle(color: theme.textTertiary, fontSize: 12)),
+            Text('ID: ${r.id} 路 ${r.home}', style: TextStyle(color: theme.textTertiary, fontSize: 12)),
           ])),
         ]),
       );
@@ -165,7 +165,7 @@ class _AgentHubScreenState extends ConsumerState<AgentHubScreen> with SduiPageSt
         onPressed: () => _showCreateDialog(context, theme),
         backgroundColor: Colors.transparent, elevation: 0,
         icon: const Icon(Icons.person_add_rounded, color: Colors.white),
-        label: const Text('新居民', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+        label: const Text('鏂板眳姘?, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
       ),
     );
   }
@@ -177,11 +177,11 @@ class _AgentHubScreenState extends ConsumerState<AgentHubScreen> with SduiPageSt
       builder: (ctx) => AlertDialog(
         backgroundColor: theme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(sduiLayout['createTitle'] as String? ?? '创建 AI 居民', style: TextStyle(color: theme.textPrimary)),
+        title: Text(sduiLayout['createTitle'] as String? ?? '鍒涘缓 AI 灞呮皯', style: TextStyle(color: theme.textPrimary)),
         content: TextField(
           controller: controller, autofocus: true,
           decoration: InputDecoration(
-            hintText: sduiLayout['createHint'] as String? ?? '输入名字（留空自动生成）',
+            hintText: sduiLayout['createHint'] as String? ?? '杈撳叆鍚嶅瓧锛堢暀绌鸿嚜鍔ㄧ敓鎴愶級',
             hintStyle: TextStyle(color: theme.textTertiary),
             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: theme.textTertiary.withValues(alpha: 0.2))),
@@ -190,12 +190,12 @@ class _AgentHubScreenState extends ConsumerState<AgentHubScreen> with SduiPageSt
           style: TextStyle(color: theme.textPrimary)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx),
-            child: Text('取消', style: TextStyle(color: theme.textSecondary))),
+            child: Text('鍙栨秷', style: TextStyle(color: theme.textSecondary))),
           TextButton(onPressed: () {
             final name = controller.text.trim();
             ref.read(residentProvider.notifier).create(name: name.isEmpty ? null : name);
             Navigator.pop(ctx);
-          }, child: Text('创建', style: TextStyle(color: theme.primary))),
+          }, child: Text('鍒涘缓', style: TextStyle(color: theme.primary))),
         ],
       ),
     );
@@ -203,11 +203,11 @@ class _AgentHubScreenState extends ConsumerState<AgentHubScreen> with SduiPageSt
 
   void _confirmDelete(BuildContext context, Resident resident) {
     showDialog(context: context, builder: (ctx) => AlertDialog(
-      title: const Text('确认注销'), content: Text('确定要注销「${resident.name}」吗？'),
+      title: const Text('纭娉ㄩ攢'), content: Text('纭畾瑕佹敞閿€銆?{resident.name}銆嶅悧锛?),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('鍙栨秷')),
         TextButton(onPressed: () { ref.read(residentProvider.notifier).delete(resident.id); Navigator.pop(ctx); },
-          child: const Text('注销', style: TextStyle(color: Colors.red))),
+          child: const Text('娉ㄩ攢', style: TextStyle(color: Colors.red))),
       ],
     ));
   }

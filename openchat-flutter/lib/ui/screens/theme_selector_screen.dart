@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
@@ -12,7 +12,7 @@ class ThemeSelectorScreen extends ConsumerStatefulWidget {
   ConsumerState<ThemeSelectorScreen> createState() => _ThemeSelectorScreenState();
 }
 
-class _ThemeSelectorScreenState extends ConsumerState<ThemeSelectorScreen> with SduiPageState {
+class _ThemeSelectorScreenState extends ConsumerState<ThemeSelectorScreen> with AppSduiPageState {
   @override
   String get sduiPage => 'theme_selector';
 
@@ -51,7 +51,7 @@ class _ThemeSelectorScreenState extends ConsumerState<ThemeSelectorScreen> with 
       backgroundColor: currentTheme.background,
       appBar: AppBar(
         backgroundColor: currentTheme.surface,
-        title: Text(sduiStr('title', '主题设置'), style: TextStyle(color: currentTheme.textPrimary)),
+        title: Text(sduiStr('title', '涓婚璁剧疆'), style: TextStyle(color: currentTheme.textPrimary)),
         leading: IconButton(icon: Icon(Icons.arrow_back, color: currentTheme.textPrimary), onPressed: () => Navigator.pop(context)),
       ),
       body: parser.parse(layout) ?? ListView.builder(
