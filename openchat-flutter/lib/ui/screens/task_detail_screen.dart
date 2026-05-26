@@ -176,128 +176,75 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
   }
 
   Widget _buildStatusSection(AppTheme theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '任务状态',
-          style: TextStyle(
-            color: theme.textPrimary,
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: theme.surface.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(theme.radiusMedium),
-            border: Border.all(
-              color: theme.textTertiary.withValues(alpha: 0.1),
-              width: 1,
-            ),
-          ),
-          child: Column(
-            children: [
-              _buildStatusItem('分析代码', '已完成', theme.success, theme),
-              const SizedBox(height: 12),
-              _buildStatusItem('检测漏洞', '已完成', theme.success, theme),
-              const SizedBox(height: 12),
-              _buildStatusItem('性能评估', '进行中', theme.warning, theme),
-              const SizedBox(height: 12),
-              _buildStatusItem('生成报告', '待开始', theme.textTertiary, theme),
-            ],
-          ),
-        ),
-      ],
-    );
+    final label = _sduiLayout?['statusLabel'] as String? ?? '任务状态';
+    final items = (_sduiLayout?['statusItems'] as List?)?.map((e) {
+      if (e is! Map) return <String, String>{};
+      return {'label': e['label'] as String? ?? '', 'status': e['status'] as String? ?? '', 'color': _statusColor(e['status'] as String? ?? '')};
+    }).toList() ?? [
+      {'label': '分析代码', 'status': '已完成', 'color': '#4CAF50'},
+      {'label': '检测漏洞', 'status': '已完成', 'color': '#4CAF50'},
+      {'label': '性能评估', 'status': '进行中', 'color': '#FF9800'},
+      {'label': '生成报告', 'status': '待开始', 'color': '#9E9E9E'},
+    ];
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label, style: TextStyle(color: theme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
+      const SizedBox(height: 12),
+      Container(padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(color: theme.surface.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(theme.radiusMedium), border: Border.all(color: theme.textTertiary.withValues(alpha: 0.1))),
+        child: _buildForEach(items, (item, _) => _buildStatusItem(item, theme)),
+      ),
+    ]);
   }
 
-  Widget _buildStatusItem(String label, String status, Color color, AppTheme theme) {
-    final isCompleted = status == '已完成';
-    return Row(
-      children: [
-        Container(
-          width: 24,
-          height: 24,
-          decoration: BoxDecoration(
-            color: isCompleted ? color : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isCompleted ? color : theme.textTertiary,
-              width: 2,
-            ),
-          ),
-          child: isCompleted
-              ? const Icon(Icons.check, color: Colors.white, size: 16)
-              : null,
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: theme.textPrimary,
-              fontSize: 14,
-            ),
-          ),
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            status,
-            style: TextStyle(
-              color: color,
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-      ],
-    );
+  String _statusColor(String status) => status == '已完成' ? '#4CAF50' : status == '进行中' ? '#FF9800' : '#9E9E9E';
+
+  Widget _buildForEach(List<Map<String, String>> items, Widget Function(Map<String, String>, int) builder) {
+    return Column(children: items.asMap().entries.map((e) {
+      final sep = e.key > 0 ? const SizedBox(height: 12) : const SizedBox();
+      return Column(children: [sep, builder(e.value, e.key)]);
+    }).toList());
+  }
+
+  Widget _buildStatusItem(Map<String, String> item, AppTheme theme) {
+    final isCompleted = item['status'] == '已完成';
+    final color = _hexOr(item['color'], isCompleted ? theme.success : theme.textTertiary);
+    return Row(children: [
+      Container(width: 24, height: 24,
+        decoration: BoxDecoration(color: isCompleted ? color : Colors.transparent, borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: isCompleted ? color : theme.textTertiary, width: 2)),
+        child: isCompleted ? const Icon(Icons.check, color: Colors.white, size: 16) : null),
+      const SizedBox(width: 12),
+      Expanded(child: Text(item['label'] ?? '', style: TextStyle(color: theme.textPrimary, fontSize: 14))),
+      Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
+        child: Text(item['status'] ?? '', style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w500))),
+    ]);
+  }
+
+  Color _hexOr(String? hex, Color fallback) {
+    if (hex == null) return fallback;
+    try { return Color(int.parse(hex.replaceAll('#', '0xFF'))); } catch (_) { return fallback; }
   }
 
   Widget _buildInfoSection(AppTheme theme) {
     final infoLabel = _sduiLayout?['infoLabel'] as String? ?? '基本信息';
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(infoLabel, style: TextStyle(
-            color: theme.textPrimary,
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: theme.surface.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(theme.radiusMedium),
-            border: Border.all(
-              color: theme.textTertiary.withValues(alpha: 0.1),
-              width: 1,
-            ),
-          ),
-          child: Column(
-            children: [
-              _buildInfoRow('执行者', 'AI Agent', theme),
-              const SizedBox(height: 10),
-              _buildInfoRow('优先级', '高', theme),
-              const SizedBox(height: 10),
-              _buildInfoRow('预计耗时', '15 分钟', theme),
-              const SizedBox(height: 10),
-              _buildInfoRow('截止日期', '2024-01-20', theme),
-            ],
-          ),
-        ),
-      ],
-    );
+    final items = (_sduiLayout?['infoItems'] as List?)?.map((e) {
+      if (e is! Map) return ['', ''];
+      return [(e['label'] as String? ?? ''), (e['value'] as String? ?? '')];
+    }).toList() ?? [
+      ['执行者', 'AI Agent'], ['优先级', '高'], ['预计耗时', '15 分钟'], ['截止日期', '2024-01-20'],
+    ];
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(infoLabel, style: TextStyle(color: theme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
+      const SizedBox(height: 12),
+      Container(padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(color: theme.surface.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(theme.radiusMedium), border: Border.all(color: theme.textTertiary.withValues(alpha: 0.1))),
+        child: Column(children: items.asMap().entries.map((e) {
+          final sep = e.key > 0 ? const SizedBox(height: 10) : const SizedBox();
+          return Column(children: [sep, _buildInfoRow(e.value[0], e.value[1], theme)]);
+        }).toList()),
+      ),
+    ]);
   }
 
   Widget _buildInfoRow(String label, String value, AppTheme theme) {
