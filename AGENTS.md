@@ -26,10 +26,10 @@
 | **下载** (GET) | S3 V4 预签名 URL | `*.s3.<region>.qiniucs.com` | ✅ | V4 签名，需要 UNSIGNED-PAYLOAD |
 | **列目录** (LIST) | S3 V4 预签名 URL | `*.s3.<region>.qiniucs.com` | ✅ | `prefix` 参数，同 GET 签名 |
 | **删除** (DELETE) | S3 V4 预签名 URL | `*.s3.<region>.qiniucs.com` | ✅ | V4 签名 + method=DELETE |
-| **RS stat** | QBox token `rs.qbox.me` | `rs.qbox.me` | ❌ | 手机端连不通 |
-| **RS get** | QBox token `rs.qbox.me` | `rs.qbox.me` | ❌ | 同上 |
-| **RS delete** | QBox token `rs.qbox.me` | `rs.qbox.me` | ❌ | 同上 |
-| **管理 API ** | QBox token | `rs.qbox.me` | ❌ | 仅服务端可用 |
+| **RS stat** | — | `rs.qbox.me` | ❌ 已从客户端删除 | 仅服务端可用 |
+| **RS get** | — | `rs.qbox.me` | ❌ 已从客户端删除 | 同上 |
+| **RS delete** | — | `rs.qbox.me` | ❌ 已从客户端删除 | 同上 |
+| **管理 API** | — | `rs.qbox.me` | ❌ 已从客户端删除 | 仅服务端可用 |
 
 ## 关键命令
 

@@ -8,7 +8,7 @@ on:
       build_apk:
         description: 'Build APK'
         type: boolean
-        default: true
+        default: false
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -31,7 +31,7 @@ jobs:
 
   flutter-check:
     needs: changes
-    if: ${{ needs.changes.outputs.flutter == 'true' || github.event_name == 'workflow_dispatch' }}
+    if: ${{ needs.changes.outputs.flutter == 'true' || (github.event_name == 'workflow_dispatch' && inputs.build_apk) }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -74,7 +74,7 @@ jobs:
 
   flutter-apk:
     needs: [changes, flutter-check]
-    if: ${{ needs.changes.outputs.flutter == 'true' || github.event_name == 'workflow_dispatch' }}
+    if: ${{ needs.changes.outputs.flutter == 'true' || (github.event_name == 'workflow_dispatch' && inputs.build_apk) }}
     runs-on: ubuntu-latest
     permissions:
       contents: write

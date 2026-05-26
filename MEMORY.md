@@ -157,6 +157,9 @@
 | R20 | COMPILATION_BOUNDARY.md 补充 CI paths-ignore: docs/** | 架构师/测试工程师/SRE | P1-5 | ✅ 已修(R20) | 架构师 |
 | R20 | version.dart 硬编码预签名 URL 删除，改为运行时 _presignedUrl() | Qiniu/S3专家/Git专家/SRE | P1-9 | ✅ 已修(R20) | Qiniu/S3专家 |
 | R20 | qiniu-direct-arch.md 补充音频文件 ACL 说明 + 删除过期 UDP hole punch 描述 | 安全研究员/Qiniu专家/测试工程师 | P1-10 | ✅ 已修(R20) | 安全研究员 |
+| R21 | RS API 残留代码从 Flutter 客户端完全删除（_rsPut/_rsGet/_rsList/_rsDelete + _uploadToken + 4 个 per-op flag），默认全走 S3 V4 | 安全研究员/Qiniu专家/核心工程师 | P1-8 | ✅ 已修(R21) | 安全研究员 |
+| R21 | CI workflow_dispatch 默认 build_apk: false + 条件检查 inputs.build_apk | 测试工程师/SRE/Git专家 | P0-4 | ✅ 已修(R21) | 测试工程师 |
+| R21 | COMPILATION_BOUNDARY.md 诚实标注 voice_room 非 SDUI（P0-2 12票承认"当前无法零APK"） | 技术写作者/竞品分析师 | P1-7 | ✅ 已修(R21) | 技术写作者 |
 | R20 | ui_design_system.md 更新日期 + 清理旧版引用 | 技术写作者/竞品分析师 | P2-12 | ✅ 已修(R20) | 技术写作者 |
 | R20 | 双机端到端语音实测 | 时间管理师/AI研究员/核心工程师 | P0-4 | ⚠️ 待执行 | 用户支持+竞品分析师 |
 
