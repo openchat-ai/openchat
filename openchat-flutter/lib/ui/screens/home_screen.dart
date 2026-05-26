@@ -98,6 +98,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               if (feed.isEmpty) {
                 return _buildEmptyState(theme, _sduiLayout?['emptyState'] as Map?);
               }
+              final feedItems = feed.map((item) => {
+                'name': item.residentName,
+                'role': item.agentRole ?? '',
+                'message': item.message,
+                'summary': item.summary ?? '',
+                'timeAgo': _timeAgo(item.timestamp),
+                'typeIcon': _sduiLayout?['icons'] is Map ? (_sduiLayout!['icons'] as Map)[item.type] as String? ?? 'circle' : 'circle',
+                'typeColor': item.type == 'born' ? '#7C4DFF' :
+                  item.type == 'awake' ? '#FF9800' :
+                  item.type == 'task_done' ? '#4CAF50' :
+                  item.type == 'task_failed' ? '#F44336' : '#7C4DFF',
+                'showRole': item.agentRole != null && item.agentRole != 'custom',
+              }).toList();
+              final layout = _sduiLayout?['feedLayout'] as Map?;
+              if (layout != null) {
+                final parser = SduiParser(onAction: null, vars: {'items': feedItems});
+                final widget = parser.parse(layout);
+                if (widget != null) {
+                  return SingleChildScrollView(padding: const EdgeInsets.all(16), child: widget);
+                }
+              }
               return ListView.builder(
                 padding: const EdgeInsets.all(16),
                 itemCount: feed.length,

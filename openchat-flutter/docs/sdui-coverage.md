@@ -8,8 +8,8 @@
 | **settings** | 🟡 AppBar | ✅ | ✅ | ✅ | — | ❌ |
 | **people** | 🟡 AppBar | ✅ | ✅ | ✅ | ✅ | ❌ |
 | **chat_list** | 🟡 AppBar | ✅ | ✅ | ✅ | ❌ | ❌ |
-| **home** | 🟡 AppBar | ❌ | ❌ | 🟡 标题 | ❌ | ❌ |
-| **agent_hub** | ✅ 外壳 | ❌ | ❌ | ✅ 标题/统计标签/弹窗/空状态 | ❌ | ❌ |
+| **home** | 🟡 AppBar | 🟡 for_each | ❌ | 🟡 标题/空状态/类型颜色 | 🟡 via for_each | ❌ |
+| **agent_hub** | 🟡 外壳 | ❌ | ❌ | 🟡 标题/统计标签/弹窗/空状态 | ❌ | ❌ |
 | **theme_selector** | 🟡 标题 | ❌ | ❌ | 🟡 标题 | ❌ | ❌ |
 | **chat** | 🟡 标题 | 🟡 气泡样式 | 🟡 气泡颜色/圆角 | 🟡 输入占位 | ❌ | ❌ |
 | **task_detail** | 🟡 标题 | ❌ | ❌ | 🟡 标题/节标签 | ❌ | ❌ |

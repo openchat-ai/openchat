@@ -113,6 +113,7 @@ class SduiParser {
         if (path != null) return SduiFragmentWidget(path: path, onAction: onAction);
         return const SizedBox();
       case 's3_data': return _s3Data(node);
+      case 'for_each': return _forEachNode(node, _vars, onAction);
       default: return null;
     }
   }
@@ -350,4 +351,19 @@ class _S3DataWidgetState extends State<_S3DataWidget> {
     );
     return sub.parse(widget.template) ?? const SizedBox();
   }
+}
+
+Widget _forEachNode(Map m, Map<String, dynamic> vars, void Function(String)? onAction) {
+  final key = m['items'] as String?;
+  final template = m['template'] as Map?;
+  if (key == null || template == null) return const SizedBox();
+  final items = vars[key];
+  if (items is! List) return const SizedBox();
+  return Column(
+    children: items.map((item) {
+      if (item is! Map) return const SizedBox();
+      final sub = SduiParser(onAction: onAction, vars: Map<String, dynamic>.from(item));
+      return sub.parse(template) ?? const SizedBox();
+    }).toList(),
+  );
 }
