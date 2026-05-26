@@ -41,10 +41,11 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
     _client = QiniuDirectClient(peerId: peerId);
     try {
       await _client!.register().timeout(const Duration(seconds: 8));
-      await _client!.fetchConfig();
-      _uiConfig = await SduiConfig.load('oc/config/ui_people.json', peerId: peerId);
+      await _client!.fetchConfig().timeout(const Duration(seconds: 8));
+      _uiConfig = await SduiConfig.load('oc/config/ui_people.json', peerId: peerId)
+          .timeout(const Duration(seconds: 8));
       _pollTimer = Timer.periodic(Duration(milliseconds: _client!.pollIntervalMs), (_) => _pollUsers());
-      await _pollUsers();
+      await _pollUsers().timeout(const Duration(seconds: 10));
     } catch (e) {
       _client?.dispose();
       if (mounted) setState(() { _error = e.toString(); _loading = false; });
@@ -55,21 +56,22 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
     if (!mounted) return;
     setState(() => _refreshing = true);
     try {
-      final users = await _client!.discoverUsers();
+      final users = await _client!.discoverUsers().timeout(const Duration(seconds: 8));
       if (!mounted) return;
       setState(() {
         _users = users.where((u) => u['peerId'] != _client!.peerId).toList();
         _error = null;
         _loading = false;
       });
-      final newConfig = await SduiConfig.load('oc/config/ui_people.json', peerId: _client!.peerId);
+      final newConfig = await SduiConfig.load('oc/config/ui_people.json', peerId: _client!.peerId)
+          .timeout(const Duration(seconds: 5));
       if (newConfig != null) _uiConfig = newConfig;
-      final signals = await _client!.pollIncoming();
+      final signals = await _client!.pollIncoming().timeout(const Duration(seconds: 8));
       for (final s in signals) {
         final from = s['fromPeerId'] as String?;
         if (from != null && mounted) _showIncomingCall(from);
       }
-      await _client!.pollDebug();
+      await _client!.pollDebug().timeout(const Duration(seconds: 8));
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = e.toString());

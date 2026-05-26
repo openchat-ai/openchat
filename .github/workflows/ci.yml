@@ -107,8 +107,20 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         working-directory: .
         run: |
+          # Delete all old APK releases (keep versioned tags like v0.1.0)
+          for RELEASE in $(gh release list --limit 50 --json tagName --jq '.[].tagName'); do
+            if echo "$RELEASE" | grep -q '^apk-'; then
+              gh release delete "$RELEASE" --yes
+              git push --delete origin "refs/tags/$RELEASE" 2>/dev/null || true
+            fi
+          done
+          # Create new release
           TAG="apk-$(date +%Y%m%d-%H%M%S)"
           gh release create "$TAG" \
             --title "OpenChat APK $(date +%Y-%m-%d)" \
             --generate-notes \
             "openchat-flutter/build/app/outputs/flutter-apk/openchat.apk"
+      - name: Clean old workflow runs on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run list --branch main --limit 20 --json databaseId --jq '.[].databaseId' | while read id; do if [ "$id" != "${{ github.run_id }}" ]; then gh run delete "$id" --yes 2>/dev/null || true; fi; done
