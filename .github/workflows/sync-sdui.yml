@@ -1,0 +1,27 @@
+name: Sync sdui_engine
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/sdui_engine/**'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Push to standalone repo
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          cd packages/sdui_engine
+          git init
+          git config user.name "openchat-ai"
+          git config user.email "2338953@qq.com"
+          git add .
+          git commit -m "sync from monorepo $(date +%Y-%m-%d)"
+          git remote add origin https://x-access-token:${GH_TOKEN}@github.com/openchat-ai/sdui_engine.git
+          git push -u origin main --force
