@@ -146,6 +146,8 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
 
   void _handleFileAction(String action) {
     if (_client == null) return;
+    final qIdx = action.indexOf('?');
+    final params = qIdx >= 0 ? Uri.splitQueryString(action.substring(qIdx + 1)) : <String, String>{};
     if (action.startsWith('file:list?')) {
       _client!.listFiles(params['prefix'] ?? '').then((files) { if (!mounted) return; _showSduiDialog({'type': 'column', 'children': [{'type': 'text', 'content': 'Files: ${params['prefix'] ?? ""}', 'style': {'bold': true}, 'pad': 8}, {'type': 'for_each', 'items': 'files', 'template': {'type': 'list_tile', 'title': '{{name}}'}}]}, {'files': files.map((f) => {'name': f.split('/').last}).toList()}); });
     } else if (action.startsWith('file:delete?')) {
