@@ -3,30 +3,34 @@
 A server-driven UI engine for Flutter. Render UI from JSON — no compile needed.
 
 ```dart
-final parser = SduiParser(
-  onAction: (action) => print('Button tapped: $action'),
+final widget = SduiParser(
+  onAction: (a) => print('Tapped: $a'),
   vars: {'name': 'Alice'},
-);
-
-final widget = parser.parse({
+).parse({
   'type': 'column',
   'children': [
     {'type': 'text', 'content': 'Hello {{name}}', 'style': {'size': 24}},
-    {'type': 'button', 'content': 'Click', 'action': 'hello'},
+    {'type': 'button', 'content': 'Click', 'action': 'hello', 'color': '#7C4DFF'},
   ],
 });
 ```
 
 ## Features
 
-- 20 UI types: column, row, text, button, icon, card, image, list, list_tile, textfield, checkbox, switch, spacer, divider, padding, auto, for_each, sdui_fragment, s3_data, auto
-- Conditional rendering (`if:`)
-- Template variables (`{{var}}`)
-- Data list iteration (`for_each`)
-- Lifecycle hooks (`onUnmount`)
-- Gradient backgrounds, border radius, border colors
-- 40+ built-in icons, extensible
-- Global style tokens (spacing / radius / section headers)
+| 类型 | 用途 |
+|------|------|
+| `column` `row` | 布局容器 |
+| `text` `icon` `button` `image` | 基础元素 |
+| `card` `list_tile` `divider` `spacer` | 复合组件 |
+| `textfield` `checkbox` `switch` | 表单控件 |
+| `list` | 静态列表 |
+| `padding` | 内边距 |
+| `auto` | 生命周期（onMount / onUnmount） |
+| `for_each` | 数据列表迭代 |
+| `if:` | 条件渲染（`==` `!=` `>` `<` `>=` `<=`）|
+| `{{var}}` | 模板变量 |
+| `gradient` | 渐变背景（任意元素） |
+| 图标 | 50+ 内置，可扩展 |
 
 ## Quick Start
 
@@ -39,35 +43,38 @@ dependencies:
 ```dart
 import 'package:sdui_engine/sdui_engine.dart';
 
-// Optional: global style tokens
-SduiStyle.init({
-  'spacing': {'xs': 4, 'sm': 8, 'md': 12, 'lg': 16, 'xl': 24},
-  'radius': {'sm': 8, 'md': 12, 'lg': 16, 'xl': 20},
-});
+// 1. 解析 JSON
+SduiParser(onAction: myHandler).parse(jsonMap);
 
-// Parse JSON into Flutter widgets
-final widget = SduiParser(
-  onAction: yourActionHandler,
-  vars: yourData,
-).parse(yourJson);
-```
-
-## Page Mixin
-
-For stateful pages, use the `SduiPageState` mixin:
-
-```dart
-class _MyPageState extends State<MyPage> with SduiPageState {
+// 2. 完整页面
+class _MyPage extends State<MyPage> with SduiPageState {
   @override String get sduiPage => 'my_page';
-  @override SduiConfigSource get configSource => yourConfigSource;
-
-  void _handleAction(String action) {
-    // handle button taps
-  }
 
   @override
   Widget build(BuildContext context) {
-    return SduiParser(onAction: _handleAction, vars: {}).parse(sduiLayout['body']);
+    return SduiParser(onAction: _handle).parse(sduiLayout['body']);
+  }
+}
+```
+
+## Config Sources
+
+```dart
+// 内存配置（测试/快速原型）
+SduiPageState.defaultSource = SduiMemoryConfig({'my_page': {...}});
+
+// 级联配置（生产：网络 → 缓存 → 默认）
+SduiPageState.defaultSource = SduiCascadeSource([
+  myNetworkSource,      // 你的后端
+  myCacheSource,        // SharedPreferences
+  SduiMemoryConfig(fallbackDefaults),  // 永远不崩
+]);
+
+// 自定义
+class MySource extends SduiConfigSource {
+  @override Future<Map<String, dynamic>> load(String page) async {
+    final json = await http.get('.../config/$page.json');
+    return jsonDecode(json.body);
   }
 }
 ```
@@ -75,11 +82,15 @@ class _MyPageState extends State<MyPage> with SduiPageState {
 ## Architecture
 
 ```
-JSON Config → SduiParser.parse() → Flutter Widget Tree
+JSON Config → SduiParser → Widget Tree
                   ↓
-         onAction callback → Your Business Logic
+         onAction → Your Logic
                   ↓
-         {{var}} substitution → Your Data Layer
+         {{var}} → Your Data
 ```
 
-The engine handles rendering only. State management, data fetching, and business logic stay in Dart.
+Only rendering. State, data, logic stay in Dart.
+
+## Demo
+
+See `example/` for a runnable Flutter app with inline JSON + SduiPageState.
