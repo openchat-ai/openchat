@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
-import '../../theme/app_theme.dart';
+﻿import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/models/resident_model.dart';
 
 class ResidentTimeline extends StatelessWidget {
@@ -13,7 +13,7 @@ class ResidentTimeline extends StatelessWidget {
     return SliverToBoxAdapter(child: Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('活动记录', style: TextStyle(color: theme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
+        Text('娲诲姩璁板綍', style: TextStyle(color: theme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
         const SizedBox(height: 12),
         ...activities.map((a) => Padding(padding: const EdgeInsets.only(bottom: 8), child: _timelineItem(a))),
       ]),
@@ -28,7 +28,7 @@ class ResidentTimeline extends StatelessWidget {
           decoration: BoxDecoration(color: _activityColor(activity.type), borderRadius: BorderRadius.circular(5))),
         const SizedBox(width: 12),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(activity.description, style: TextStyle(color: theme.textPrimary, fontSize: 13)),
+          Text(activity.message, style: TextStyle(color: theme.textPrimary, fontSize: 13)),
           const SizedBox(height: 4),
           Text(activity.timestamp.toLocal().toString().substring(0, 16), style: TextStyle(color: theme.textTertiary, fontSize: 11)),
         ])),

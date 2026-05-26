@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/bridge_provider.dart';
+import '../../core/api/bridge_ws_client.dart';
 import '../../core/sdui.dart';
 import '../../core/sdui_config.dart';
 import '../../core/version.dart';

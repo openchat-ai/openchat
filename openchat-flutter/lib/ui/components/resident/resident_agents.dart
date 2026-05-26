@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
-import '../../theme/app_theme.dart';
+﻿import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/models/agent_model.dart';
 
 class ResidentAgents extends StatelessWidget {
@@ -14,10 +14,10 @@ class ResidentAgents extends StatelessWidget {
     return SliverToBoxAdapter(child: Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('活跃 Agent (${active.length})', style: TextStyle(color: theme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
+        Text('娲昏穬 Agent (${active.length})', style: TextStyle(color: theme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
         const SizedBox(height: 12),
         if (active.isEmpty)
-          Padding(padding: const EdgeInsets.all(16), child: Text('暂无活跃 Agent', style: TextStyle(color: theme.textTertiary, fontSize: 13)))
+          Padding(padding: const EdgeInsets.all(16), child: Text('鏆傛棤娲昏穬 Agent', style: TextStyle(color: theme.textTertiary, fontSize: 13)))
         else
           ...active.map((a) => Padding(padding: const EdgeInsets.only(bottom: 8), child: _agentTile(a))),
       ]),

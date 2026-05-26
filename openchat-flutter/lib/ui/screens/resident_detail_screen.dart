@@ -39,35 +39,37 @@ class _ResidentDetailScreenState extends ConsumerState<ResidentDetailScreen> wit
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
+      final id = int.tryParse(widget.residentId) ?? 0;
       final notifier = ref.read(residentProvider.notifier);
-      _resident = await notifier.getDetail(widget.residentId);
-      _agents = await notifier.getAgents(widget.residentId);
-      _children = (await notifier.getChildren(widget.residentId)).whereType<Resident>().toList();
-      ref.read(sageProvider.notifier).loadConversation(widget.residentId);
+      _resident = await notifier.getDetail(id);
+      _agents = await notifier.getAgents(id);
+      _children = (await notifier.getChildren(id)).whereType<Resident>().toList();
+      ref.read(sageProvider.notifier).loadConversation(id);
     } catch (_) {}
     if (mounted) setState(() => _loading = false);
   }
 
   void _showCreateAgentDialog() {
+    final rid = int.tryParse(widget.residentId) ?? 0;
     final rc = TextEditingController(text: 'custom');
     final nc = TextEditingController();
     final tc = TextEditingController();
     showDialog(context: context, builder: (ctx) => AlertDialog(
       backgroundColor: ref.read(currentThemeProvider).surface,
-      title: Text(sduiLayout['createAgentTitle'] as String? ?? '娲惧嚭 Agent'),
+      title: Text(sduiStr('createAgentTitle', 'Spawn Agent')),
       content: Column(mainAxisSize: MainAxisSize.min, children: [
-        TextField(controller: rc, decoration: const InputDecoration(labelText: '瑙掕壊', hintText: 'security_auditor / test_engineer / custom'), style: TextStyle(color: ref.read(currentThemeProvider).textPrimary)),
+        TextField(controller: rc, decoration: const InputDecoration(labelText: 'Role', hintText: 'security_auditor / test_engineer / custom'), style: TextStyle(color: ref.read(currentThemeProvider).textPrimary)),
         const SizedBox(height: 12),
-        TextField(controller: nc, decoration: const InputDecoration(labelText: '鍚嶇О锛堝彲閫夛級'), style: TextStyle(color: ref.read(currentThemeProvider).textPrimary)),
+        TextField(controller: nc, decoration: const InputDecoration(labelText: 'Name (optional)'), style: TextStyle(color: ref.read(currentThemeProvider).textPrimary)),
         const SizedBox(height: 12),
-        TextField(controller: tc, decoration: const InputDecoration(labelText: '浠诲姟鎻忚堪'), maxLines: 3, style: TextStyle(color: ref.read(currentThemeProvider).textPrimary)),
+        TextField(controller: tc, decoration: const InputDecoration(labelText: 'Task'), maxLines: 3, style: TextStyle(color: ref.read(currentThemeProvider).textPrimary)),
       ]),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('鍙栨秷')),
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
         TextButton(onPressed: () {
-          ref.read(residentProvider.notifier).createAgent(role: rc.text, name: nc.text.isEmpty ? null : nc.text, task: tc.text);
+          ref.read(residentProvider.notifier).createAgent(residentId: rid, role: rc.text, name: nc.text.isEmpty ? null : nc.text, task: tc.text);
           Navigator.pop(ctx);
-        }, child: Text('娲惧嚭', style: TextStyle(color: ref.read(currentThemeProvider).primary))),
+        }, child: Text('Create', style: TextStyle(color: ref.read(currentThemeProvider).primary))),
       ],
     ));
     rc.dispose(); nc.dispose(); tc.dispose();
@@ -76,9 +78,9 @@ class _ResidentDetailScreenState extends ConsumerState<ResidentDetailScreen> wit
   @override
   Widget build(BuildContext context) {
     final theme = ref.watch(currentThemeProvider);
-    final title = sduiLayout['title'] as String? ?? (_resident?.name ?? '灞呮皯妗ｆ');
-    final tab1 = sduiLayout['tab1'] as String? ?? '鏃堕棿绾?;
-    final tab2 = sduiLayout['tab2'] as String? ?? '甯堝緬瀵硅瘽';
+    final title = sduiStr('title', _resident?.name ?? 'Resident');
+    final tab1 = sduiStr('tab1', 'Timeline');
+    final tab2 = sduiStr('tab2', 'Mentor');
 
     return DefaultTabController(
       length: 2,
@@ -89,13 +91,13 @@ class _ResidentDetailScreenState extends ConsumerState<ResidentDetailScreen> wit
           backgroundColor: Colors.transparent, elevation: 0,
           title: Text(title, style: TextStyle(color: theme.textPrimary, fontSize: 20, fontWeight: FontWeight.bold)),
           actions: _resident != null && _resident!.isActive ? [
-            IconButton(icon: const Icon(Icons.auto_awesome_outlined, color: Colors.amberAccent), onPressed: _showCreateAgentDialog, tooltip: '鏅鸿€呯偣鎷?),
-            IconButton(icon: Icon(Icons.add_task_rounded, color: theme.primary), onPressed: _showCreateAgentDialog, tooltip: '娲惧嚭 Agent'),
+            IconButton(icon: const Icon(Icons.auto_awesome_outlined, color: Colors.amberAccent), onPressed: _showCreateAgentDialog, tooltip: 'Wisdom'),
+            IconButton(icon: Icon(Icons.add_task_rounded, color: theme.primary), onPressed: _showCreateAgentDialog, tooltip: 'Spawn Agent'),
           ] : null,
           bottom: _resident != null ? TabBar(indicatorColor: theme.primary, labelColor: theme.primary, unselectedLabelColor: theme.textTertiary, tabs: [Tab(text: tab1), Tab(text: tab2)]) : null,
         ),
         body: _loading ? const Center(child: CircularProgressIndicator())
-          : _resident == null ? Center(child: Text('灞呮皯涓嶅瓨鍦?, style: TextStyle(color: theme.textSecondary)))
+          : _resident == null ? Center(child: Text('Resident not found', style: TextStyle(color: theme.textSecondary)))
           : Container(
               decoration: BoxDecoration(gradient: LinearGradient(colors: [theme.background, theme.surface], begin: Alignment.topCenter, end: Alignment.bottomCenter)),
               child: SafeArea(child: TabBarView(children: [
@@ -121,9 +123,9 @@ class _ResidentDetailScreenState extends ConsumerState<ResidentDetailScreen> wit
   void _showReplyDialog(SageRecord record) {
     final controller = TextEditingController();
     showDialog(context: context, builder: (ctx) => AlertDialog(
-      title: const Text('鍥炲'), content: TextField(controller: controller, autofocus: true, decoration: const InputDecoration(hintText: '杈撳叆鍥炲...')), actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('鍙栨秷')),
-        TextButton(onPressed: () { ref.read(sageProvider.notifier).reply(record.id, controller.text); Navigator.pop(ctx); }, child: const Text('鍙戦€?)),
+      title: const Text('Reply'), content: TextField(controller: controller, autofocus: true, decoration: const InputDecoration(hintText: 'Enter reply...')), actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+        TextButton(onPressed: () { Navigator.pop(ctx); }, child: const Text('Send')),
       ],
     ));
     controller.dispose();

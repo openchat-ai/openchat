@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
-import '../../theme/app_theme.dart';
+﻿import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/models/resident_model.dart';
 
 class ResidentProfile extends StatelessWidget {
@@ -28,10 +28,10 @@ class ResidentProfile extends StatelessWidget {
         Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           _chip('ID: ${resident.id}', theme.textTertiary), const SizedBox(width: 8),
           _chip(resident.home, theme.gradientPrimary[0]),
-          if (!resident.isActive) ...[const SizedBox(width: 8), _chip('已注销', theme.textTertiary)],
+          if (!resident.isActive) ...[const SizedBox(width: 8), _chip('Offline', theme.textTertiary)],
         ]),
         const SizedBox(height: 6),
-        Text('出生 ${resident.createdAt.toLocal().toString().substring(0, 10)} · 已存活 $days 天', style: TextStyle(color: theme.textTertiary, fontSize: 13)),
+        Text('Created ${resident.createdAt.toLocal().toString().substring(0, 10)} \u00b7 ${days}d', style: TextStyle(color: theme.textTertiary, fontSize: 13)),
         if (tags.isNotEmpty) ...[const SizedBox(height: 14),
           Wrap(spacing: 6, runSpacing: 6, children: tags.map((t) => Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
