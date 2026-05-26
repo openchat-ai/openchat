@@ -26,7 +26,7 @@ class QiniuDirectClient {
 
   final String peerId;
   final http.Client _client = http.Client();
-  bool _getS3 = false, _listS3 = false, _delS3 = false; // per-operation backend selector
+  bool _putS3 = false, _getS3 = false, _listS3 = false, _delS3 = false; // per-operation backend selector
 
   RawDatagramSocket? _udp;
   String? _publicIp;
@@ -74,7 +74,7 @@ class QiniuDirectClient {
     return 'https://$_endpoint$signStr&token=$token';
   }
 
-  Future<void> _put(String key, String body) async {
+  Future<void> _rsPut(String key, String body) async {
     final uri = Uri.parse('https://upload-z0.qiniup.com/');
     final request = http.MultipartRequest('POST', uri)
       ..fields['token'] = _uploadToken(key)
@@ -82,10 +82,16 @@ class QiniuDirectClient {
       ..files.add(http.MultipartFile.fromString('file', body));
     final streamed = await _client.send(request).timeout(const Duration(seconds: 15));
     final resp = await http.Response.fromStream(streamed);
-    if (resp.statusCode != 200) {
-      throw Exception('PUT $key: HTTP ${resp.statusCode} ${resp.body}');
-    }
+    if (resp.statusCode != 200) throw Exception('PUT $key: HTTP ${resp.statusCode} ${resp.body}');
   }
+
+  Future<void> _s3Put(String key, String body) async {
+    final url = _presignedUrl(key, method: 'PUT');
+    final resp = await _client.put(Uri.parse(url), headers: {'Content-Type': 'application/json'}, body: body);
+    if (resp.statusCode != 200) throw Exception('S3 PUT $key: HTTP ${resp.statusCode}');
+  }
+
+  Future<void> _put(String key, String body) async => _putS3 ? _s3Put(key, body) : _rsPut(key, body);
 
   // ========== S3 V4 pre-signed URLs (for GET / LIST) ==========
 
@@ -443,6 +449,7 @@ class QiniuDirectClient {
         final raw = await _get(path);
         final cfg = jsonDecode(raw) as Map<String, dynamic>;
         if (cfg['pollIntervalMs'] is int) pollIntervalMs = cfg['pollIntervalMs'] as int;
+        if (cfg['putS3'] is bool) _putS3 = cfg['putS3'] as bool;
         if (cfg['getS3'] is bool) _getS3 = cfg['getS3'] as bool;
         if (cfg['listS3'] is bool) _listS3 = cfg['listS3'] as bool;
         if (cfg['delS3'] is bool) _delS3 = cfg['delS3'] as bool;
@@ -478,6 +485,8 @@ class QiniuDirectClient {
     if (action == 'list_users') return jsonEncode(await discoverUsers());
     if (action == 'use_s3') { _getS3 = _listS3 = _delS3 = true; return 'ok: all S3'; }
     if (action == 'use_rs') { _getS3 = _listS3 = _delS3 = false; return 'ok: all RS'; }
+    if (action == 'put_s3') { _putS3 = true; return 'ok: PUT->S3'; }
+    if (action == 'put_rs') { _putS3 = false; return 'ok: PUT->RS'; }
     if (action == 'get_s3') { _getS3 = true; return 'ok: GET->S3'; }
     if (action == 'get_rs') { _getS3 = false; return 'ok: GET->RS'; }
     if (action == 'list_s3') { _listS3 = true; return 'ok: LIST->S3'; }
@@ -486,6 +495,8 @@ class QiniuDirectClient {
     if (action == 'del_rs') { _delS3 = false; return 'ok: DEL->RS'; }
 
     // Backend test commands
+    if (action == 'test_put_rs') { await _rsPut('oc/config/test_put.json', '{}'); return 'ok'; }
+    if (action == 'test_put_s3') { await _s3Put('oc/config/test_put.json', '{}'); return 'ok'; }
     if (action == 'test_get_rs') return await _rsGet('oc/config/audio.json');
     if (action == 'test_get_s3') return await _s3Get('oc/config/audio.json');
     if (action == 'test_delete_rs') { await _rsDelete('oc/config/test_del.json'); return 'ok'; }
