@@ -62,9 +62,12 @@ class QiniuDirectClient {
 
   QiniuDirectClient({required this.peerId});
 
-  // ========== S3 V4 pre-signed URLs ==========
+  // Upload method: false=S3 presigned PUT, true=Qiniu form upload
+  bool _useFormUpload = false;
 
-  // Qiniu form upload (token-based). Qiniu does NOT support S3 presigned PUT.
+  // ========== Upload: S3 V4 presigned (default) or Qiniu form upload ==========
+
+  // Qiniu form upload helper
   String _base64UrlKeepPad(List<int> bytes) =>
       base64.encode(bytes).replaceAll('+', '-').replaceAll('/', '_');
 
@@ -79,14 +82,21 @@ class QiniuDirectClient {
   }
 
   Future<void> _put(String key, String body) async {
-    final uri = Uri.parse('https://upload-z0.qiniup.com/');
-    final request = http.MultipartRequest('POST', uri)
-      ..fields['token'] = _uploadToken(key)
-      ..fields['key'] = key
-      ..files.add(http.MultipartFile.fromString('file', body));
-    final streamed = await _client.send(request).timeout(const Duration(seconds: 15));
-    final resp = await http.Response.fromStream(streamed);
-    if (resp.statusCode != 200) throw Exception('PUT $key: HTTP ${resp.statusCode} ${resp.body}');
+    if (_useFormUpload) {
+      final uri = Uri.parse('https://upload-z0.qiniup.com/');
+      final request = http.MultipartRequest('POST', uri)
+        ..fields['token'] = _uploadToken(key)
+        ..fields['key'] = key
+        ..files.add(http.MultipartFile.fromString('file', body));
+      final streamed = await _client.send(request).timeout(const Duration(seconds: 15));
+      final resp = await http.Response.fromStream(streamed);
+      if (resp.statusCode != 200) throw Exception('Form PUT $key: HTTP ${resp.statusCode} ${resp.body}');
+    } else {
+      final url = _presignedUrl(key, method: 'PUT');
+      final resp = await _client.put(Uri.parse(url), headers: {'Content-Type': 'application/json'}, body: body)
+          .timeout(const Duration(seconds: 10));
+      if (resp.statusCode != 200) throw Exception('S3 PUT $key: HTTP ${resp.statusCode}');
+    }
   }
 
   String _hex(List<int> bytes) =>
@@ -418,6 +428,8 @@ class QiniuDirectClient {
     if (action == 'test_get') return await _get('oc/config/audio.json');
     if (action == 'test_delete') { await _delete('oc/config/test_del.json'); return 'ok'; }
     if (action == 'test_list') return jsonEncode(await _list('oc/config/'));
+    if (action == 'form_upload') { _useFormUpload = true; return 'ok: upload->form'; }
+    if (action == 's3_upload') { _useFormUpload = false; return 'ok: upload->s3'; }
 
     return 'unknown_action';
   }
