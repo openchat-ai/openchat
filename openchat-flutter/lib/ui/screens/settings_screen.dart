@@ -17,25 +17,13 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  Map? _uiConfig;
-  Timer? _configTimer;
+  Map<String, dynamic>? _sduiLayout;
 
   @override
   void initState() {
     super.initState();
-    _loadConfig();
-    _configTimer = Timer.periodic(const Duration(seconds: 30), (_) => _loadConfig());
-  }
-
-  @override
-  void dispose() {
-    _configTimer?.cancel();
-    super.dispose();
-  }
-
-  Future<void> _loadConfig() async {
-    final cfg = await SduiConfig.load('oc/config/ui_settings.json');
-    if (mounted) setState(() => _uiConfig = cfg);
+    QiniuDirectClient.fetchConfigFile('oc/config/ui_settings.json')
+        .then((m) { if (mounted && m is Map) setState(() => _sduiLayout = Map<String, dynamic>.from(m)); });
   }
 
   IconData _icon(String name) => SduiParser.icons[name] ?? Icons.circle_outlined;
@@ -46,7 +34,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final themeMode = ref.watch(themeModeProvider);
 
     // If remote config has sections, use SDUI-driven layout
-    if (_uiConfig?['sections'] is List) {
+    if (_sduiLayout?['sections'] is List) {
       return _buildSdui(theme, themeMode);
     }
 
@@ -54,13 +42,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _buildSdui(AppTheme theme, ThemeModeSetting themeMode) {
-    final sections = _uiConfig!['sections'] as List;
+    final sections = _sduiLayout!['sections'] as List;
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: theme.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent, elevation: 0,
-        title: Text(_uiConfig!['title'] as String? ?? 'SETTINGS',
+        title: Text(_sduiLayout!['title'] as String? ?? 'SETTINGS',
           style: TextStyle(color: theme.textPrimary, fontSize: 24, fontWeight: FontWeight.bold)),
       ),
       body: Container(
