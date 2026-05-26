@@ -5,7 +5,8 @@ import '../../core/theme/app_theme.dart';
 import '../../core/models/resident_model.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/feed_provider.dart';
-import '../../core/sdui_config.dart';
+import '../../core/api/qiniu_direct_client.dart';
+import '../../core/sdui.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -15,25 +16,13 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  Map? _uiConfig;
-  Timer? _configTimer;
+  Map<String, dynamic>? _sduiLayout;
 
   @override
   void initState() {
     super.initState();
-    _loadConfig();
-    _configTimer = Timer.periodic(const Duration(seconds: 30), (_) => _loadConfig());
-  }
-
-  @override
-  void dispose() {
-    _configTimer?.cancel();
-    super.dispose();
-  }
-
-  Future<void> _loadConfig() async {
-    final cfg = await SduiConfig.load('oc/config/ui_home.json');
-    if (mounted) setState(() => _uiConfig = cfg);
+    QiniuDirectClient.fetchConfigFile('oc/config/ui_home.json')
+        .then((m) { if (mounted && m is Map) setState(() => _sduiLayout = Map<String, dynamic>.from(m)); });
   }
 
   IconData _iconForType(String type) {
@@ -84,7 +73,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final theme = ref.watch(currentThemeProvider);
     final feedAsync = ref.watch(feedProvider);
-    final title = _uiConfig?['title'] as String? ?? '社区动态';
+    final title = _sduiLayout?['title'] as String? ?? '社区动态';
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -104,28 +93,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: SafeArea(
           child: feedAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.people_outline, color: theme.textTertiary, size: 48),
-              const SizedBox(height: 16),
-              Text('OpenChat', style: TextStyle(color: theme.textPrimary, fontSize: 24, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text('切换到 好友 标签', style: TextStyle(color: theme.textSecondary, fontSize: 14)),
-            ])),
+            error: (e, _) => _buildEmptyState(theme, _sduiLayout?['errorState'] as Map? ?? {'icon': 'people', 'title': 'OpenChat', 'subtitle': '切换到 好友 标签'}),
             data: (feed) {
               if (feed.isEmpty) {
-                final ec = _uiConfig?['emptyState'] as Map?;
-                return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(_remoteIcon(ec?['icon'] as String?) ?? Icons.inbox_outlined,
-                    color: theme.textTertiary, size: 64),
-                  const SizedBox(height: 16),
-                  Text(ec?['title'] as String? ?? '社区还很安静',
-                    style: TextStyle(color: theme.textSecondary, fontSize: 16)),
-                  if (ec?['subtitle'] != null) ...[
-                    const SizedBox(height: 8),
-                    Text(ec!['subtitle'] as String,
-                      style: TextStyle(color: theme.textTertiary, fontSize: 13)),
-                  ],
-                ]));
+                return _buildEmptyState(theme, _sduiLayout?['emptyState'] as Map?);
               }
               return ListView.builder(
                 padding: const EdgeInsets.all(16),
@@ -139,17 +110,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  IconData? _remoteIcon(String? name) {
-    if (name == null) return null;
-    final icons = {
-      'inbox': Icons.inbox_outlined, 'people': Icons.people_outline,
-      'celebration': Icons.celebration_outlined, 'sleep': Icons.nights_stay_outlined,
-      'task': Icons.assignment_outlined, 'done': Icons.task_alt_rounded,
-      'error': Icons.error_outline_rounded, 'help': Icons.help_outline,
-      'favorite': Icons.favorite_outline, 'person': Icons.person_outline,
-      'smart_toy': Icons.smart_toy_outlined, 'cloud_off': Icons.cloud_off,
+  Widget _buildEmptyState(AppTheme theme, Map? state) {
+    if (state == null) {
+      return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Icon(Icons.inbox_outlined, color: theme.textTertiary, size: 64),
+        const SizedBox(height: 16),
+        Text('社区还很安静', style: TextStyle(color: theme.textSecondary, fontSize: 16)),
+      ]));
+    }
+    final parser = SduiParser(vars: {}, onAction: null);
+    final node = {
+      'type': 'column', 'center': true, 'children': [
+        {'type': 'padding', 'padding': 32, 'child': {'type': 'icon', 'icon': state['icon'] ?? 'inbox', 'size': 64}},
+        if (state['title'] != null) {'type': 'text', 'content': state['title'], 'style': {'size': 16}, 'pad': 8},
+        if (state['subtitle'] != null) {'type': 'text', 'content': state['subtitle'], 'style': {'size': 13, 'color': '#9E9E9E'}},
+      ],
     };
-    return icons[name];
+    return Center(child: parser.parse(node));
   }
 
   Widget _buildIconButton(IconData icon, AppTheme theme, VoidCallback onTap) {
