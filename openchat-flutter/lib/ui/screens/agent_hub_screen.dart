@@ -5,7 +5,8 @@ import '../../core/theme/app_theme.dart';
 import '../../core/models/resident_model.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/resident_provider.dart';
-import '../../core/sdui_config.dart';
+import '../../core/api/qiniu_direct_client.dart';
+import '../../core/sdui.dart';
 import 'resident_detail_screen.dart';
 import '../components/cards/app_cards.dart';
 
@@ -17,32 +18,20 @@ class AgentHubScreen extends ConsumerStatefulWidget {
 }
 
 class _AgentHubScreenState extends ConsumerState<AgentHubScreen> {
-  Map? _uiConfig;
-  Timer? _configTimer;
+  Map<String, dynamic>? _sduiLayout;
 
   @override
   void initState() {
     super.initState();
-    _loadConfig();
-    _configTimer = Timer.periodic(const Duration(seconds: 30), (_) => _loadConfig());
-  }
-
-  @override
-  void dispose() {
-    _configTimer?.cancel();
-    super.dispose();
-  }
-
-  Future<void> _loadConfig() async {
-    final cfg = await SduiConfig.load('oc/config/ui_agent.json');
-    if (mounted) setState(() => _uiConfig = cfg);
+    QiniuDirectClient.fetchConfigFile('oc/config/ui_agent.json')
+        .then((m) { if (mounted && m is Map) setState(() => _sduiLayout = Map<String, dynamic>.from(m)); });
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = ref.watch(currentThemeProvider);
     final residentsAsync = ref.watch(residentProvider);
-    final title = _uiConfig?['title'] as String? ?? 'AI 居民';
+    final title = _sduiLayout?['title'] as String? ?? 'AI 居民';
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -62,15 +51,11 @@ class _AgentHubScreenState extends ConsumerState<AgentHubScreen> {
         child: SafeArea(
           child: residentsAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.error_outline, color: theme.error, size: 48),
-              const SizedBox(height: 16),
-              Text('加载失败', style: TextStyle(color: theme.textSecondary)),
-            ])),
+            error: (e, _) => _buildEmptyState(theme, _sduiLayout?['errorState'] as Map? ?? {'icon': 'error', 'title': '加载失败'}),
             data: (residents) => CustomScrollView(
               slivers: [
                 _buildStatsHeader(theme, residents),
-                _buildSectionTitle(theme, '居民名单', residents.length),
+                _buildSectionTitle(theme, _sduiLayout?['sectionTitle'] as String? ?? '居民名单', residents.length),
                 _buildResidentList(theme, residents),
               ],
             ),
@@ -79,6 +64,25 @@ class _AgentHubScreenState extends ConsumerState<AgentHubScreen> {
       ),
       floatingActionButton: _buildCreateButton(theme),
     );
+  }
+
+  Widget _buildEmptyState(AppTheme theme, Map? state) {
+    if (state == null) {
+      return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Icon(Icons.person_outline, color: theme.textTertiary, size: 64),
+        const SizedBox(height: 16),
+        Text('还没有 AI 居民', style: TextStyle(color: theme.textSecondary, fontSize: 16)),
+      ]));
+    }
+    final parser = SduiParser(vars: {}, onAction: null);
+    final node = {
+      'type': 'column', 'center': true, 'children': [
+        {'type': 'padding', 'padding': 32, 'child': {'type': 'icon', 'icon': state['icon'] ?? 'person', 'size': 64}},
+        if (state['title'] != null) {'type': 'text', 'content': state['title'], 'style': {'size': 16}, 'pad': 8},
+        if (state['subtitle'] != null) {'type': 'text', 'content': state['subtitle'], 'style': {'size': 13, 'color': '#9E9E9E'}},
+      ],
+    };
+    return Center(child: parser.parse(node));
   }
 
   Widget _buildActionButton(IconData icon, AppTheme theme, VoidCallback onTap) {
@@ -132,25 +136,7 @@ class _AgentHubScreenState extends ConsumerState<AgentHubScreen> {
   }
 
   Widget _buildResidentList(AppTheme theme, List<Resident> residents) {
-    if (residents.isEmpty) {
-      final ec = _uiConfig?['emptyState'] as Map?;
-      return SliverToBoxAdapter(
-        child: Container(
-          padding: const EdgeInsets.all(60),
-          child: Column(children: [
-            Icon(_remoteIcon(ec?['icon'] as String?) ?? Icons.person_outline,
-              color: theme.textTertiary, size: 64),
-            const SizedBox(height: 16),
-            Text(ec?['title'] as String? ?? '还没有 AI 居民',
-              style: TextStyle(color: theme.textSecondary, fontSize: 16)),
-            if (ec?['subtitle'] != null) ...[
-              const SizedBox(height: 8),
-              Text(ec!['subtitle'] as String, style: TextStyle(color: theme.textTertiary, fontSize: 13)),
-            ],
-          ]),
-        ),
-      );
-    }
+    if (residents.isEmpty) return _buildEmptyState(theme, _sduiLayout?['emptyState'] as Map?);
     return SliverPadding(
       padding: const EdgeInsets.all(16),
       sliver: SliverList(delegate: SliverChildBuilderDelegate(
@@ -158,15 +144,6 @@ class _AgentHubScreenState extends ConsumerState<AgentHubScreen> {
         childCount: residents.length,
       )),
     );
-  }
-
-  IconData? _remoteIcon(String? name) {
-    if (name == null) return null;
-    final icons = {
-      'person': Icons.person_outline, 'inbox': Icons.inbox_outlined,
-      'smart_toy': Icons.smart_toy_outlined, 'error': Icons.error_outline,
-    };
-    return icons[name];
   }
 
   Widget _buildResidentCard(BuildContext context, AppTheme theme, Resident resident) {
@@ -267,11 +244,11 @@ class _AgentHubScreenState extends ConsumerState<AgentHubScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: theme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('创建 AI 居民', style: TextStyle(color: theme.textPrimary)),
+        title: Text(_sduiLayout?['createTitle'] as String? ?? '创建 AI 居民', style: TextStyle(color: theme.textPrimary)),
         content: TextField(
           controller: controller, autofocus: true,
           decoration: InputDecoration(
-            hintText: '输入名字（留空自动生成）',
+            hintText: _sduiLayout?['createHint'] as String? ?? '输入名字（留空自动生成）',
             hintStyle: TextStyle(color: theme.textTertiary),
             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: theme.textTertiary.withValues(alpha: 0.2))),
