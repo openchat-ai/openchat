@@ -5,6 +5,7 @@ import '../../core/theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
 import '../../core/api/qiniu_direct_client.dart';
 import 'home_screen.dart';
+import 'agent_hub_screen.dart';
 import 'people_screen.dart';
 import 'voice_room_screen.dart';
 import 'chat_list_screen.dart';
@@ -33,6 +34,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   Widget _buildScreen(String name) {
     switch (name) {
       case 'home': return const HomeScreen();
+      case 'agent': return const AgentHubScreen();
       case 'people': return const PeopleScreen();
       case 'chat': return const ChatListScreen();
       case 'dev': return const DevIdeScreen();
@@ -44,6 +46,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   ({IconData inactive, IconData active}) _resolveIcon(String name) {
     switch (name) {
       case 'home': return (inactive: Icons.home_outlined, active: Icons.home_rounded);
+      case 'agent': return (inactive: Icons.psychology_outlined, active: Icons.psychology_rounded);
       case 'people': return (inactive: Icons.people_outline, active: Icons.people_rounded);
       case 'chat': return (inactive: Icons.chat_bubble_outline, active: Icons.chat_bubble_rounded);
       case 'dev': return (inactive: Icons.code_outlined, active: Icons.code_rounded);
@@ -54,6 +57,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
   static const _fallbackTabs = [
     {'icon': 'home', 'label': '首页', 'screen': 'home'},
+    {'icon': 'agent', 'label': 'Agent', 'screen': 'agent'},
     {'icon': 'people', 'label': '好友', 'screen': 'people'},
     {'icon': 'chat', 'label': '聊天', 'screen': 'chat'},
     {'icon': 'dev', 'label': '控制台', 'screen': 'dev'},
