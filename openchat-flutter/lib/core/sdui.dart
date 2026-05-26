@@ -183,8 +183,12 @@ class SduiParser {
   Widget _auto(Map m) {
     final delay = (m['delay'] as num?)?.toInt() ?? 0;
     final action = m['action'] as String?;
-    if (action != null) {
+    final onUnmount = m['onUnmount'] as String?;
+    if (action != null && delay > 0) {
       Future.delayed(Duration(milliseconds: delay), () => onAction?.call(action));
+    }
+    if (onUnmount != null) {
+      return _LifecycleWidget(child: const SizedBox(), onDispose: () => onAction?.call(onUnmount));
     }
     return const SizedBox();
   }
@@ -460,4 +464,23 @@ Widget _forEachNode(Map m, Map<String, dynamic> vars, void Function(String)? onA
       return sub.parse(template) ?? const SizedBox();
     }).toList(),
   );
+}
+
+class _LifecycleWidget extends StatefulWidget {
+  final Widget child;
+  final VoidCallback? onDispose;
+  const _LifecycleWidget({required this.child, this.onDispose});
+  @override
+  State<_LifecycleWidget> createState() => _LifecycleWidgetState();
+}
+
+class _LifecycleWidgetState extends State<_LifecycleWidget> {
+  @override
+  void dispose() {
+    widget.onDispose?.call();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
