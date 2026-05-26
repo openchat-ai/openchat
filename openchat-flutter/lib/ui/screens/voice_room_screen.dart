@@ -50,7 +50,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
 
     VoiceUiConfig.load().then((c) { if (mounted) setState(() => _uiVoice = c); });
     QiniuDirectClient.fetchConfigFile('oc/config/ui_room_sdui.json')
-        .then((m) { if (mounted) setState(() => _sduiLayout = Map<String, dynamic>.from(m ?? {})); });
+        .then((m) { if (mounted && m is Map) setState(() => _sduiLayout = Map<String, dynamic>.from(m)); });
 
     if (_targetPeerId != null && _client != null) {
       _signalTimer = Timer.periodic(const Duration(seconds: 2), (_) => _pollResponse());
@@ -65,6 +65,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
     final prefs = await SharedPreferences.getInstance();
     final peerId = prefs.getString('peerId') ?? '${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(99999).toString().padLeft(5, '0')}';
     if (_client == null) _client = QiniuDirectClient(peerId: peerId);
+    if (_client == null) return;
     await _client!.register();
     _targetPeerId = peerId;
     final cfg = await AudioConfig.load();
@@ -80,7 +81,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
   }
 
   Future<void> _pollResponse() async {
-    if (_state == 'ended') return;
+    if (_state == 'ended' || _client == null) return;
     try {
       final signals = await _client!.pollIncoming();
       for (final s in signals) {
@@ -104,6 +105,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
   bool _audioStarted = false;
 
   void _acceptCall() {
+    if (_targetPeerId == null) return;
     _client?.sendSignal(_targetPeerId!, 'call-accept');
     if (mounted) setState(() => _state = 'connected');
     _startAudio();
@@ -115,7 +117,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
     _recorder?.dispose();
     _player?.dispose();
     _processor?.dispose();
-    _client?.sendSignal(_targetPeerId!, 'call-end');
+    if (_targetPeerId != null) _client?.sendSignal(_targetPeerId!, 'call-end');
     if (mounted) setState(() => _state = 'ended');
     _signalTimer?.cancel();
     Navigator.pop(context);
@@ -124,101 +126,112 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
   Future<void> _startAudio() async {
     if (_audioStarted) return;
     _audioStarted = true;
-    final cfg = await AudioConfig.load();
-    _audioCfg = cfg;
-    _recorder = AudioRecorder();
-    _player = AudioPlayer();
-    _processor = AudioProcessor(sampleRate: cfg.sampleRate, enableDenoise: cfg.denoise, enableCodec: cfg.mode != 'raw');
-    await _processor!.initialize();
-    if (cfg.mode == 'opus') _processor!.setMode(AudioMode.opus);
-    if (cfg.mode == 'neural') _processor!.setMode(AudioMode.neural);
+    try {
+      final cfg = await AudioConfig.load();
+      _audioCfg = cfg;
+      _recorder = AudioRecorder();
+      _player = AudioPlayer();
+      _processor = AudioProcessor(sampleRate: cfg.sampleRate, enableDenoise: cfg.denoise, enableCodec: cfg.mode != 'raw');
+      await _processor?.initialize();
+      if (cfg.mode == 'opus' && _processor != null) _processor!.setMode(AudioMode.opus);
+      if (cfg.mode == 'neural' && _processor != null) _processor!.setMode(AudioMode.neural);
 
-    if (await _recorder!.hasPermission() != true) return;
+      if (await _recorder!.hasPermission() != true) { _audioStarted = false; return; }
 
-    final stream = await _recorder!.startStream(RecordConfig(
-      encoder: AudioEncoder.pcm16bits, numChannels: 1, sampleRate: cfg.sampleRate));
-    if (stream == null) return;
+      final stream = await _recorder!.startStream(RecordConfig(
+        encoder: AudioEncoder.pcm16bits, numChannels: 1, sampleRate: cfg.sampleRate));
+      if (stream == null) { _audioStarted = false; return; }
 
-    final bufSize = cfg.bufferBytes;
-    final fadeBytes = cfg.fadeBytes;
-    List<int> _buffer = [];
-    Uint8List? _prevOverlap;
-    _recordSub = stream.listen((chunk) async {
-      if (_muted || _state != 'connected') {
-        _buffer.clear();
-        return;
-      }
-      _buffer.addAll(chunk);
-      if (_buffer.length >= bufSize) {
-        var frame = Uint8List.fromList(_buffer.take(bufSize).toList());
-        _buffer = _buffer.skip(bufSize).toList();
-        final overlap = _prevOverlap;
-        if (overlap != null) {
-          for (int i = 0; i < fadeBytes && i < frame.length; i += 2) {
-            final ratio = i / fadeBytes;
-            final pv = overlap[overlap.length - fadeBytes + i] | (overlap[overlap.length - fadeBytes + i + 1] << 8);
-            final cv = frame[i] | (frame[i + 1] << 8);
-            final ps = pv > 32767 ? pv - 65536 : pv;
-            final cs = cv > 32767 ? cv - 65536 : cv;
-            final blended = (ps * (1 - ratio) + cs * ratio).round().clamp(-32768, 32767);
-            final bv = blended < 0 ? blended + 65536 : blended;
-            frame[i] = bv & 0xFF;
-            frame[i + 1] = (bv >> 8) & 0xFF;
+      final bufSize = cfg.bufferBytes;
+      final fadeBytes = cfg.fadeBytes;
+      List<int> _buffer = [];
+      Uint8List? _prevOverlap;
+      final targetId = _targetPeerId;
+      if (targetId == null) return;
+      _recordSub = stream.listen((chunk) async {
+        try {
+          if (_muted || _state != 'connected') { _buffer.clear(); return; }
+          _buffer.addAll(chunk);
+          if (_buffer.length >= bufSize) {
+            var frame = Uint8List.fromList(_buffer.take(bufSize).toList());
+            _buffer = _buffer.skip(bufSize).toList();
+            final overlap = _prevOverlap;
+            if (overlap != null) {
+              for (int i = 0; i < fadeBytes && i < frame.length; i += 2) {
+                final ratio = i / fadeBytes;
+                final pv = overlap[overlap.length - fadeBytes + i] | (overlap[overlap.length - fadeBytes + i + 1] << 8);
+                final cv = frame[i] | (frame[i + 1] << 8);
+                final ps = pv > 32767 ? pv - 65536 : pv;
+                final cs = cv > 32767 ? cv - 65536 : cv;
+                final blended = (ps * (1 - ratio) + cs * ratio).round().clamp(-32768, 32767);
+                final bv = blended < 0 ? blended + 65536 : blended;
+                frame[i] = bv & 0xFF;
+                frame[i + 1] = (bv >> 8) & 0xFF;
+              }
+            }
+            _prevOverlap = Uint8List.fromList(frame.sublist(frame.length - fadeBytes));
+            final processed = await _processor?.processMicrophoneInput(frame);
+            if (processed != null) {
+              await _client?.sendEncodedAudio(targetId, processed, _audioSeq++);
+            }
           }
-        }
-        _prevOverlap = Uint8List.fromList(frame.sublist(frame.length - fadeBytes));
-        final processed = await _processor?.processMicrophoneInput(frame);
-        if (processed != null) {
-          await _client?.sendEncodedAudio(_targetPeerId!, processed, _audioSeq++);
-        }
-      }
-    }, onError: (e) { log('record stream error: $e'); });
+        } catch (e) { log('record process error: $e'); }
+      }, onError: (e) { log('record stream error: $e'); });
 
-    _signalTimer?.cancel();
-    _signalTimer = Timer.periodic(Duration(milliseconds: cfg.pollMs), (_) async {
-      if (_state != 'connected') return;
-      try {
-        final chunks = await _client!.pollEncodedAudio();
-        if (chunks.isEmpty) return;
-        for (final c in chunks) {
-          final pcm = await _processor?.processReceivedAudio(c);
-          if (pcm != null) _playQueue.add(pcm);
+      _signalTimer?.cancel();
+      _signalTimer = Timer.periodic(Duration(milliseconds: cfg.pollMs), (_) async {
+        if (_state != 'connected' || _client == null) return;
+        try {
+          final chunks = await _client!.pollEncodedAudio();
+          if (chunks.isEmpty) return;
+          for (final c in chunks) {
+            final pcm = await _processor?.processReceivedAudio(c);
+            if (pcm != null) _playQueue.add(pcm);
+          }
+          if (!_playing) _playNext();
+        } catch (e) {
+          log('audio poll error: $e');
         }
-        if (!_playing) _playNext();
+      });
     } catch (e) {
-      log('_pollResponse: $e');
+      log('_startAudio init error: $e');
+      _audioStarted = false;
     }
-    });
   }
 
   Future<void> _playNext() async {
     if (_playQueue.isEmpty || !mounted) { _playing = false; return; }
     _playing = true;
-    var pcm = _playQueue.removeAt(0);
-    final fadeSamples = _audioCfg.fadeSamples;
-    for (int i = 0; i < fadeSamples && i * 2 < pcm.length; i++) {
-      final ratio = i / fadeSamples;
-      final idx = i * 2;
-      var v = pcm[idx] | (pcm[idx + 1] << 8);
-      var s = v > 32767 ? v - 65536 : v;
-      s = (s * ratio).round().clamp(-32768, 32767);
-      final b = s < 0 ? s + 65536 : s;
-      pcm[idx] = b & 0xFF; pcm[idx + 1] = (b >> 8) & 0xFF;
-    }
-    for (int i = 0; i < fadeSamples && pcm.length >= (i + 1) * 2; i++) {
-      final ratio = i / fadeSamples;
-      final idx = pcm.length - (i + 1) * 2;
-      var v = pcm[idx] | (pcm[idx + 1] << 8);
-      var s = v > 32767 ? v - 65536 : v;
-      s = (s * ratio).round().clamp(-32768, 32767);
-      final b = s < 0 ? s + 65536 : s;
-      pcm[idx] = b & 0xFF; pcm[idx + 1] = (b >> 8) & 0xFF;
-    }
-    final wav = QiniuDirectClient.wavFromPcm(pcm);
-    final player = _player;
-    if (player != null) {
-      player.onPlayerComplete.first.then((_) => _playNext());
-      await player.play(BytesSource(wav));
+    try {
+      var pcm = _playQueue.removeAt(0);
+      final fadeSamples = _audioCfg.fadeSamples;
+      for (int i = 0; i < fadeSamples && i * 2 < pcm.length; i++) {
+        final ratio = i / fadeSamples;
+        final idx = i * 2;
+        var v = pcm[idx] | (pcm[idx + 1] << 8);
+        var s = v > 32767 ? v - 65536 : v;
+        s = (s * ratio).round().clamp(-32768, 32767);
+        final b = s < 0 ? s + 65536 : s;
+        pcm[idx] = b & 0xFF; pcm[idx + 1] = (b >> 8) & 0xFF;
+      }
+      for (int i = 0; i < fadeSamples && pcm.length >= (i + 1) * 2; i++) {
+        final ratio = i / fadeSamples;
+        final idx = pcm.length - (i + 1) * 2;
+        var v = pcm[idx] | (pcm[idx + 1] << 8);
+        var s = v > 32767 ? v - 65536 : v;
+        s = (s * ratio).round().clamp(-32768, 32767);
+        final b = s < 0 ? s + 65536 : s;
+        pcm[idx] = b & 0xFF; pcm[idx + 1] = (b >> 8) & 0xFF;
+      }
+      final wav = QiniuDirectClient.wavFromPcm(pcm);
+      final player = _player;
+      if (player != null) {
+        player.onPlayerComplete.first.then((_) => _playNext());
+        await player.play(BytesSource(wav));
+      }
+    } catch (e) {
+      log('_playNext error: $e');
+      _playing = false;
     }
   }
 
