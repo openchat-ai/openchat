@@ -11,6 +11,7 @@ import '../../core/sdui.dart';
 import '../../core/sdui_config.dart';
 import '../../core/sdui_actions.dart';
 import '../../core/ui_voice_config.dart';
+import 'main_screen.dart';
 
 class PeopleScreen extends ConsumerStatefulWidget {
   const PeopleScreen({super.key});
@@ -211,7 +212,7 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
   void _restartApp() {
     _showSduiDialog({'type': 'column', 'children': [{'type': 'text', 'content': 'Restart app for changes to take effect', 'pad': 8}]}, {},
       actions: [{'action': 'cancel', 'label': 'Cancel'}, {'action': 'restart', 'label': 'Restart', 'color': '#7C4DFF'}],
-      onAction: (a) { if (a == 'cancel') Navigator.of(context).pop(); if (a == 'restart') { Navigator.pop(context); Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const Scaffold(body: Center(child: CircularProgressIndicator()))), (r) => false); Future.delayed(const Duration(milliseconds: 100), () => Navigator.of(context).pushReplacementNamed('/')); } });
+      onAction: (a) { if (a == 'cancel') Navigator.of(context).pop(); if (a == 'restart') { Navigator.pop(context); Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const Scaffold(body: Center(child: CircularProgressIndicator()))), (r) => false); Future.delayed(const Duration(milliseconds: 100), () => Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const MainScreen()), (r) => false)); } });
   }
 
   Future<void> _showAudioFiles() async {

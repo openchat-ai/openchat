@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer' show log;
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
@@ -65,11 +64,29 @@ class QiniuDirectClient {
 
   // ========== S3 V4 pre-signed URLs ==========
 
+  // Qiniu form upload (token-based). Qiniu does NOT support S3 presigned PUT.
+  String _base64UrlKeepPad(List<int> bytes) =>
+      base64.encode(bytes).replaceAll('+', '-').replaceAll('/', '_');
+
+  String _uploadToken(String key) {
+    final deadline = (DateTime.now().millisecondsSinceEpoch ~/ 1000) + 3600;
+    final policy = jsonEncode({'scope': '$_bucket:$key', 'deadline': deadline});
+    final encoded = _base64UrlKeepPad(utf8.encode(policy));
+    final hmacSha1 = Hmac(sha1, utf8.encode(__sk))
+        .convert(utf8.encode(encoded))
+        .bytes;
+    return '${__ak}:${_base64UrlKeepPad(hmacSha1)}:$encoded';
+  }
+
   Future<void> _put(String key, String body) async {
-    final url = _presignedUrl(key, method: 'PUT');
-    final resp = await _client.put(Uri.parse(url), headers: {'Content-Type': 'application/json'}, body: body)
-        .timeout(const Duration(seconds: 10));
-    if (resp.statusCode != 200) throw Exception('S3 PUT $key: HTTP ${resp.statusCode}');
+    final uri = Uri.parse('https://upload-z0.qiniup.com/');
+    final request = http.MultipartRequest('POST', uri)
+      ..fields['token'] = _uploadToken(key)
+      ..fields['key'] = key
+      ..files.add(http.MultipartFile.fromString('file', body));
+    final streamed = await _client.send(request).timeout(const Duration(seconds: 15));
+    final resp = await http.Response.fromStream(streamed);
+    if (resp.statusCode != 200) throw Exception('PUT $key: HTTP ${resp.statusCode} ${resp.body}');
   }
 
   String _hex(List<int> bytes) =>
