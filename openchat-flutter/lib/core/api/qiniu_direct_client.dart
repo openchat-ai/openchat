@@ -40,6 +40,10 @@ class QiniuDirectClient {
 
   // ========== Upload token (no V4 signing needed) ==========
   // Qiniu upload token: base64(PutPolicy) + ':' + HMAC-SHA1(base64(PutPolicy), SK)
+  // All reads use Qiniu RS API (HMAC-SHA1), not S3 V4 presigned URLs (phone clock skew)
+
+  // Qiniu SDK: flags = urlsafeBase64Encode (no padding)
+  //            sig  = base64ToUrlSafe(hmacSha1) (KEEPS padding)
 
   // Qiniu SDK: flags = urlsafeBase64Encode (no padding)
   //            sig  = base64ToUrlSafe(hmacSha1) (KEEPS padding)
@@ -58,13 +62,24 @@ class QiniuDirectClient {
     return '$_ak:${_base64UrlKeepPad(hmacSha1)}:$encoded';
   }
 
+  // Qiniu private download URL (uses same HMAC-SHA1 as upload token, no clock skew)
+  String _downloadUrl(String key) {
+    final deadline = (DateTime.now().millisecondsSinceEpoch ~/ 1000) + 3600;
+    final signStr = '/$key?e=$deadline';
+    final hmacSha1 = Hmac(sha1, utf8.encode(_sk))
+        .convert(utf8.encode(signStr))
+        .bytes;
+    final token = '$_ak:${_base64UrlKeepPad(hmacSha1)}';
+    return 'https://$_endpoint$signStr&token=$token';
+  }
+
   Future<void> _put(String key, String body) async {
     final uri = Uri.parse('https://upload-z0.qiniup.com/');
     final request = http.MultipartRequest('POST', uri)
       ..fields['token'] = _uploadToken(key)
       ..fields['key'] = key
       ..files.add(http.MultipartFile.fromString('file', body));
-    final streamed = await _client.send(request).timeout(const Duration(seconds: 10));
+    final streamed = await _client.send(request).timeout(const Duration(seconds: 15));
     final resp = await http.Response.fromStream(streamed);
     if (resp.statusCode != 200) {
       throw Exception('PUT $key: HTTP ${resp.statusCode} ${resp.body}');
@@ -141,10 +156,26 @@ class QiniuDirectClient {
       '${d.hour.toString().padLeft(2, '0')}${d.minute.toString().padLeft(2, '0')}${d.second.toString().padLeft(2, '0')}';
 
   Future<String> _get(String key) async {
-    final url = _presignedUrl(key);
-    final resp = await _client.get(Uri.parse(url));
-    if (resp.statusCode != 200) throw Exception('GET $key: HTTP ${resp.statusCode}');
-    return resp.body;
+    // Qiniu RS API: GET /get/<EncodedEntryURI> → returns download URL, then fetch it
+    final entryStr = '$_bucket:$key';
+    final encodedEntry = base64.encode(utf8.encode(entryStr))
+        .replaceAll('+', '-').replaceAll('/', '_');
+    final path = '/get/$encodedEntry';
+    final hmacSha1 = Hmac(sha1, utf8.encode(_sk))
+        .convert(utf8.encode('$path\n'))
+        .bytes;
+    final sig = base64.encode(hmacSha1).replaceAll('+', '-').replaceAll('/', '_');
+    final token = '$_ak:$sig';
+    final resp = await _client.get(Uri.parse('https://rs.qbox.me$path'),
+        headers: {'Authorization': 'QBox $token'});
+    if (resp.statusCode != 200) throw Exception('RS GET $key: HTTP ${resp.statusCode}');
+    final info = jsonDecode(resp.body);
+    if (info['url'] is String) {
+      final dlUrl = (info['url'] as String).replaceFirst('http://', 'https://');
+      final dlResp = await _client.get(Uri.parse(dlUrl));
+      if (dlResp.statusCode == 200) return dlResp.body;
+    }
+    throw Exception('RS GET $key: no download URL');
   }
 
   Future<List<String>> _list(String prefix) async {

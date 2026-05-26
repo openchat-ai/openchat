@@ -169,7 +169,7 @@
 ### 工作线 A：音频通路 — 最优先
 | 版本 | 交付 | 状态 |
 |------|------|------|
-| A1 | 录音→Qiniu→播放完整链路（队列播放、淡入淡出、Opus/raw/neural 三模式 SDUI 可切、file:write URI 解析已修复） | ✅ |
+| A1 | 录音→Qiniu→播放完整链路（队列播放、淡入淡出、Opus/raw/neural 三模式 SDUI 可切、GET 改用 Qiniu RS API 修复手机时钟偏差） | ✅ v1.0.0 |
 | A2 | 双手机端到端通话验证 | ⏳ 待测试 |
 | A3 | 延迟优化（bufferMs/pollMs SDUI 可调） | ✅ |
 | A4 | UDP 打洞直连 | ⏳ |

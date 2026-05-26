@@ -9,7 +9,7 @@ class SduiConfig {
     'column', 'row', 'list', 'text', 'button', 'spacer',
     'icon', 'list_tile', 'padding', 'divider', 'image', 'card',
     'sdui_fragment', 'auto', 'checkbox', 'switch', 'textfield',
-    'users_list',
+    'users_list', 's3_data',
   };
 
   /// Validate SDUI JSON structure to prevent malformed/crafted configs.
