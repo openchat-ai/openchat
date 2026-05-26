@@ -1,0 +1,12 @@
+name: sdui_engine_example
+description: Demo app for sdui_engine
+publish_to: none
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  sdui_engine:
+    path: ../
