@@ -1,0 +1,24 @@
+{
+  "layout": {
+    "type": "column",
+    "children": [
+      {"type": "padding", "padding": {"l": 16, "r": 16, "t": 16, "b": 8}, "child": {
+        "type": "row", "children": [
+          {"type": "text", "content": "Messages", "style": {"size": 24, "bold": true}, "flex": 1},
+          {"type": "icon", "icon": "circle", "size": 8, "color": "{{connectedColor}}"},
+          {"type": "text", "content": " {{connectedText}}", "style": {"size": 11}}
+        ]
+      }},
+      {"type": "padding", "padding": {"l": 16, "r": 16, "t": 8, "b": 8}, "child": {
+        "type": "card", "elevation": 0, "padding": 12, "child": {
+          "type": "row", "children": [
+            {"type": "icon", "icon": "wifi", "size": 18, "flex": 0},
+            {"type": "text", "content": " Peer: {{peerId}}", "style": {"size": 12}, "flex": 1},
+            {"type": "button", "icon": "send", "action": "open_chat", "size": 36, "iconSize": 18}
+          ]
+        }
+      }},
+      {"type": "text", "content": "{{emptyText}}", "pad": 32, "style": {"size": 14}, "center": true, "if": "messageCount == 0"}
+    ]
+  }
+}
