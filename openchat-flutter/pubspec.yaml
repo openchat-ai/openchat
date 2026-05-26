@@ -26,6 +26,8 @@ dependencies:
   shared_preferences: ^2.2.0
   opus_dart: ^3.0.1
   opus_flutter: ^3.0.3
+  sdui_engine:
+    path: ../packages/sdui_engine
 
 dev_dependencies:
   flutter_test:

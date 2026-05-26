@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
@@ -13,7 +13,7 @@ class TaskDetailScreen extends ConsumerStatefulWidget {
   ConsumerState<TaskDetailScreen> createState() => _TaskDetailScreenState();
 }
 
-class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> with SduiPageState {
+class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> with AppSduiPageState {
   @override
   String get sduiPage => 'task_detail';
 
@@ -21,10 +21,10 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> with SduiPa
   Widget build(BuildContext context) {
     final theme = ref.watch(currentThemeProvider);
     final t = sduiLayout;
-    final title = t['title'] as String? ?? '任务详情';
-    final statusLabel = t['statusLabel'] as String? ?? '状态';
-    final infoLabel = t['infoLabel'] as String? ?? '基本信息';
-    final resultLabel = t['resultLabel'] as String? ?? '执行结果';
+    final title = t['title'] as String? ?? '浠诲姟璇︽儏';
+    final statusLabel = t['statusLabel'] as String? ?? '鐘舵€?;
+    final infoLabel = t['infoLabel'] as String? ?? '鍩烘湰淇℃伅';
+    final resultLabel = t['resultLabel'] as String? ?? '鎵ц缁撴灉';
 
     return Scaffold(
       backgroundColor: theme.background,
@@ -135,7 +135,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> with SduiPa
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '代码审查任务 #$agentId',
+                      '浠ｇ爜瀹℃煡浠诲姟 #$agentId',
                       style: TextStyle(
                         color: theme.textPrimary,
                         fontSize: 18,
@@ -144,7 +144,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> with SduiPa
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '创建于2024-01-15',
+                      '鍒涘缓浜?024-01-15',
                       style: TextStyle(
                         color: theme.textTertiary,
                         fontSize: 12,
@@ -157,7 +157,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> with SduiPa
           ),
           const SizedBox(height: 16),
           Text(
-            '对项目代码进行全面审查，检查潜在的安全漏洞和性能问题，并提供优化建议。',
+            '瀵归」鐩唬鐮佽繘琛屽叏闈㈠鏌ワ紝妫€鏌ユ綔鍦ㄧ殑瀹夊叏婕忔礊鍜屾€ц兘闂锛屽苟鎻愪緵浼樺寲寤鸿銆?,
             style: TextStyle(
               color: theme.textSecondary,
               fontSize: 14,
@@ -170,15 +170,15 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> with SduiPa
   }
 
   Widget _buildStatusSection(AppTheme theme) {
-    final label = sduiLayout['statusLabel'] as String? ?? '任务状态';
+    final label = sduiLayout['statusLabel'] as String? ?? '浠诲姟鐘舵€?;
     final items = (sduiLayout['statusItems'] as List?)?.map((e) {
       if (e is! Map) return <String, String>{};
       return {'label': e['label'] as String? ?? '', 'status': e['status'] as String? ?? '', 'color': _statusColor(e['status'] as String? ?? '')};
     }).toList() ?? [
-      {'label': '分析代码', 'status': '已完成', 'color': '#4CAF50'},
-      {'label': '检测漏洞', 'status': '已完成', 'color': '#4CAF50'},
-      {'label': '性能评估', 'status': '进行中', 'color': '#FF9800'},
-      {'label': '生成报告', 'status': '待开始', 'color': '#9E9E9E'},
+      {'label': '鍒嗘瀽浠ｇ爜', 'status': '宸插畬鎴?, 'color': '#4CAF50'},
+      {'label': '妫€娴嬫紡娲?, 'status': '宸插畬鎴?, 'color': '#4CAF50'},
+      {'label': '鎬ц兘璇勪及', 'status': '杩涜涓?, 'color': '#FF9800'},
+      {'label': '鐢熸垚鎶ュ憡', 'status': '寰呭紑濮?, 'color': '#9E9E9E'},
     ];
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(label, style: TextStyle(color: theme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
@@ -190,7 +190,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> with SduiPa
     ]);
   }
 
-  String _statusColor(String status) => status == '已完成' ? '#4CAF50' : status == '进行中' ? '#FF9800' : '#9E9E9E';
+  String _statusColor(String status) => status == '宸插畬鎴? ? '#4CAF50' : status == '杩涜涓? ? '#FF9800' : '#9E9E9E';
 
   Widget _buildForEach(List<Map<String, String>> items, Widget Function(Map<String, String>, int) builder) {
     return Column(children: items.asMap().entries.map((e) {
@@ -200,7 +200,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> with SduiPa
   }
 
   Widget _buildStatusItem(Map<String, String> item, AppTheme theme) {
-    final isCompleted = item['status'] == '已完成';
+    final isCompleted = item['status'] == '宸插畬鎴?;
     final color = _hexOr(item['color'], isCompleted ? theme.success : theme.textTertiary);
     return Row(children: [
       Container(width: 24, height: 24,
@@ -221,12 +221,12 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> with SduiPa
   }
 
   Widget _buildInfoSection(AppTheme theme) {
-    final infoLabel = sduiLayout['infoLabel'] as String? ?? '基本信息';
+    final infoLabel = sduiLayout['infoLabel'] as String? ?? '鍩烘湰淇℃伅';
     final items = (sduiLayout['infoItems'] as List?)?.map((e) {
       if (e is! Map) return ['', ''];
       return [(e['label'] as String? ?? ''), (e['value'] as String? ?? '')];
     }).toList() ?? [
-      ['执行者', 'AI Agent'], ['优先级', '高'], ['预计耗时', '15 分钟'], ['截止日期', '2024-01-20'],
+      ['鎵ц鑰?, 'AI Agent'], ['浼樺厛绾?, '楂?], ['棰勮鑰楁椂', '15 鍒嗛挓'], ['鎴鏃ユ湡', '2024-01-20'],
     ];
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(infoLabel, style: TextStyle(color: theme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
@@ -265,15 +265,15 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> with SduiPa
   }
 
   Widget _buildResultSection(AppTheme theme) {
-    final label = sduiLayout['resultLabel'] as String? ?? '初步结果';
+    final label = sduiLayout['resultLabel'] as String? ?? '鍒濇缁撴灉';
     final items = (sduiLayout['resultItems'] as List?)?.map((e) {
       if (e is! Map) return <String, String>{};
       return {'label': e['label'] as String? ?? '', 'value': e['value'] as String? ?? '', 'color': e['color'] as String? ?? '#9E9E9E'};
     }).toList() ?? [
-      {'label': '发现问题', 'value': '3', 'color': '#F44336'},
-      {'label': '警告', 'value': '7', 'color': '#FF9800'},
-      {'label': '建议优化', 'value': '12', 'color': '#2196F3'},
-      {'label': '代码质量评分', 'value': '85', 'color': '#4CAF50'},
+      {'label': '鍙戠幇闂', 'value': '3', 'color': '#F44336'},
+      {'label': '璀﹀憡', 'value': '7', 'color': '#FF9800'},
+      {'label': '寤鸿浼樺寲', 'value': '12', 'color': '#2196F3'},
+      {'label': '浠ｇ爜璐ㄩ噺璇勫垎', 'value': '85', 'color': '#4CAF50'},
     ];
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(label, style: TextStyle(color: theme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
@@ -303,8 +303,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> with SduiPa
       if (e is! Map) return <String, String>{};
       return {'label': e['label'] as String? ?? '', 'color': e['color'] as String? ?? '', 'primary': (e['primary'] == true).toString()};
     }).toList() ?? [
-      {'label': '暂停任务', 'color': '', 'primary': 'false'},
-      {'label': '查看报告', 'color': '', 'primary': 'true'},
+      {'label': '鏆傚仠浠诲姟', 'color': '', 'primary': 'false'},
+      {'label': '鏌ョ湅鎶ュ憡', 'color': '', 'primary': 'true'},
     ];
     return Row(children: actions.asMap().entries.map((e) {
       final item = e.value;

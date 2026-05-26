@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' show log;
 import 'dart:math' hide log;
@@ -23,7 +23,7 @@ class VoiceRoomScreen extends ConsumerStatefulWidget {
   ConsumerState<VoiceRoomScreen> createState() => _VoiceRoomScreenState();
 }
 
-class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> with SduiPageState {
+class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> with AppSduiPageState {
   QiniuDirectClient? _client;
   String? _targetPeerId;
   String _state = 'calling';

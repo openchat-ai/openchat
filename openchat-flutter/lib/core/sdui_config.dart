@@ -1,8 +1,11 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sdui_engine/sdui_engine.dart';
 import 'api/qiniu_direct_client.dart';
 
-class SduiConfig {
+/// Qiniu-backed SDUI config source.
+/// Tries: individual file → merged ui_app.json → cache → compile-time defaults.
+class SduiQiniuSource extends SduiConfigSource {
   static const _maxDepth = 8;
   static const _maxChildren = 50;
   static const _allowedTypes = {
@@ -12,26 +15,24 @@ class SduiConfig {
     'users_list', 's3_data', 'for_each',
   };
 
-  /// Compile-time default configs (used when network is unavailable).
-  /// Each entry is a [pageName] → default Map.
   static const Map<String, Map<String, dynamic>> defaults = {
-    'ui_voice': {'callingText': 'Calling {peer}...', 'connectedText': 'Connected to {peer}', 'endedText': 'Call ended', 'mutedLabel': 'MUTED', 'relayLabel': 'Qiniu relay'},
-    'ui_audio': {'mode': 'raw', 'sampleRate': 24000, 'bufferMs': 1000, 'pollMs': 800, 'fadeBytes': 240, 'fadeSamples': 48, 'demoDelayMs': 3000},
-    'ui_main': {'tabs': [{'icon': 'home', 'label': '首页', 'screen': 'home'}, {'icon': 'people', 'label': '好友', 'screen': 'people'}, {'icon': 'chat', 'label': '聊天', 'screen': 'chat'}, {'icon': 'settings', 'label': '我的', 'screen': 'settings'}]},
-    'ui_settings': {'title': 'SETTINGS', 'sections': []},
-    'ui_home': {'title': '社区动态'},
-    'ui_chat': {'title': 'Chat'},
-    'ui_agent': {'title': 'AI 居民'},
-    'ui_chat_list': {'title': 'Messages'},
-    'ui_task_detail': {'title': '任务详情'},
-    'ui_dev_ide': {'title': 'Dev Console', 'tabs': []},
-    'ui_theme_selector': {'title': '主题设置'},
-    'ui_resident_detail': {'title': '居民档案'},
+    'voice': {'callingText': 'Calling {peer}...', 'connectedText': 'Connected to {peer}', 'endedText': 'Call ended', 'mutedLabel': 'MUTED', 'relayLabel': 'Qiniu relay'},
+    'audio': {'mode': 'raw', 'sampleRate': 24000, 'bufferMs': 1000, 'pollMs': 800, 'fadeBytes': 240, 'fadeSamples': 48, 'demoDelayMs': 3000},
+    'main': {'tabs': [{'icon': 'home', 'label': '首页', 'screen': 'home'}, {'icon': 'people', 'label': '好友', 'screen': 'people'}, {'icon': 'chat', 'label': '聊天', 'screen': 'chat'}, {'icon': 'settings', 'label': '我的', 'screen': 'settings'}]},
+    'settings': {'title': 'SETTINGS', 'sections': []},
+    'home': {'title': '社区动态'},
+    'chat': {'title': 'Chat'},
+    'agent': {'title': 'AI 居民'},
+    'chat_list': {'title': 'Messages'},
+    'task_detail': {'title': '任务详情'},
+    'dev_ide': {'title': 'Dev Console', 'tabs': []},
+    'theme_selector': {'title': '主题设置'},
+    'resident_detail': {'title': '居民档案'},
+    'people': {'title': '好友'},
     'global': {'spacing': {'xs': 4, 'sm': 8, 'md': 12, 'lg': 16, 'xl': 24, 'xxl': 32}, 'radius': {'sm': 8, 'md': 12, 'lg': 16, 'xl': 20}},
   };
 
-  /// Get default config for a page name.
-  static Map<String, dynamic> defaultFor(String page) => Map<String, dynamic>.from(defaults[page] ?? {});
+  const SduiQiniuSource();
 
   static bool isValid(dynamic node, [int depth = 0]) {
     if (depth > _maxDepth) return false;
@@ -50,14 +51,13 @@ class SduiConfig {
     return true;
   }
 
-  /// Unified load: tries ui_app.json[page] → ui_{page}.json → compile-time default.
-  /// [page] = 'settings', 'home', 'agent', etc. (without 'ui_' prefix).
-  static Future<Map<String, dynamic>> load(String page) async {
+  @override
+  Future<Map<String, dynamic>> load(String page) async {
     const individualPath = 'oc/config/ui_$page.json';
     final prefs = await SharedPreferences.getInstance();
     final cacheKey = 'sdui:$page';
 
-    // Try individual file first (fast path)
+    // 1. Individual file
     try {
       final raw = await QiniuDirectClient.fetchConfigFile(individualPath);
       if (raw != null && isValid(raw)) {
@@ -66,7 +66,7 @@ class SduiConfig {
       }
     } catch (_) {}
 
-    // Fallback: merged ui_app.json
+    // 2. Merged ui_app.json
     try {
       final appRaw = await QiniuDirectClient.fetchConfigFile('oc/config/ui_app.json');
       if (appRaw is Map && appRaw[page] is Map && isValid(appRaw[page])) {
@@ -76,14 +76,14 @@ class SduiConfig {
       }
     } catch (_) {}
 
-    // Rollback: cached
+    // 3. Cache
     final cached = prefs.getString(cacheKey);
     if (cached != null) {
       try { final p = jsonDecode(cached); if (p is Map) return Map<String, dynamic>.from(p); } catch (_) {}
     }
 
-    // Fallback: compile-time default
-    return defaultFor(page);
+    // 4. Compile-time default
+    return Map<String, dynamic>.from(defaults[page] ?? {});
   }
 
   static Future<void> clearCache() async {
@@ -93,24 +93,23 @@ class SduiConfig {
   }
 }
 
-/// Mixin for ConsumerState pages to auto-load SDUI config.
-/// Usage:
-///   class _FooState extends ConsumerState<FooScreen> with SduiPageState {
-///     @override
-///     String get sduiPage => 'settings';
-///     // sduiLayout is ready after initState, no boilerplate needed
-///   }
-mixin SduiPageState<T extends ConsumerStatefulWidget> on ConsumerState<T> {
+/// Singleton source for the app.
+const sduiSource = SduiQiniuSource();
+
+/// Convenience: load config for a page.
+Future<Map<String, dynamic>> loadSdui(String page) => sduiSource.load(page);
+
+/// App-specific mixin for ConsumerState (Riverpod).
+/// Bridges the package's SduiConfigSource with Riverpod's ConsumerState.
+mixin AppSduiPageState<T extends ConsumerStatefulWidget> on ConsumerState<T> {
   Map<String, dynamic> _layout = {};
   Map<String, dynamic> get sduiLayout => _layout;
-
-  /// Override to set the page name for config loading.
   String get sduiPage => '';
 
   @override
   void initState() {
     super.initState();
-    SduiConfig.load(sduiPage).then((m) {
+    sduiSource.load(sduiPage).then((m) {
       if (mounted) setState(() => _layout = m);
     });
   }

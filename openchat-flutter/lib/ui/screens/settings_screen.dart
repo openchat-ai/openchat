@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
@@ -16,7 +16,7 @@ class SettingsScreen extends ConsumerStatefulWidget {
   ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends ConsumerState<SettingsScreen> with SduiPageState {
+class _SettingsScreenState extends ConsumerState<SettingsScreen> with AppSduiPageState {
   @override
   String get sduiPage => 'settings';
 
@@ -67,7 +67,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> with SduiPageSt
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  child: Text('版本: $appVersion',
+                  child: Text('鐗堟湰: $appVersion',
                     style: TextStyle(color: theme.textTertiary, fontSize: 11)),
                 ),
               ),
@@ -128,27 +128,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> with SduiPageSt
             slivers: [
               _buildProfileHeader(theme),
               _buildThemeSection(theme, themeMode, ref),
-              _buildSection('通用', [
-                _buildSettingItem(Icons.language_outlined, '语言', '简体中文', theme.info, theme),
-                _buildSettingItem(Icons.notifications_outlined, '通知', '已开启', theme.success, theme),
+              _buildSection('閫氱敤', [
+                _buildSettingItem(Icons.language_outlined, '璇█', '绠€浣撲腑鏂?, theme.info, theme),
+                _buildSettingItem(Icons.notifications_outlined, '閫氱煡', '宸插紑鍚?, theme.success, theme),
               ], theme),
-              _buildSection('账号', [
-                _buildSettingItem(Icons.person_outlined, '个人资料', '', theme.gradientPrimary[0], theme),
-                _buildSettingItem(Icons.security_outlined, '安全设置', '', theme.warning, theme),
-                _buildSettingItem(Icons.link_outlined, '绑定账号', '', theme.accent, theme),
+              _buildSection('璐﹀彿', [
+                _buildSettingItem(Icons.person_outlined, '涓汉璧勬枡', '', theme.gradientPrimary[0], theme),
+                _buildSettingItem(Icons.security_outlined, '瀹夊叏璁剧疆', '', theme.warning, theme),
+                _buildSettingItem(Icons.link_outlined, '缁戝畾璐﹀彿', '', theme.accent, theme),
               ], theme),
-              _buildSection('连接', [
+              _buildSection('杩炴帴', [
                 _BridgeUrlTile(theme: theme),
               ], theme),
-              _buildSection('其他', [
-                _buildSettingItem(Icons.storage_outlined, '存储空间', '2.4 GB', theme.gradientAccent[0], theme),
-                _buildSettingItem(Icons.help_outline, '帮助与反馈', '', theme.gradientAccent[1], theme),
-                _buildSettingItem(Icons.info_outlined, '关于', 'v1.0.0', theme.textSecondary, theme),
+              _buildSection('鍏朵粬', [
+                _buildSettingItem(Icons.storage_outlined, '瀛樺偍绌洪棿', '2.4 GB', theme.gradientAccent[0], theme),
+                _buildSettingItem(Icons.help_outline, '甯姪涓庡弽棣?, '', theme.gradientAccent[1], theme),
+                _buildSettingItem(Icons.info_outlined, '鍏充簬', 'v1.0.0', theme.textSecondary, theme),
               ], theme),
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  child: Text('版本: $appVersion',
+                  child: Text('鐗堟湰: $appVersion',
                     style: TextStyle(color: theme.textTertiary, fontSize: 11)),
                 ),
               ),
@@ -195,7 +195,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> with SduiPageSt
           ),
           const SizedBox(width: 20),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('开发者', style: TextStyle(color: theme.textPrimary, fontSize: 22, fontWeight: FontWeight.bold)),
+            Text('寮€鍙戣€?, style: TextStyle(color: theme.textPrimary, fontSize: 22, fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             Text('ID: 88888888', style: TextStyle(color: theme.textTertiary, fontSize: 13)),
             const SizedBox(height: 10),
@@ -220,14 +220,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> with SduiPageSt
 
   Widget _buildThemeSection(AppTheme theme, ThemeModeSetting currentMode, WidgetRef ref) {
     final modeLabels = {
-      ThemeModeSetting.auto: '跟随系统', ThemeModeSetting.light: '浅色模式',
-      ThemeModeSetting.dark: '深色模式', ThemeModeSetting.manual: '手动选择',
+      ThemeModeSetting.auto: '璺熼殢绯荤粺', ThemeModeSetting.light: '娴呰壊妯″紡',
+      ThemeModeSetting.dark: '娣辫壊妯″紡', ThemeModeSetting.manual: '鎵嬪姩閫夋嫨',
     };
     return SliverToBoxAdapter(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
-          child: Text('外观'.toUpperCase(), style: TextStyle(color: theme.textTertiary, fontSize: 11,
+          child: Text('澶栬'.toUpperCase(), style: TextStyle(color: theme.textTertiary, fontSize: 11,
             fontWeight: FontWeight.w600, letterSpacing: 2)),
         ),
         Container(
@@ -237,7 +237,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> with SduiPageSt
             borderRadius: BorderRadius.circular(theme.radiusMedium),
             border: Border.all(color: theme.textTertiary.withValues(alpha: 0.1), width: 1)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('主题模式', style: TextStyle(color: theme.textPrimary, fontSize: 15, fontWeight: FontWeight.w500)),
+            Text('涓婚妯″紡', style: TextStyle(color: theme.textPrimary, fontSize: 15, fontWeight: FontWeight.w500)),
             const SizedBox(height: 12),
             Wrap(spacing: 8, runSpacing: 8, children: ThemeModeSetting.values.map((mode) {
               final sel = mode == currentMode;
@@ -273,14 +273,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> with SduiPageSt
               borderRadius: BorderRadius.circular(theme.radiusMedium),
               border: Border.all(color: theme.textTertiary.withValues(alpha: 0.1), width: 1)),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('选择主题', style: TextStyle(color: theme.textPrimary, fontSize: 15, fontWeight: FontWeight.w500)),
+              Text('閫夋嫨涓婚', style: TextStyle(color: theme.textPrimary, fontSize: 15, fontWeight: FontWeight.w500)),
               const SizedBox(height: 12),
               for (final t in [
-                {'theme': AppTheme.glassmorphism, 'name': '赛博霓虹'},
-                {'theme': AppTheme.minimalZen, 'name': '极简禅意'},
-                {'theme': AppTheme.natureOrganic, 'name': '自然有机'},
-                {'theme': AppTheme.retroWave, 'name': '复古蒸汽波'},
-                {'theme': AppTheme.corporatePro, 'name': '商务专业'},
+                {'theme': AppTheme.glassmorphism, 'name': '璧涘崥闇撹櫣'},
+                {'theme': AppTheme.minimalZen, 'name': '鏋佺畝绂呮剰'},
+                {'theme': AppTheme.natureOrganic, 'name': '鑷劧鏈夋満'},
+                {'theme': AppTheme.retroWave, 'name': '澶嶅彜钂告苯娉?},
+                {'theme': AppTheme.corporatePro, 'name': '鍟嗗姟涓撲笟'},
               ]) ...[
                 _buildThemePreview(t['theme'] as AppTheme, t['name'] as String, theme, ref),
                 const SizedBox(height: 8),
@@ -301,7 +301,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> with SduiPageSt
                 borderRadius: BorderRadius.circular(10))),
             const SizedBox(width: 12),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('当前主题', style: TextStyle(color: theme.textSecondary, fontSize: 12)),
+              Text('褰撳墠涓婚', style: TextStyle(color: theme.textSecondary, fontSize: 12)),
               const SizedBox(height: 2),
               Text(theme.name, style: TextStyle(color: theme.textPrimary, fontSize: 15, fontWeight: FontWeight.w600)),
             ])),
@@ -408,7 +408,7 @@ class _BridgeUrlTileState extends ConsumerState<_BridgeUrlTile> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Bridge 地址', style: TextStyle(color: widget.theme.textSecondary, fontSize: 13)),
+        Text('Bridge 鍦板潃', style: TextStyle(color: widget.theme.textSecondary, fontSize: 13)),
         const SizedBox(height: 6),
         Row(children: [
           Expanded(child: TextField(
@@ -427,11 +427,11 @@ class _BridgeUrlTileState extends ConsumerState<_BridgeUrlTile> {
           TextButton(onPressed: () {
             ref.read(configProvider.notifier).setBaseUrl(_controller.text);
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('地址已更新'), duration: Duration(seconds: 2)));
-          }, child: const Text('保存')),
+              const SnackBar(content: Text('鍦板潃宸叉洿鏂?), duration: Duration(seconds: 2)));
+          }, child: const Text('淇濆瓨')),
         ]),
         const SizedBox(height: 4),
-        Text('当前: ${config.baseUrl}', style: TextStyle(color: widget.theme.textTertiary, fontSize: 11)),
+        Text('褰撳墠: ${config.baseUrl}', style: TextStyle(color: widget.theme.textTertiary, fontSize: 11)),
       ]),
     );
   }

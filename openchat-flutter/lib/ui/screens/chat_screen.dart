@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:async';
 import '../../core/theme/app_theme.dart';
@@ -25,7 +25,7 @@ class ChatScreen extends ConsumerStatefulWidget {
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState {
+class _ChatScreenState extends ConsumerState<ChatScreen> with AppSduiPageState {
   final TextEditingController _controller = TextEditingController();
   final List<Map<String, dynamic>> _messages = [];
   final ScrollController _scrollController = ScrollController();
@@ -37,7 +37,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState {
   void initState() {
     super.initState();
     _messages.addAll([
-      {'sender': 'ai', 'text': '你好！有什么可以帮助你的？', 'time': '10:00'},
+      {'sender': 'ai', 'text': '浣犲ソ锛佹湁浠€涔堝彲浠ュ府鍔╀綘鐨勶紵', 'time': '10:00'},
     ]);
     _wsSub = ref.read(bridgeWsProvider).messages.listen((msg) {
       if (msg.type == 'chat_chunk' || msg.type == 'chat_response') {
@@ -77,7 +77,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState {
     });
     Future.delayed(const Duration(seconds: 1), () {
       if (mounted) setState(() {
-        _messages.add({'sender': 'ai', 'text': '收到你的消息：$text', 'time': DateTime.now().toString().substring(11, 16)});
+        _messages.add({'sender': 'ai', 'text': '鏀跺埌浣犵殑娑堟伅锛?text', 'time': DateTime.now().toString().substring(11, 16)});
       });
     });
   }
@@ -179,7 +179,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState {
 
   Widget _buildInputArea(AppTheme theme) {
     final ia = sduiLayout['input'] as Map? ?? {};
-    final hint = ia['hint'] as String? ?? '输入消息...';
+    final hint = ia['hint'] as String? ?? '杈撳叆娑堟伅...';
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(

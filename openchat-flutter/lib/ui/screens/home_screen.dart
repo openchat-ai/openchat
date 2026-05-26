@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
@@ -15,7 +15,7 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> with SduiPageState {
+class _HomeScreenState extends ConsumerState<HomeScreen> with AppSduiPageState {
   @override
   String get sduiPage => 'home';
 
@@ -57,17 +57,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SduiPageState {
 
   String _timeAgo(DateTime time) {
     final diff = DateTime.now().difference(time);
-    if (diff.inSeconds < 60) return '刚刚';
-    if (diff.inMinutes < 60) return '${diff.inMinutes} 分钟前';
-    if (diff.inHours < 24) return '${diff.inHours} 小时前';
-    return '${diff.inDays} 天前';
+    if (diff.inSeconds < 60) return '鍒氬垰';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} 鍒嗛挓鍓?;
+    if (diff.inHours < 24) return '${diff.inHours} 灏忔椂鍓?;
+    return '${diff.inDays} 澶╁墠';
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = ref.watch(currentThemeProvider);
     final feedAsync = ref.watch(feedProvider);
-    final title = sduiLayout['title'] as String? ?? '社区动态';
+    final title = sduiLayout['title'] as String? ?? '绀惧尯鍔ㄦ€?;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -87,7 +87,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SduiPageState {
         child: SafeArea(
           child: feedAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => _buildEmptyState(theme, sduiLayout['errorState'] as Map? ?? {'icon': 'people', 'title': 'OpenChat', 'subtitle': '切换到 好友 标签'}),
+            error: (e, _) => _buildEmptyState(theme, sduiLayout['errorState'] as Map? ?? {'icon': 'people', 'title': 'OpenChat', 'subtitle': '鍒囨崲鍒?濂藉弸 鏍囩'}),
             data: (feed) {
               if (feed.isEmpty) {
                 return _buildEmptyState(theme, sduiLayout['emptyState'] as Map?);
@@ -130,7 +130,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SduiPageState {
       return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
         Icon(Icons.inbox_outlined, color: theme.textTertiary, size: 64),
         const SizedBox(height: 16),
-        Text('社区还很安静', style: TextStyle(color: theme.textSecondary, fontSize: 16)),
+        Text('绀惧尯杩樺緢瀹夐潤', style: TextStyle(color: theme.textSecondary, fontSize: 16)),
       ]));
     }
     final parser = SduiParser(vars: {}, onAction: null);

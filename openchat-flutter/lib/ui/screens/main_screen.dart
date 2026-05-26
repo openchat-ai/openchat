@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
@@ -21,7 +21,7 @@ class MainScreen extends ConsumerStatefulWidget {
   ConsumerState<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends ConsumerState<MainScreen> with SduiPageState {
+class _MainScreenState extends ConsumerState<MainScreen> with AppSduiPageState {
   @override
   String get sduiPage => 'main';
 
@@ -50,12 +50,12 @@ class _MainScreenState extends ConsumerState<MainScreen> with SduiPageState {
   }
 
   static const _fallbackTabs = [
-    {'icon': 'home', 'label': '首页', 'screen': 'home'},
+    {'icon': 'home', 'label': '棣栭〉', 'screen': 'home'},
     {'icon': 'agent', 'label': 'Agent', 'screen': 'agent'},
-    {'icon': 'people', 'label': '好友', 'screen': 'people'},
-    {'icon': 'chat', 'label': '聊天', 'screen': 'chat'},
-    {'icon': 'dev', 'label': '控制台', 'screen': 'dev'},
-    {'icon': 'settings', 'label': '我的', 'screen': 'settings'},
+    {'icon': 'people', 'label': '濂藉弸', 'screen': 'people'},
+    {'icon': 'chat', 'label': '鑱婂ぉ', 'screen': 'chat'},
+    {'icon': 'dev', 'label': '鎺у埗鍙?, 'screen': 'dev'},
+    {'icon': 'settings', 'label': '鎴戠殑', 'screen': 'settings'},
   ];
 
   List<Map<String, dynamic>> _getTabs() {
