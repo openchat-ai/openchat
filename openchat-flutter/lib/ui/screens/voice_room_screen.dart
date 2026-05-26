@@ -23,7 +23,7 @@ class VoiceRoomScreen extends ConsumerStatefulWidget {
   ConsumerState<VoiceRoomScreen> createState() => _VoiceRoomScreenState();
 }
 
-class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
+class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> with SduiPageState {
   QiniuDirectClient? _client;
   String? _targetPeerId;
   String _state = 'calling';
@@ -38,8 +38,10 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
   bool _playing = false;
   VoiceUiConfig _uiVoice = const VoiceUiConfig();
   AudioConfig _audioCfg = const AudioConfig();
-  Map<String, dynamic>? _sduiLayout;
   Map<String, void Function()> _customActions = {};
+
+  @override
+  String get sduiPage => 'voice';
 
   @override
   void initState() {
@@ -50,7 +52,6 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
     _client = argMap['client'] as QiniuDirectClient?;
 
     VoiceUiConfig.load().then((c) { if (mounted) setState(() => _uiVoice = c); });
-    SduiConfig.load('voice').then((m) { if (mounted) setState(() => _sduiLayout = m); });
 
     if (_targetPeerId != null && _client != null) {
       _signalTimer = Timer.periodic(const Duration(seconds: 2), (_) => _pollResponse());
@@ -270,7 +271,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
         : '';
     final muteIcon = _muted ? 'mic_off' : 'mic';
 
-    final stateLayout = _sduiLayout?[_state] as Map?;
+    final stateLayout = sduiLayout[_state] as Map?;
     if (stateLayout != null) {
       final parser = SduiParser(
         onAction: _handleAction,

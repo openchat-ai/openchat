@@ -5,7 +5,6 @@ import '../../core/theme/app_theme.dart';
 import '../../core/models/resident_model.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/resident_provider.dart';
-import '../../core/api/qiniu_direct_client.dart';
 import '../../core/sdui.dart';
 import '../../core/sdui_config.dart';
 import 'resident_detail_screen.dart';
@@ -17,20 +16,15 @@ class AgentHubScreen extends ConsumerStatefulWidget {
   ConsumerState<AgentHubScreen> createState() => _AgentHubScreenState();
 }
 
-class _AgentHubScreenState extends ConsumerState<AgentHubScreen> {
-  Map<String, dynamic>? _sduiLayout;
-
+class _AgentHubScreenState extends ConsumerState<AgentHubScreen> with SduiPageState {
   @override
-  void initState() {
-    super.initState();
-    SduiConfig.load('agent').then((m) { if (mounted) setState(() => _sduiLayout = m); });
-  }
+  String get sduiPage => 'agent';
 
   @override
   Widget build(BuildContext context) {
     final theme = ref.watch(currentThemeProvider);
     final residentsAsync = ref.watch(residentProvider);
-    final title = _sduiLayout?['title'] as String? ?? 'AI 居民';
+    final title = sduiLayout['title'] as String? ?? 'AI 居民';
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -50,7 +44,7 @@ class _AgentHubScreenState extends ConsumerState<AgentHubScreen> {
         child: SafeArea(
           child: residentsAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => _buildEmptyState(theme, _sduiLayout?['errorState'] as Map? ?? {'icon': 'error', 'title': '加载失败'}),
+            error: (e, _) => _buildEmptyState(theme, sduiLayout['errorState'] as Map? ?? {'icon': 'error', 'title': '加载失败'}),
             data: (residents) {
               final residentItems = residents.map((r) => {
                 'id': r.id.toString(),
@@ -62,9 +56,9 @@ class _AgentHubScreenState extends ConsumerState<AgentHubScreen> {
                 'daysSince': _daysSince(r.createdAt).toString(),
                 'avatar': r.name.isNotEmpty ? r.name[0] : '?',
               }).toList();
-              final listLayout = _sduiLayout?['listLayout'] as Map?;
+              final listLayout = sduiLayout['listLayout'] as Map?;
               if (listLayout != null) {
-                final sl = _sduiLayout?['stats'] as Map?;
+                final sl = sduiLayout['stats'] as Map?;
                 final active = residents.where((r) => r.isActive).length;
                 final sleeping = residents.where((r) => r.status == 'sleeping').length;
                 final deleted = residents.where((r) => r.isDeleted).length;
@@ -82,7 +76,7 @@ class _AgentHubScreenState extends ConsumerState<AgentHubScreen> {
                   'active': active.toString(),
                   'sleeping': sleeping.toString(),
                   'deleted': deleted.toString(),
-                  'sectionTitle': _sduiLayout?['sectionTitle'] as String? ?? '居民名单',
+                  'sectionTitle': sduiLayout['sectionTitle'] as String? ?? '居民名单',
                   'statsIcon1': sl?['icon1'] ?? 'active',
                   'statsLabel1': sl?['label1'] ?? '活跃',
                   'statsIcon2': sl?['icon2'] ?? 'sleep',
@@ -138,7 +132,7 @@ class _AgentHubScreenState extends ConsumerState<AgentHubScreen> {
   }
 
   Widget _buildFallbackList(AppTheme theme, List<Resident> residents) {
-    if (residents.isEmpty) return _buildEmptyState(theme, _sduiLayout?['emptyState'] as Map?);
+    if (residents.isEmpty) return _buildEmptyState(theme, sduiLayout['emptyState'] as Map?);
     return ListView(padding: const EdgeInsets.all(16), children: residents.map((r) {
       final isActive = r.isActive;
       return Container(
@@ -183,11 +177,11 @@ class _AgentHubScreenState extends ConsumerState<AgentHubScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: theme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(_sduiLayout?['createTitle'] as String? ?? '创建 AI 居民', style: TextStyle(color: theme.textPrimary)),
+        title: Text(sduiLayout['createTitle'] as String? ?? '创建 AI 居民', style: TextStyle(color: theme.textPrimary)),
         content: TextField(
           controller: controller, autofocus: true,
           decoration: InputDecoration(
-            hintText: _sduiLayout?['createHint'] as String? ?? '输入名字（留空自动生成）',
+            hintText: sduiLayout['createHint'] as String? ?? '输入名字（留空自动生成）',
             hintStyle: TextStyle(color: theme.textTertiary),
             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: theme.textTertiary.withValues(alpha: 0.2))),

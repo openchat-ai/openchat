@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
-import '../../core/api/qiniu_direct_client.dart';
 import '../../core/sdui.dart';
 import '../../core/sdui_config.dart';
 
@@ -13,14 +12,9 @@ class ThemeSelectorScreen extends ConsumerStatefulWidget {
   ConsumerState<ThemeSelectorScreen> createState() => _ThemeSelectorScreenState();
 }
 
-class _ThemeSelectorScreenState extends ConsumerState<ThemeSelectorScreen> {
-  String _title = '主题设置';
-
+class _ThemeSelectorScreenState extends ConsumerState<ThemeSelectorScreen> with SduiPageState {
   @override
-  void initState() {
-    super.initState();
-    SduiConfig.load('theme_selector').then((m) { if (mounted && m['title'] is String) setState(() => _title = m['title'] as String); });
-  }
+  String get sduiPage => 'theme_selector';
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +51,7 @@ class _ThemeSelectorScreenState extends ConsumerState<ThemeSelectorScreen> {
       backgroundColor: currentTheme.background,
       appBar: AppBar(
         backgroundColor: currentTheme.surface,
-        title: Text(_title, style: TextStyle(color: currentTheme.textPrimary)),
+        title: Text(sduiStr('title', '主题设置'), style: TextStyle(color: currentTheme.textPrimary)),
         leading: IconButton(icon: Icon(Icons.arrow_back, color: currentTheme.textPrimary), onPressed: () => Navigator.pop(context)),
       ),
       body: parser.parse(layout) ?? ListView.builder(

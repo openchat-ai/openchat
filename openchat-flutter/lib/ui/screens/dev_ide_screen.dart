@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/bridge_provider.dart';
-import '../../core/api/qiniu_direct_client.dart';
 import '../../core/sdui.dart';
 import '../../core/sdui_config.dart';
 import '../../core/version.dart';
@@ -16,17 +15,12 @@ class DevIdeScreen extends ConsumerStatefulWidget {
   ConsumerState<DevIdeScreen> createState() => _DevIdeScreenState();
 }
 
-class _DevIdeScreenState extends ConsumerState<DevIdeScreen> {
-  Map<String, dynamic>? _sduiLayout;
+class _DevIdeScreenState extends ConsumerState<DevIdeScreen> with SduiPageState {
+  @override
+  String get sduiPage => 'dev_ide';
   int _tab = 0;
   final List<Map<String, String>> _logs = [];
   final TextEditingController _cmdController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    SduiConfig.load('dev_ide').then((m) { if (mounted) setState(() => _sduiLayout = m); });
-  }
 
   @override
   void dispose() {
@@ -46,13 +40,13 @@ class _DevIdeScreenState extends ConsumerState<DevIdeScreen> {
   Widget build(BuildContext context) {
     final theme = ref.watch(currentThemeProvider);
     final bridge = ref.watch(bridgeWsProvider);
-    final tabs = _sduiLayout?['tabs'] as List? ?? [];
+    final tabs = sduiLayout['tabs'] as List? ?? [];
 
     return Scaffold(
       backgroundColor: theme.background,
       appBar: AppBar(
         backgroundColor: theme.surface.withValues(alpha: 0.5), elevation: 0,
-        title: Text(_sduiLayout?['title'] as String? ?? 'Dev Console',
+        title: Text(sduiLayout['title'] as String? ?? 'Dev Console',
           style: TextStyle(color: theme.textPrimary, fontFamily: 'monospace', fontSize: 17)),
       ),
       body: Column(children: [
@@ -90,7 +84,7 @@ class _DevIdeScreenState extends ConsumerState<DevIdeScreen> {
   }
 
   Widget _buildTabContent(AppTheme theme, BridgeWsClient bridge) {
-    final tabs = _sduiLayout?['tabs'] as List? ?? [];
+    final tabs = sduiLayout['tabs'] as List? ?? [];
     if (_tab >= tabs.length) return const SizedBox();
     final tab = tabs[_tab] as Map? ?? {};
     final type = tab['type'] as String? ?? 'sdui';
