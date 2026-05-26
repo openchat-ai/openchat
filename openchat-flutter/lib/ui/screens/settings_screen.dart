@@ -16,14 +16,9 @@ class SettingsScreen extends ConsumerStatefulWidget {
   ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  Map<String, dynamic>? _sduiLayout;
-
+class _SettingsScreenState extends ConsumerState<SettingsScreen> with SduiPageState {
   @override
-  void initState() {
-    super.initState();
-    SduiConfig.load('settings').then((m) { if (mounted) setState(() => _sduiLayout = m); });
-  }
+  String get sduiPage => 'settings';
 
   IconData _icon(String name) => SduiParser.icons[name] ?? Icons.circle_outlined;
 
@@ -33,7 +28,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final themeMode = ref.watch(themeModeProvider);
 
     // If remote config has sections, use SDUI-driven layout
-    if (_sduiLayout?['sections'] is List) {
+    if (sduiLayout['sections'] is List) {
       return _buildSdui(theme, themeMode);
     }
 
@@ -41,13 +36,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _buildSdui(AppTheme theme, ThemeModeSetting themeMode) {
-    final sections = _sduiLayout!['sections'] as List;
+    final sections = sduiLayout['sections'] as List;
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: theme.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent, elevation: 0,
-        title: Text(_sduiLayout!['title'] as String? ?? 'SETTINGS',
+        title: Text(sduiLayout['title'] as String? ?? 'SETTINGS',
           style: TextStyle(color: theme.textPrimary, fontSize: 24, fontWeight: FontWeight.bold)),
       ),
       body: Container(

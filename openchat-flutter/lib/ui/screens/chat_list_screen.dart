@@ -5,7 +5,6 @@ import '../../core/theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/bridge_provider.dart';
 import '../../core/api/bridge_ws_client.dart';
-import '../../core/api/qiniu_direct_client.dart';
 import '../../core/sdui.dart';
 import '../../core/sdui_config.dart';
 import 'chat_screen.dart' hide bridgeWsProvider;
@@ -16,15 +15,15 @@ class ChatListScreen extends ConsumerStatefulWidget {
   ConsumerState<ChatListScreen> createState() => _ChatListScreenState();
 }
 
-class _ChatListScreenState extends ConsumerState<ChatListScreen> {
+class _ChatListScreenState extends ConsumerState<ChatListScreen> with SduiPageState {
+  @override
+  String get sduiPage => 'chat_list';
   StreamSubscription? _wsSub;
   final List<Map<String, dynamic>> _messages = [];
-  Map<String, dynamic>? _sduiLayout;
 
   @override
   void initState() {
     super.initState();
-    SduiConfig.load('chat_list').then((m) { if (mounted) setState(() => _sduiLayout = m); });
     _wsSub = ref.read(bridgeWsProvider).messages.listen((msg) {
       if (msg.type == 'message' && msg.data['message'] != null) {
         setState(() => _messages.insert(0, {'text': msg.data['message'], 'from': msg.data['from'] ?? 'peer'}));
@@ -56,8 +55,8 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
       loading: () => false,
     );
 
-    if (_sduiLayout != null) {
-      final selected = _sduiLayout!['layout'] as Map?;
+    if (sduiLayout.isNotEmpty) {
+      final selected = sduiLayout['layout'] as Map?;
       if (selected != null) {
         final parser = SduiParser(
           onAction: _handleAction,

@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
-import '../../core/api/qiniu_direct_client.dart';
 import '../../core/sdui_config.dart';
 import 'home_screen.dart';
 import 'agent_hub_screen.dart';
@@ -22,14 +21,9 @@ class MainScreen extends ConsumerStatefulWidget {
   ConsumerState<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends ConsumerState<MainScreen> {
-  Map<String, dynamic>? _sduiLayout;
-
+class _MainScreenState extends ConsumerState<MainScreen> with SduiPageState {
   @override
-  void initState() {
-    super.initState();
-    SduiConfig.load('main').then((m) { if (mounted) setState(() => _sduiLayout = m); });
-  }
+  String get sduiPage => 'main';
 
   Widget _buildScreen(String name) {
     switch (name) {
@@ -65,7 +59,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   ];
 
   List<Map<String, dynamic>> _getTabs() {
-    final raw = _sduiLayout?['tabs'];
+    final raw = sduiLayout['tabs'];
     if (raw is List && raw.isNotEmpty) return raw.cast<Map<String, dynamic>>();
     return _fallbackTabs;
   }
@@ -76,7 +70,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     final theme = ref.watch(currentThemeProvider);
     final tabs = _getTabs();
     final clampedIndex = currentIndex.clamp(0, tabs.length - 1);
-    final fab = _sduiLayout?['fab'] as Map? ?? {};
+    final fab = sduiLayout['fab'] as Map? ?? {};
     final fabIcon = fab['icon'] as String? ?? 'palette';
     final fabAction = fab['action'] as String? ?? 'theme';
 

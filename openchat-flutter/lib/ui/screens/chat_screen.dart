@@ -5,7 +5,6 @@ import '../../core/theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/bridge_provider.dart';
 import '../../core/api/bridge_ws_client.dart';
-import '../../core/api/qiniu_direct_client.dart';
 import '../../core/sdui.dart';
 import '../../core/sdui_config.dart';
 
@@ -26,17 +25,17 @@ class ChatScreen extends ConsumerStatefulWidget {
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends ConsumerState<ChatScreen> {
+class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState {
   final TextEditingController _controller = TextEditingController();
   final List<Map<String, dynamic>> _messages = [];
   final ScrollController _scrollController = ScrollController();
   StreamSubscription? _wsSub;
-  Map<String, dynamic>? _sduiLayout;
+  @override
+  String get sduiPage => 'chat';
 
   @override
   void initState() {
     super.initState();
-    SduiConfig.load('chat').then((m) { if (mounted) setState(() => _sduiLayout = m); });
     _messages.addAll([
       {'sender': 'ai', 'text': '你好！有什么可以帮助你的？', 'time': '10:00'},
     ]);
@@ -86,7 +85,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = ref.watch(currentThemeProvider);
-    final title = _sduiLayout?['title'] as String? ?? widget.title;
+    final title = sduiLayout['title'] as String? ?? widget.title;
 
     return Scaffold(
       backgroundColor: theme.background,
@@ -95,7 +94,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         elevation: 0,
         title: Text(title, style: TextStyle(color: theme.textPrimary, fontSize: 18, fontWeight: FontWeight.w600)),
         actions: [
-          IconButton(icon: Icon(_sduiLayout?['callIcon'] == null ? Icons.phone_outlined : (SduiParser.icons[_sduiLayout!['callIcon']] ?? Icons.phone_outlined), color: theme.textSecondary), onPressed: () {}),
+          IconButton(icon: Icon(sduiLayout['callIcon'] == null ? Icons.phone_outlined : (SduiParser.icons[sduiLayout['callIcon']] ?? Icons.phone_outlined), color: theme.textSecondary), onPressed: () {}),
           IconButton(icon: Icon(Icons.videocam_outlined, color: theme.textSecondary), onPressed: () {}),
           IconButton(icon: Icon(Icons.more_vert, color: theme.textSecondary), onPressed: () {}),
           const SizedBox(width: 8),
@@ -111,9 +110,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 'time': m['time'] ?? '',
                 'isMe': (m['sender'] == 'me').toString(),
               }).toList();
-              final msgLayout = _sduiLayout?['messageLayout'] as Map?;
+              final msgLayout = sduiLayout['messageLayout'] as Map?;
               if (msgLayout != null) {
-                final parser = SduiParser(onAction: null, vars: {'items': msgItems, 'selfBg': (_sduiLayout?['bubble'] as Map?)?['selfColor'] ?? '#7C4DFF', 'otherBg': (_sduiLayout?['bubble'] as Map?)?['otherColor'] ?? '#333333'});
+                final parser = SduiParser(onAction: null, vars: {'items': msgItems, 'selfBg': (sduiLayout['bubble'] as Map?)?['selfColor'] ?? '#7C4DFF', 'otherBg': (sduiLayout['bubble'] as Map?)?['otherColor'] ?? '#333333'});
                 final widget = parser.parse(msgLayout);
                 if (widget != null) {
                   return SingleChildScrollView(
@@ -136,7 +135,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Widget _buildEmptyState(AppTheme theme) {
-    final es = _sduiLayout?['emptyState'] as Map?;
+    final es = sduiLayout['emptyState'] as Map?;
     if (es == null) return const SizedBox();
     final parser = SduiParser(vars: {}, onAction: null);
     return Center(child: parser.parse({
@@ -150,7 +149,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Widget _buildMessage(Map<String, dynamic> message, AppTheme theme) {
     final isMe = message['sender'] == 'me';
-    final bc = _sduiLayout?['bubble'] as Map? ?? {};
+    final bc = sduiLayout['bubble'] as Map? ?? {};
     final selfColor = bc['selfColor'] as String?;
     final otherColor = bc['otherColor'] as String?;
     final radius = (bc['radius'] as num?)?.toDouble() ?? 20;
@@ -179,7 +178,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Widget _buildInputArea(AppTheme theme) {
-    final ia = _sduiLayout?['input'] as Map? ?? {};
+    final ia = sduiLayout['input'] as Map? ?? {};
     final hint = ia['hint'] as String? ?? '输入消息...';
     return Container(
       padding: const EdgeInsets.all(12),

@@ -7,7 +7,6 @@ import '../../core/models/sage_model.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/resident_provider.dart';
 import '../../providers/sage_provider.dart';
-import '../../core/api/qiniu_direct_client.dart';
 import '../../core/sdui_config.dart';
 import '../components/resident/resident_profile.dart';
 import '../components/resident/resident_family.dart';
@@ -23,8 +22,9 @@ class ResidentDetailScreen extends ConsumerStatefulWidget {
   ConsumerState<ResidentDetailScreen> createState() => _ResidentDetailScreenState();
 }
 
-class _ResidentDetailScreenState extends ConsumerState<ResidentDetailScreen> {
-  Map<String, dynamic>? _sduiLayout;
+class _ResidentDetailScreenState extends ConsumerState<ResidentDetailScreen> with SduiPageState {
+  @override
+  String get sduiPage => 'resident_detail';
   Resident? _resident;
   List<Agent> _agents = [];
   List<Resident> _children = [];
@@ -33,7 +33,6 @@ class _ResidentDetailScreenState extends ConsumerState<ResidentDetailScreen> {
   @override
   void initState() {
     super.initState();
-    SduiConfig.load('resident_detail').then((m) { if (mounted) setState(() => _sduiLayout = m); });
     _load();
   }
 
@@ -55,7 +54,7 @@ class _ResidentDetailScreenState extends ConsumerState<ResidentDetailScreen> {
     final tc = TextEditingController();
     showDialog(context: context, builder: (ctx) => AlertDialog(
       backgroundColor: ref.read(currentThemeProvider).surface,
-      title: Text(_sduiLayout?['createAgentTitle'] as String? ?? '派出 Agent'),
+      title: Text(sduiLayout['createAgentTitle'] as String? ?? '派出 Agent'),
       content: Column(mainAxisSize: MainAxisSize.min, children: [
         TextField(controller: rc, decoration: const InputDecoration(labelText: '角色', hintText: 'security_auditor / test_engineer / custom'), style: TextStyle(color: ref.read(currentThemeProvider).textPrimary)),
         const SizedBox(height: 12),
@@ -77,9 +76,9 @@ class _ResidentDetailScreenState extends ConsumerState<ResidentDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = ref.watch(currentThemeProvider);
-    final title = _sduiLayout?['title'] as String? ?? (_resident?.name ?? '居民档案');
-    final tab1 = _sduiLayout?['tab1'] as String? ?? '时间线';
-    final tab2 = _sduiLayout?['tab2'] as String? ?? '师徒对话';
+    final title = sduiLayout['title'] as String? ?? (_resident?.name ?? '居民档案');
+    final tab1 = sduiLayout['tab1'] as String? ?? '时间线';
+    final tab2 = sduiLayout['tab2'] as String? ?? '师徒对话';
 
     return DefaultTabController(
       length: 2,

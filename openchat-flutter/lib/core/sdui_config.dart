@@ -92,3 +92,33 @@ class SduiConfig {
     for (final k in keys) await prefs.remove(k);
   }
 }
+
+/// Mixin for ConsumerState pages to auto-load SDUI config.
+/// Usage:
+///   class _FooState extends ConsumerState<FooScreen> with SduiPageState {
+///     @override
+///     String get sduiPage => 'settings';
+///     // sduiLayout is ready after initState, no boilerplate needed
+///   }
+mixin SduiPageState<T extends ConsumerStatefulWidget> on ConsumerState<T> {
+  Map<String, dynamic> _layout = {};
+  Map<String, dynamic> get sduiLayout => _layout;
+
+  /// Override to set the page name for config loading.
+  String get sduiPage => '';
+
+  @override
+  void initState() {
+    super.initState();
+    SduiConfig.load(sduiPage).then((m) {
+      if (mounted) setState(() => _layout = m);
+    });
+  }
+
+  String sduiStr(String key, [String d = '']) => _layout[key] is String ? _layout[key] as String : d;
+  int sduiInt(String key, [int d = 0]) => _layout[key] is int ? _layout[key] as int : d;
+  double sduiNum(String key, [double d = 0]) => (_layout[key] as num?)?.toDouble() ?? d;
+  List sduiList(String key) => _layout[key] is List ? _layout[key] as List : [];
+  Map sduiMap(String key) => _layout[key] is Map ? _layout[key] as Map : {};
+  bool sduiBool(String key, [bool d = false]) => _layout[key] is bool ? _layout[key] as bool : d;
+}

@@ -5,7 +5,6 @@ import '../../core/theme/app_theme.dart';
 import '../../core/models/resident_model.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/feed_provider.dart';
-import '../../core/api/qiniu_direct_client.dart';
 import '../../core/sdui.dart';
 import '../../core/sdui_config.dart';
 
@@ -16,14 +15,9 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
-  Map<String, dynamic>? _sduiLayout;
-
+class _HomeScreenState extends ConsumerState<HomeScreen> with SduiPageState {
   @override
-  void initState() {
-    super.initState();
-    SduiConfig.load('home').then((m) { if (mounted) setState(() => _sduiLayout = m); });
-  }
+  String get sduiPage => 'home';
 
   IconData _iconForType(String type) {
     switch (type) {
@@ -73,7 +67,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final theme = ref.watch(currentThemeProvider);
     final feedAsync = ref.watch(feedProvider);
-    final title = _sduiLayout?['title'] as String? ?? '社区动态';
+    final title = sduiLayout['title'] as String? ?? '社区动态';
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -93,10 +87,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: SafeArea(
           child: feedAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => _buildEmptyState(theme, _sduiLayout?['errorState'] as Map? ?? {'icon': 'people', 'title': 'OpenChat', 'subtitle': '切换到 好友 标签'}),
+            error: (e, _) => _buildEmptyState(theme, sduiLayout['errorState'] as Map? ?? {'icon': 'people', 'title': 'OpenChat', 'subtitle': '切换到 好友 标签'}),
             data: (feed) {
               if (feed.isEmpty) {
-                return _buildEmptyState(theme, _sduiLayout?['emptyState'] as Map?);
+                return _buildEmptyState(theme, sduiLayout['emptyState'] as Map?);
               }
               final feedItems = feed.map((item) => {
                 'name': item.residentName,
@@ -104,14 +98,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 'message': item.message,
                 'summary': item.summary ?? '',
                 'timeAgo': _timeAgo(item.timestamp),
-                'typeIcon': _sduiLayout?['icons'] is Map ? (_sduiLayout!['icons'] as Map)[item.type] as String? ?? 'circle' : 'circle',
+                'typeIcon': sduiLayout['icons'] is Map ? (sduiLayout['icons'] as Map)[item.type] as String? ?? 'circle' : 'circle',
                 'typeColor': item.type == 'born' ? '#7C4DFF' :
                   item.type == 'awake' ? '#FF9800' :
                   item.type == 'task_done' ? '#4CAF50' :
                   item.type == 'task_failed' ? '#F44336' : '#7C4DFF',
                 'showRole': item.agentRole != null && item.agentRole != 'custom',
               }).toList();
-              final layout = _sduiLayout?['feedLayout'] as Map?;
+              final layout = sduiLayout['feedLayout'] as Map?;
               if (layout != null) {
                 final parser = SduiParser(onAction: null, vars: {'items': feedItems});
                 final widget = parser.parse(layout);

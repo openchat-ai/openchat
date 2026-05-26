@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
-import '../../core/api/qiniu_direct_client.dart';
 import '../../core/sdui_config.dart';
 
 class TaskDetailScreen extends ConsumerStatefulWidget {
@@ -14,19 +13,14 @@ class TaskDetailScreen extends ConsumerStatefulWidget {
   ConsumerState<TaskDetailScreen> createState() => _TaskDetailScreenState();
 }
 
-class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
-  Map<String, dynamic>? _sduiLayout;
-
+class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> with SduiPageState {
   @override
-  void initState() {
-    super.initState();
-    SduiConfig.load('task_detail').then((m) { if (mounted) setState(() => _sduiLayout = m); });
-  }
+  String get sduiPage => 'task_detail';
 
   @override
   Widget build(BuildContext context) {
     final theme = ref.watch(currentThemeProvider);
-    final t = _sduiLayout ?? {};
+    final t = sduiLayout;
     final title = t['title'] as String? ?? '任务详情';
     final statusLabel = t['statusLabel'] as String? ?? '状态';
     final infoLabel = t['infoLabel'] as String? ?? '基本信息';
@@ -176,8 +170,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
   }
 
   Widget _buildStatusSection(AppTheme theme) {
-    final label = _sduiLayout?['statusLabel'] as String? ?? '任务状态';
-    final items = (_sduiLayout?['statusItems'] as List?)?.map((e) {
+    final label = sduiLayout['statusLabel'] as String? ?? '任务状态';
+    final items = (sduiLayout['statusItems'] as List?)?.map((e) {
       if (e is! Map) return <String, String>{};
       return {'label': e['label'] as String? ?? '', 'status': e['status'] as String? ?? '', 'color': _statusColor(e['status'] as String? ?? '')};
     }).toList() ?? [
@@ -227,8 +221,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
   }
 
   Widget _buildInfoSection(AppTheme theme) {
-    final infoLabel = _sduiLayout?['infoLabel'] as String? ?? '基本信息';
-    final items = (_sduiLayout?['infoItems'] as List?)?.map((e) {
+    final infoLabel = sduiLayout['infoLabel'] as String? ?? '基本信息';
+    final items = (sduiLayout['infoItems'] as List?)?.map((e) {
       if (e is! Map) return ['', ''];
       return [(e['label'] as String? ?? ''), (e['value'] as String? ?? '')];
     }).toList() ?? [
@@ -271,8 +265,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
   }
 
   Widget _buildResultSection(AppTheme theme) {
-    final label = _sduiLayout?['resultLabel'] as String? ?? '初步结果';
-    final items = (_sduiLayout?['resultItems'] as List?)?.map((e) {
+    final label = sduiLayout['resultLabel'] as String? ?? '初步结果';
+    final items = (sduiLayout['resultItems'] as List?)?.map((e) {
       if (e is! Map) return <String, String>{};
       return {'label': e['label'] as String? ?? '', 'value': e['value'] as String? ?? '', 'color': e['color'] as String? ?? '#9E9E9E'};
     }).toList() ?? [
@@ -305,7 +299,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
   }
 
   Widget _buildActions(AppTheme theme) {
-    final actions = (_sduiLayout?['actions'] as List?)?.map((e) {
+    final actions = (sduiLayout['actions'] as List?)?.map((e) {
       if (e is! Map) return <String, String>{};
       return {'label': e['label'] as String? ?? '', 'color': e['color'] as String? ?? '', 'primary': (e['primary'] == true).toString()};
     }).toList() ?? [
