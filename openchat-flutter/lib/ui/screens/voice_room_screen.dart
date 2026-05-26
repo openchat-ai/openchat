@@ -282,9 +282,45 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
     return Scaffold(
       backgroundColor: theme.background,
       body: SafeArea(
-        child: Center(
-          child: Text(stateText, style: TextStyle(color: theme.textPrimary, fontSize: 20)),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Spacer(),
+            Icon(Icons.mic_rounded, size: 48, color: Colors.white),
+            const SizedBox(height: 24),
+            Text(stateText, style: TextStyle(color: theme.textPrimary, fontSize: 20, fontWeight: FontWeight.w600)),
+            if (_state == 'connected')
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(statusLabel, style: TextStyle(color: theme.textTertiary, fontSize: 12)),
+              ),
+            const SizedBox(height: 32),
+            if (_state == 'calling')
+              _ctrlBtn(Icons.call_end, theme.error, _endCall, big: true),
+            if (_state == 'connected')
+              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                _ctrlBtn(_muted ? Icons.mic_off : Icons.mic, theme.primary, () => setState(() => _muted = !_muted)),
+                const SizedBox(width: 40),
+                _ctrlBtn(Icons.call_end, theme.error, _endCall, big: true),
+              ]),
+            const Spacer(),
+          ],
         ),
+      ),
+    );
+  }
+
+  Widget _ctrlBtn(IconData icon, Color color, VoidCallback onTap, {bool big = false}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: big ? 72 : 56, height: big ? 72 : 56,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(big ? 24 : 18),
+          border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
+        ),
+        child: Icon(icon, color: Colors.white, size: big ? 32 : 24),
       ),
     );
   }

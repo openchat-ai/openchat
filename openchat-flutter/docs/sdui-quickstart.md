@@ -32,8 +32,24 @@
 - `toggle_mute` — 静音切换
 - `accept_call` — 接听
 
-需要新 action（需要改 Dart，见 `voice_room_screen.dart` 的 `_customActions` map）：
-- 联系开发者添加，或自己在 `_customActions` 中注册
+### 注册新 action（不需要改 switch）
+
+`voice_room_screen.dart` 的 `_customActions` map 支持注册新 action，无需改 `_handleAction` 的 switch：
+
+```dart
+// 在 initState 或任何地方注册：
+_customActions['toggle_speaker'] = () {
+  // 你的新 action 逻辑
+  _setSpeakerphone(!_speakerOn);
+};
+```
+
+然后在 JSON 中用：
+```json
+{"type": "button", "icon": "volume_up", "action": "toggle_speaker"}
+```
+
+**限制**：action 逻辑本身仍需 Dart 代码（无法避免），但注册不需要改 switch-case 结构。
 
 ## 完整参考
 
