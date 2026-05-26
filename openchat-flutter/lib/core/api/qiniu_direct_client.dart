@@ -203,14 +203,8 @@ class QiniuDirectClient {
   }
 
   Future<List<String>> _s3List(String prefix) async {
-    String? url;
-    if (qiniuListUsersUrl.isNotEmpty && prefix == 'oc/users/') url = qiniuListUsersUrl;
-    if (url != null) {
-      final resp = await _client.get(Uri.parse(url)).timeout(const Duration(seconds: 8));
-      if (resp.statusCode == 200) return RegExp('<Key>([^<]+)</Key>').allMatches(resp.body).map((m) => m.group(1)!).toList();
-    }
-    final fallback = _presignedUrl(prefix, prefix: prefix);
-    final resp = await _client.get(Uri.parse(fallback)).timeout(const Duration(seconds: 8));
+    final url = _presignedUrl(prefix, prefix: prefix);
+    final resp = await _client.get(Uri.parse(url)).timeout(const Duration(seconds: 8));
     if (resp.statusCode != 200) throw Exception('S3 LIST $prefix: HTTP ${resp.statusCode}');
     return RegExp('<Key>([^<]+)</Key>').allMatches(resp.body).map((m) => m.group(1)!).toList();
   }

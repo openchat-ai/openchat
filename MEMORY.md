@@ -151,6 +151,14 @@
 | R19 | CI 全绿 — bridge lint error(getPublicIPv4) + Flutter analyze(voice_client+pubspec) | 技术经理 | P0-1 | ✅ 已修(R19) | 全体 |
 | R19 | Flutter 依赖修复 — web_socket_channel 加回 pubspec | 技术经理 | P0-2 | ✅ 已修(R19) | Flutter 开发者 |
 | R19 | 端到端语音通话验证 — APK 构建通过(CI) | 技术经理 | P0-3 | ⚠️ APK 已生成，待双手机实测 | 竞品分析师+用户支持 |
+| R20 | app_themes.dart 死代码删除 | 架构师/Flutter开发者/Git专家/核心工程师/开源社区经理 | P0-1 | ✅ 已修(R20) | 架构师 |
+| R20 | README Quick start 加最短路径（下载APK→输入peerId→看到用户） | 用户支持/Flutter开发者/竞品分析师/开源社区经理 | P0-8 | ✅ 已修(R20) | 用户支持 |
+| R20 | README 引用 first-steps.md + p2p-voice-tutorial.md | 开源社区经理/用户支持/SRE | P1-14 | ✅ 已修(R20) | 开源社区经理 |
+| R20 | COMPILATION_BOUNDARY.md 补充 CI paths-ignore: docs/** | 架构师/测试工程师/SRE | P1-5 | ✅ 已修(R20) | 架构师 |
+| R20 | version.dart 硬编码预签名 URL 删除，改为运行时 _presignedUrl() | Qiniu/S3专家/Git专家/SRE | P1-9 | ✅ 已修(R20) | Qiniu/S3专家 |
+| R20 | qiniu-direct-arch.md 缺音频文件 ACL 说明 | 安全研究员/Qiniu专家/测试工程师 | P1-10 | ❌ 待修 | 安全研究员 |
+| R20 | ui_design_system.md 更新日期 + 清理旧版引用 | 技术写作者/竞品分析师 | P2-12 | ✅ 已修(R20) | 技术写作者 |
+| R20 | 双机端到端语音实测 | 时间管理师/AI研究员/核心工程师 | P0-4 | ⚠️ 待执行 | 用户支持+竞品分析师 |
 
 ## 关键指标（实时）
 
