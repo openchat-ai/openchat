@@ -156,7 +156,7 @@
 | R20 | README 引用 first-steps.md + p2p-voice-tutorial.md | 开源社区经理/用户支持/SRE | P1-14 | ✅ 已修(R20) | 开源社区经理 |
 | R20 | COMPILATION_BOUNDARY.md 补充 CI paths-ignore: docs/** | 架构师/测试工程师/SRE | P1-5 | ✅ 已修(R20) | 架构师 |
 | R20 | version.dart 硬编码预签名 URL 删除，改为运行时 _presignedUrl() | Qiniu/S3专家/Git专家/SRE | P1-9 | ✅ 已修(R20) | Qiniu/S3专家 |
-| R20 | qiniu-direct-arch.md 缺音频文件 ACL 说明 | 安全研究员/Qiniu专家/测试工程师 | P1-10 | ❌ 待修 | 安全研究员 |
+| R20 | qiniu-direct-arch.md 补充音频文件 ACL 说明 + 删除过期 UDP hole punch 描述 | 安全研究员/Qiniu专家/测试工程师 | P1-10 | ✅ 已修(R20) | 安全研究员 |
 | R20 | ui_design_system.md 更新日期 + 清理旧版引用 | 技术写作者/竞品分析师 | P2-12 | ✅ 已修(R20) | 技术写作者 |
 | R20 | 双机端到端语音实测 | 时间管理师/AI研究员/核心工程师 | P0-4 | ⚠️ 待执行 | 用户支持+竞品分析师 |
 
