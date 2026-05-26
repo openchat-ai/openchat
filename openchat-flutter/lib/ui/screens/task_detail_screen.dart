@@ -271,144 +271,65 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
   }
 
   Widget _buildResultSection(AppTheme theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '初步结果',
-          style: TextStyle(
-            color: theme.textPrimary,
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: theme.surface.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(theme.radiusMedium),
-            border: Border.all(
-              color: theme.textTertiary.withValues(alpha: 0.1),
-              width: 1,
-            ),
-          ),
-          child: Column(
-            children: [
-              _buildResultStat('发现问题', '3', theme.error, theme),
-              const SizedBox(height: 12),
-              _buildResultStat('警告', '7', theme.warning, theme),
-              const SizedBox(height: 12),
-              _buildResultStat('建议优化', '12', theme.info, theme),
-              const SizedBox(height: 12),
-              _buildResultStat('代码质量评分', '85', theme.success, theme),
-            ],
-          ),
-        ),
-      ],
-    );
+    final label = _sduiLayout?['resultLabel'] as String? ?? '初步结果';
+    final items = (_sduiLayout?['resultItems'] as List?)?.map((e) {
+      if (e is! Map) return <String, String>{};
+      return {'label': e['label'] as String? ?? '', 'value': e['value'] as String? ?? '', 'color': e['color'] as String? ?? '#9E9E9E'};
+    }).toList() ?? [
+      {'label': '发现问题', 'value': '3', 'color': '#F44336'},
+      {'label': '警告', 'value': '7', 'color': '#FF9800'},
+      {'label': '建议优化', 'value': '12', 'color': '#2196F3'},
+      {'label': '代码质量评分', 'value': '85', 'color': '#4CAF50'},
+    ];
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label, style: TextStyle(color: theme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
+      const SizedBox(height: 12),
+      Container(padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(color: theme.surface.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(theme.radiusMedium), border: Border.all(color: theme.textTertiary.withValues(alpha: 0.1))),
+        child: Column(children: items.asMap().entries.map((e) {
+          final sep = e.key > 0 ? const SizedBox(height: 12) : const SizedBox();
+          return Column(children: [sep, _buildResultStatRow(e.value, theme)]);
+        }).toList()),
+      ),
+    ]);
   }
 
-  Widget _buildResultStat(String label, String value, Color color, AppTheme theme) {
-    return Row(
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(4),
-            boxShadow: theme.useGlow ? [
-              BoxShadow(
-                color: color.withValues(alpha: 0.5),
-                blurRadius: 8,
-                spreadRadius: 1,
-              ),
-            ] : null,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: theme.textSecondary,
-              fontSize: 13,
-            ),
-          ),
-        ),
-        Text(
-          value,
-          style: TextStyle(
-            color: color,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
-    );
+  Widget _buildResultStatRow(Map<String, String> item, AppTheme theme) {
+    final color = _hexOr(item['color'], theme.textTertiary);
+    return Row(children: [
+      Container(width: 8, height: 8, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4))),
+      const SizedBox(width: 12),
+      Expanded(child: Text(item['label'] ?? '', style: TextStyle(color: theme.textSecondary, fontSize: 13))),
+      Text(item['value'] ?? '', style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.bold)),
+    ]);
   }
 
   Widget _buildActions(AppTheme theme) {
-    return Row(
-      children: [
-        Expanded(
-          child: GestureDetector(
-            onTap: () {},
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              decoration: BoxDecoration(
-                color: theme.surface.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(theme.radiusMedium),
-                border: Border.all(
-                  color: theme.textTertiary.withValues(alpha: 0.2),
-                  width: 1,
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  '暂停任务',
-                  style: TextStyle(
-                    color: theme.textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: GestureDetector(
-            onTap: () {},
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: theme.gradientPrimary),
-                borderRadius: BorderRadius.circular(theme.radiusMedium),
-                boxShadow: theme.useGlow ? [
-                  BoxShadow(
-                    color: theme.primary.withValues(alpha: 0.4),
-                    blurRadius: 15,
-                    spreadRadius: 2,
-                  ),
-                ] : null,
-              ),
-              child: const Center(
-                child: Text(
-                  '查看报告',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
+    final actions = (_sduiLayout?['actions'] as List?)?.map((e) {
+      if (e is! Map) return <String, String>{};
+      return {'label': e['label'] as String? ?? '', 'color': e['color'] as String? ?? '', 'primary': (e['primary'] == true).toString()};
+    }).toList() ?? [
+      {'label': '暂停任务', 'color': '', 'primary': 'false'},
+      {'label': '查看报告', 'color': '', 'primary': 'true'},
+    ];
+    return Row(children: actions.asMap().entries.map((e) {
+      final item = e.value;
+      final isPrimary = item['primary'] == 'true';
+      final isLast = e.key < actions.length - 1;
+      return Expanded(child: Padding(
+        padding: EdgeInsets.only(right: isLast ? 12 : 0),
+        child: GestureDetector(
+          onTap: () {},
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            decoration: BoxDecoration(
+              gradient: isPrimary ? LinearGradient(colors: theme.gradientPrimary) : null,
+              color: isPrimary ? null : theme.surface.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(theme.radiusMedium),
+              border: isPrimary ? null : Border.all(color: theme.textTertiary.withValues(alpha: 0.2), width: 1)),
+            child: Center(child: Text(item['label'] ?? '', style: TextStyle(color: isPrimary ? Colors.white : theme.textPrimary, fontSize: 14, fontWeight: FontWeight.w600))),
+          )),
+      ));
+    }).toList());
   }
 }
