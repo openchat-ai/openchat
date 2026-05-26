@@ -26,6 +26,7 @@ class SduiParser {
     'delete': Icons.delete,
     'edit': Icons.edit,
     'check': Icons.check,
+    'check_circle': Icons.check_circle,
     'arrow_back': Icons.arrow_back,
     'arrow_forward': Icons.arrow_forward,
     'more_vert': Icons.more_vert,
@@ -43,11 +44,72 @@ class SduiParser {
     'favorite': Icons.favorite,
     'share': Icons.share,
     'menu': Icons.menu,
+    'task_alt': Icons.task_alt,
+    'add_task': Icons.add_task_rounded,
+    'person_add': Icons.person_add_rounded,
+    'code': Icons.code,
+    'wifi': Icons.wifi,
+    'circle': Icons.circle,
+    'celebration': Icons.celebration_outlined,
+    'nights_stay': Icons.nights_stay_outlined,
+    'assignment': Icons.assignment_outlined,
+    'connect_without_contact': Icons.connect_without_contact_rounded,
+    'handshake': Icons.handshake_outlined,
+    'auto_awesome': Icons.auto_awesome_outlined,
+    'language': Icons.language_outlined,
+    'notifications': Icons.notifications_outlined,
+    'security': Icons.security_outlined,
+    'storage': Icons.storage_outlined,
+    'help': Icons.help_outline,
+    'inbox': Icons.inbox_outlined,
+    'palette': Icons.palette,
+    'brightness_auto': Icons.brightness_auto,
+    'brightness_5': Icons.brightness_5,
+    'brightness_2': Icons.brightness_2,
+    'play_circle': Icons.play_circle_outline,
+    'pending': Icons.pending_outlined,
+    'folder': Icons.folder,
+    'add_circle': Icons.add_circle_outline,
+    'emoji_emotions': Icons.emoji_emotions_outlined,
+    'phone_outlined': Icons.phone_outlined,
+    'videocam': Icons.videocam_outlined,
+    'send_outlined': Icons.send_outlined,
+    'share_outlined': Icons.share_outlined,
+    'psychology': Icons.psychology_outlined,
+    'chat_bubble': Icons.chat_bubble_outline,
+    'family_restroom': Icons.family_restroom_rounded,
+    'arrow_back_ios': Icons.arrow_back_ios,
+    'qr_code': Icons.qr_code,
+    'celebration_outlined': Icons.celebration_outlined,
   };
 
   Color? _parseColor(String? s) {
     if (s == null) return null;
     return Color(int.parse(s.replaceAll('#', '0xFF')));
+  }
+
+  LinearGradient? _parseGradient(dynamic g) {
+    if (g is! List || g.isEmpty) return null;
+    final colors = g.map((c) {
+      if (c is String) return _parseColor(c) ?? Colors.grey;
+      return Colors.grey;
+    }).whereType<Color>().toList();
+    if (colors.isEmpty) return null;
+    return LinearGradient(colors: colors, begin: Alignment.topLeft, end: Alignment.bottomRight);
+  }
+
+  BoxDecoration? _parseDecoration(Map m) {
+    final gradient = _parseGradient(m['gradient']);
+    final bgColor = _parseColor(m['bgColor'] as String?);
+    final borderColor = _parseColor(m['borderColor'] as String?);
+    final radius = (m['radius'] as num?)?.toDouble();
+    if (gradient == null && bgColor == null && borderColor == null && radius == null) return null;
+    return BoxDecoration(
+      gradient: gradient,
+      color: bgColor,
+      borderRadius: radius != null ? BorderRadius.circular(radius) : null,
+      border: borderColor != null ? Border.all(color: borderColor, width: (m['borderWidth'] as num?)?.toDouble() ?? 1) : null,
+    );
   }
 
   TextStyle? _parseStyle(dynamic s) {
@@ -185,9 +247,19 @@ class SduiParser {
 
   Widget _icon(Map m) {
     final d = icons[m['icon'] as String?] ?? Icons.info;
-    return Icon(d,
-        color: _parseColor(m['color'] as String?),
-        size: (m['size'] ?? 24).toDouble());
+    final deco = _parseDecoration(m);
+    final icon = Icon(d, color: _parseColor(m['color'] as String?), size: (m['size'] ?? 24).toDouble());
+    if (deco != null) {
+      final pad = (m['pad'] as num?)?.toDouble() ?? 8;
+      return Container(
+        width: (m['containerSize'] as num?)?.toDouble(),
+        height: (m['containerSize'] as num?)?.toDouble(),
+        padding: EdgeInsets.all(pad),
+        decoration: deco,
+        child: Center(child: icon),
+      );
+    }
+    return icon;
   }
 
   Widget _listTile(Map m) {
@@ -240,13 +312,22 @@ class SduiParser {
   }
 
   Widget _card(Map m) {
+    final deco = _parseDecoration(m);
+    final child = Padding(
+      padding: EdgeInsets.all((m['padding'] as num?)?.toDouble() ?? 12),
+      child: parse(m['child']),
+    );
+    if (deco != null) {
+      return Container(
+        margin: EdgeInsets.all((m['margin'] as num?)?.toDouble() ?? 4),
+        decoration: deco,
+        child: child,
+      );
+    }
     return Card(
       elevation: (m['elevation'] as num?)?.toDouble() ?? 1,
       margin: EdgeInsets.all((m['margin'] as num?)?.toDouble() ?? 4),
-      child: Padding(
-        padding: EdgeInsets.all((m['padding'] as num?)?.toDouble() ?? 12),
-        child: parse(m['child']),
-      ),
+      child: child,
     );
   }
 
