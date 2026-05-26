@@ -15,7 +15,7 @@ class ChatListScreen extends ConsumerStatefulWidget {
   ConsumerState<ChatListScreen> createState() => _ChatListScreenState();
 }
 
-class _ChatListScreenState extends ConsumerState<ChatListScreen> with AppSduiPageState {
+class _ChatListScreenState extends ConsumerState<ChatListScreen> with SduiPageState {
   @override
   String get sduiPage => 'chat_list';
   StreamSubscription? _wsSub;

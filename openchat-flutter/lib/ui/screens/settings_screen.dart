@@ -16,7 +16,7 @@ class SettingsScreen extends ConsumerStatefulWidget {
   ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends ConsumerState<SettingsScreen> with AppSduiPageState {
+class _SettingsScreenState extends ConsumerState<SettingsScreen> with SduiPageState {
   @override
   String get sduiPage => 'settings';
 

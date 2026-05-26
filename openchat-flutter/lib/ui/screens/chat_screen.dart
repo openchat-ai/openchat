@@ -25,7 +25,7 @@ class ChatScreen extends ConsumerStatefulWidget {
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends ConsumerState<ChatScreen> with AppSduiPageState {
+class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState {
   final TextEditingController _controller = TextEditingController();
   final List<Map<String, dynamic>> _messages = [];
   final ScrollController _scrollController = ScrollController();

@@ -15,7 +15,7 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> with AppSduiPageState {
+class _HomeScreenState extends ConsumerState<HomeScreen> with SduiPageState {
   @override
   String get sduiPage => 'home';
 

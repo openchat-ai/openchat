@@ -16,7 +16,7 @@ class AgentHubScreen extends ConsumerStatefulWidget {
   ConsumerState<AgentHubScreen> createState() => _AgentHubScreenState();
 }
 
-class _AgentHubScreenState extends ConsumerState<AgentHubScreen> with AppSduiPageState {
+class _AgentHubScreenState extends ConsumerState<AgentHubScreen> with SduiPageState {
   @override
   String get sduiPage => 'agent';
 

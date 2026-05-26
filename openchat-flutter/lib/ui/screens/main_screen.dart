@@ -21,7 +21,7 @@ class MainScreen extends ConsumerStatefulWidget {
   ConsumerState<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends ConsumerState<MainScreen> with AppSduiPageState {
+class _MainScreenState extends ConsumerState<MainScreen> with SduiPageState {
   @override
   String get sduiPage => 'main';
 

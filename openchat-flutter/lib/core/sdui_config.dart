@@ -96,28 +96,5 @@ class SduiQiniuSource extends SduiConfigSource {
 /// Singleton source for the app.
 const sduiSource = SduiQiniuSource();
 
-/// Convenience: load config for a page.
-Future<Map<String, dynamic>> loadSdui(String page) => sduiSource.load(page);
-
-/// App-specific mixin for ConsumerState (Riverpod).
-/// Bridges the package's SduiConfigSource with Riverpod's ConsumerState.
-mixin AppSduiPageState<T extends ConsumerStatefulWidget> on ConsumerState<T> {
-  Map<String, dynamic> _layout = {};
-  Map<String, dynamic> get sduiLayout => _layout;
-  String get sduiPage => '';
-
-  @override
-  void initState() {
-    super.initState();
-    sduiSource.load(sduiPage).then((m) {
-      if (mounted) setState(() => _layout = m);
-    });
-  }
-
-  String sduiStr(String key, [String d = '']) => _layout[key] is String ? _layout[key] as String : d;
-  int sduiInt(String key, [int d = 0]) => _layout[key] is int ? _layout[key] as int : d;
-  double sduiNum(String key, [double d = 0]) => (_layout[key] as num?)?.toDouble() ?? d;
-  List sduiList(String key) => _layout[key] is List ? _layout[key] as List : [];
-  Map sduiMap(String key) => _layout[key] is Map ? _layout[key] as Map : {};
-  bool sduiBool(String key, [bool d = false]) => _layout[key] is bool ? _layout[key] as bool : d;
-}
+/// Call at app startup: SduiPageState.defaultSource = sduiSource;
+/// Then all pages with `SduiPageState` mixin use Qiniu-backed configs.

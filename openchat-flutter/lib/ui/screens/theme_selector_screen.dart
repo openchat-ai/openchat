@@ -12,7 +12,7 @@ class ThemeSelectorScreen extends ConsumerStatefulWidget {
   ConsumerState<ThemeSelectorScreen> createState() => _ThemeSelectorScreenState();
 }
 
-class _ThemeSelectorScreenState extends ConsumerState<ThemeSelectorScreen> with AppSduiPageState {
+class _ThemeSelectorScreenState extends ConsumerState<ThemeSelectorScreen> with SduiPageState {
   @override
   String get sduiPage => 'theme_selector';
 

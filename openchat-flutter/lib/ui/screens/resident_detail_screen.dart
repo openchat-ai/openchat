@@ -22,7 +22,7 @@ class ResidentDetailScreen extends ConsumerStatefulWidget {
   ConsumerState<ResidentDetailScreen> createState() => _ResidentDetailScreenState();
 }
 
-class _ResidentDetailScreenState extends ConsumerState<ResidentDetailScreen> with AppSduiPageState {
+class _ResidentDetailScreenState extends ConsumerState<ResidentDetailScreen> with SduiPageState {
   @override
   String get sduiPage => 'resident_detail';
   Resident? _resident;
