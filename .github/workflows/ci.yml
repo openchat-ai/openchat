@@ -18,22 +18,22 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       flutter: ${{ steps.filter.outputs.flutter }}
-      flutter_build: ${{ steps.filter.outputs.flutter-build }}
+      flutter_build: ${{ steps.filter.outputs.flutter_build }}
     steps:
       - uses: actions/checkout@v4
       - id: filter
         uses: dorny/paths-filter@v3
         with:
           filters: |
-      flutter:
-        - 'openchat-flutter/**'
-      flutter-build:
-        - 'openchat-flutter/pubspec.yaml'
-        - 'openchat-flutter/pubspec.lock'
-        - 'openchat-flutter/android/**'
-        - 'openchat-flutter/ios/**'
-        - 'openchat-flutter/lib/**/*.dart'
-      bridge:
+            flutter:
+              - 'openchat-flutter/**'
+            flutter_build:
+              - 'openchat-flutter/pubspec.yaml'
+              - 'openchat-flutter/pubspec.lock'
+              - 'openchat-flutter/android/**'
+              - 'openchat-flutter/ios/**'
+              - 'openchat-flutter/lib/**/*.dart'
+            bridge:
               - 'bridge/**'
 
   flutter-check:
