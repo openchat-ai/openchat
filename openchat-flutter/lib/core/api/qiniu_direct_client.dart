@@ -369,7 +369,6 @@ class QiniuDirectClient {
           final raw = await _get(key);
           final msg = jsonDecode(raw) as Map?;
           final action = msg?['action'] as String?;
-          if (action != 'call-request') continue; // skip non-call signals
           final from = msg?['fromPeerId'] as String? ?? key.split('/').last.replaceAll('.json', '');
           signals.add({'action': action, 'fromPeerId': from});
         } catch (_) {}
