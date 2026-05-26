@@ -318,6 +318,11 @@ class QiniuDirectClient {
   }
 
   static final Map<String, Map> _configCache = {};
+  static Map? _mergedConfig;
+  static String? _sectionKey(String path) {
+    final name = path.split('/').last.replaceAll('.json', '');
+    return name.startsWith('ui_') ? name : null;
+  }
 
   static Future<Map?> fetchConfigFile(String path, {int retries = 2}) async {
     for (int attempt = 0; attempt <= retries; attempt++) {
@@ -333,6 +338,18 @@ class QiniuDirectClient {
         if (attempt == retries) break;
         await Future.delayed(Duration(seconds: 1 << attempt));
       }
+    }
+    // Fallback: try merged ui_app.json
+    final sec = _sectionKey(path);
+    if (sec != null) {
+      if (_mergedConfig == null) {
+        try {
+          final url = _presignedUrl('oc/config/ui_app.json');
+          final resp = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 5));
+          if (resp.statusCode == 200) _mergedConfig = jsonDecode(resp.body) as Map?;
+        } catch (_) {}
+      }
+      if (_mergedConfig?[sec] is Map) return _mergedConfig![sec] as Map;
     }
     return _configCache[path];
   }
