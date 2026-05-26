@@ -65,13 +65,22 @@ Credentials embedded in APK (private project, acceptable risk).
 
 Bridge runs independently for AI residents, agent system, administration.
 Its `/users` endpoint also polls Qiniu for phone registrations.
-Phone does NOT need Bridge for P2P voice.
+Phone does NOT need Bridge for P2P voice — all operations go directly to Qiniu S3.
+
+## Access Control
+
+Audio files (`oc/audio/`) and call signaling (`oc/calls/`) have **no ACL restrictions** — any party who knows the S3 presigned URL or object key can read them. This is acceptable because:
+- Presigned URLs expire (default 300s for GET, configurable)
+- Object keys contain `peerId` which is unguessable
+- The bucket is private project, not public consumer service
+
+**Not yet implemented**: object-level ACL, encryption at rest, caller identity verification.
 
 ## Code Map
 
 | File | Role |
 |---|---|
-| `lib/core/api/qiniu_direct_client.dart` | S3 client + IP discovery + UDP hole punch |
+| `lib/core/api/qiniu_direct_client.dart` | S3 client + IP discovery + Qiniu relay |
 | `lib/ui/screens/people_screen.dart` | User list + incoming call dialog |
 | `lib/ui/screens/voice_room_screen.dart` | Call state machine + audio relay |
 | `bridge/src/core/qiniu-signaling.js` | Bridge-side Qiniu operations + listObjects |
