@@ -29,7 +29,8 @@ PeerTalk UI 设计系统是一个完整的、可复用的组件库，支持 5 �
 
 - **自动**: 跟随系统
 - **浅色**: 强制浅色
-- **深色**: 主题深色  - **手动**: 用户选择具体主题
+- **深色**: 主题深色
+- **手动**: 用户选择具体主题
 
 ## 布局系统
 
@@ -119,9 +120,7 @@ StatCard(
   onTap: () => viewDetails(),
 )
 ```
-  : 10/14
-  : 12
-  
+
 ### 图片卡片 (ImageCard)
 
 ```dart
@@ -136,7 +135,7 @@ ImageCard(
 
 ### 操作卡片 (ActionCard)
 
-```  dart
+```dart
 ActionCard(
   icon: Icons.add,
   label: '添加',
@@ -167,7 +166,7 @@ ExpandableListItem(
   initiallyExpanded: false,
 )
 ```
-、
+
 ### 时间线列表
 
 ```dart
@@ -269,7 +268,7 @@ CustomScrollView(
 Row(
   children: [
     Expanded(child: StatCard(label: '运行中', value: '12', icon: Icons.play_circle, color: theme.success)),
-    Expanded(child: StatCard(label: '待处理', value: '5', icon: Icons.pending, color: color: theme.warning)),
+    Expanded(child: StatCard(label: '待处理', value: '5', icon: Icons.pending, color: theme.warning)),
     Expanded(child: StatStyle.textPrimary,
   fontSize: 15,
   fontWeight: FontWeight.w500,
@@ -282,7 +281,7 @@ final bodyStyle = TextStyle(
 
 final captionStyle = TextStyle(
   color: theme.textTertiary,
-  font  Size: 11,
+  fontSize: 11,
 );
 ```
 
@@ -311,7 +310,8 @@ lib/
 ```
 
 ## 最佳实践
-```  1. Always use `ref.watch(currentThemeProvider)` for theme updates
+
+1. Always use `ref.watch(currentThemeProvider)` for theme updates
 2. Use ConsumerWidget for screens
 3. Use ConsumerWidget for components
 4. Keep components small and reusable
