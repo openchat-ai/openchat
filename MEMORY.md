@@ -160,6 +160,14 @@
 | R21 | voice_room_screen.dart 改为 SDUI 渲染（+增强 _button 支持 icon/iconSize/size/color + mic_off/call_end 图标） | 技术经理 (P0-2 12票) | P0-2 | ✅ 已修(R21) | 全体 |
 | R21 | RS API 残留代码从 Flutter 客户端完全删除（_rsPut/_rsGet/_rsList/_rsDelete + _uploadToken + 4 个 per-op flag），默认全走 S3 V4 | 安全研究员/Qiniu专家/核心工程师 | P1-8 | ✅ 已修(R21) | 安全研究员 |
 | R21 | CI workflow_dispatch 默认 build_apk: false + 条件检查 inputs.build_apk | 测试工程师/SRE/Git专家 | P0-4 | ✅ 已修(R21) | 测试工程师 |
+| R21 | COMPILATION_BOUNDARY.md 诚实标注 voice_room 非 SDUI（P0-2 12票承认） | 技术写作者/竞品分析师 | P1-7 | ⚠️ 已修: voice_room 改为 SDUI，数字从 95%→85% | 技术写作者 |
+| R22 | _handleAction 改为可扩展（_customActions map + exec: 前缀），新 action 可通过 map 注册 | 架构师/Flutter开发者/核心工程师/竞品分析师/开源社区经理 | P0-2 | ✅ 已修(R22) | 架构师 |
+| R22 | catch(_) 吞异常加日志（_pollResponse/record stream/pollEncodedAudio） | 安全研究员/用户支持/Flutter开发者 | P0-4 | ✅ 已修(R22) | 安全研究员 |
+| R22 | CI flutter-apk 拆分：analyze-only（所有 Flutter 改动）+ build-only（仅 Dart/pubspec/gradle） | 时间管理师/测试工程师/SRE/Git专家 | P0-3 | ✅ 已修(R22) | SRE/运维 |
+| R22 | COMPILATION_BOUNDARY.md 重写：85%+诚实列出 APK 场景+决策树修正 | 技术写作者 | P0-5 | ✅ 已修(R22) | 技术写作者 |
+| R22 | AGENTS.md "95%→85%" | 技术写作者 | P0-5 | ✅ 已修(R22) | 技术写作者 |
+| R22 | AK/SK + endpoint/region 硬编码（仍需 APK） | 架构师/安全研究员/Qiniu专家/SRE/竞品分析师 | P0-1 | ❌ 待修(需 Bridge 端签名代理) | 安全研究员 |
+| R21 | CI workflow_dispatch 默认 build_apk: false + 条件检查 inputs.build_apk | 测试工程师/SRE/Git专家 | P0-4 | ✅ 已修(R21) | 测试工程师 |
 | R21 | COMPILATION_BOUNDARY.md 诚实标注 voice_room 非 SDUI（P0-2 12票承认"当前无法零APK"） | 技术写作者/竞品分析师 | P1-7 | ✅ 已修(R21) | 技术写作者 |
 | R20 | ui_design_system.md 更新日期 + 清理旧版引用 | 技术写作者/竞品分析师 | P2-12 | ✅ 已修(R20) | 技术写作者 |
 | R20 | 双机端到端语音实测 | 时间管理师/AI研究员/核心工程师 | P0-4 | ⚠️ 待执行 | 用户支持+竞品分析师 |

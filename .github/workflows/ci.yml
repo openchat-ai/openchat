@@ -18,15 +18,22 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       flutter: ${{ steps.filter.outputs.flutter }}
+      flutter_build: ${{ steps.filter.outputs.flutter-build }}
     steps:
       - uses: actions/checkout@v4
       - id: filter
         uses: dorny/paths-filter@v3
         with:
           filters: |
-            flutter:
-              - 'openchat-flutter/**'
-            bridge:
+      flutter:
+        - 'openchat-flutter/**'
+      flutter-build:
+        - 'openchat-flutter/lib/**/*.dart'
+        - 'openchat-flutter/pubspec.yaml'
+        - 'openchat-flutter/pubspec.lock'
+        - 'openchat-flutter/android/**'
+        - 'openchat-flutter/ios/**'
+      bridge:
               - 'bridge/**'
 
   flutter-check:
@@ -74,7 +81,7 @@ jobs:
 
   flutter-apk:
     needs: [changes, flutter-check]
-    if: ${{ needs.changes.outputs.flutter == 'true' || (github.event_name == 'workflow_dispatch' && inputs.build_apk) }}
+    if: ${{ needs.changes.outputs.flutter_build == 'true' || (github.event_name == 'workflow_dispatch' && inputs.build_apk) }}
     runs-on: ubuntu-latest
     permissions:
       contents: write

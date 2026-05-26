@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer' show log;
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -37,6 +38,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
   VoiceUiConfig _uiVoice = const VoiceUiConfig();
   AudioConfig _audioCfg = const AudioConfig();
   Map<String, dynamic>? _sduiLayout;
+  Map<String, void Function()> _customActions = {};
 
   @override
   void initState() {
@@ -94,7 +96,9 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
           return;
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      log('_pollResponse: $e');
+    }
   }
 
   bool _audioStarted = false;
@@ -168,7 +172,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
           await _client?.sendEncodedAudio(_targetPeerId!, processed, _audioSeq++);
         }
       }
-    }, onError: (_) {});
+    }, onError: (e) { log('record stream error: $e'); });
 
     _signalTimer?.cancel();
     _signalTimer = Timer.periodic(Duration(milliseconds: cfg.pollMs), (_) async {
@@ -181,7 +185,9 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
           if (pcm != null) _playQueue.add(pcm);
         }
         if (!_playing) _playNext();
-      } catch (_) {}
+    } catch (e) {
+      log('_pollResponse: $e');
+    }
     });
   }
 
@@ -217,6 +223,10 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
   }
 
   void _handleAction(String action) {
+    if (_customActions.containsKey(action)) {
+      _customActions[action]!();
+      return;
+    }
     switch (action) {
       case 'hangup': _endCall();
       case 'toggle_mute': if (mounted) setState(() => _muted = !_muted);
