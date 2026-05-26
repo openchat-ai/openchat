@@ -22,6 +22,7 @@ class AudioProcessor {
   OpusCodec? _opus;
 
   AudioMode _mode;
+  bool _isProcessing = false;
 
   final _speakingController = StreamController<bool>.broadcast();
   final _audioLevelController = StreamController<double>.broadcast();
