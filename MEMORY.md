@@ -179,6 +179,11 @@
 | R24 | voice_room 5 个 crash 点全加固（null 断言+try-catch） | 用户/架构师 | — | ✅ 已修(R24) | 架构师 |
 | R24 | chat_list_screen.dart → SDUI（加载 oc/config/ui_chat_list.json） | 用户 | — | ✅ 已修(R24) | 用户 |
 | R24 | docs/ui_chat_list.json 参考 JSON | 技术写作者 | — | ✅ 已修(R24) | 技术写作者 |
+| R25 | fetchConfigFile 重试 (指数退避 0/1/2s) + 缓存保底 | SRE/Qiniu专家 | P0-4 | ✅ 已修(R25) | SRE |
+| R25 | docs/sdui-coverage.md 覆盖矩阵 | 技术写作者/用户支持 | P1-6 | ✅ 已修(R25) | 技术写作者 |
+| R25 | 核心 4 页全硬编码 (P0-1 11票) — 需 R26 开始转换 chat_screen | 全体 | P0-1 | ⏳ 待修(R26) | 架构师 |
+| R25 | 双机语音验证 (P0-2 7票) | 时间管理师/竞品分析师 | P0-2 | ⚠️ 待执行 | 用户支持 |
+| R25 | SDUI 数据绑定 (P0-3 5票) | 架构师/核心工程师 | P0-3 | ⏳ 待修(R26) | 核心工程师 |
 | R21 | CI workflow_dispatch 默认 build_apk: false + 条件检查 inputs.build_apk | 测试工程师/SRE/Git专家 | P0-4 | ✅ 已修(R21) | 测试工程师 |
 | R21 | COMPILATION_BOUNDARY.md 诚实标注 voice_room 非 SDUI（P0-2 12票承认"当前无法零APK"） | 技术写作者/竞品分析师 | P1-7 | ✅ 已修(R21) | 技术写作者 |
 | R20 | ui_design_system.md 更新日期 + 清理旧版引用 | 技术写作者/竞品分析师 | P2-12 | ✅ 已修(R20) | 技术写作者 |

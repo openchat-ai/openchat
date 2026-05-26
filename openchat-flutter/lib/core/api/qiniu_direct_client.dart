@@ -319,16 +319,21 @@ class QiniuDirectClient {
 
   static final Map<String, Map> _configCache = {};
 
-  static Future<Map?> fetchConfigFile(String path) async {
-    try {
-      final url = _presignedUrl(path);
-      final resp = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 8));
-      if (resp.statusCode == 200) {
-        final data = jsonDecode(resp.body) as Map?;
-        if (data != null) _configCache[path] = data;
-        return data;
+  static Future<Map?> fetchConfigFile(String path, {int retries = 2}) async {
+    for (int attempt = 0; attempt <= retries; attempt++) {
+      try {
+        final url = _presignedUrl(path);
+        final resp = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 8));
+        if (resp.statusCode == 200) {
+          final data = jsonDecode(resp.body) as Map?;
+          if (data != null) _configCache[path] = data;
+          return data;
+        }
+      } catch (_) {
+        if (attempt == retries) break;
+        await Future.delayed(Duration(seconds: 1 << attempt));
       }
-    } catch (_) {}
+    }
     return _configCache[path];
   }
 
