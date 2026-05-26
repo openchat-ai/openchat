@@ -159,7 +159,7 @@ class QiniuDirectClient {
     // Qiniu RS API: GET /get/<EncodedEntryURI> 鈫?returns download URL, then fetch it
     final entryStr = '$_bucket:$key';
     final encodedEntry = base64.encode(utf8.encode(entryStr))
-        .replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
+        .replaceAll('+', '-').replaceAll('/', '_');
     final path = '/get/$encodedEntry';
     final hmacSha1 = Hmac(sha1, utf8.encode(_sk))
         .convert(utf8.encode('$path\n'))
@@ -373,7 +373,7 @@ class QiniuDirectClient {
       // Qiniu RS API (HMAC-SHA1, no clock skew)
       final entryStr = '$_bucket:$path';
       final encodedEntry = base64.encode(utf8.encode(entryStr))
-          .replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
+          .replaceAll('+', '-').replaceAll('/', '_');
       final hmacSha1 = Hmac(sha1, utf8.encode(_sk))
           .convert(utf8.encode('/get/$encodedEntry\n'))
           .bytes;
