@@ -52,6 +52,18 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
     }
   }
 
+  void _startPoll() {
+    if (_client == null) return;
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(Duration(milliseconds: _client!.pollIntervalMs), (_) => _pollUsers());
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
+  }
+
   Future<void> _pollUsers() async {
     if (!mounted) return;
     setState(() => _refreshing = true);
@@ -68,8 +80,9 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
       if (newConfig != null) _uiConfig = newConfig;
       final signals = await _client!.pollIncoming().timeout(const Duration(seconds: 8));
       for (final s in signals) {
+        final action = s['action'] as String?;
         final from = s['fromPeerId'] as String?;
-        if (from != null && mounted) _showIncomingCall(from);
+        if (action == 'call-request' && from != null && mounted) _showIncomingCall(from);
       }
       await _client!.pollDebug().timeout(const Duration(seconds: 8));
     } catch (e) {
@@ -92,10 +105,11 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(ctx);
+              _pollTimer?.cancel();
               Navigator.pushNamed(context, '/voice', arguments: {
                 'targetPeerId': fromPeerId,
                 'client': _client,
-              });
+              }).then((_) => _startPoll());
             },
             child: const Text('Accept'),
           ),
@@ -109,10 +123,11 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
     try {
       await _client!.sendSignal(targetPeerId, 'call-request');
       if (mounted) {
+        _pollTimer?.cancel();
         Navigator.pushNamed(context, '/voice', arguments: {
           'targetPeerId': targetPeerId,
           'client': _client,
-        });
+        }).then((_) => _startPoll());
       }
     } catch (_) {
       if (mounted) {
