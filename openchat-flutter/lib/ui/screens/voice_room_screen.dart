@@ -12,6 +12,7 @@ import '../../providers/theme_provider.dart';
 import '../../core/api/qiniu_direct_client.dart';
 import '../../core/audio/audio_processor.dart';
 import '../../core/audio/audio_config.dart';
+import '../../core/ui_voice_config.dart';
 
 class VoiceRoomScreen extends ConsumerStatefulWidget {
   const VoiceRoomScreen({super.key});
@@ -33,6 +34,8 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
   AudioProcessor? _processor;
   final List<Uint8List> _playQueue = [];
   bool _playing = false;
+  VoiceUiConfig _uiVoice = const VoiceUiConfig();
+  AudioConfig _audioCfg = const AudioConfig();
 
   @override
   void initState() {
@@ -43,6 +46,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
     _client = argMap['client'] as QiniuDirectClient?;
 
     if (_targetPeerId != null && _client != null) {
+      VoiceUiConfig.load().then((c) { if (mounted) setState(() => _uiVoice = c); });
       _signalTimer = Timer.periodic(const Duration(seconds: 2), (_) => _pollResponse());
     }
 
@@ -57,9 +61,10 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
     if (_client == null) _client = QiniuDirectClient(peerId: peerId);
     await _client!.register();
     _targetPeerId = peerId;
+    final cfg = await AudioConfig.load();
     if (mounted) {
       setState(() => _state = 'calling');
-      Future.delayed(const Duration(seconds: 3), () {
+      Future.delayed(Duration(milliseconds: cfg.demoDelayMs), () {
         if (mounted && _state == 'calling') {
           setState(() => _state = 'connected');
           _startAudio();
@@ -113,6 +118,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
     if (_audioStarted) return;
     _audioStarted = true;
     final cfg = await AudioConfig.load();
+    _audioCfg = cfg;
     _recorder = AudioRecorder();
     _player = AudioPlayer();
     _processor = AudioProcessor(sampleRate: cfg.sampleRate, enableDenoise: cfg.denoise, enableCodec: cfg.mode != 'raw');
@@ -128,7 +134,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
 
     // Send: record → process → upload
     final bufSize = cfg.bufferBytes;
-    const fadeBytes = 240; // 5ms cross-fade @ 24000Hz 16bit mono
+    final fadeBytes = cfg.fadeBytes; // 5ms cross-fade @ 24000Hz 16bit mono
     List<int> _buffer = [];
     Uint8List? _prevOverlap;
     _recordSub = stream.listen((chunk) async {
@@ -184,7 +190,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
     _playing = true;
     var pcm = _playQueue.removeAt(0);
     // 2ms fade-in/out to prevent click at chunk boundaries
-    const fadeSamples = 48; // 2ms @ 24000Hz
+    final fadeSamples = _audioCfg.fadeSamples; // 2ms @ 24000Hz
     for (int i = 0; i < fadeSamples && i * 2 < pcm.length; i++) {
       final ratio = i / fadeSamples;
       final idx = i * 2;
@@ -242,16 +248,16 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
             ),
             const SizedBox(height: 24),
             Text(
-              _state == 'calling' ? 'Calling $_targetPeerId...' :
-              _state == 'ringing' ? 'Incoming call...' :
-              _state == 'connected' ? 'Connected to $_targetPeerId' : 'Call ended',
+              _state == 'calling' ? _uiVoice.calling(_targetPeerId ?? '') :
+              _state == 'ringing' ? _uiVoice.ringingText :
+              _state == 'connected' ? _uiVoice.connected(_targetPeerId ?? '') : _uiVoice.endedText,
               style: TextStyle(color: theme.textPrimary, fontSize: 20, fontWeight: FontWeight.w600),
             ),
             if (_state == 'connected')
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
-                  _muted ? 'MUTED' : 'Qiniu relay',
+                  _muted ? _uiVoice.mutedLabel : _uiVoice.relayLabel,
                   style: TextStyle(color: theme.textTertiary, fontSize: 12),
                 ),
               ),

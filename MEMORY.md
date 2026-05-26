@@ -230,3 +230,6 @@
 | R1 | 新人 5 分钟体验文档（不改 Flutter 代码看到效果） | 用户支持 | P1-8 | ⏳ 待评估 | — |
 | R1 | CHANGE_DECISION_TREE.md（20 种改动决策表） | 技术写作者 | P1-10 | ⏳ 待评估 | — |
 | R1 | 改动积攒策略（Flutter 改动每周/攒够 3 个才提交） | 时间管理师 | P2-11 | ✅ 已修(R1，当前策略) | 时间管理师 |
+| R2 | voice_room 状态文本远程化（Calling/Connected 等抽取到 ui_voice.json） | Flutter 开发者 | P0-1 | ✅ 已修(R2) | Flutter 开发者 |
+| R2 | audio.json 新增 DSP 常量（fadeBytes/fadeSamples/demoDelayMs） | Qiniu/S3 专家 | P0-4 | ✅ 已修(R2) | Qiniu/S3 专家 |
+| R2 | 来电弹窗文本远程化（incomingTitle/incomingBody/acceptLabel/declineLabel） | 用户支持 | P0-3 | ✅ 已修(R2) | 用户支持 |

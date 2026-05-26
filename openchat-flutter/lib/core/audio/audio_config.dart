@@ -9,6 +9,9 @@ class AudioConfig {
   final bool denoise;
   final bool agc;
   final bool highPass;
+  final int fadeBytes;
+  final int fadeSamples;
+  final int demoDelayMs;
   final String version;
 
   const AudioConfig({
@@ -19,6 +22,9 @@ class AudioConfig {
     this.denoise = true,
     this.agc = false,
     this.highPass = true,
+    this.fadeBytes = 240,
+    this.fadeSamples = 48,
+    this.demoDelayMs = 3000,
     this.version = '1',
   });
 
@@ -36,6 +42,9 @@ class AudioConfig {
         denoise: raw['denoise'] as bool? ?? true,
         agc: raw['agc'] as bool? ?? false,
         highPass: raw['highPass'] as bool? ?? true,
+        fadeBytes: raw['fadeBytes'] as int? ?? 240,
+        fadeSamples: raw['fadeSamples'] as int? ?? 48,
+        demoDelayMs: raw['demoDelayMs'] as int? ?? 3000,
         version: raw['version'] as String? ?? '1',
       );
     } catch (_) {
