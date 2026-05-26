@@ -176,6 +176,9 @@
 | R24 | fetchConfigFile 加 in-memory 缓存，失败时返回上次成功加载的配置 | Qiniu专家/用户支持/SRE | P0-2 | ✅ 已修(R24) | Qiniu专家 |
 | R24 | docs/sdui-quickstart.md 补充 _customActions 注册文档 | 技术写作者/开源社区经理 | P0-5 | ✅ 已修(R24) | 技术写作者 |
 | R24 | exec: 前缀 RCE — 已不存在于代码中（R23 cleanup 时已删除，专家误判） | 安全研究员 | P0-1 | ✅ 无需修改 | 安全研究员 |
+| R24 | voice_room 5 个 crash 点全加固（null 断言+try-catch） | 用户/架构师 | — | ✅ 已修(R24) | 架构师 |
+| R24 | chat_list_screen.dart → SDUI（加载 oc/config/ui_chat_list.json） | 用户 | — | ✅ 已修(R24) | 用户 |
+| R24 | docs/ui_chat_list.json 参考 JSON | 技术写作者 | — | ✅ 已修(R24) | 技术写作者 |
 | R21 | CI workflow_dispatch 默认 build_apk: false + 条件检查 inputs.build_apk | 测试工程师/SRE/Git专家 | P0-4 | ✅ 已修(R21) | 测试工程师 |
 | R21 | COMPILATION_BOUNDARY.md 诚实标注 voice_room 非 SDUI（P0-2 12票承认"当前无法零APK"） | 技术写作者/竞品分析师 | P1-7 | ✅ 已修(R21) | 技术写作者 |
 | R20 | ui_design_system.md 更新日期 + 清理旧版引用 | 技术写作者/竞品分析师 | P2-12 | ✅ 已修(R20) | 技术写作者 |

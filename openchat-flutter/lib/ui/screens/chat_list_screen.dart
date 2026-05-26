@@ -5,6 +5,8 @@ import '../../core/theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/bridge_provider.dart';
 import '../../core/api/bridge_ws_client.dart';
+import '../../core/api/qiniu_direct_client.dart';
+import '../../core/sdui.dart';
 import 'chat_screen.dart' hide bridgeWsProvider;
 
 class ChatListScreen extends ConsumerStatefulWidget {
@@ -16,10 +18,13 @@ class ChatListScreen extends ConsumerStatefulWidget {
 class _ChatListScreenState extends ConsumerState<ChatListScreen> {
   StreamSubscription? _wsSub;
   final List<Map<String, dynamic>> _messages = [];
+  Map<String, dynamic>? _sduiLayout;
 
   @override
   void initState() {
     super.initState();
+    QiniuDirectClient.fetchConfigFile('oc/config/ui_chat_list.json')
+        .then((m) { if (mounted && m is Map) setState(() => _sduiLayout = Map<String, dynamic>.from(m)); });
     _wsSub = ref.read(bridgeWsProvider).messages.listen((msg) {
       if (msg.type == 'message' && msg.data['message'] != null) {
         setState(() => _messages.insert(0, {'text': msg.data['message'], 'from': msg.data['from'] ?? 'peer'}));
@@ -33,11 +38,47 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
     super.dispose();
   }
 
+  void _handleAction(String action) {
+    if (action == 'open_chat') {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(chatId: 'bridge', title: 'AI Chat')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = ref.watch(currentThemeProvider);
     final bridge = ref.watch(bridgeWsProvider);
     final connection = ref.watch(bridgeConnectionProvider);
+
+    final connected = connection.when(
+      data: (info) => info.state == WsConnectionState.connected,
+      error: (_, __) => false,
+      loading: () => false,
+    );
+
+    if (_sduiLayout != null) {
+      final selected = _sduiLayout!['layout'] as Map?;
+      if (selected != null) {
+        final parser = SduiParser(
+          onAction: _handleAction,
+          vars: {
+            'connected': connected,
+            'connectedText': connected ? 'Connected' : 'Offline',
+            'connectedColor': connected ? '#4CAF50' : '#F44336',
+            'peerId': bridge.peerId ?? 'connecting...',
+            'messageCount': _messages.length,
+            'emptyText': 'No messages yet\nSend a message to start',
+          },
+        );
+        final widget = parser.parse(selected);
+        if (widget != null) {
+          return Scaffold(
+            backgroundColor: theme.background,
+            body: SafeArea(child: widget),
+          );
+        }
+      }
+    }
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -47,31 +88,23 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
         elevation: 0,
         title: Text('MESSAGES', style: TextStyle(color: theme.textPrimary, fontSize: 24, fontWeight: FontWeight.bold)),
         actions: [
-          connection.when(
-            data: (info) {
-              final connected = info.state == WsConnectionState.connected;
-              return Container(
-                margin: const EdgeInsets.only(right: 12),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: connected ? Colors.green.withValues(alpha: 0.2) : Colors.red.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.circle, size: 8, color: connected ? Colors.green : Colors.red),
-                  const SizedBox(width: 4),
-                  Text(connected ? 'Connected' : 'Offline', style: TextStyle(fontSize: 11, color: connected ? Colors.green : Colors.red)),
-                ]),
-              );
-            },
-            error: (e, _) => const Text('!'),
-            loading: () => const SizedBox(),
+          Container(
+            margin: const EdgeInsets.only(right: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: connected ? Colors.green.withValues(alpha: 0.2) : Colors.red.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.circle, size: 8, color: connected ? Colors.green : Colors.red),
+              const SizedBox(width: 4),
+              Text(connected ? 'Connected' : 'Offline', style: TextStyle(fontSize: 11, color: connected ? Colors.green : Colors.red)),
+            ]),
           ),
         ],
       ),
       body: SafeArea(
         child: Column(children: [
-          // Peer ID display
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             padding: const EdgeInsets.all(12),
@@ -86,7 +119,6 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
               ),
             ]),
           ),
-          // Chat messages
           Expanded(
             child: _messages.isEmpty
               ? Center(child: Text('No messages yet\nSend a message to start', textAlign: TextAlign.center, style: TextStyle(color: theme.textTertiary)))
