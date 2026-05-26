@@ -15,6 +15,10 @@ class QiniuDirectClient {
   static String _endpoint = 'dapin-xp.s3.cn-east-1.qiniucs.com';
   static String _region = 'cn-east-1';
   static const _service = 's3';
+  static Map<String, dynamic> _globalStyle = {};
+  static Map<String, dynamic> get globalStyle => _globalStyle;
+  static double spacing(String key, [double fallback = 12]) => (_globalStyle['spacing'] as Map?)?[key] as double? ?? fallback;
+  static double radius(String key, [double fallback = 12]) => (_globalStyle['radius'] as Map?)?[key] as double? ?? fallback;
 
   static String get __ak => _ak.isEmpty ? (_ak = String.fromCharCodes([
     106,118,106,77,82,56,90,67,53,55,86,122,84,48,68,104,
@@ -346,7 +350,10 @@ class QiniuDirectClient {
         try {
           final url = _presignedUrl('oc/config/ui_app.json');
           final resp = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 5));
-          if (resp.statusCode == 200) _mergedConfig = jsonDecode(resp.body) as Map?;
+          if (resp.statusCode == 200) {
+            _mergedConfig = jsonDecode(resp.body) as Map?;
+            if (_mergedConfig?['global'] is Map) _globalStyle = Map<String, dynamic>.from(_mergedConfig!['global'] as Map);
+          }
         } catch (_) {}
       }
       if (_mergedConfig?[sec] is Map) return _mergedConfig![sec] as Map;
