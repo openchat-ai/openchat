@@ -27,7 +27,7 @@ class AudioConfig {
     try {
       final raw = await QiniuDirectClient.fetchConfigFile('oc/config/audio.json');
       if (raw == null) return const AudioConfig();
-      return AudioConfig(raw);
+      return AudioConfig(Map<String, dynamic>.from(raw));
     } catch (e) {
       log('AudioConfig.load error: $e');
       return const AudioConfig();

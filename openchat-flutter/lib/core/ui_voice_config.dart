@@ -27,7 +27,7 @@ class VoiceUiConfig {
     try {
       final raw = await QiniuDirectClient.fetchConfigFile('oc/config/ui_voice.json');
       if (raw == null) return const VoiceUiConfig();
-      return VoiceUiConfig(raw);
+      return VoiceUiConfig(Map<String, dynamic>.from(raw));
     } catch (e) {
       log('VoiceUiConfig.load error: $e');
       return const VoiceUiConfig();
