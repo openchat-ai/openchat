@@ -63,6 +63,7 @@ PeerTalk Flutter 是一个 **P2P 语音通话客户端**，通过 Bridge 信令�
 | `oc/config/ui_voice.json` | 通话界面文字、来电对话框 | ✅ |
 | `oc/config/audio.json` | 音频参数（codec、fade、比特率） | ✅ |
 | `oc/config/ui_people.json` | 联系人列表 SDUI | ✅ |
+| `oc/config/ui_room_sdui.json` | 通话室界面布局（widget 树、按钮、图标、颜色） | ✅ |
 | `oc/config/global.json` | 全局功能开关 | ✅ |
 
 添加新字段到上述 JSON 文件**不需要**修改 Dart 代码——`AudioConfig` 和 `VoiceUiConfig` 基于通用 `Map<String, dynamic>` 包装，任何 key 自动可访问。
