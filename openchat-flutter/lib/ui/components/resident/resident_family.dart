@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
-import '../../theme/app_theme.dart';
+﻿import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/models/resident_model.dart';
 
 class ResidentFamily extends StatelessWidget {
@@ -13,18 +13,18 @@ class ResidentFamily extends StatelessWidget {
     return SliverToBoxAdapter(child: Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('家庭关系', style: TextStyle(color: theme.textPrimary, fontSize: 18, fontWeight: FontWeight.w600)),
+        Text('瀹跺涵鍏崇郴', style: TextStyle(color: theme.textPrimary, fontSize: 18, fontWeight: FontWeight.w600)),
         const SizedBox(height: 12),
         if (resident.parentId != null)
-          _relationCard('母体居民', resident.parentId.toString(), Icons.account_tree_outlined),
+          _relationCard('Parent', resident.parentId.toString(), Icons.account_tree_outlined),
         if (children.isNotEmpty) ...[
           const SizedBox(height: 8),
-          Text('子居民 (${children.length})', style: TextStyle(color: theme.textSecondary, fontSize: 13)),
+          Text('Children (${children.length})', style: TextStyle(color: theme.textSecondary, fontSize: 13)),
           const SizedBox(height: 8),
           ...children.map((c) => Padding(padding: const EdgeInsets.only(bottom: 8), child: _childTile(c))),
         ],
         if (resident.parentId == null && children.isEmpty)
-          Padding(padding: const EdgeInsets.all(16), child: Text('暂无家庭关系', style: TextStyle(color: theme.textTertiary, fontSize: 13))),
+          Padding(padding: const EdgeInsets.all(16), child: Text('No family', style: TextStyle(color: theme.textTertiary, fontSize: 13))),
       ]),
     ));
   }
@@ -46,7 +46,7 @@ class ResidentFamily extends StatelessWidget {
       const SizedBox(width: 12),
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(child.name, style: TextStyle(color: theme.textPrimary, fontSize: 14, fontWeight: FontWeight.w600)),
-        Text('ID: ${child.id} · ${child.home}', style: TextStyle(color: theme.textTertiary, fontSize: 11)),
+        Text('ID: ${child.id} 路 ${child.home}', style: TextStyle(color: theme.textTertiary, fontSize: 11)),
       ])),
     ]));
 }

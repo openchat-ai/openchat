@@ -50,12 +50,12 @@ class _MainScreenState extends ConsumerState<MainScreen> with SduiPageState {
   }
 
   static const _fallbackTabs = [
-    {'icon': 'home', 'label': '棣栭〉', 'screen': 'home'},
+    {'icon': 'home', 'label': 'Home', 'screen': 'home'},
     {'icon': 'agent', 'label': 'Agent', 'screen': 'agent'},
-    {'icon': 'people', 'label': '濂藉弸', 'screen': 'people'},
-    {'icon': 'chat', 'label': '鑱婂ぉ', 'screen': 'chat'},
-    {'icon': 'dev', 'label': '鎺у埗鍙?, 'screen': 'dev'},
-    {'icon': 'settings', 'label': '鎴戠殑', 'screen': 'settings'},
+    {'icon': 'people', 'label': 'Friends', 'screen': 'people'},
+    {'icon': 'chat', 'label': 'Chat', 'screen': 'chat'},
+    {'icon': 'dev', 'label': 'Dev', 'screen': 'dev'},
+    {'icon': 'settings', 'label': 'Settings', 'screen': 'settings'},
   ];
 
   List<Map<String, dynamic>> _getTabs() {

@@ -1,62 +1,63 @@
 # SDUI Engine
 
-Server-Driven UI for Flutter. Render widgets from JSON — no app store submission needed.
+Ship Flutter UI changes **without app store review**.
 
 ```dart
-final parser = SduiParser(
-  onAction: (action) => print('Tapped: $action'),
-  vars: {'name': 'Alice'},
-);
-
-final widget = parser.parse({
-  'type': 'column',
-  'children': [
-    {'type': 'text', 'content': 'Hello {{name}}', 'style': {'size': 24, 'bold': true}},
-    {'type': 'button', 'content': 'Submit', 'action': 'submit', 'color': '#6366F1'},
-  ],
-});
+SduiParser(vars: data, onAction: handler).parse(json);
 ```
+
+SDUI Engine renders Flutter widgets from JSON at runtime. Push a JSON file to your server, CDN, or S3 — every user sees the new UI instantly. No rebuild. No review. No install.
 
 ## Why
 
-Most UI changes require a full app rebuild and store review. SDUI lets you push UI updates as JSON — instant, no install, no review.
+| Without SDUI | With SDUI |
+|-------------|-----------|
+| Fix a typo → rebuild → submit → wait 1-3 days | Fix JSON → upload → instant |
+| Change button color → same process | Change hex value → instant |
+| A/B test a layout → two APKs | Two JSON files → same APK |
+| Fix a crash in UI code → full release | Fix JSON → ship in 5 seconds |
 
-## Supported Widgets
+## How It Works
 
-| Type | Renders | Properties |
-|------|---------|-----------|
-| `column` / `row` | Flex layout | `center`, `children` |
-| `text` | Label | `content`, `style.size/color/bold`, `pad`, `center` |
-| `icon` | Material icon | `icon` (50+ names), `size`, `color`, `gradient`, `containerSize`, `radius` |
-| `button` | Clickable | `icon`, `content`, `action`, `color`, `gradient`, `size`, `iconSize` |
-| `card` | Elevated card | `child`, `gradient`, `bgColor`, `radius`, `borderColor`, `elevation`, `padding` |
-| `image` | Network image | `url`, `width`, `height`, `fit` |
-| `list` | Scrollable list | `children` |
-| `list_tile` | List item | `title`, `subtitle`, `leadingIcon`, `trailingIcon`, `action` |
-| `textfield` | Text input | `hint`, `value`, `action` |
-| `checkbox` / `switch` | Toggle | `label`, `checked`, `action` |
-| `spacer` / `divider` / `padding` | Layout helpers | — |
-| `auto` | Lifecycle hook | `delay`, `action`, `onUnmount` |
-| `for_each` | Dynamic list | `items`, `template` |
-| `if:` | Conditional | `count > 5`, `name == 'Alice'` |
-| `{{var}}` | Template variable | `{{username}}`, `{{count}}` |
+```json
+{
+  "type": "column",
+  "children": [
+    {"type": "text", "content": "Hello {{name}}", "style": {"size": 24, "bold": true}},
+    {"type": "button", "content": "Submit", "action": "submit", "color": "#6366F1"}
+  ]
+}
+```
+
+```dart
+// Your Flutter app — 2 lines
+final widget = SduiParser(
+  onAction: (action) => handleSubmit(),
+  vars: {'name': user.name},
+).parse(layout);
+```
+
+## Features
+
+| Category | Widgets |
+|----------|---------|
+| Layout | `column`, `row`, `list`, `spacer`, `divider`, `padding` |
+| Content | `text`, `icon` (50+), `image`, `card` |
+| Input | `button`, `textfield`, `checkbox`, `switch`, `list_tile` |
+| Data | `for_each` (dynamic list iteration) |
+| Control | `if:` conditions, `{{var}}` templates, `auto` lifecycle hooks |
+| Style | hex colors, **gradients**, border radius, shadows |
 
 ## Quick Start
 
 ```yaml
 dependencies:
-  sdui_engine:
-    git: https://github.com/openchat-ai/openchat.git
-    path: packages/sdui_engine
+  sdui_engine: ^1.0.0
 ```
 
 ```dart
 import 'package:sdui_engine/sdui_engine.dart';
 
-// One-shot parse
-SduiParser(vars: data, onAction: handler).parse(json);
-
-// Full page with auto-loading config
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
   @override
@@ -68,7 +69,7 @@ class _DashboardPageState extends State<DashboardPage> with SduiPageState {
   String get sduiPage => 'dashboard';
 
   void _handleAction(String action) {
-    // Your business logic here
+    // Your business logic. JSON drives UI, Dart drives behavior.
   }
 
   @override
@@ -82,58 +83,49 @@ class _DashboardPageState extends State<DashboardPage> with SduiPageState {
 
 ## Config Sources
 
-The engine doesn't care where your JSON comes from. You provide a config source at startup:
-
 ```dart
 void main() {
-  // Memory-only (prototyping)
+  // Memory (prototyping)
   SduiPageState.defaultSource = SduiMemoryConfig({
     'dashboard': {'body': {'type': 'text', 'content': 'Hello'}},
   });
 
-  // Cascade (production: network → cache → fallback)
+  // Cascade (production)
   SduiPageState.defaultSource = SduiCascadeSource([
-    MyApiSource(),          // fetch from your server
-    MyCacheSource(),        // SharedPreferences
-    SduiMemoryConfig(defaults),  // built-in fallback
+    ApiSource(),          // your backend
+    CacheSource(),        // SharedPreferences
+    SduiMemoryConfig(defaults),  // never blank
   ]);
 
   runApp(MyApp());
 }
 ```
 
-Implement your own source in 5 lines:
+## Size
 
-```dart
-class MyApiSource extends SduiConfigSource {
-  @override
-  Future<Map<String, dynamic>> load(String page) async {
-    final res = await http.get(Uri.parse('https://api.example.com/sdui/$page'));
-    if (res.statusCode == 200) return jsonDecode(res.body);
-    return {}; // let cascade try the next source
-  }
-}
-```
+**350 lines** of engine code. Zero dependencies besides Flutter itself.
 
 ## Architecture
 
 ```
-Your Server / CDN / S3
-        ↓ JSON
-SduiConfigSource.load(page)
-        ↓ Map
-SduiParser.parse(config)
-        ↓ Widget tree
-SduiPageState (mixin)
+JSON → SduiParser.parse() → Widget tree
+           ↓
+    onAction callback → your Dart code
+           ↓
+    {{var}} substitution → your data layer
 ```
 
-The engine handles rendering only. Business logic, state management, and data fetching stay in your Dart code.
+The engine renders. State, data, and business logic stay in Dart.
 
-## Learn More
+## Documentation
 
-- [Developer Guide](DEVELOPER.md) — engine internals, adding widget types
-- [Example App](example/) — runnable demo with inline JSON + page mixin
+- [Developer Guide](DEVELOPER.md) — internals, adding widget types
+- [Example App](example/) — runnable demo
 
 ## License
 
 MIT
+
+---
+
+*SDUI Engine was extracted from [OpenChat](https://github.com/openchat-ai/openchat), a P2P voice app where every UI element is remote-configurable. 30 rounds of iteration, 11 pages, zero compile.*

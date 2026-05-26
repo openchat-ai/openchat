@@ -128,22 +128,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> with SduiPageSt
             slivers: [
               _buildProfileHeader(theme),
               _buildThemeSection(theme, themeMode, ref),
-              _buildSection('閫氱敤', [
-                _buildSettingItem(Icons.language_outlined, '璇█', '绠€浣撲腑鏂?, theme.info, theme),
-                _buildSettingItem(Icons.notifications_outlined, '閫氱煡', '宸插紑鍚?, theme.success, theme),
+              _buildSection('General', [
+                _buildSettingItem(Icons.language_outlined, 'Language', 'Chinese', theme.info, theme),
+                _buildSettingItem(Icons.notifications_outlined, 'Notifications', 'Enabled', theme.success, theme),
               ], theme),
-              _buildSection('璐﹀彿', [
-                _buildSettingItem(Icons.person_outlined, '涓汉璧勬枡', '', theme.gradientPrimary[0], theme),
-                _buildSettingItem(Icons.security_outlined, '瀹夊叏璁剧疆', '', theme.warning, theme),
-                _buildSettingItem(Icons.link_outlined, '缁戝畾璐﹀彿', '', theme.accent, theme),
+              _buildSection('Account', [
+                _buildSettingItem(Icons.person_outlined, 'Profile', '', theme.gradientPrimary[0], theme),
+                _buildSettingItem(Icons.security_outlined, 'Security', '', theme.warning, theme),
+                _buildSettingItem(Icons.link_outlined, 'Linked Accounts', '', theme.accent, theme),
               ], theme),
-              _buildSection('杩炴帴', [
+              _buildSection('Connection', [
                 _BridgeUrlTile(theme: theme),
               ], theme),
-              _buildSection('鍏朵粬', [
-                _buildSettingItem(Icons.storage_outlined, '瀛樺偍绌洪棿', '2.4 GB', theme.gradientAccent[0], theme),
-                _buildSettingItem(Icons.help_outline, '甯姪涓庡弽棣?, '', theme.gradientAccent[1], theme),
-                _buildSettingItem(Icons.info_outlined, '鍏充簬', 'v1.0.0', theme.textSecondary, theme),
+              _buildSection('Other', [
+                _buildSettingItem(Icons.storage_outlined, 'Storage', '2.4 GB', theme.gradientAccent[0], theme),
+                _buildSettingItem(Icons.help_outline, 'Help', '', theme.gradientAccent[1], theme),
+                _buildSettingItem(Icons.info_outlined, 'About', 'v1.0.0', theme.textSecondary, theme),
               ], theme),
               SliverToBoxAdapter(
                 child: Padding(
@@ -195,7 +195,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> with SduiPageSt
           ),
           const SizedBox(width: 20),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('寮€鍙戣€?, style: TextStyle(color: theme.textPrimary, fontSize: 22, fontWeight: FontWeight.bold)),
+            Text('Developer', style: TextStyle(color: theme.textPrimary, fontSize: 22, fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             Text('ID: 88888888', style: TextStyle(color: theme.textTertiary, fontSize: 13)),
             const SizedBox(height: 10),
@@ -276,11 +276,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> with SduiPageSt
               Text('閫夋嫨涓婚', style: TextStyle(color: theme.textPrimary, fontSize: 15, fontWeight: FontWeight.w500)),
               const SizedBox(height: 12),
               for (final t in [
-                {'theme': AppTheme.glassmorphism, 'name': '璧涘崥闇撹櫣'},
-                {'theme': AppTheme.minimalZen, 'name': '鏋佺畝绂呮剰'},
-                {'theme': AppTheme.natureOrganic, 'name': '鑷劧鏈夋満'},
-                {'theme': AppTheme.retroWave, 'name': '澶嶅彜钂告苯娉?},
-                {'theme': AppTheme.corporatePro, 'name': '鍟嗗姟涓撲笟'},
+                {'theme': AppTheme.glassmorphism, 'name': 'Glass'},
+                {'theme': AppTheme.minimalZen, 'name': 'Zen'},
+                {'theme': AppTheme.natureOrganic, 'name': 'Nature'},
+                {'theme': AppTheme.retroWave, 'name': 'Retro'},
+                {'theme': AppTheme.corporatePro, 'name': 'Corporate'},
               ]) ...[
                 _buildThemePreview(t['theme'] as AppTheme, t['name'] as String, theme, ref),
                 const SizedBox(height: 8),
@@ -427,11 +427,11 @@ class _BridgeUrlTileState extends ConsumerState<_BridgeUrlTile> {
           TextButton(onPressed: () {
             ref.read(configProvider.notifier).setBaseUrl(_controller.text);
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('鍦板潃宸叉洿鏂?), duration: Duration(seconds: 2)));
-          }, child: const Text('淇濆瓨')),
+              const SnackBar(content: Text('Address updated'), duration: Duration(seconds: 2)));
+          }, child: const Text('Save')),
         ]),
         const SizedBox(height: 4),
-        Text('褰撳墠: ${config.baseUrl}', style: TextStyle(color: widget.theme.textTertiary, fontSize: 11)),
+        Text('Current: ${config.baseUrl}', style: TextStyle(color: widget.theme.textTertiary, fontSize: 11)),
       ]),
     );
   }

@@ -14,31 +14,8 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  changes:
-    runs-on: ubuntu-latest
-    outputs:
-      flutter: ${{ steps.filter.outputs.flutter }}
-      flutter_build: ${{ steps.filter.outputs.flutter_build }}
-    steps:
-      - uses: actions/checkout@v4
-      - id: filter
-        uses: dorny/paths-filter@v3
-        with:
-          filters: |
-            flutter:
-              - 'openchat-flutter/**'
-            flutter_build:
-              - 'openchat-flutter/pubspec.yaml'
-              - 'openchat-flutter/pubspec.lock'
-              - 'openchat-flutter/android/**'
-              - 'openchat-flutter/ios/**'
-              - 'openchat-flutter/lib/**/*.dart'
-            bridge:
-              - 'bridge/**'
-
   flutter-check:
-    needs: changes
-    if: ${{ needs.changes.outputs.flutter == 'true' || (github.event_name == 'workflow_dispatch' && inputs.build_apk) }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_apk || github.event_name == 'push' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -51,8 +28,7 @@ jobs:
       - run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
   bridge-check:
-    needs: changes
-    if: ${{ needs.changes.outputs.bridge == 'true' || github.event_name == 'workflow_dispatch' }}
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -66,8 +42,8 @@ jobs:
       - run: npm test
 
   bridge-build:
-    needs: [changes, bridge-check]
-    if: ${{ needs.changes.outputs.bridge == 'true' }}
+    if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.build_apk) }}
+    needs: [bridge-check]
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -80,8 +56,8 @@ jobs:
       - run: npm pack
 
   flutter-apk:
-    needs: [changes, flutter-check]
-    if: ${{ needs.changes.outputs.flutter_build == 'true' || (github.event_name == 'workflow_dispatch' && inputs.build_apk) }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_apk }}
+    needs: [flutter-check]
     runs-on: ubuntu-latest
     permissions:
       contents: write

@@ -1,7 +1,9 @@
 name: sdui_engine
-description: A server-driven UI engine for Flutter. Render UI from JSON with zero compile.
-version: 0.1.0
-publish_to: none
+description: Server-driven UI for Flutter. Render widgets from JSON — no app store submission needed.
+version: 1.0.0
+repository: https://github.com/openchat-ai/sdui_engine
+homepage: https://github.com/openchat-ai/sdui_engine
+topics: [flutter, sdui, server-driven-ui, json-ui]
 
 environment:
   sdk: ^3.5.0

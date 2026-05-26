@@ -57,17 +57,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SduiPageState {
 
   String _timeAgo(DateTime time) {
     final diff = DateTime.now().difference(time);
-    if (diff.inSeconds < 60) return '鍒氬垰';
-    if (diff.inMinutes < 60) return '${diff.inMinutes} 鍒嗛挓鍓?;
-    if (diff.inHours < 24) return '${diff.inHours} 灏忔椂鍓?;
-    return '${diff.inDays} 澶╁墠';
+    if (diff.inSeconds < 60) return 'just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return '${diff.inDays}d ago';
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = ref.watch(currentThemeProvider);
     final feedAsync = ref.watch(feedProvider);
-    final title = sduiLayout['title'] as String? ?? '绀惧尯鍔ㄦ€?;
+    final title = sduiStr('title', 'Feed');
 
     return Scaffold(
       extendBodyBehindAppBar: true,

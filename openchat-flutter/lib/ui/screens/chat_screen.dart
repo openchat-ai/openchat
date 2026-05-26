@@ -37,7 +37,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState {
   void initState() {
     super.initState();
     _messages.addAll([
-      {'sender': 'ai', 'text': '浣犲ソ锛佹湁浠€涔堝彲浠ュ府鍔╀綘鐨勶紵', 'time': '10:00'},
+      {'sender': 'ai', 'text': 'Hello! How can I help you?', 'time': '10:00'},
     ]);
     _wsSub = ref.read(bridgeWsProvider).messages.listen((msg) {
       if (msg.type == 'chat_chunk' || msg.type == 'chat_response') {

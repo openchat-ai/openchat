@@ -46,7 +46,7 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
     try {
       await _client!.register().timeout(const Duration(seconds: 8));
       await _client!.fetchConfig().timeout(const Duration(seconds: 8));
-      _uiConfig = await SduiConfig.load('oc/config/ui_people.json', peerId: peerId)
+      _uiConfig = await sduiSource.load('people')
           .timeout(const Duration(seconds: 8));
       _pollTimer = Timer.periodic(Duration(milliseconds: _client!.pollIntervalMs), (_) => _pollUsers());
       await _pollUsers().timeout(const Duration(seconds: 10));
@@ -81,7 +81,7 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
         _error = null;
         _loading = false;
       });
-      final newConfig = await SduiConfig.load('oc/config/ui_people.json', peerId: _client!.peerId)
+      final newConfig = await sduiSource.load('people')
           .timeout(const Duration(seconds: 5));
       if (newConfig != null) _uiConfig = newConfig;
       final signals = await _client!.pollIncoming().timeout(const Duration(seconds: 8));
@@ -360,7 +360,6 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
     }
     final parser = SduiParser(
       vars: {'peerId': _client!.peerId, 'userCount': _users.length},
-      onReadFile: (key) => _client!.readFile(key),
       onAction: (action) {
         for (final u in _users) {
           if (action == 'call:${u['peerId']}') {

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sdui_engine/sdui_engine.dart';
+export 'package:sdui_engine/sdui_engine.dart';
 import 'api/qiniu_direct_client.dart';
 
 /// Qiniu-backed SDUI config source.
@@ -53,7 +54,7 @@ class SduiQiniuSource extends SduiConfigSource {
 
   @override
   Future<Map<String, dynamic>> load(String page) async {
-    const individualPath = 'oc/config/ui_$page.json';
+    final individualPath = 'oc/config/ui_$page.json';
     final prefs = await SharedPreferences.getInstance();
     final cacheKey = 'sdui:$page';
 

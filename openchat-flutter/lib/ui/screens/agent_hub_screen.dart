@@ -24,7 +24,7 @@ class _AgentHubScreenState extends ConsumerState<AgentHubScreen> with SduiPageSt
   Widget build(BuildContext context) {
     final theme = ref.watch(currentThemeProvider);
     final residentsAsync = ref.watch(residentProvider);
-    final title = sduiLayout['title'] as String? ?? 'AI 灞呮皯';
+    final title = sduiStr('title', 'AI Residents');
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -76,9 +76,9 @@ class _AgentHubScreenState extends ConsumerState<AgentHubScreen> with SduiPageSt
                   'active': active.toString(),
                   'sleeping': sleeping.toString(),
                   'deleted': deleted.toString(),
-                  'sectionTitle': sduiLayout['sectionTitle'] as String? ?? '灞呮皯鍚嶅崟',
+                  'sectionTitle': sduiStr('sectionTitle', 'Residents'),
                   'statsIcon1': sl?['icon1'] ?? 'active',
-                  'statsLabel1': sl?['label1'] ?? '娲昏穬',
+                  'statsLabel1': sl?['label1'] ?? 'Active',
                   'statsIcon2': sl?['icon2'] ?? 'sleep',
                   'statsLabel2': sl?['label2'] ?? '浼戠湢',
                   'statsIcon3': sl?['icon3'] ?? 'check',
@@ -165,7 +165,7 @@ class _AgentHubScreenState extends ConsumerState<AgentHubScreen> with SduiPageSt
         onPressed: () => _showCreateDialog(context, theme),
         backgroundColor: Colors.transparent, elevation: 0,
         icon: const Icon(Icons.person_add_rounded, color: Colors.white),
-        label: const Text('鏂板眳姘?, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+        label: const Text('New Resident', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
       ),
     );
   }
@@ -177,11 +177,11 @@ class _AgentHubScreenState extends ConsumerState<AgentHubScreen> with SduiPageSt
       builder: (ctx) => AlertDialog(
         backgroundColor: theme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(sduiLayout['createTitle'] as String? ?? '鍒涘缓 AI 灞呮皯', style: TextStyle(color: theme.textPrimary)),
+        title: Text(sduiLayout['createTitle'] as String? ?? 'Create AI Resident', style: TextStyle(color: theme.textPrimary)),
         content: TextField(
           controller: controller, autofocus: true,
           decoration: InputDecoration(
-            hintText: sduiLayout['createHint'] as String? ?? '杈撳叆鍚嶅瓧锛堢暀绌鸿嚜鍔ㄧ敓鎴愶級',
+            hintText: sduiLayout['createHint'] as String? ?? 'Name (leave empty for auto)',
             hintStyle: TextStyle(color: theme.textTertiary),
             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: theme.textTertiary.withValues(alpha: 0.2))),
@@ -190,12 +190,12 @@ class _AgentHubScreenState extends ConsumerState<AgentHubScreen> with SduiPageSt
           style: TextStyle(color: theme.textPrimary)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx),
-            child: Text('鍙栨秷', style: TextStyle(color: theme.textSecondary))),
+            child: Text('Cancel', style: TextStyle(color: theme.textSecondary))),
           TextButton(onPressed: () {
             final name = controller.text.trim();
             ref.read(residentProvider.notifier).create(name: name.isEmpty ? null : name);
             Navigator.pop(ctx);
-          }, child: Text('鍒涘缓', style: TextStyle(color: theme.primary))),
+          }, child: Text('Create', style: TextStyle(color: theme.primary))),
         ],
       ),
     );
@@ -203,11 +203,11 @@ class _AgentHubScreenState extends ConsumerState<AgentHubScreen> with SduiPageSt
 
   void _confirmDelete(BuildContext context, Resident resident) {
     showDialog(context: context, builder: (ctx) => AlertDialog(
-      title: const Text('纭娉ㄩ攢'), content: Text('纭畾瑕佹敞閿€銆?{resident.name}銆嶅悧锛?),
+      title: const Text('Confirm Delete'), content: Text('Delete "${resident.name}"?'),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('鍙栨秷')),
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
         TextButton(onPressed: () { ref.read(residentProvider.notifier).delete(resident.id); Navigator.pop(ctx); },
-          child: const Text('娉ㄩ攢', style: TextStyle(color: Colors.red))),
+          child: const Text('Delete', style: TextStyle(color: Colors.red))),
       ],
     ));
   }
