@@ -361,23 +361,36 @@ class SduiParser {
     final fgColor = _parseColor(m['textColor'] as String?);
     final btnSize = (m['size'] as num?)?.toDouble();
     final hasIcon = m['icon'] != null;
+    final gradient = _parseGradient(m['gradient']);
+    final deco = gradient != null ? BoxDecoration(
+      gradient: gradient,
+      borderRadius: BorderRadius.circular(btnSize != null ? btnSize / 2 : (m['radius'] as num?)?.toDouble() ?? 20),
+    ) : null;
     return Padding(
       padding: EdgeInsets.all((m['pad'] ?? 4).toDouble()),
-      child: ElevatedButton(
-        onPressed: m['action'] != null ? () => onAction?.call(m['action']) : null,
-        style: ButtonStyle(
-          backgroundColor: bgColor != null ? WidgetStatePropertyAll(bgColor) : null,
-          foregroundColor: fgColor != null ? WidgetStatePropertyAll(fgColor) : null,
-          fixedSize: btnSize != null ? WidgetStatePropertyAll(Size(btnSize, btnSize)) : null,
-          shape: btnSize != null
-              ? WidgetStatePropertyAll(RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(btnSize / 2)))
-              : null,
-        ),
-        child: hasIcon
-            ? Icon(icons[m['icon']], size: (m['iconSize'] ?? 24).toDouble())
-            : Text(_v(m['content'] ?? '')),
-      ),
+      child: (gradient != null)
+          ? GestureDetector(
+              onTap: m['action'] != null ? () => onAction?.call(m['action']) : null,
+              child: Container(
+                width: btnSize, height: btnSize,
+                decoration: deco,
+                child: Center(child: hasIcon
+                    ? Icon(icons[m['icon']], color: fgColor ?? Colors.white, size: (m['iconSize'] ?? 24).toDouble())
+                    : Text(_v(m['content'] ?? ''), style: TextStyle(color: fgColor ?? Colors.white))),
+              ),
+            )
+          : ElevatedButton(
+              onPressed: m['action'] != null ? () => onAction?.call(m['action']) : null,
+              style: ButtonStyle(
+                backgroundColor: bgColor != null ? WidgetStatePropertyAll(bgColor) : null,
+                foregroundColor: fgColor != null ? WidgetStatePropertyAll(fgColor) : null,
+                fixedSize: btnSize != null ? WidgetStatePropertyAll(Size(btnSize, btnSize)) : null,
+                shape: btnSize != null ? WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(btnSize / 2))) : null,
+              ),
+              child: hasIcon
+                  ? Icon(icons[m['icon']], size: (m['iconSize'] ?? 24).toDouble())
+                  : Text(_v(m['content'] ?? '')),
+            ),
     );
   }
 

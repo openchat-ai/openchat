@@ -21,7 +21,18 @@
 
 所有页面优先读取 `oc/config/ui_app.json` 合并文件中的对应段落，也支持独立文件覆盖。
 
-### 图例
+### SDUI 引擎能力
+
+| 类型 | 支持属性 |
+|------|---------|
+| `icon` | icon名, size, color, **gradient**, **bgColor**, **containerSize**, **radius** |
+| `button` | icon, iconSize, size, color, textColor, pad, **gradient**, **radius** |
+| `card` | elevation, margin, padding, **gradient**, **bgColor**, **borderColor**, **borderWidth**, **radius** |
+| `text` | content, size, color, bold, pad, center |
+| `for_each` | items (data list), template (widget template) |
+| `if:` | 条件: `==`, `!=`, `>`, `<`, `>=`, `<=` |
+| `{{var}}` | 模板变量替换 |
+| 图标表 | **90 个** 常用图标 |
 
 - **外壳** — Scaffold背景色、SafeArea、AppBar标题
 - **布局** — Column/Row/Spacing 等结构
