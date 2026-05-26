@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
-import '../../core/sdui_config.dart';
+import '../../core/api/qiniu_direct_client.dart';
 import 'home_screen.dart';
 import 'agent_hub_screen.dart';
 import 'people_screen.dart';
@@ -21,25 +21,13 @@ class MainScreen extends ConsumerStatefulWidget {
 }
 
 class _MainScreenState extends ConsumerState<MainScreen> {
-  Map? _mainUiConfig;
-  Timer? _configTimer;
+  Map<String, dynamic>? _sduiLayout;
 
   @override
   void initState() {
     super.initState();
-    _loadConfig();
-    _configTimer = Timer.periodic(const Duration(seconds: 30), (_) => _loadConfig());
-  }
-
-  @override
-  void dispose() {
-    _configTimer?.cancel();
-    super.dispose();
-  }
-
-  Future<void> _loadConfig() async {
-    final cfg = await SduiConfig.load('oc/config/ui_main.json');
-    if (mounted) setState(() => _mainUiConfig = cfg);
+    QiniuDirectClient.fetchConfigFile('oc/config/ui_main.json')
+        .then((m) { if (mounted && m is Map) setState(() => _sduiLayout = Map<String, dynamic>.from(m)); });
   }
 
   Widget _buildScreen(String name) {
@@ -73,10 +61,8 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   ];
 
   List<Map<String, dynamic>> _getTabs() {
-    final raw = _mainUiConfig?['tabs'];
-    if (raw is List && raw.isNotEmpty) {
-      return raw.cast<Map<String, dynamic>>();
-    }
+    final raw = _sduiLayout?['tabs'];
+    if (raw is List && raw.isNotEmpty) return raw.cast<Map<String, dynamic>>();
     return _fallbackTabs;
   }
 
@@ -86,6 +72,9 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     final theme = ref.watch(currentThemeProvider);
     final tabs = _getTabs();
     final clampedIndex = currentIndex.clamp(0, tabs.length - 1);
+    final fab = _sduiLayout?['fab'] as Map? ?? {};
+    final fabIcon = fab['icon'] as String? ?? 'palette';
+    final fabAction = fab['action'] as String? ?? 'theme';
 
     return Scaffold(
       extendBody: true,
@@ -96,12 +85,30 @@ class _MainScreenState extends ConsumerState<MainScreen> {
         children: tabs.map((t) => _buildScreen(t['screen'] as String? ?? 'home')).toList(),
       ),
       bottomNavigationBar: _buildBottomNav(context, clampedIndex, theme, tabs),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.pushNamed(context, '/theme'),
-        backgroundColor: theme.primary,
-        child: const Icon(Icons.palette, color: Colors.white),
+      floatingActionButton: fab['hidden'] == true ? null : FloatingActionButton(
+        onPressed: () {
+          if (fabAction == 'theme') Navigator.pushNamed(context, '/theme');
+          else if (fabAction.startsWith('navigate:')) Navigator.pushNamed(context, fabAction.substring(9));
+        },
+        backgroundColor: _hexColor(fab['color']) ?? theme.primary,
+        child: Icon(_fabIcon(fabIcon), color: Colors.white),
       ),
     );
+  }
+
+  IconData _fabIcon(String name) {
+    switch (name) {
+      case 'palette': return Icons.palette;
+      case 'add': return Icons.add;
+      case 'settings': return Icons.settings;
+      case 'person': return Icons.person;
+      default: return Icons.palette;
+    }
+  }
+
+  Color? _hexColor(String? s) {
+    if (s == null) return null;
+    return Color(int.parse(s.replaceAll('#', '0xFF')));
   }
 
   Widget _buildBottomNav(BuildContext context, int currentIndex, AppTheme theme, List<Map<String, dynamic>> tabs) {
@@ -111,16 +118,12 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       decoration: BoxDecoration(
         color: theme.surface.withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(32),
-        border: Border.all(
-          color: theme.textTertiary.withValues(alpha: 0.1),
-          width: 1,
-        ),
+        border: Border.all(color: theme.textTertiary.withValues(alpha: 0.1), width: 1),
         boxShadow: theme.shadows,
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: tabs.asMap().entries.map((entry) {
             final index = entry.key;
             final item = entry.value;
@@ -128,7 +131,6 @@ class _MainScreenState extends ConsumerState<MainScreen> {
             final label = item['label'] as String? ?? '';
             final icons = _resolveIcon(iconName);
             final isSelected = index == currentIndex;
-
             return GestureDetector(
               onTap: () => ref.read(bottomNavIndexProvider.notifier).state = index,
               child: AnimatedContainer(
@@ -138,37 +140,14 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                 decoration: BoxDecoration(
                   gradient: isSelected ? LinearGradient(colors: theme.gradientPrimary) : null,
                   borderRadius: BorderRadius.circular(20),
-                  boxShadow: isSelected ? [
-                    BoxShadow(
-                      color: theme.primary.withValues(alpha: 0.4),
-                      blurRadius: 20,
-                      spreadRadius: 2,
-                    ),
-                  ] : null,
+                  boxShadow: isSelected ? [BoxShadow(color: theme.primary.withValues(alpha: 0.4), blurRadius: 20, spreadRadius: 2)] : null,
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    AnimatedScale(
-                      scale: isSelected ? 1.2 : 1.0,
-                      duration: const Duration(milliseconds: 200),
-                      child: Icon(
-                        isSelected ? icons.active : icons.inactive,
-                        color: isSelected ? Colors.white : theme.textTertiary,
-                        size: 22,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      label,
-                      style: TextStyle(
-                        color: isSelected ? Colors.white : theme.textTertiary,
-                        fontSize: 9,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                      ),
-                    ),
-                  ],
-                ),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  AnimatedScale(scale: isSelected ? 1.2 : 1.0, duration: const Duration(milliseconds: 200),
+                    child: Icon(isSelected ? icons.active : icons.inactive, color: isSelected ? Colors.white : theme.textTertiary, size: 22)),
+                  const SizedBox(height: 4),
+                  Text(label, style: TextStyle(color: isSelected ? Colors.white : theme.textTertiary, fontSize: 9, fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal)),
+                ]),
               ),
             );
           }).toList(),

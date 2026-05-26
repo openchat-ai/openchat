@@ -5,6 +5,7 @@ import '../../core/models/resident_model.dart';
 import '../../core/models/agent_model.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/resident_provider.dart';
+import '../../core/api/qiniu_direct_client.dart';
 import '../../providers/sage_provider.dart';
 import '../../core/models/sage_model.dart';
 
@@ -18,8 +19,8 @@ class ResidentDetailScreen extends ConsumerStatefulWidget {
       _ResidentDetailScreenState();
 }
 
-class _ResidentDetailScreenState
-    extends ConsumerState<ResidentDetailScreen> {
+class _ResidentDetailScreenState extends ConsumerState<ResidentDetailScreen> {
+  Map<String, dynamic>? _sduiLayout;
   Resident? _resident;
   List<Agent> _agents = [];
   List<ChildSummary> _children = [];
@@ -28,6 +29,8 @@ class _ResidentDetailScreenState
   @override
   void initState() {
     super.initState();
+    QiniuDirectClient.fetchConfigFile('oc/config/ui_resident_detail.json')
+        .then((m) { if (mounted && m is Map) setState(() => _sduiLayout = Map<String, dynamic>.from(m)); });
     _load();
   }
 
