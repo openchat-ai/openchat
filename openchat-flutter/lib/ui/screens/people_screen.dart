@@ -241,6 +241,7 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
     if (_client == null) return;
     final items = await _client!.listAudioFilesWithSize();
     if (!mounted) return;
+    final layout = _uiConfig?['audioFilesLayout'];
     final parser = SduiParser(vars: {
       'files': items.map((f) => {
         'name': (f['key'] as String? ?? '').split('/').last,
@@ -250,17 +251,15 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
         }(),
       }).toList(),
     }, onAction: null);
-    final layout = {
-      'type': 'column', 'children': [
-        {'type': 'text', 'content': 'Audio Files', 'style': {'size': 18, 'bold': true}, 'pad': 16},
-        {'type': 'for_each', 'items': 'files', 'template': {
-          'type': 'list_tile', 'title': '{{name}}', 'trailingIcon': 'info', 'trailingIconColor': '#9E9E9E',
-        }},
-      ],
-    };
+    final body = layout is Map ? parser.parse(layout)
+      : parser.parse({
+          'type': 'column', 'children': [
+            {'type': 'text', 'content': 'No audio files', 'pad': 16},
+          ],
+        });
     if (!mounted) return;
     showDialog(context: context, builder: (ctx) => AlertDialog(
-      content: SizedBox(width: double.maxFinite, child: parser.parse(layout)),
+      content: SizedBox(width: double.maxFinite, child: body),
       actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
     ));
   }
