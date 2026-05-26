@@ -498,6 +498,20 @@ class QiniuDirectClient {
     }
   }
 
+  /// List audio files with sizes (bytes).
+  Future<List<Map<String, dynamic>>> listAudioFilesWithSize() async {
+    try {
+      final url = _presignedUrl('oc/audio/$peerId/', prefix: 'oc/audio/$peerId/');
+      final resp = await _client.get(Uri.parse(url)).timeout(const Duration(seconds: 8));
+      if (resp.statusCode != 200) return [];
+      final keys = RegExp('<Key>([^<]+)</Key>').allMatches(resp.body).map((m) => m.group(1)!).toList();
+      final sizes = RegExp('<Size>(\d+)</Size>').allMatches(resp.body).map((m) => int.tryParse(m.group(1)!) ?? 0).toList();
+      return [for (int i = 0; i < keys.length && i < sizes.length; i++) {'key': keys[i], 'size': sizes[i]}];
+    } catch (_) {
+      return [];
+    }
+  }
+
   Future<Map<String, dynamic>?> readAudioFile(String key) async {
     try {
       final raw = await _get(key);

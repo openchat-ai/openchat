@@ -239,9 +239,9 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
 
   Future<void> _showAudioFiles() async {
     if (_client == null) return;
-    final files = await _client!.listAudioFiles();
+    final items = await _client!.listAudioFilesWithSize();
     if (!mounted) return;
-    if (files.isEmpty) {
+    if (items.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No audio files')));
       return;
     }
@@ -253,11 +253,16 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
           width: double.maxFinite,
           child: ListView.builder(
             shrinkWrap: true,
-            itemCount: files.length,
-            itemBuilder: (_, i) => ListTile(
-              title: Text(files[i].split('/').last, style: const TextStyle(fontSize: 12)),
-              dense: true,
-            ),
+            itemCount: items.length,
+            itemBuilder: (_, i) {
+              final size = items[i]['size'] as int? ?? 0;
+              final sizeStr = size >= 1024 ? '${(size / 1024).toStringAsFixed(1)}KB' : '${size}B';
+              return ListTile(
+                title: Text((items[i]['key'] as String? ?? '').split('/').last, style: const TextStyle(fontSize: 12)),
+                trailing: Text(sizeStr, style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodySmall?.color)),
+                dense: true,
+              );
+            },
           ),
         ),
         actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
