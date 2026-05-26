@@ -1,0 +1,44 @@
+{
+  "calling": {
+    "type": "column",
+    "center": true,
+    "children": [
+      {"type": "spacer"},
+      {"type": "icon", "icon": "mic", "size": 48},
+      {"type": "text", "content": "{{statusText}}", "pad": 24, "style": {"size": 20}},
+      {"type": "spacer"},
+      {"type": "row", "center": true, "children": [
+        {"type": "button", "icon": "call_end", "action": "hangup", "color": "#F44336", "size": 72, "iconSize": 32}
+      ]}
+    ]
+  },
+  "connected": {
+    "type": "column",
+    "center": true,
+    "children": [
+      {"type": "spacer"},
+      {"type": "icon", "icon": "mic", "size": 48},
+      {"type": "text", "content": "{{statusText}}", "pad": 24, "style": {"size": 20}},
+      {"type": "text", "content": "{{statusLabel}}", "pad": 8, "style": {"size": 12}, "if": "connected == true"},
+      {"type": "spacer"},
+      {"type": "row", "center": true, "children": [
+        {"type": "button", "icon": "{{muteIcon}}", "action": "toggle_mute", "color": "#2196F3", "size": 56, "iconSize": 24},
+        {"type": "button", "icon": "call_end", "action": "hangup", "color": "#F44336", "size": 72, "iconSize": 32}
+      ]}
+    ]
+  },
+  "ringing": {
+    "type": "column",
+    "center": true,
+    "children": [
+      {"type": "spacer"},
+      {"type": "icon", "icon": "call", "size": 48},
+      {"type": "text", "content": "{{statusText}}", "pad": 24, "style": {"size": 20}},
+      {"type": "spacer"},
+      {"type": "row", "center": true, "children": [
+        {"type": "button", "icon": "call", "action": "accept_call", "color": "#4CAF50", "size": 56, "iconSize": 24},
+        {"type": "button", "icon": "call_end", "action": "hangup", "color": "#F44336", "size": 72, "iconSize": 32}
+      ]}
+    ]
+  }
+}

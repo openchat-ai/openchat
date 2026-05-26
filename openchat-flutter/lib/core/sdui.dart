@@ -15,6 +15,7 @@ class SduiParser {
     'person': Icons.person,
     'person_outline': Icons.person_outline,
     'call': Icons.call,
+    'call_end': Icons.call_end,
     'phone': Icons.phone,
     'refresh': Icons.refresh,
     'settings': Icons.settings,
@@ -34,6 +35,7 @@ class SduiParser {
     'smart_toy': Icons.smart_toy_outlined,
     'cloud_off': Icons.cloud_off,
     'mic': Icons.mic,
+    'mic_off': Icons.mic_off,
     'stop': Icons.stop,
     'play_arrow': Icons.play_arrow,
     'pause': Icons.pause,
@@ -272,13 +274,30 @@ class SduiParser {
     );
   }
 
-  Widget _button(Map m) => Padding(
-    padding: EdgeInsets.all((m['pad'] ?? 0).toDouble()),
-    child: ElevatedButton(
-      onPressed: m['action'] != null ? () => onAction?.call(m['action']) : null,
-      child: Text(_v(m['content'] ?? '')),
-    ),
-  );
+  Widget _button(Map m) {
+    final bgColor = _parseColor(m['color'] as String?);
+    final fgColor = _parseColor(m['textColor'] as String?);
+    final btnSize = (m['size'] as num?)?.toDouble();
+    final hasIcon = m['icon'] != null;
+    return Padding(
+      padding: EdgeInsets.all((m['pad'] ?? 4).toDouble()),
+      child: ElevatedButton(
+        onPressed: m['action'] != null ? () => onAction?.call(m['action']) : null,
+        style: ButtonStyle(
+          backgroundColor: bgColor != null ? WidgetStatePropertyAll(bgColor) : null,
+          foregroundColor: fgColor != null ? WidgetStatePropertyAll(fgColor) : null,
+          fixedSize: btnSize != null ? WidgetStatePropertyAll(Size(btnSize, btnSize)) : null,
+          shape: btnSize != null
+              ? WidgetStatePropertyAll(RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(btnSize / 2)))
+              : null,
+        ),
+        child: hasIcon
+            ? Icon(icons[m['icon']], size: (m['iconSize'] ?? 24).toDouble())
+            : Text(_v(m['content'] ?? '')),
+      ),
+    );
+  }
 
   List<Widget> _children(dynamic list) {
     if (list is! List) return [];

@@ -54,6 +54,7 @@
 | `oc/config/ui_voice.json` | 通话界面的所有文本（Calling/Connected/MUTED、来电对话框） | 上传到 Qiniu |
 | `oc/config/audio.json` | 音频参数（codec、fadeBytes、demoDelayMs、比特率） | 上传到 Qiniu |
 | `oc/config/ui_people.json` | 联系人列表 SDUI 配置 | 上传到 Qiniu |
+| `oc/config/ui_room_sdui.json` | 通话室界面布局（SDUI JSON，控制每个状态的 widget 树） | 上传到 Qiniu |
 | `oc/config/global.json` | 全局开关/调试参数 | 上传到 Qiniu |
 | `oc/debug/{peerId}/*.cmd` | 调试命令触发 | 写文件到 Qiniu |
 | Bridge 侧代码 (`bridge/src/`) | 信令服务、API 端点 | 仅重启 PM2 |
@@ -83,4 +84,5 @@
 - [ ] 能否用 JSON 配置实现？
 - [ ] 能否用 Bridge 端实现？
 - [ ] 能否用调试通道实现？
-- [ ] 如果都需要编译 → 攒够 3-5 个改动再推送
+- [ ] 如果都需编译 → 攒够 3-5 个改动再推送
+- [ ] 改 SDUI JSON 后是否已上传到 Qiniu bucket？

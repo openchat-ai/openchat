@@ -7,12 +7,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:record/record.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../core/theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
 import '../../core/api/qiniu_direct_client.dart';
 import '../../core/audio/audio_processor.dart';
 import '../../core/audio/audio_config.dart';
 import '../../core/ui_voice_config.dart';
+import '../../core/sdui.dart';
 
 class VoiceRoomScreen extends ConsumerStatefulWidget {
   const VoiceRoomScreen({super.key});
@@ -36,6 +36,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
   bool _playing = false;
   VoiceUiConfig _uiVoice = const VoiceUiConfig();
   AudioConfig _audioCfg = const AudioConfig();
+  Map<String, dynamic>? _sduiLayout;
 
   @override
   void initState() {
@@ -45,8 +46,11 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
     _targetPeerId = argMap['targetPeerId'] as String?;
     _client = argMap['client'] as QiniuDirectClient?;
 
+    VoiceUiConfig.load().then((c) { if (mounted) setState(() => _uiVoice = c); });
+    QiniuDirectClient.fetchConfigFile('oc/config/ui_room_sdui.json')
+        .then((m) { if (mounted) setState(() => _sduiLayout = Map<String, dynamic>.from(m ?? {})); });
+
     if (_targetPeerId != null && _client != null) {
-      VoiceUiConfig.load().then((c) { if (mounted) setState(() => _uiVoice = c); });
       _signalTimer = Timer.periodic(const Duration(seconds: 2), (_) => _pollResponse());
     }
 
@@ -113,7 +117,6 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
     Navigator.pop(context);
   }
 
-
   Future<void> _startAudio() async {
     if (_audioStarted) return;
     _audioStarted = true;
@@ -132,9 +135,8 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
       encoder: AudioEncoder.pcm16bits, numChannels: 1, sampleRate: cfg.sampleRate));
     if (stream == null) return;
 
-    // Send: record → process → upload
     final bufSize = cfg.bufferBytes;
-    final fadeBytes = cfg.fadeBytes; // 5ms cross-fade @ 24000Hz 16bit mono
+    final fadeBytes = cfg.fadeBytes;
     List<int> _buffer = [];
     Uint8List? _prevOverlap;
     _recordSub = stream.listen((chunk) async {
@@ -146,7 +148,6 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
       if (_buffer.length >= bufSize) {
         var frame = Uint8List.fromList(_buffer.take(bufSize).toList());
         _buffer = _buffer.skip(bufSize).toList();
-        // Cross-fade with previous chunk tail to avoid click
         final overlap = _prevOverlap;
         if (overlap != null) {
           for (int i = 0; i < fadeBytes && i < frame.length; i += 2) {
@@ -169,7 +170,6 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
       }
     }, onError: (_) {});
 
-    // Receive: poll every cfg.pollMs, queue chunks for sequential playback
     _signalTimer?.cancel();
     _signalTimer = Timer.periodic(Duration(milliseconds: cfg.pollMs), (_) async {
       if (_state != 'connected') return;
@@ -189,8 +189,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
     if (_playQueue.isEmpty || !mounted) { _playing = false; return; }
     _playing = true;
     var pcm = _playQueue.removeAt(0);
-    // 2ms fade-in/out to prevent click at chunk boundaries
-    final fadeSamples = _audioCfg.fadeSamples; // 2ms @ 24000Hz
+    final fadeSamples = _audioCfg.fadeSamples;
     for (int i = 0; i < fadeSamples && i * 2 < pcm.length; i++) {
       final ratio = i / fadeSamples;
       final idx = i * 2;
@@ -217,6 +216,14 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
     }
   }
 
+  void _handleAction(String action) {
+    switch (action) {
+      case 'hangup': _endCall();
+      case 'toggle_mute': if (mounted) setState(() => _muted = !_muted);
+      case 'accept_call': _acceptCall();
+    }
+  }
+
   @override
   void dispose() {
     _recordSub?.cancel();
@@ -231,68 +238,43 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> {
   Widget build(BuildContext context) {
     final theme = ref.watch(currentThemeProvider);
 
+    final stateText = _state == 'calling' ? _uiVoice.calling(_targetPeerId ?? '') :
+        _state == 'ringing' ? _uiVoice.ringingText :
+        _state == 'connected' ? _uiVoice.connected(_targetPeerId ?? '') : _uiVoice.endedText;
+
+    final statusLabel = _state == 'connected'
+        ? (_muted ? _uiVoice.mutedLabel : _uiVoice.relayLabel)
+        : '';
+    final muteIcon = _muted ? 'mic_off' : 'mic';
+
+    final stateLayout = _sduiLayout?[_state] as Map?;
+    if (stateLayout != null) {
+      final parser = SduiParser(
+        onAction: _handleAction,
+        vars: {
+          'statusText': stateText,
+          'statusLabel': statusLabel,
+          'muteIcon': muteIcon,
+          'connected': _state == 'connected',
+          'calling': _state == 'calling',
+          'ringing': _state == 'ringing',
+        },
+      );
+      final widget = parser.parse(stateLayout);
+      if (widget != null) {
+        return Scaffold(
+          backgroundColor: theme.background,
+          body: SafeArea(child: widget),
+        );
+      }
+    }
+
     return Scaffold(
       backgroundColor: theme.background,
       body: SafeArea(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 120, height: 120,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: theme.gradientPrimary),
-                borderRadius: BorderRadius.circular(40),
-                boxShadow: theme.useGlow ? [BoxShadow(color: theme.primary.withValues(alpha: 0.5), blurRadius: 40, spreadRadius: 5)] : null,
-              ),
-              child: const Icon(Icons.mic_rounded, color: Colors.white, size: 48),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              _state == 'calling' ? _uiVoice.calling(_targetPeerId ?? '') :
-              _state == 'ringing' ? _uiVoice.ringingText :
-              _state == 'connected' ? _uiVoice.connected(_targetPeerId ?? '') : _uiVoice.endedText,
-              style: TextStyle(color: theme.textPrimary, fontSize: 20, fontWeight: FontWeight.w600),
-            ),
-            if (_state == 'connected')
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  _muted ? _uiVoice.mutedLabel : _uiVoice.relayLabel,
-                  style: TextStyle(color: theme.textTertiary, fontSize: 12),
-                ),
-              ),
-            const SizedBox(height: 32),
-            if (_state == 'ringing')
-              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                _ctrlBtn(Icons.call, theme.success, _acceptCall),
-                const SizedBox(width: 40),
-                _ctrlBtn(Icons.call_end, theme.error, _endCall, big: true),
-              ]),
-            if (_state == 'calling')
-              _ctrlBtn(Icons.call_end, theme.error, _endCall, big: true),
-            if (_state == 'connected')
-              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                _ctrlBtn(_muted ? Icons.mic_off : Icons.mic, theme.primary, () => setState(() => _muted = !_muted)),
-                const SizedBox(width: 40),
-                _ctrlBtn(Icons.call_end, theme.error, _endCall, big: true),
-              ]),
-          ],
+        child: Center(
+          child: Text(stateText, style: TextStyle(color: theme.textPrimary, fontSize: 20)),
         ),
-      ),
-    );
-  }
-
-  Widget _ctrlBtn(IconData icon, Color color, VoidCallback onTap, {bool big = false}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: big ? 72 : 56, height: big ? 72 : 56,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(big ? 24 : 18),
-          border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
-        ),
-        child: Icon(icon, color: Colors.white, size: big ? 32 : 24),
       ),
     );
   }
