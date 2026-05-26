@@ -13,7 +13,7 @@ class TaskDetailScreen extends ConsumerStatefulWidget {
   ConsumerState<TaskDetailScreen> createState() => _TaskDetailScreenState();
 }
 
-class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> with AppSduiPageState {
+class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> with SduiPageState {
   @override
   String get sduiPage => 'task_detail';
 

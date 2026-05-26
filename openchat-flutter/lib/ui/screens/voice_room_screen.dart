@@ -23,7 +23,7 @@ class VoiceRoomScreen extends ConsumerStatefulWidget {
   ConsumerState<VoiceRoomScreen> createState() => _VoiceRoomScreenState();
 }
 
-class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> with AppSduiPageState {
+class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> with SduiPageState {
   QiniuDirectClient? _client;
   String? _targetPeerId;
   String _state = 'calling';

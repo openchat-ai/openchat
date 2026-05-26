@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sdui_engine/sdui_engine.dart';
 import 'providers/theme_provider.dart';
 import 'core/api/qiniu_direct_client.dart';
+import 'core/sdui_config.dart';
 import 'ui/screens/main_screen.dart';
 import 'ui/screens/theme_selector_screen.dart';
 import 'ui/screens/voice_room_screen.dart';
@@ -10,6 +12,7 @@ import 'ui/screens/voice_room_screen.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   QiniuDirectClient.initFromBridge('http://localhost:3800');
+  SduiPageState.defaultSource = sduiSource;
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,

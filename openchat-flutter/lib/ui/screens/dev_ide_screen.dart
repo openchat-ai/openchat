@@ -15,7 +15,7 @@ class DevIdeScreen extends ConsumerStatefulWidget {
   ConsumerState<DevIdeScreen> createState() => _DevIdeScreenState();
 }
 
-class _DevIdeScreenState extends ConsumerState<DevIdeScreen> with AppSduiPageState {
+class _DevIdeScreenState extends ConsumerState<DevIdeScreen> with SduiPageState {
   @override
   String get sduiPage => 'dev_ide';
   int _tab = 0;
