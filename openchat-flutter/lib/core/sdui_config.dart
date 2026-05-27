@@ -26,7 +26,13 @@ class SduiQiniuSource extends SduiConfigSource {
     'agent': {'title': 'AI 居民'},
     'chat_list': {'title': 'Messages'},
     'task_detail': {'title': '任务详情'},
-    'dev_ide': {'title': 'Dev Console', 'tabs': []},
+    'dev_ide': {'title': 'Dev Console', 'tabs': [
+      {'label': 'Console', 'type': 'logs'},
+      {'label': 'Debug', 'type': 'sdui', 'content': {'type': 'column', 'center': true, 'children': [
+        {'type': 'text', 'content': 'Enter a command below', 'pad': 16},
+        {'type': 'text', 'content': 'test_put / test_get / s3_upload / form_upload', 'style': {'size': 12, 'color': '#9E9E9E'}},
+      ]}},
+    ]},
     'theme_selector': {'title': '主题设置'},
     'resident_detail': {'title': '居民档案'},
     'people': {'title': '好友'},
