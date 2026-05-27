@@ -12,6 +12,7 @@ import '../../providers/theme_provider.dart';
 import '../../core/api/qiniu_direct_client.dart';
 import '../../core/audio/audio_processor.dart';
 import '../../core/audio/audio_config.dart';
+import '../../core/audio/epc_version.dart';
 import '../../core/ui_voice_config.dart';
 import '../../core/sdui.dart';
 import '../../core/sdui_config.dart';
