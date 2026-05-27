@@ -292,9 +292,12 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
     } else if (error.contains('DNS')) {
       type = 'DNS resolution failed';
       hint = 'Cannot resolve qiniu.com\nCheck DNS settings';
+    } else if (error.contains('InvalidAccessKeyId')) {
+      type = 'Access key invalid';
+      hint = 'Qiniu access key rejected\n$error';
     } else {
       type = 'Unknown error';
-      hint = 'Could not connect to OpenChat\nCheck your network and try again';
+      hint = error;
     }
     return Center(
       child: SingleChildScrollView(
@@ -398,7 +401,7 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
       }
     }
     final rendered = parser.parse(_uiConfig);
-    if (rendered == null) return const SizedBox();
+    if (rendered == null) return null; // signal failure, caller falls through
     return Scaffold(
       backgroundColor: theme.background,
       appBar: AppBar(
@@ -416,11 +419,10 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
 
     // If remote UI config exists, use SDUI (change ui_people.json in Qiniu to update UI without rebuild)
     if (_uiConfig != null && !_loading && _error == null) {
-      Widget? sduiWidget;
       try {
-        sduiWidget = _buildSdui(theme);
+        final w = _buildSdui(theme);
+        if (w != null) return w;
       } catch (_) {}
-      if (sduiWidget != null) return sduiWidget;
     }
 
     // Fallback hardcoded UI
