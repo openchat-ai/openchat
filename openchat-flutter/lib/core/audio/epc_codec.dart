@@ -324,9 +324,9 @@ class EpcCodec {
         }
       }
 
-      // Synthesize 20ms using vocoder
+      // Synthesize 20ms using harmonic envelope synth
       var pcm = Uint8List(n * 2);
-      VocoderSynth.reset();
+      double velRatio = active.values.fold(0.0, (s, t) => s + t.velocity) / (active.length * 127).clamp(1, 127);
       for (var tone in active.values) {
         VocoderSynth.mixInto(pcm, 0, tone.subBands, sampleRate, tone.freq, tone.rms.toDouble(), tone.velocity.toDouble(), n);
       }

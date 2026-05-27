@@ -173,7 +173,11 @@ while (o + 7 <= packed.length) {
     for (const tone of activeTones.values()) {
       const amp = tone.rms / 255 * tone.vel / 127 * 0.35;
       if (amp < 0.001) continue;
-      harmSynth(outPcm, tone.freq, tone.bands, amp, () => 1, nOut, outOff);
+      // Apply velocity-based envelope (higher vel = longer sustain)
+      const velSustain = tone.vel / 127;
+      harmSynth(outPcm, tone.freq, tone.bands, amp,
+        t => Math.min(1, t / 0.02) * Math.exp(-t * (4 - velSustain * 2)),
+        nOut, outOff);
     }
     outOff += nOut;
   }
