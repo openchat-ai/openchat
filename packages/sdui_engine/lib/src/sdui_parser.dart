@@ -52,7 +52,7 @@ class SduiParser {
       'list_tile' => _listTile(node),
       'checkbox' => CheckboxListTile(value: node['checked'] == true, title: Text(_v(node['label'] as String? ?? '')), onChanged: node['action'] != null ? (_) => onAction?.call(node['action']) : null),
       'switch' => SwitchListTile(value: node['active'] == true, title: Text(_v(node['label'] as String? ?? '')), onChanged: node['action'] != null ? (_) => onAction?.call(node['action']) : null),
-      'textfield' => Padding(padding: EdgeInsets.all(_n(node, 'pad', 8)), child: TextField(controller: TextEditingController(text: _v(node['value'] as String?)), decoration: InputDecoration(hintText: _v(node['hint'] as String?), border: const OutlineInputBorder()), onSubmitted: node['action'] != null ? (_) => onAction?.call(node['action']) : null)),
+      'textfield' => Padding(padding: EdgeInsets.all(_n(node, 'pad', 8)), child: TextField(controller: TextEditingController(text: _v(node['value'] as String?)), decoration: InputDecoration(hintText: _v(node['hint'] as String?), border: const OutlineInputBorder()), onSubmitted: node['action'] != null ? (v) => onAction?.call(node['action'] == 'exec' ? v : '${node['action']}:$v') : null)),
       'for_each' => _forEach(node),
       _ => null,
     });
