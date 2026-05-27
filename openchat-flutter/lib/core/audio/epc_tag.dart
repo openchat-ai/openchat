@@ -1,21 +1,12 @@
-/// EPC-96 tag: 96 bits, 12 bytes per frame component.
-/// Spectrum tag (0x02) carries raw subband energies (no codebook):
-///   Byte[0]:    tagType=0x02                         8b
-///   Byte[1]:    trackId(4) | instrument(4)           8b  ← 乐器类型(0-15)
-///   Byte[2]:    midiNote(7) | onset(1)               8b
-///   Byte[3]:    vel(7) | spare(1)                    8b
-///   Byte[4]:    rms                                  8b
-///   Byte[5-11]: subBands[0..10] × 5b each (mel-spaced)
-///              bit-packed: 11×5 = 55b across 7 bytes
-///              spare(1b)
-///   Total: 8+8+8+8+8+55+1 = 96b ✓
+/// EPC-96: 96 bits, 12 bytes. Spectrum tag (0x02) carries 7 harmonic bands × 8b,
+/// positioned dynamically at F0 × 1..7. Byte[5-11] = band[0..6] directly.
 ///
 /// Audio tag (0x03): unpitched noise — unchanged.
 import 'dart:typed_data';
 
 const int epcBytes = 12;
-const int subBandCount = 11;
-const int subBandBits = 5;
+const int subBandCount = 7;
+const int subBandBits = 8;
 
 enum EpcTagType {
   spectrum(0x02),
@@ -37,7 +28,7 @@ class EpcTag {
   int onsetFlag = 0;
   int velocity = 64;
   int rms = 0;
-  final List<int> subBands = List.filled(subBandCount, 0); // 5 bits each, 0..31
+  final List<int> subBands = List.filled(subBandCount, 0); // 8 bits each, 0..255, F0-tracking
 
   // Audio fields (unchanged)
   final List<int> audioSubBands = List.filled(6, 0);
@@ -56,19 +47,8 @@ class EpcTag {
         buf[2] = ((midiNote & 0x7F) << 1) | (onsetFlag & 1);
         buf[3] = (velocity << 1) & 0xFE;
         buf[4] = rms;
-        // Pack 11 × 5b subbands into bytes 5-11 (55 bits, 1 spare)
-        int bit = 0;
-        for (int i = 0; i < subBandCount; i++) {
-          for (int b = 0; b < subBandBits; b++) {
-            final byteIdx = 5 + (bit >> 3);
-            final bitIdx = bit & 7;
-            final mask = 1 << (7 - bitIdx);
-            if ((subBands[i] >> (subBandBits - 1 - b) & 1) != 0) {
-              if (byteIdx < epcBytes) buf[byteIdx] |= mask;
-            }
-            bit++;
-          }
-        }
+        // 7 × 8b harmonic bands → bytes 5-11 directly
+        for (int i = 0; i < subBandCount; i++) buf[5 + i] = subBands[i];
         break;
 
       case EpcTagType.audio:
@@ -95,18 +75,8 @@ class EpcTag {
         tag.onsetFlag = data[2] & 1;
         tag.velocity = (data[3] >> 1) & 0x7F;
         tag.rms = data[4];
-        // Unpack 11 × 5b subbands from bytes 5-11
-        int bit = 0;
-        for (int i = 0; i < subBandCount; i++) {
-          int val = 0;
-          for (int b = 0; b < subBandBits; b++) {
-            final byteIdx = 5 + (bit >> 3);
-            final bitIdx = bit & 7;
-            val = (val << 1) | ((data[byteIdx] >> (7 - bitIdx)) & 1);
-            bit++;
-          }
-          tag.subBands[i] = val;
-        }
+        // 7 × 8b harmonic bands from bytes 5-11
+        for (int i = 0; i < subBandCount; i++) tag.subBands[i] = data[5 + i];
         break;
 
       case EpcTagType.audio:

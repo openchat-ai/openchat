@@ -3,10 +3,7 @@
 import 'dart:math';
 import 'dart:typed_data';
 
-// Mel-spaced band boundary frequencies (Hz) for 11 bands
-const List<double> _bandBounds = [
-  160, 300, 500, 800, 1200, 1800, 2600, 3800, 5400, 7600, 11000, 16000,
-];
+// No fixed band bounds — bands track F0 harmonics dynamically
 
 class VocoderSynth {
   static const int bandCount = 11;
