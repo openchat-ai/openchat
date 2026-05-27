@@ -463,11 +463,22 @@ class QiniuDirectClient {
         if (msg is! Map) continue;
         final data = msg['data'];
         if (data is! String) continue;
-        results.add(Uint8List.fromList(base64Decode(data)));
+        final bytes = Uint8List.fromList(base64Decode(data));
+        results.add(bytes);
+        // Save a copy to recordings before deleting
+        await _saveRecording(bytes, key.split('/').last);
         await _delete(key);
       }
     } catch (_) {}
     return results;
+  }
+
+  Future<void> _saveRecording(Uint8List data, String fileName) async {
+    try {
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      final path = 'oc/recordings/$peerId/${ts}_$fileName';
+      await _put(path, base64Encode(data));
+    } catch (_) {}
   }
 
   // Audio relay via Qiniu (fallback)
@@ -531,7 +542,7 @@ class QiniuDirectClient {
   /// List audio files with sizes (bytes).
   Future<List<Map<String, dynamic>>> listAudioFilesWithSize() async {
     try {
-      final url = _presignedUrl('oc/audio/$peerId/', prefix: 'oc/audio/$peerId/');
+      final url = _presignedUrl('oc/recordings/$peerId/', prefix: 'oc/recordings/$peerId/');
       final resp = await _client.get(Uri.parse(url)).timeout(const Duration(seconds: 8));
       if (resp.statusCode != 200) return [];
       final keys = RegExp('<Key>([^<]+)</Key>').allMatches(resp.body).map((m) => m.group(1)!).toList();
