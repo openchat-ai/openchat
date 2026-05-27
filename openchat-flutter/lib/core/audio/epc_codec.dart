@@ -67,14 +67,10 @@ List<Map<String, dynamic>> _hpsMultiF0(List<double> samples, int sr) {
 
   _fft(_fftRe, _fftIm);
 
+  _fft(_fftRe, _fftIm);
+
   // Magnitude
   for (int i = 0; i < halfN; i++) _fftMag[i] = sqrt(_fftRe[i] * _fftRe[i] + _fftIm[i] * _fftIm[i]);
-
-  _fft(re, im);
-
-  // Magnitude
-  var mag = Float64List(halfN);
-  for (int i = 0; i < halfN; i++) mag[i] = sqrt(re[i] * re[i] + im[i] * im[i]);
 
   // HPS: product of 4 downsampled spectra
   for (int i = 0; i < halfN; i++) {
