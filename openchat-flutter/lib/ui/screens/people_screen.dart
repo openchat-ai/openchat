@@ -40,9 +40,15 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
 
   Future<void> _init() async {
     final prefs = await SharedPreferences.getInstance();
-    final stored = prefs.getString('peerId');
-    final peerId = stored ?? '${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(99999).toString().padLeft(5, '0')}';
-    if (stored == null) await prefs.setString('peerId', peerId);
+    // Preferred: fixed peerId from remote config
+    String? peerId;
+    try {
+      final cfg = await QiniuDirectClient.fetchConfigFile('oc/config/device.json');
+      if (cfg?['peerId'] is String) peerId = cfg!['peerId'] as String;
+    } catch (_) {}
+    peerId ??= prefs.getString('peerId');
+    peerId ??= '${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(99999).toString().padLeft(5, '0')}';
+    if (prefs.getString('peerId') == null) await prefs.setString('peerId', peerId!);
     _client = QiniuDirectClient(peerId: peerId);
     try {
       await _client!.register().timeout(const Duration(seconds: 8));
