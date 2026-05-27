@@ -13,6 +13,7 @@ void main() {
   WidgetsFlutterBinding.ensureInitialized();
   QiniuDirectClient.initFromBridge('http://localhost:3800');
   SduiPageState.defaultSource = sduiSource;
+  SduiPageState.syncDefaults = SduiQiniuSource.defaults;
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,

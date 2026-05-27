@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'sdui_config.dart';
 
@@ -19,6 +20,7 @@ SduiConfigSource? _globalSource;
 /// ```
 mixin SduiPageState<T extends StatefulWidget> on State<T> {
   static SduiConfigSource? defaultSource;
+  static Map<String, Map<String, dynamic>>? syncDefaults;
 
   Map<String, dynamic> _layout = {};
   Map<String, dynamic> get sduiLayout => _layout;
@@ -30,8 +32,20 @@ mixin SduiPageState<T extends StatefulWidget> on State<T> {
   void initState() {
     super.initState();
     final source = configSource ?? defaultSource ?? const _EmptySource();
+
+    // Synchronous default → frame 1 has data, no flash
+    if (syncDefaults != null && syncDefaults!.containsKey(sduiPage)) {
+      _layout = Map<String, dynamic>.from(syncDefaults![sduiPage]!);
+    }
+
+    // Async load → only rebuild if data actually changed
     source.load(sduiPage).then((m) {
-      if (mounted) setState(() => _layout = m);
+      if (!mounted) return;
+      final current = const JsonEncoder.withIndent(null).convert(_layout);
+      final loaded = const JsonEncoder.withIndent(null).convert(m);
+      if (current != loaded) {
+        setState(() => _layout = m);
+      }
     });
   }
 

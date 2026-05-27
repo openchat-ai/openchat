@@ -132,7 +132,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> with SduiPage
       _audioCfg = cfg;
       _recorder = AudioRecorder();
       _player = AudioPlayer();
-      final modeEnum = cfg.mode == 'opus' ? AudioMode.opus : cfg.mode == 'neural' ? AudioMode.neural : AudioMode.raw;
+      final modeEnum = cfg.mode == 'opus' ? AudioMode.opus : (cfg.mode == 'epc' || cfg.mode == 'neural') ? AudioMode.epc : AudioMode.raw;
       _processor = AudioProcessor(sampleRate: cfg.sampleRate, enableDenoise: cfg.denoise, enableCodec: cfg.mode != 'raw', mode: modeEnum);
       await _processor?.initialize();
 
@@ -203,26 +203,42 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> with SduiPage
     if (_playQueue.isEmpty || !mounted) { _playing = false; return; }
     _playing = true;
     try {
-      var pcm = _playQueue.removeAt(0);
+      // Accumulate ~3s worth to reduce audioplayers startup gaps
+      const targetBytes = 3 * 24000 * 2; // 3s at 24kHz 16-bit
+      int total = 0;
+      final batch = <Uint8List>[];
+      while (_playQueue.isNotEmpty && total < targetBytes) {
+        final chunk = _playQueue.removeAt(0);
+        batch.add(chunk);
+        total += chunk.length;
+      }
+
+      final pcm = Uint8List(total);
+      int offset = 0;
+      for (final chunk in batch) {
+        pcm.setRange(offset, offset + chunk.length, chunk);
+        offset += chunk.length;
+      }
+
+      // Single fade-in at start, fade-out at end (only at batch boundaries)
       final fadeSamples = _audioCfg.fadeSamples;
       for (int i = 0; i < fadeSamples && i * 2 < pcm.length; i++) {
         final ratio = i / fadeSamples;
         final idx = i * 2;
-        var v = pcm[idx] | (pcm[idx + 1] << 8);
-        var s = v > 32767 ? v - 65536 : v;
-        s = (s * ratio).round().clamp(-32768, 32767);
+        final v = pcm[idx] | (pcm[idx + 1] << 8);
+        final s = ((v > 32767 ? v - 65536 : v) * ratio).round().clamp(-32768, 32767);
         final b = s < 0 ? s + 65536 : s;
         pcm[idx] = b & 0xFF; pcm[idx + 1] = (b >> 8) & 0xFF;
       }
       for (int i = 0; i < fadeSamples && pcm.length >= (i + 1) * 2; i++) {
         final ratio = i / fadeSamples;
         final idx = pcm.length - (i + 1) * 2;
-        var v = pcm[idx] | (pcm[idx + 1] << 8);
-        var s = v > 32767 ? v - 65536 : v;
-        s = (s * ratio).round().clamp(-32768, 32767);
+        final v = pcm[idx] | (pcm[idx + 1] << 8);
+        final s = ((v > 32767 ? v - 65536 : v) * (1 - ratio)).round().clamp(-32768, 32767);
         final b = s < 0 ? s + 65536 : s;
         pcm[idx] = b & 0xFF; pcm[idx + 1] = (b >> 8) & 0xFF;
       }
+
       final wav = QiniuDirectClient.wavFromPcm(pcm);
       final player = _player;
       if (player != null) {

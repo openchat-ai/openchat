@@ -1,0 +1,11 @@
+{
+  "tabs": [
+    {"icon": "home", "label": "Home", "screen": "home"},
+    {"icon": "agent", "label": "Agent", "screen": "agent"},
+    {"icon": "people", "label": "People", "screen": "people"},
+    {"icon": "chat", "label": "Chat", "screen": "chat"},
+    {"icon": "dev", "label": "Dev", "screen": "dev"},
+    {"icon": "settings", "label": "Settings", "screen": "settings"}
+  ],
+  "fab": {"icon": "palette", "action": "theme", "hidden": false}
+}

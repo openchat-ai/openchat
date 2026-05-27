@@ -1,23 +1,18 @@
-/**
- * Audio Processor
- * Neural Codec + Audio Pipeline + RNNOISE integration
- */
-
 import 'dart:async';
 import 'dart:typed_data';
-import 'neural_audio_codec.dart';
+import 'epc_codec.dart';
 import 'audio_pipeline.dart';
 import 'opus_codec.dart';
 
 enum AudioMode {
-  raw,        // 原始 PCM (256 kbps)
-  neural,     // Neural Codec (8-32 kbps)
-  opus,       // Opus 编码
-  adaptive,   // 自适应
+  raw,
+  epc,        // EPC Codec (1-12 kbps, 96-bit frames)
+  opus,
+  adaptive,
 }
 
 class AudioProcessor {
-  NeuralAudioCodec? _codec;
+  EpcCodec? _codec;
   AudioPipeline? _pipeline;
   OpusCodec? _opus;
 
@@ -27,7 +22,6 @@ class AudioProcessor {
   final _speakingController = StreamController<bool>.broadcast();
   final _audioLevelController = StreamController<double>.broadcast();
 
-  // 配置
   final int sampleRate;
   final bool enableDenoise;
   final bool enableCodec;
@@ -45,10 +39,7 @@ class AudioProcessor {
 
   Future<void> initialize() async {
     if (enableDenoise) {
-      _pipeline = AudioPipeline(
-        sampleRate: sampleRate,
-        frameSize: 480,
-      );
+      _pipeline = AudioPipeline(sampleRate: sampleRate, frameSize: 480);
       await _pipeline!.initialize();
     }
 
@@ -57,11 +48,7 @@ class AudioProcessor {
         _opus = OpusCodec(sampleRate: sampleRate);
         await _opus!.initialize();
       } else {
-        _codec = NeuralAudioCodec(
-          sampleRate: sampleRate,
-          targetBitrate: 32,
-          subBandCount: 32,
-        );
+        _codec = EpcCodec(sampleRate: sampleRate);
         await _codec!.initialize();
       }
     }
@@ -69,48 +56,39 @@ class AudioProcessor {
     _isProcessing = true;
   }
 
-  /// Process microphone input (encode before sending)
   Future<Uint8List?> processMicrophoneInput(Uint8List pcmData) async {
     if (!_isProcessing) return null;
 
-    // 1. 音频处理管道 (降噪/VAD/AGC)
     if (_pipeline != null) {
       final processed = await _pipeline!.processFrame(pcmData);
-
       _speakingController.add(processed.isSpeech ?? false);
-
-      // 计算音频级别
       final level = _calculateAudioLevel(processed.data);
       _audioLevelController.add(level);
-
       pcmData = processed.data;
     }
 
-    // 2. 编码
     if (_mode == AudioMode.opus && _opus != null) {
       return _opus!.encode(pcmData);
     }
-    if (_codec != null && _mode == AudioMode.neural) {
+    if (_codec != null && _mode == AudioMode.epc) {
       final encoded = await _codec!.encode(pcmData);
       return encoded.data;
     }
 
-    // raw 模式直接返回原始 PCM
     return pcmData;
   }
 
-  /// Process received audio (decode before playing)
   Future<Uint8List?> processReceivedAudio(Uint8List data) async {
     if (!_isProcessing) return null;
 
     if (_mode == AudioMode.opus && _opus != null) {
       return _opus!.decode(data);
     }
-    if (_codec != null && _mode == AudioMode.neural) {
+    if (_codec != null && _mode == AudioMode.epc) {
       try {
         final decoded = await _codec!.decode(data);
         return decoded.pcm;
-      } catch (e) {
+      } catch (_) {
         return data;
       }
     }
@@ -118,33 +96,27 @@ class AudioProcessor {
     return data;
   }
 
-  /// 设置音频模式
   void setMode(AudioMode mode) {
     _mode = mode;
   }
 
-  /// 获取统计信息
   Map<String, dynamic> getStats() {
     return {
       'mode': _mode.name,
       'codec': _codec?.isReady ?? false,
       'pipeline': _pipeline?.rnnoiseReady ?? false,
-      'codecStats': _codec?.getStats().toJson(),
-      'pipelineStats': _pipeline?.getStats().toJson(),
+      'codecStats': _codec?.getStats(),
     };
   }
 
   double _calculateAudioLevel(Uint8List pcmData) {
     double sum = 0;
     int count = 0;
-
     for (int i = 0; i < pcmData.length; i += 2) {
       final sample = pcmData[i] | (pcmData[i + 1] << 8);
-      final signed = sample > 32767 ? sample - 65536 : sample;
-      sum += signed.abs();
+      sum += (sample > 32767 ? sample - 65536 : sample).abs();
       count++;
     }
-
     return count > 0 ? (sum / count / 32768) : 0;
   }
 

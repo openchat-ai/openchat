@@ -26,20 +26,56 @@ class OpusCodec {
     _initialized = true;
   }
 
+  static const int _frameSamples = 480; // 20ms at 24kHz
+
   Uint8List encode(Uint8List pcm) {
-    final samples = Int16List(pcm.length ~/ 2);
-    for (int i = 0; i < samples.length; i++) {
-      samples[i] = pcm[i * 2] | (pcm[i * 2 + 1] << 8);
+    final allSamples = Int16List(pcm.length ~/ 2);
+    for (int i = 0; i < allSamples.length; i++) {
+      allSamples[i] = pcm[i * 2] | (pcm[i * 2 + 1] << 8);
     }
-    return _encoder!.encode(input: samples);
+
+    final packets = <Uint8List>[];
+    for (int offset = 0; offset + _frameSamples <= allSamples.length; offset += _frameSamples) {
+      final frame = Int16List.sublistView(allSamples, offset, offset + _frameSamples);
+      packets.add(_encoder!.encode(input: frame));
+    }
+
+    // [numPackets:u16][len1:u16][data1...][len2:u16][data2...]...
+    final headerSize = 2 + packets.length * 2;
+    int total = headerSize;
+    for (final p in packets) total += p.length;
+    final output = Uint8List(total);
+    int off = 0;
+    output[off++] = packets.length & 0xFF;
+    output[off++] = (packets.length >> 8) & 0xFF;
+    for (final p in packets) {
+      output[off++] = p.length & 0xFF;
+      output[off++] = (p.length >> 8) & 0xFF;
+      output.setRange(off, off + p.length, p);
+      off += p.length;
+    }
+    return output;
   }
 
   Uint8List decode(Uint8List opusData) {
-    final decoded = _decoder!.decode(input: opusData);
-    final pcm = Uint8List(decoded.length * 2);
-    for (int i = 0; i < decoded.length; i++) {
-      pcm[i * 2] = decoded[i] & 0xFF;
-      pcm[i * 2 + 1] = (decoded[i] >> 8) & 0xFF;
+    int off = 0;
+    final numPackets = opusData[off] | (opusData[off + 1] << 8);
+    off += 2;
+    final allSamples = <int>[];
+
+    for (int i = 0; i < numPackets; i++) {
+      final len = opusData[off] | (opusData[off + 1] << 8);
+      off += 2;
+      final packet = opusData.sublist(off, off + len);
+      off += len;
+      final decoded = _decoder!.decode(input: packet);
+      allSamples.addAll(decoded);
+    }
+
+    final pcm = Uint8List(allSamples.length * 2);
+    for (int i = 0; i < allSamples.length; i++) {
+      pcm[i * 2] = allSamples[i] & 0xFF;
+      pcm[i * 2 + 1] = (allSamples[i] >> 8) & 0xFF;
     }
     return pcm;
   }
