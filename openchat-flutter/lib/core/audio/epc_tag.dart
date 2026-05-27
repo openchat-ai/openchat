@@ -1,7 +1,7 @@
 /// EPC-96 tag: 96 bits, 12 bytes per frame component.
 /// Spectrum tag (0x02) carries raw subband energies (no codebook):
 ///   Byte[0]:    tagType=0x02                         8b
-///   Byte[1]:    trackId(4) | spare(4)                8b
+///   Byte[1]:    trackId(4) | instrument(4)           8b  ← 乐器类型(0-15)
 ///   Byte[2]:    midiNote(7) | onset(1)               8b
 ///   Byte[3]:    vel(7) | spare(1)                    8b
 ///   Byte[4]:    rms                                  8b
@@ -32,6 +32,7 @@ class EpcTag {
   int trackId = 0;
 
   // Spectrum fields
+  int instrument = 0; // 0=piano, 1=voice, 2=guitar, 3=strings
   int midiNote = 60;
   int onsetFlag = 0;
   int velocity = 64;
@@ -51,6 +52,7 @@ class EpcTag {
 
     switch (type) {
       case EpcTagType.spectrum:
+        buf[1] = (trackId << 4) | (instrument & 0x0F);
         buf[2] = ((midiNote & 0x7F) << 1) | (onsetFlag & 1);
         buf[3] = (velocity << 1) & 0xFE;
         buf[4] = rms;
@@ -88,6 +90,7 @@ class EpcTag {
 
     switch (type) {
       case EpcTagType.spectrum:
+        tag.instrument = data[1] & 0x0F;
         tag.midiNote = (data[2] >> 1) & 0x7F;
         tag.onsetFlag = data[2] & 1;
         tag.velocity = (data[3] >> 1) & 0x7F;

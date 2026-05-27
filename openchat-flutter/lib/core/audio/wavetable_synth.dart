@@ -14,7 +14,7 @@ class VocoderSynth {
   /// Synthesize N samples: generate F0 harmonics, shape by subband envelope.
   static void mixInto(
     Uint8List pcm, int offset, List<int> subBands,
-    int sr, double freq, double rms, double vel, int n,
+    int sr, double freq, double rms, double vel, int n, {int instrument = 0},
   ) {
     double amp = rms / 255 * vel / 127 * 0.3;
     if (amp < 0.001 || freq < 30) return;
@@ -45,14 +45,26 @@ class VocoderSynth {
       hGains.add(bandEnergy * centerWeight * rolloff * amp);
     }
 
-    // Synthesize: sum harmonics with velocity-based envelope
+    // Synthesize: sum harmonics with instrument-based envelope
     double velRatio = vel / 127;
-    double decayRate = 4 - velRatio * 2; // higher vel = slower decay
+    double attackMs = 5; // default 5ms
+    double decayRate = 4 - velRatio * 2;
+    switch (instrument) {
+      case 0: // piano: fast attack, medium decay
+        attackMs = 3; decayRate = 3 - velRatio * 1.5;
+      case 1: // voice: slow attack, slow decay
+        attackMs = 20; decayRate = 1.5 - velRatio * 0.5;
+      case 2: // guitar: fast attack, fast decay
+        attackMs = 2; decayRate = 6 - velRatio * 2;
+      case 3: // strings: slow attack, very slow decay
+        attackMs = 30; decayRate = 1 - velRatio * 0.5;
+    }
+    double attackSamples = attackMs * sr / 1000;
     for (int i = 0; i < n; i++) {
       double s = 0;
       double t = i / sr;
       double notePos = i / n;
-      double env = min(1.0, notePos / 0.02) * exp(-notePos * decayRate);
+      double env = min(1.0, i / attackSamples) * exp(-notePos * decayRate);
       for (int h = 0; h < hGains.length; h++) {
         if (hGains[h] < 0.001) continue;
         double hz = freq * (h + 1);

@@ -267,17 +267,28 @@ class EpcCodec {
           int rmsQ = (sigRms / 32768 * 255).round().clamp(0, 255);
 
           int tid = _nextTrackId % 15;
-          _activeTracks[tid] = _TrackState(freq: f0, note: note, bands: List.from(bands), stale: 0);
+          _activeTracks[tid] = _TrackState(freq: f0, note: note, bands: List.from(bands), stale: 0, instrument: 0);
           _nextTrackId++;
 
           var tag = EpcTag(type: EpcTagType.spectrum);
           tag.trackId = tid;
+          tag.instrument = t.instrument;
           tag.midiNote = note;
-          tag.onsetFlag = 1;
+          tag.onsetFlag = 0;
           tag.velocity = (corr * 127).round();
           tag.rms = rmsQ;
-          for (int i = 0; i < 11 && i < bands.length; i++) tag.subBands[i] = bands[i];
+          for (int i = 0; i < 11 && i < t.bands.length; i++) tag.subBands[i] = t.bands[i];
           frameEpcs.add(tag.pack());
+        } else {
+          t.stale++;
+          if (t.stale > 3) {
+            toRemove.add(tid);
+            var tag = EpcTag(type: EpcTagType.spectrum);
+            tag.trackId = tid;
+            tag.velocity = 0;
+            tag.rms = 0;
+            frameEpcs.add(tag.pack());
+          }
         }
       }
 
@@ -319,7 +330,7 @@ class EpcCodec {
         double freq = 440 * pow(2, (tag.midiNote + tag.cent / 100 - 69) / 12) as double;
         if (tag.rms > 0) {
           active[tag.trackId] = _SynthTone(
-            freq: freq, subBands: List.from(tag.subBands), rms: tag.rms, velocity: tag.velocity,
+            freq: freq, subBands: List.from(tag.subBands), rms: tag.rms, velocity: tag.velocity, instrument: tag.instrument,
           );
         }
       }
@@ -328,7 +339,7 @@ class EpcCodec {
       var pcm = Uint8List(n * 2);
       double velRatio = active.values.fold(0.0, (s, t) => s + t.velocity) / (active.length * 127).clamp(1, 127);
       for (var tone in active.values) {
-        VocoderSynth.mixInto(pcm, 0, tone.subBands, sampleRate, tone.freq, tone.rms.toDouble(), tone.velocity.toDouble(), n);
+        VocoderSynth.mixInto(pcm, 0, tone.subBands, sampleRate, tone.freq, tone.rms.toDouble(), tone.velocity.toDouble(), n, instrument: tone.instrument);
       }
       decodedFrames.add(pcm);
       off += frameLen;
@@ -354,16 +365,16 @@ class EpcCodec {
 
 class _TrackState {
   double freq;
-  int note, stale;
+  int note, stale, instrument;
   List<int> bands;
-  _TrackState({required this.freq, required this.note, required this.bands, this.stale = 0});
+  _TrackState({required this.freq, required this.note, required this.bands, this.stale = 0, this.instrument = 0});
 }
 
 class _SynthTone {
   final double freq;
   final List<int> subBands;
-  int rms, velocity;
-  _SynthTone({required this.freq, required this.subBands, required this.rms, required this.velocity});
+  int rms, velocity, instrument;
+  _SynthTone({required this.freq, required this.subBands, required this.rms, required this.velocity, this.instrument = 0});
 }
 
 class EpcEncoded {
