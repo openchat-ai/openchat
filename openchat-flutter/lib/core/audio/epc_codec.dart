@@ -38,8 +38,8 @@ void _fft(Float64List re, Float64List im) {
   }
 }
 
-// Mel-spaced band frequencies (Hz) for 11-band vocoder
-const List<double> _melFreqs = [100, 150, 220, 320, 460, 660, 950, 1350, 1950, 2800, 4000];
+// Mel-spaced band boundaries (Hz) for 11-band vocoder at 48kHz
+const List<double> _melFreqs = [160, 300, 500, 800, 1200, 1800, 2600, 3800, 5400, 7600, 11000];
 
 // ===== Pre-allocated FFT buffers =====
 const int _fftSize = 2048;
