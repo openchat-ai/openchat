@@ -232,7 +232,16 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
     final body = layout is Map ? parser.parse(layout)
       : parser.parse({
           'type': 'column', 'children': [
-            {'type': 'text', 'content': 'No audio files', 'pad': 16},
+            {'type': 'for_each', 'items': '{{files}}', 'template': {
+              'type': 'column', 'children': [
+                {'type': 'divider'},
+                {'type': 'row', 'children': [
+                  {'type': 'text', 'content': '{{item.name}}', 'pad': 8},
+                  {'type': 'spacer'},
+                  {'type': 'text', 'content': '{{item.size}}', 'style': {'color': '#9E9E9E', 'size': 12}, 'pad': 8},
+                ]},
+              ],
+            }},
           ],
         });
     if (!mounted) return;
