@@ -207,12 +207,11 @@ class EpcCodec {
           int rmsQ = (sigRms / 32768 * 255).round().clamp(0, 255);
           var tag = EpcTag(type: EpcTagType.spectrum);
           tag.trackId = tid;
-          tag.codebookIdx = t.cbIdx;
           tag.midiNote = t.note;
-          tag.cent = t.cent;
           tag.onsetFlag = 0;
           tag.velocity = (corr * 127).round();
           tag.rms = rmsQ;
+          for (int i = 0; i < 11 && i < t.bands.length; i++) tag.subBands[i] = t.bands[i];
           frameEpcs.add(tag.pack());
         } else {
           t.stale++;
@@ -253,11 +252,12 @@ class EpcCodec {
             if (b == 10) fMax = 8000;
             int binStart = (fMin * _fftSize / sampleRate).round();
             int binEnd = (fMax * _fftSize / sampleRate).round();
-            double energy = 0;
+            double energy = 0; int count = 0;
             for (int bin = binStart; bin < binEnd && bin < _fftSize ~/ 2; bin++) {
-              energy += _fftMag[bin];
+              energy += _fftMag[bin]; count++;
             }
-            int val = (energy / 32768 * 31).round().clamp(0, 31);
+            double avg = count > 0 ? energy / count : 0;
+            int val = (avg / 32768 * 31).round().clamp(0, 31);
             return val;
           });
           double midi = 12 * (log(f0 / 440) / log(2)) + 69;
@@ -267,7 +267,7 @@ class EpcCodec {
           int rmsQ = (sigRms / 32768 * 255).round().clamp(0, 255);
 
           int tid = _nextTrackId % 15;
-          _activeTracks[tid] = _TrackState(freq: f0, cbIdx: cbIdx, note: note, cent: cent, stale: 0);
+          _activeTracks[tid] = _TrackState(freq: f0, note: note, bands: List.from(bands), stale: 0);
           _nextTrackId++;
 
           var tag = EpcTag(type: EpcTagType.spectrum);
@@ -354,8 +354,9 @@ class EpcCodec {
 
 class _TrackState {
   double freq;
-  int cbIdx, note, cent, stale;
-  _TrackState({required this.freq, required this.cbIdx, required this.note, required this.cent, this.stale = 0});
+  int note, stale;
+  List<int> bands;
+  _TrackState({required this.freq, required this.note, required this.bands, this.stale = 0});
 }
 
 class _SynthTone {
