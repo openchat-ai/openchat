@@ -1,92 +1,65 @@
-/// Vocoder synthesizer: 11 Mel-spaced subbands → sine/noise mix → formant filter.
-/// Replaces the old 8-harmonic wavetable with a channel vocoder approach.
+/// Harmonic envelope synthesizer: subband energies → spectral envelope for F0 harmonics.
+/// Works for both voice (formants) and music (harmonic spectrum).
 import 'dart:math';
 import 'dart:typed_data';
 
-// Mel-spaced center frequencies for 11 bands (100Hz-8000Hz @ 24kHz)
-const List<double> _melFreqs = [
-  100, 150, 220, 320, 460, 660, 950, 1350, 1950, 2800, 4000,
+// Mel-spaced band boundary frequencies (Hz) for 11 bands
+const List<double> _bandBounds = [
+  80, 150, 250, 400, 600, 900, 1300, 1900, 2700, 3800, 5500, 8000,
 ];
-
-// One-pole filter state per band
-class _BandState {
-  double lp = 0; // smoothed amplitude
-}
 
 class VocoderSynth {
   static const int bandCount = 11;
-  static final _states = List.generate(bandCount, (_) => _BandState());
 
-  // Formant filter state (biquad peaking)
-  static double _f1x1 = 0, _f1x2 = 0, _f1y1 = 0, _f1y2 = 0;
-  static double _f2x1 = 0, _f2x2 = 0, _f2y1 = 0, _f2y2 = 0;
-
-  static void reset() {
-    for (final s in _states) s.lp = 0;
-    _f1x1 = _f1x2 = _f1y1 = _f1y2 = 0;
-    _f2x1 = _f2x2 = _f2y1 = _f2y2 = 0;
-  }
-
-  /// Synthesize N samples from subband energies and mix into PCM buffer.
+  /// Synthesize N samples: generate F0 harmonics, shape by subband envelope.
   static void mixInto(
     Uint8List pcm, int offset, List<int> subBands,
     int sr, double freq, double rms, double vel, int n,
   ) {
-    double amp = rms / 255 * vel / 127 * 0.5;
-    if (amp < 0.001) return;
+    double amp = rms / 255 * vel / 127 * 0.3;
+    if (amp < 0.001 || freq < 30) return;
 
+    // Edge case: avoid division by zero in bin calculation
+    int maxH = (sr / 2 / freq).floor(); // max harmonic below Nyquist
+    if (maxH > 100) maxH = 100; // performance limit
+
+    // For each harmonic, compute which band it falls in, get band energy
+    final hGains = <double>[];
+    for (int h = 1; h <= maxH; h++) {
+      double hz = freq * h;
+      if (hz >= 8000) break;
+      // Find band index
+      int band = bandCount - 1;
+      for (int b = 0; b < bandCount; b++) {
+        if (hz < _bandBounds[b + 1]) { band = b; break; }
+      }
+      double bandEnergy = subBands[band] / 31.0;
+      if (bandEnergy < 0.01) { hGains.add(0); continue; }
+      // Interpolate: how central is this harmonic in the band
+      double bandLow = _bandBounds[band], bandHigh = _bandBounds[band + 1];
+      double position = (hz - bandLow) / (bandHigh - bandLow);
+      // Gaussian-like weighting: peak at band center, drop at edges
+      double centerWeight = exp(-4 * (position - 0.5) * (position - 0.5));
+      // Higher harmonics naturally weaker
+      double rolloff = pow(0.85, h - 1);
+      hGains.add(bandEnergy * centerWeight * rolloff * amp);
+    }
+
+    // Synthesize: sum harmonics
+    double phase = 0;
     for (int i = 0; i < n; i++) {
       double s = 0;
-
-      for (int b = 0; b < bandCount; b++) {
-        double targetAmp = subBands[b] / 31.0 * amp;
-        if (targetAmp < 0.001) continue;
-
-        // Smooth amplitude changes
-        _states[b].lp += (targetAmp - _states[b].lp) * 0.3;
-        double bandAmp = _states[b].lp;
-
-        double f = _melFreqs[b];
-        double t = (offset + i) / sr;
-        double val;
-
-        if (f > 3000) {
-          // High bands: noise only (fricative)
-          val = (Random().nextDouble() * 2 - 1) * bandAmp;
-        } else if (f > 1500) {
-          // Mid bands: sine + noise mix
-          val = (sin(2 * pi * f * t) * 0.6 +
-                 (Random().nextDouble() * 2 - 1) * 0.4) * bandAmp;
-        } else {
-          // Low bands: pure sine with pitch
-          val = sin(2 * pi * f * t) * bandAmp;
-          // Add pitch excitation
-          if (freq > 50) {
-            val += sin(2 * pi * freq * t) * bandAmp * 0.3;
-          }
+      double t = i / sr;
+      for (int h = 0; h < hGains.length; h++) {
+        if (hGains[h] < 0.001) continue;
+        double hz = freq * (h + 1);
+        // Add noise for very high harmonics (>5kHz)
+        if (hz > 5000) {
+          s += (Random().nextDouble() * 2 - 1) * hGains[h] * 0.5;
         }
-
-        s += val;
+        s += sin(2 * pi * hz * t) * hGains[h] * 32768;
       }
-
-      // Apply formant filter
-      const f1 = 800.0, q1 = 1.5, g1 = 10.0;
-      final a1 = pow(10, g1 / 40);
-      final w1 = 2 * pi * f1 / sr;
-      final alpha1 = sin(w1) / (2 * q1);
-      final y1 = ((1 + alpha1 * a1) * s - 2 * cos(w1) * _f1x1 + (1 - alpha1 * a1) * _f1x2
-                 + 2 * cos(w1) * _f1y1 - (1 - alpha1 / a1) * _f1y2) / (1 + alpha1 / a1);
-      _f1x2 = _f1x1; _f1x1 = s; _f1y2 = _f1y1; _f1y1 = y1;
-
-      const f2 = 1600.0, q2 = 2.0, g2 = 6.0;
-      final a2 = pow(10, g2 / 40);
-      final w2 = 2 * pi * f2 / sr;
-      final alpha2 = sin(w2) / (2 * q2);
-      final y2 = ((1 + alpha2 * a2) * y1 - 2 * cos(w2) * _f2x1 + (1 - alpha2 * a2) * _f2x2
-                 + 2 * cos(w2) * _f2y1 - (1 - alpha2 / a2) * _f2y2) / (1 + alpha2 / a2);
-      _f2x2 = _f2x1; _f2x1 = y1; _f2y2 = _f2y1; _f2y1 = y2;
-
-      final clipped = (y2 * 32768).round().clamp(-32768, 32767);
+      int clipped = s.round().clamp(-32768, 32767);
       int byteIdx = (offset + i) * 2;
       if (byteIdx + 1 >= pcm.length) break;
       int existing = pcm[byteIdx] | (pcm[byteIdx + 1] << 8);
