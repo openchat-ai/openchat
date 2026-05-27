@@ -371,6 +371,7 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
           onDemo: () => _client?.spawnDemoPeer().then((_) => _pollUsers()),
           custom: {
             'settings': () => Navigator.pushNamed(context, '/theme'),
+            'self_test': () { final c = _client; if (c != null) Navigator.pushNamed(context, '/voice', arguments: {'selfTest': 'true', 'client': c, 'targetPeerId': c.peerId}); },
             'audio_files': () => _showAudioFiles(),
             'device:info': () => _showDeviceInfo(),
             'config:get': () => _showConfig(),
