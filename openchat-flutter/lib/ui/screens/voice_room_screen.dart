@@ -126,7 +126,12 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> with SduiPage
     if (_callEpcs.isNotEmpty && _client != null) {
       final ts = DateTime.now().millisecondsSinceEpoch;
       final name = '${_client!.peerId}_${_targetPeerId ?? 'unknown'}_$ts.epc';
-      final data = Uint8List.fromList(_callEpcs.expand((e) => e).toList());
+      // Header: 4B magic "EPC1" + 2B version(0x0001) + 2B spare + raw frames
+      final epcData = _callEpcs.expand((e) => e).toList();
+      final header = [0x45,0x50,0x43,0x31, 0x00,0x01, 0x00,0x00];
+      final data = Uint8List(header.length + epcData.length);
+      data.setRange(0, header.length, header);
+      data.setRange(header.length, data.length, epcData);
       _client!.writeFile('oc/call_recordings/$name', data);
     }
     if (mounted) setState(() => _state = 'ended');
