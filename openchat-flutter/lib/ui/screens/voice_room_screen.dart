@@ -36,6 +36,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> with SduiPage
   AudioProcessor? _processor;
   final List<Uint8List> _playQueue = [];
   bool _playing = false;
+  final List<Uint8List> _callEpcs = []; // accumulated EPC data for recording
   VoiceUiConfig _uiVoice = const VoiceUiConfig();
   AudioConfig _audioCfg = const AudioConfig();
   Map<String, void Function()> _customActions = {};
@@ -121,6 +122,13 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> with SduiPage
     _player?.dispose();
     _processor?.dispose();
     if (_targetPeerId != null) _client?.sendSignal(_targetPeerId!, 'call-end');
+    // Save recording: from_to_timestamp.epc
+    if (_callEpcs.isNotEmpty && _client != null) {
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      final name = '${_client!.peerId}_${_targetPeerId ?? 'unknown'}_$ts.epc';
+      final data = Uint8List.fromList(_callEpcs.expand((e) => e).toList());
+      _client!.writeFile('oc/call_recordings/$name', data);
+    }
     if (mounted) setState(() => _state = 'ended');
     _signalTimer?.cancel();
     Navigator.pop(context);
@@ -175,6 +183,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> with SduiPage
             final processed = await _processor?.processMicrophoneInput(frame);
             if (processed != null) {
               await _client?.sendEncodedAudio(targetId, processed, _audioSeq++);
+              _callEpcs.add(processed);
             }
           }
         } catch (e) { log('record process error: $e'); }
