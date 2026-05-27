@@ -75,14 +75,19 @@ List<Map<String, dynamic>> _hpsMultiF0(List<double> samples, int sr) {
   int minBin = (halfN * 40 / sr).round();
   int maxBin = (halfN * 1500 / sr).round();
   var peaks = <MapEntry<int, double>>[];
+  double maxPeakVal = 0;
   for (int i = minBin + 1; i < maxBin - 1; i++) {
     if (hp[i] > hp[i - 1] && hp[i] > hp[i + 1] && hp[i] > 0) {
       peaks.add(MapEntry(i, hp[i]));
+      if (hp[i] > maxPeakVal) maxPeakVal = hp[i];
     }
   }
+  // Relative threshold: only keep peaks >20% of strongest
+  double threshold = maxPeakVal * 0.2;
+  peaks.removeWhere((p) => p.value < threshold);
   peaks.sort((a, b) => b.value.compareTo(a.value));
 
-  // Take top 3, skip harmonically related
+  // Take top 2, skip harmonically related
   var result = <Map<String, dynamic>>[];
   for (var p in peaks) {
     double freq = p.key * sr / fftSize;
@@ -179,6 +184,13 @@ class EpcCodec {
         int v = pcmData[off + i * 2] | (pcmData[off + i * 2 + 1] << 8);
         return (v > 32767 ? v - 65536 : v).toDouble();
       });
+      // Silence gate: skip processing if RMS < 300 (quiet background)
+      double sigRms = sqrt(samples.fold(0.0, (s, v) => s + v * v) / samples.length);
+      if (sigRms < 300) {
+        _frameCount++;
+        responseFrames.add(ResponseFrame([]).pack());
+        continue;
+      }
       _analysisBuf.addAll(samples);
       while (_analysisBuf.length > 2048) _analysisBuf.removeAt(0);
 
@@ -209,22 +221,20 @@ class EpcCodec {
             toRemove.add(tid);
             var tag = EpcTag(type: EpcTagType.spectrum);
             tag.trackId = tid;
-            tag.onsetFlag = 2; // NoteOff
+            tag.onsetFlag = 0;
+            tag.velocity = 0;
+            tag.rms = 0; // vel=0 + rms=0 = NoteOff marker
             frameEpcs.add(tag.pack());
           }
         }
       }
       for (var tid in toRemove) _activeTracks.remove(tid);
 
-      // 2. HPS analysis every 4 frames
-      bool hasAnalysis = _analysisBuf.length >= 2048;
-      bool checkNew = hasAnalysis ? (_frameCount % 4 == 0) : (_frameCount == 0);
-      if (checkNew) {
-        var src = hasAnalysis ? _analysisBuf : samples;
-        var tones = _hpsMultiF0(src, sampleRate);
+      // 2. HPS analysis every 4 frames (only when buffer has 2048 samples)
+      if (_analysisBuf.length >= 2048 && _frameCount % 4 == 0) {
+      var tones = _hpsMultiF0(_analysisBuf, sampleRate);
 
         // Extract harmonics for each valid F0
-        int lim = hasAnalysis ? src.length : samples.length;
         for (var t in tones) {
           double f0 = t['freq'] as double;
           double corr = t['corr'] as double;
@@ -237,8 +247,8 @@ class EpcCodec {
           });
           if (dup) continue;
 
-          // Extract 8 harmonics
-          var harms = List<int>.generate(8, (h) => _extractHarmonic(src, sampleRate, f0, h, lim));
+          // Extract 8 harmonics (use analysis buffer)
+          var harms = List<int>.generate(8, (h) => _extractHarmonic(_analysisBuf, sampleRate, f0, h, _analysisBuf.length));
           double maxH = harms.cast<num>().reduce((a, b) => a > b ? a : b).toDouble();
           if (maxH > 0) harms = harms.map((a) => (a / maxH * 255).round().clamp(0, 255)).toList();
 
@@ -301,7 +311,7 @@ class EpcCodec {
       // Parse EPCs
       for (int eo = off + 5; eo < off + 5 + dataLen; eo += 12) {
         var tag = EpcTag.unpack(epcData.sublist(eo, eo + 12));
-        if (tag.onsetFlag == 2) { active.remove(tag.trackId); continue; }
+        if (tag.velocity == 0 && tag.rms == 0) { active.remove(tag.trackId); continue; }
         double freq = 440 * pow(2, (tag.midiNote + tag.cent / 100 - 69) / 12) as double;
         if (tag.rms > 0) {
           active[tag.trackId] = _SynthTone(
