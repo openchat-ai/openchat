@@ -443,14 +443,33 @@ class QiniuDirectClient {
   }
 
   // Encoded audio relay (neural codec, no WAV header)
+  Future<void> _putBinary(String key, Uint8List data) async {
+    if (_useFormUpload) {
+      final uri = Uri.parse('https://upload-z0.qiniup.com/');
+      final request = http.MultipartRequest('POST', uri)
+        ..fields['token'] = _uploadToken(key)
+        ..fields['key'] = key
+        ..files.add(http.MultipartFile.fromBytes('file', data));
+      final streamed = await _client.send(request).timeout(const Duration(seconds: 15));
+      final resp = await http.Response.fromStream(streamed);
+      if (resp.statusCode != 200) throw Exception('Form PUT $key: HTTP ${resp.statusCode} ${resp.body}');
+    } else {
+      final url = _presignedUrl(key, method: 'PUT');
+      final resp = await _client.put(Uri.parse(url), headers: {'Content-Type': 'application/octet-stream'}, body: data)
+          .timeout(const Duration(seconds: 10));
+      if (resp.statusCode != 200) throw Exception('S3 PUT $key: HTTP ${resp.statusCode}');
+    }
+  }
+
+  Future<Uint8List> _getBinary(String key) async {
+    final url = _presignedUrl(key);
+    final resp = await _client.get(Uri.parse(url)).timeout(const Duration(seconds: 8));
+    if (resp.statusCode != 200) throw Exception('S3 GET $key: HTTP ${resp.statusCode}');
+    return resp.bodyBytes;
+  }
+
   Future<void> sendEncodedAudio(String targetPeerId, Uint8List data, int seq) async {
-    final body = jsonEncode({
-      'from': peerId,
-      'seq': seq,
-      'data': base64Encode(data),
-      'ts': DateTime.now().millisecondsSinceEpoch,
-    });
-    await _put('oc/audio/$targetPeerId/${peerId}_$seq.enc', body);
+    await _putBinary('oc/audio/$targetPeerId/${peerId}_$seq.enc', data);
   }
 
   Future<List<Uint8List>> pollEncodedAudio() async {
@@ -458,15 +477,7 @@ class QiniuDirectClient {
     try {
       for (final key in await _list('oc/audio/$peerId/')) {
         if (!key.endsWith('.enc')) continue;
-        final raw = await _get(key);
-        final msg = jsonDecode(raw);
-        if (msg is! Map) continue;
-        final data = msg['data'];
-        if (data is! String) continue;
-        final bytes = Uint8List.fromList(base64Decode(data));
-        results.add(bytes);
-        // Save a copy to recordings before deleting
-        await _saveRecording(bytes, key.split('/').last);
+        results.add(await _getBinary(key));
         await _delete(key);
       }
     } catch (_) {}
