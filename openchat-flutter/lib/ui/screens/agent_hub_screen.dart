@@ -44,7 +44,7 @@ class _AgentHubScreenState extends ConsumerState<AgentHubScreen> with SduiPageSt
         child: SafeArea(
           child: residentsAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => _buildEmptyState(theme, sduiLayout['errorState'] as Map? ?? {'icon': 'error', 'title': '鍔犺浇澶辫触'}),
+            error: (e, _) => _buildEmptyState(theme, sduiLayout['errorState'] as Map? ?? {'icon': 'error', 'title': '加载失败'}),
             data: (residents) {
               final residentItems = residents.map((r) => {
                 'id': r.id.toString(),

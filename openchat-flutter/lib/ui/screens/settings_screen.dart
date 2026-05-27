@@ -220,8 +220,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> with SduiPageSt
 
   Widget _buildThemeSection(AppTheme theme, ThemeModeSetting currentMode, WidgetRef ref) {
     final modeLabels = {
-      ThemeModeSetting.auto: '璺熼殢绯荤粺', ThemeModeSetting.light: '娴呰壊妯″紡',
-      ThemeModeSetting.dark: '娣辫壊妯″紡', ThemeModeSetting.manual: '鎵嬪姩閫夋嫨',
+      ThemeModeSetting.auto: '跟随系统', ThemeModeSetting.light: '浅色模式',
+      ThemeModeSetting.dark: '深色模式', ThemeModeSetting.manual: '手动选择',
     };
     return SliverToBoxAdapter(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -237,7 +237,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> with SduiPageSt
             borderRadius: BorderRadius.circular(theme.radiusMedium),
             border: Border.all(color: theme.textTertiary.withValues(alpha: 0.1), width: 1)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('涓婚妯″紡', style: TextStyle(color: theme.textPrimary, fontSize: 15, fontWeight: FontWeight.w500)),
+            Text('主题模式', style: TextStyle(color: theme.textPrimary, fontSize: 15, fontWeight: FontWeight.w500)),
             const SizedBox(height: 12),
             Wrap(spacing: 8, runSpacing: 8, children: ThemeModeSetting.values.map((mode) {
               final sel = mode == currentMode;
@@ -273,7 +273,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> with SduiPageSt
               borderRadius: BorderRadius.circular(theme.radiusMedium),
               border: Border.all(color: theme.textTertiary.withValues(alpha: 0.1), width: 1)),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('閫夋嫨涓婚', style: TextStyle(color: theme.textPrimary, fontSize: 15, fontWeight: FontWeight.w500)),
+              Text('选择主题', style: TextStyle(color: theme.textPrimary, fontSize: 15, fontWeight: FontWeight.w500)),
               const SizedBox(height: 12),
               for (final t in [
                 {'theme': AppTheme.glassmorphism, 'name': 'Glass'},
@@ -301,7 +301,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> with SduiPageSt
                 borderRadius: BorderRadius.circular(10))),
             const SizedBox(width: 12),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('褰撳墠涓婚', style: TextStyle(color: theme.textSecondary, fontSize: 12)),
+              Text('当前主题', style: TextStyle(color: theme.textSecondary, fontSize: 12)),
               const SizedBox(height: 2),
               Text(theme.name, style: TextStyle(color: theme.textPrimary, fontSize: 15, fontWeight: FontWeight.w600)),
             ])),

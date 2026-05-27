@@ -51,7 +51,7 @@ class _ThemeSelectorScreenState extends ConsumerState<ThemeSelectorScreen> with 
       backgroundColor: currentTheme.background,
       appBar: AppBar(
         backgroundColor: currentTheme.surface,
-        title: Text(sduiStr('title', '涓婚璁剧疆'), style: TextStyle(color: currentTheme.textPrimary)),
+        title: Text(sduiStr('title', '主题设置'), style: TextStyle(color: currentTheme.textPrimary)),
         leading: IconButton(icon: Icon(Icons.arrow_back, color: currentTheme.textPrimary), onPressed: () => Navigator.pop(context)),
       ),
       body: parser.parse(layout) ?? ListView.builder(

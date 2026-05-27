@@ -129,30 +129,3 @@ class AudioProcessor {
     _audioLevelController.close();
   }
 }
-
-// 扩展 CodecStats
-extension CodecStatsExtension on CodecStats {
-  Map<String, dynamic> toJson() => {
-    'framesEncoded': framesEncoded,
-    'framesDecoded': framesDecoded,
-    'compressionRatio': compressionRatio,
-    'avgEncodeTime': avgEncodeTime,
-    'avgDecodeTime': avgDecodeTime,
-    'targetBitrate': targetBitrate,
-  };
-}
-
-// 扩展 AudioPipelineStats
-extension AudioPipelineStatsExtension on AudioPipelineStats {
-  Map<String, dynamic> toJson() => {
-    'totalFrames': totalFrames,
-    'speechFrames': speechFrames,
-    'noiseFrames': noiseFrames,
-    'speechRatio': speechRatio,
-    'totalSpeechTime': totalSpeechTime,
-    'vadEnabled': vadEnabled,
-    'rnnoiseEnabled': rnnoiseEnabled,
-    'rnnoiseReady': rnnoiseReady,
-    'rnnoiseAvgTime': rnnoiseAvgTime,
-  };
-}

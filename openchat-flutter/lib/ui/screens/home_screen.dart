@@ -87,7 +87,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SduiPageState {
         child: SafeArea(
           child: feedAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => _buildEmptyState(theme, sduiLayout['errorState'] as Map? ?? {'icon': 'people', 'title': 'OpenChat', 'subtitle': '鍒囨崲鍒?濂藉弸 鏍囩'}),
+            error: (e, _) => _buildEmptyState(theme, sduiLayout['errorState'] as Map? ?? {'icon': 'people', 'title': 'OpenChat', 'subtitle': '切换到 好友 标签'}),
             data: (feed) {
               if (feed.isEmpty) {
                 return _buildEmptyState(theme, sduiLayout['emptyState'] as Map?);
