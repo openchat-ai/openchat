@@ -221,7 +221,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> with SduiPa
   }
 
   Widget _buildInfoSection(AppTheme theme) {
-    final infoLabel = sduiLayout['infoLabel'] as String? ?? '鍩烘湰淇℃伅';
+    final infoLabel = sduiLayout['infoLabel'] as String? ?? '基本信息';
     final items = (sduiLayout['infoItems'] as List?)?.map((e) {
       if (e is! Map) return ['', ''];
       return [(e['label'] as String? ?? ''), (e['value'] as String? ?? '')];
