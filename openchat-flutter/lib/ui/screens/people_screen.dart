@@ -331,7 +331,7 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
     );
   }
 
-  Widget _buildSdui(AppTheme theme) {
+  Widget? _buildSdui(AppTheme theme) {
     // If no users online, show empty state with Demo button (via SDUI if config includes it, else fallback)
     if (_users.isEmpty) {
       return Scaffold(
