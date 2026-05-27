@@ -23,5 +23,5 @@ jobs:
           git config user.email "2338953@qq.com"
           git add .
           git commit -m "sync from monorepo $(date +%Y-%m-%d)"
-          git remote add origin https://x-access-token:${GH_TOKEN}@github.com/openchat-ai/sdui_engine.git
+          git remote add origin https://openchat-ai:${GH_TOKEN}@github.com/openchat-ai/sdui_engine.git
           git push -u origin main --force
