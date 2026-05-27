@@ -1,7 +1,10 @@
 ﻿import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'dart:async';
-import 'dart:math';
+import 'dart:convert';
+import 'dart:developer' show log;
+import 'dart:io' show Platform;
+import 'dart:math' hide log;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
@@ -40,15 +43,16 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
 
   Future<void> _init() async {
     final prefs = await SharedPreferences.getInstance();
-    // Preferred: fixed peerId from remote config
-    String? peerId;
-    try {
-      final cfg = await QiniuDirectClient.fetchConfigFile('oc/config/device.json');
-      if (cfg?['peerId'] is String) peerId = cfg!['peerId'] as String;
-    } catch (_) {}
-    peerId ??= prefs.getString('peerId');
-    peerId ??= '${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(99999).toString().padLeft(5, '0')}';
-    if (prefs.getString('peerId') == null) await prefs.setString('peerId', peerId!);
+    String? peerId = prefs.getString('peerId');
+    if (peerId == null) {
+      // Generate stable peerId from device hostname
+      try {
+        final host = Platform.localHostname;
+        if (host.isNotEmpty) peerId = host.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+      } catch (_) {}
+      peerId ??= '${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(99999).toString().padLeft(5, '0')}';
+      await prefs.setString('peerId', peerId);
+    }
     _client = QiniuDirectClient(peerId: peerId);
     try {
       await _client!.register().timeout(const Duration(seconds: 8));
