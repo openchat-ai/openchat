@@ -63,12 +63,14 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> with SduiPage
   }
 
   Future<void> _initSelfTest() async {
-    final prefs = await SharedPreferences.getInstance();
-    final peerId = prefs.getString('peerId') ?? '${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(99999).toString().padLeft(5, '0')}';
-    if (_client == null) _client = QiniuDirectClient(peerId: peerId);
+    if (_client == null) {
+      final prefs = await SharedPreferences.getInstance();
+      final pid = prefs.getString('peerId') ?? '${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(99999).toString().padLeft(5, '0')}';
+      _client = QiniuDirectClient(peerId: pid);
+    }
     if (_client == null) return;
     await _client!.register();
-    _targetPeerId = peerId;
+    if (_targetPeerId == null) _targetPeerId = _client!.peerId;
     final cfg = await AudioConfig.load();
     if (mounted) {
       setState(() => _state = 'calling');
