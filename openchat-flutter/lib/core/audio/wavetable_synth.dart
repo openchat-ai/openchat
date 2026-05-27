@@ -45,11 +45,14 @@ class VocoderSynth {
       hGains.add(bandEnergy * centerWeight * rolloff * amp);
     }
 
-    // Synthesize: sum harmonics
-    double phase = 0;
+    // Synthesize: sum harmonics with velocity-based envelope
+    double velRatio = vel / 127;
+    double decayRate = 4 - velRatio * 2; // higher vel = slower decay
     for (int i = 0; i < n; i++) {
       double s = 0;
       double t = i / sr;
+      double notePos = i / n;
+      double env = min(1.0, notePos / 0.02) * exp(-notePos * decayRate);
       for (int h = 0; h < hGains.length; h++) {
         if (hGains[h] < 0.001) continue;
         double hz = freq * (h + 1);
@@ -59,6 +62,7 @@ class VocoderSynth {
         }
         s += sin(2 * pi * hz * t) * hGains[h] * 32768;
       }
+      s *= env;
       int clipped = s.round().clamp(-32768, 32767);
       int byteIdx = (offset + i) * 2;
       if (byteIdx + 1 >= pcm.length) break;
