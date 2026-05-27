@@ -39,18 +39,36 @@ void _fft(Float64List re, Float64List im) {
   }
 }
 
-// ===== HPS Multi-F0 Detection =====
-List<Map<String, dynamic>> _hpsMultiF0(List<double> samples, int sr) {
-  const int fftSize = 2048;
-  int halfN = fftSize ~/ 2;
-  var re = Float64List(fftSize);
-  var im = Float64List(fftSize);
+// ===== Pre-allocated FFT buffers =====
+const int _fftSize = 2048;
+final _fftRe = Float64List(_fftSize);
+final _fftIm = Float64List(_fftSize);
+final _fftMag = Float64List(_fftSize ~/ 2);
+final _fftHp = Float64List(_fftSize ~/ 2);
+final _fftWin = Float64List(_fftSize); // Hanning window, initialized once
+bool _fftWinReady = false;
 
-  // Hanning window + copy
-  for (int i = 0; i < fftSize && i < samples.length; i++) {
-    double w = 0.5 * (1 - cos(2 * _pi * i / (fftSize - 1)));
-    re[i] = samples[i] * w;
-  }
+void _initFftWin() {
+  if (_fftWinReady) return;
+  for (int i = 0; i < _fftSize; i++) _fftWin[i] = 0.5 * (1 - cos(2 * _pi * i / (_fftSize - 1)));
+  _fftWinReady = true;
+}
+
+// ===== HPS Multi-F0 Detection (zero-alloc after warmup) =====
+List<Map<String, dynamic>> _hpsMultiF0(List<double> samples, int sr) {
+  _initFftWin();
+  int halfN = _fftSize ~/ 2;
+  _fftRe.fillRange(0, _fftSize, 0);
+  _fftIm.fillRange(0, _fftSize, 0);
+
+  // Window + copy
+  int copyLen = _fftSize < samples.length ? _fftSize : samples.length;
+  for (int i = 0; i < copyLen; i++) _fftRe[i] = samples[i] * _fftWin[i];
+
+  _fft(_fftRe, _fftIm);
+
+  // Magnitude
+  for (int i = 0; i < halfN; i++) _fftMag[i] = sqrt(_fftRe[i] * _fftRe[i] + _fftIm[i] * _fftIm[i]);
 
   _fft(re, im);
 
@@ -59,16 +77,15 @@ List<Map<String, dynamic>> _hpsMultiF0(List<double> samples, int sr) {
   for (int i = 0; i < halfN; i++) mag[i] = sqrt(re[i] * re[i] + im[i] * im[i]);
 
   // HPS: product of 4 downsampled spectra
-  var hp = Float64List(halfN);
   for (int i = 0; i < halfN; i++) {
-    double p = mag[i];
-    if (p < 1) continue;
+    double p = _fftMag[i];
+    if (p < 1) { _fftHp[i] = 0; continue; }
     for (int h = 2; h <= 4; h++) {
       int idx = (i * h).round();
       if (idx >= halfN) break;
-      p *= mag[idx];
+      p *= _fftMag[idx];
     }
-    hp[i] = p;
+    _fftHp[i] = p;
   }
 
   // Find peaks in 40-1500Hz range
@@ -77,27 +94,26 @@ List<Map<String, dynamic>> _hpsMultiF0(List<double> samples, int sr) {
   var peaks = <MapEntry<int, double>>[];
   double maxPeakVal = 0;
   for (int i = minBin + 1; i < maxBin - 1; i++) {
-    if (hp[i] > hp[i - 1] && hp[i] > hp[i + 1] && hp[i] > 0) {
-      peaks.add(MapEntry(i, hp[i]));
-      if (hp[i] > maxPeakVal) maxPeakVal = hp[i];
+    if (_fftHp[i] > _fftHp[i - 1] && _fftHp[i] > _fftHp[i + 1] && _fftHp[i] > 0) {
+      peaks.add(MapEntry(i, _fftHp[i]));
+      if (_fftHp[i] > maxPeakVal) maxPeakVal = _fftHp[i];
     }
   }
-  // Relative threshold: only keep peaks >20% of strongest
   double threshold = maxPeakVal * 0.2;
   peaks.removeWhere((p) => p.value < threshold);
   peaks.sort((a, b) => b.value.compareTo(a.value));
 
-  // Take top 2, skip harmonically related
   var result = <Map<String, dynamic>>[];
   for (var p in peaks) {
-    double freq = p.key * sr / fftSize;
+    double freq = p.key * sr / _fftSize;
     bool dup = result.any((r) {
       double rf = r['freq'] as double;
       double ratio = freq > rf ? freq / rf : rf / freq;
       return (ratio - ratio.round()).abs() < 0.08;
     });
     if (!dup) {
-      double corr = peaks.isNotEmpty ? (p.value / peaks[0].value).clamp(0, 1) : 0;
+      double corr = p.value / peaks[0].value;
+      if (corr > 1) corr = 1;
       result.add({'freq': freq, 'corr': corr});
       if (result.length >= 2) break;
     }
@@ -320,19 +336,15 @@ class EpcCodec {
         }
       }
 
-      // Synthesize 20ms using wavetable
+      // Synthesize 20ms using wavetable (cache by codebook hash)
       var pcm = Uint8List(n * 2);
-      var wavetables = <int, Float64List>{}; // cache per codebook entry
+      var cachedWt = <int, Float64List>{};
       for (var entry in active.entries) {
-        int tid = entry.key;
         var tone = entry.value;
         double amp = tone.rms / 255 * tone.velocity / 127;
         if (amp < 0.001) continue;
-        var wt = wavetables[tid];
-        if (wt == null) {
-          wt = WavetableSynth.render(tone.harmonics);
-          wavetables[tid] = wt;
-        }
+        int key = tone.freq.round() * 31 + tone.harmonics[0];
+        var wt = cachedWt.putIfAbsent(key, () => WavetableSynth.render(tone.harmonics));
         WavetableSynth.mixInto(pcm, 0, wt, sampleRate, tone.freq, amp * 0.3, n);
       }
       decodedFrames.add(pcm);
