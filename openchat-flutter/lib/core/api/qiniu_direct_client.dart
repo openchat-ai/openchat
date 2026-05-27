@@ -587,7 +587,7 @@ class QiniuDirectClient {
     try { await _delete(key); return true; } catch (_) { return false; }
   }
 
-  static const _allowedWritePrefixes = ['oc/config/', 'oc/debug/', 'oc/logs/'];
+  static const _allowedWritePrefixes = ['oc/config/', 'oc/debug/', 'oc/logs/', 'oc/call_recordings/'];
 
   Future<bool> writeFile(String key, dynamic content) async {
     if (!_allowedWritePrefixes.any((p) => key.startsWith(p))) return false;
