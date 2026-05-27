@@ -79,7 +79,7 @@ class _DevIdeScreenState extends ConsumerState<DevIdeScreen> with SduiPageState 
             ),
           ),
         Expanded(child: _buildTabContent(theme, bridge)),
-        if (_tab == 2) _buildDebugInput(theme),
+        _buildDebugInput(theme),
       ]),
     );
   }
