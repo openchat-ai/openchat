@@ -28,9 +28,10 @@ class SduiQiniuSource extends SduiConfigSource {
     'task_detail': {'title': '任务详情'},
     'dev_ide': {'title': 'Dev Console', 'tabs': [
       {'label': 'Console', 'type': 'logs'},
-      {'label': 'Debug', 'type': 'sdui', 'content': {'type': 'column', 'center': true, 'children': [
+      {'label': 'Debug', 'type': 'sdui', 'content': {'type': 'column', 'children': [
         {'type': 'text', 'content': 'Enter a command below', 'pad': 16},
-        {'type': 'text', 'content': 'test_put / test_get / s3_upload / form_upload', 'style': {'size': 12, 'color': '#9E9E9E'}},
+        {'type': 'textfield', 'hint': 'Type command...', 'action': 'exec_cmd', 'pad': 16},
+        {'type': 'text', 'content': 'test_put / test_get / s3_upload / form_upload', 'style': {'size': 12, 'color': '#9E9E9E'}, 'pad': 8},
       ]}},
     ]},
     'theme_selector': {'title': '主题设置'},
