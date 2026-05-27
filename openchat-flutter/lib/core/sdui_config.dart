@@ -19,7 +19,7 @@ class SduiQiniuSource extends SduiConfigSource {
   static const Map<String, Map<String, dynamic>> defaults = {
     'voice': {'callingText': 'Calling {peer}...', 'connectedText': 'Connected to {peer}', 'endedText': 'Call ended', 'mutedLabel': 'MUTED', 'relayLabel': 'Qiniu relay'},
     'audio': {'mode': 'raw', 'sampleRate': 24000, 'bufferMs': 1000, 'pollMs': 800, 'fadeBytes': 240, 'fadeSamples': 48, 'demoDelayMs': 3000},
-    'main': {'tabs': [{'icon': 'home', 'label': '首页', 'screen': 'home'}, {'icon': 'people', 'label': '好友', 'screen': 'people'}, {'icon': 'chat', 'label': '聊天', 'screen': 'chat'}, {'icon': 'settings', 'label': '我的', 'screen': 'settings'}]},
+    'main': {'tabs': [{'icon': 'home', 'label': 'Home', 'screen': 'home'}, {'icon': 'agent', 'label': 'Agent', 'screen': 'agent'}, {'icon': 'people', 'label': 'People', 'screen': 'people'}, {'icon': 'chat', 'label': 'Chat', 'screen': 'chat'}, {'icon': 'dev', 'label': 'Dev', 'screen': 'dev'}, {'icon': 'settings', 'label': 'Settings', 'screen': 'settings'}]},
     'settings': {'title': 'SETTINGS', 'sections': []},
     'home': {'title': '社区动态'},
     'chat': {'title': 'Chat'},
