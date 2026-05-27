@@ -1,6 +1,5 @@
 import 'dart:math';
 import 'dart:typed_data';
-import 'harmonic_codebook.dart';
 import 'epc_tag.dart';
 import 'wavetable_synth.dart';
 
@@ -38,6 +37,9 @@ void _fft(Float64List re, Float64List im) {
     }
   }
 }
+
+// Mel-spaced band frequencies (Hz) for 11-band vocoder
+const List<double> _melFreqs = [100, 150, 220, 320, 460, 660, 950, 1350, 1950, 2800, 4000];
 
 // ===== Pre-allocated FFT buffers =====
 const int _fftSize = 2048;
@@ -128,21 +130,6 @@ double _quickCheck(List<double> samples, int lag, int half) {
 }
 
 // ===== Harmonic extraction from FFT bin =====
-int _extractHarmonic(List<double> samples, int sr, double freq, int harmonic, int lim) {
-  double hz = freq * (harmonic + 1);
-  int fftSize = 2048;
-  int bin = (hz * fftSize / sr).round();
-  if (bin < 1 || bin >= fftSize ~/ 2) return 0;
-  double cR = 0, cI = 0;
-  int n = samples.length < lim ? samples.length : lim;
-  for (int i = 0; i < n; i++) {
-    double ang = 2 * _pi * bin * i / fftSize;
-    cR += samples[i] * cos(ang);
-    cI -= samples[i] * sin(ang);
-  }
-  return (sqrt(cR * cR + cI * cI) / n * 2).round();
-}
-
 // ===== Response Frame: BB|01|CC|PL|EPCs|Chk|7E =====
 class ResponseFrame {
   final List<Uint8List> epcData; // raw 12-byte EPCs
@@ -259,16 +246,22 @@ class EpcCodec {
           });
           if (dup) continue;
 
-          // Extract 8 harmonics (use analysis buffer)
-          var harms = List<int>.generate(8, (h) => _extractHarmonic(_analysisBuf, sampleRate, f0, h, _analysisBuf.length));
-          double maxH = harms.cast<num>().reduce((a, b) => a > b ? a : b).toDouble();
-          if (maxH > 0) harms = harms.map((a) => (a / maxH * 255).round().clamp(0, 255)).toList();
-
-          // Codebook match
-          int cbIdx = HarmonicCodebook.findNearest(harms);
+          // Extract Mel subband energies from FFT magnitude
+          var bands = List<int>.generate(11, (b) {
+            double fMin = b == 0 ? 80 : _melFreqs[b - 1];
+            double fMax = _melFreqs[b];
+            if (b == 10) fMax = 8000;
+            int binStart = (fMin * _fftSize / sampleRate).round();
+            int binEnd = (fMax * _fftSize / sampleRate).round();
+            double energy = 0;
+            for (int bin = binStart; bin < binEnd && bin < _fftSize ~/ 2; bin++) {
+              energy += _fftMag[bin];
+            }
+            int val = (energy / 32768 * 31).round().clamp(0, 31);
+            return val;
+          });
           double midi = 12 * (log(f0 / 440) / log(2)) + 69;
           int note = midi.round().clamp(0, 127);
-          int cent = ((midi - note) * 100).round().clamp(-32, 31);
 
           double sigRms = sqrt(samples.fold(0.0, (s, v) => s + v * v) / samples.length);
           int rmsQ = (sigRms / 32768 * 255).round().clamp(0, 255);
@@ -279,12 +272,11 @@ class EpcCodec {
 
           var tag = EpcTag(type: EpcTagType.spectrum);
           tag.trackId = tid;
-          tag.codebookIdx = cbIdx;
           tag.midiNote = note;
-          tag.cent = cent;
-          tag.onsetFlag = 1; // NoteOn
+          tag.onsetFlag = 1;
           tag.velocity = (corr * 127).round();
           tag.rms = rmsQ;
+          for (int i = 0; i < 11 && i < bands.length; i++) tag.subBands[i] = bands[i];
           frameEpcs.add(tag.pack());
         }
       }
@@ -327,21 +319,16 @@ class EpcCodec {
         double freq = 440 * pow(2, (tag.midiNote + tag.cent / 100 - 69) / 12) as double;
         if (tag.rms > 0) {
           active[tag.trackId] = _SynthTone(
-            freq: freq, harmonics: tag.harmonics, rms: tag.rms, velocity: tag.velocity,
+            freq: freq, subBands: List.from(tag.subBands), rms: tag.rms, velocity: tag.velocity,
           );
         }
       }
 
-      // Synthesize 20ms using wavetable (cache by codebook hash)
+      // Synthesize 20ms using vocoder
       var pcm = Uint8List(n * 2);
-      var cachedWt = <int, Float64List>{};
-      for (var entry in active.entries) {
-        var tone = entry.value;
-        double amp = tone.rms / 255 * tone.velocity / 127;
-        if (amp < 0.001) continue;
-        int key = tone.freq.round() * 31 + tone.harmonics[0];
-        var wt = cachedWt.putIfAbsent(key, () => WavetableSynth.render(tone.harmonics));
-        WavetableSynth.mixInto(pcm, 0, wt, sampleRate, tone.freq, amp * 0.3, n);
+      VocoderSynth.reset();
+      for (var tone in active.values) {
+        VocoderSynth.mixInto(pcm, 0, tone.subBands, sampleRate, tone.freq, tone.rms.toDouble(), tone.velocity.toDouble(), n);
       }
       decodedFrames.add(pcm);
       off += frameLen;
@@ -373,9 +360,9 @@ class _TrackState {
 
 class _SynthTone {
   final double freq;
-  List<int> harmonics;
+  final List<int> subBands;
   int rms, velocity;
-  _SynthTone({required this.freq, required this.harmonics, required this.rms, required this.velocity});
+  _SynthTone({required this.freq, required this.subBands, required this.rms, required this.velocity});
 }
 
 class EpcEncoded {
