@@ -9,11 +9,18 @@ class SduiActions {
     if (action == 'refresh') { onRefresh?.call(); return; }
     if (action == 'demo') { onDemo?.call(); return; }
     if (action.startsWith('navigate:')) {
-      final rest = action.substring(9);
-      final uri = Uri.tryParse(rest);
-      final route = uri?.path ?? rest;
-      Navigator.pushNamed(context, route, arguments: uri != null && uri.hasQuery ? uri.queryParameters : null);
-      return;
+      final path = action.substring(9);
+      final parts = path.split('?');
+      final route = parts[0];
+      Map<String, dynamic>? args;
+      if (parts.length > 1) {
+        args = {};
+        for (final param in parts[1].split('&')) {
+          final kv = param.split('=');
+          if (kv.length == 2) args[kv[0]] = Uri.decodeComponent(kv[1]);
+        }
+      }
+      Navigator.pushNamed(context, route, arguments: args);
     }
     if (action.startsWith('snackbar:')) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(action.substring(9))));
