@@ -136,8 +136,7 @@ for (const rf of responseFrames) {
 
       for (let i = 0; i < nOut; i++) {
         let s = 0;
-        const t = i / sr;
-        const env = Math.min(1, i / 144); // attack ramp 3ms at 48kHz
+        const t = (i + outOff) / sr;
         for (let h = 0; h < hGains.length; h++) {
           if (hGains[h] < 0.001) continue;
           const hz = tone.freq * (h + 1);
@@ -146,7 +145,6 @@ for (const rf of responseFrames) {
           }
           s += Math.sin(2 * Math.PI * hz * t) * hGains[h] * 32768;
         }
-        s *= env;
         const idx = (outOff + i) * 2;
         if (idx + 1 >= outPcm.length) break;
         const c = Math.max(-32768, Math.min(32767, Math.round(s)));

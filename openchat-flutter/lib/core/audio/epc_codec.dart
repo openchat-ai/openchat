@@ -299,7 +299,20 @@ class EpcCodec {
     var sw = Stopwatch()..start();
     int n = samplesPerFrame;
     var active = <int, _SynthTone>{};
-    var decodedFrames = <Uint8List>[];
+
+    // Estimate total samples: count frames from RF headers
+    int totalFrames = 0;
+    int tempOff = 0;
+    while (tempOff + 7 <= epcData.length) {
+      if (epcData[tempOff] != 0xBB) break;
+      int dataLen = (epcData[tempOff + 3] << 8) | epcData[tempOff + 4];
+      int frameLen = 7 + dataLen;
+      if (tempOff + frameLen > epcData.length) break;
+      totalFrames += dataLen ~/ 12;
+      tempOff += frameLen;
+    }
+    var out = Uint8List(totalFrames * n * 2);
+    int outSamples = 0;
 
     int off = 0;
     while (off + 7 <= epcData.length) {
@@ -320,19 +333,17 @@ class EpcCodec {
         }
       }
 
-      // Synthesize 20ms using harmonic envelope synth
-      var pcm = Uint8List(n * 2);
-      double velRatio = active.values.fold(0.0, (s, t) => s + t.velocity) / (active.length * 127).clamp(1, 127);
+      // Synthesize 20ms into pre-allocated buffer at cumulative offset
       for (var tone in active.values) {
-        VocoderSynth.mixInto(pcm, 0, tone.subBands, sampleRate, tone.freq, tone.rms.toDouble(), tone.velocity.toDouble(), n, instrument: tone.instrument);
+        VocoderSynth.mixInto(out, outSamples, tone.subBands, sampleRate, tone.freq, tone.rms.toDouble(), tone.velocity.toDouble(), n, instrument: tone.instrument);
       }
-      decodedFrames.add(pcm);
+      outSamples += n;
       off += frameLen;
     }
 
-    var out = Uint8List.fromList(decodedFrames.expand((f) => f).toList());
+    out = out.sublist(0, outSamples * 2);
     sw.stop();
-    _framesDecoded += decodedFrames.length;
+    _framesDecoded += outSamples ~/ n;
     return EpcDecoded(pcm: out, decodeTime: sw.elapsedMilliseconds);
   }
 

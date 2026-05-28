@@ -26,19 +26,9 @@ class VocoderSynth {
       hGains.add(bandEnergy * rolloff * amp);
     }
 
-    double velRatio = vel / 127;
-    double attackMs = 3;
-    switch (instrument) {
-      case 0: attackMs = 3; break;
-      case 1: attackMs = 10; break;
-      case 2: attackMs = 2; break;
-      case 3: attackMs = 15; break;
-    }
-    double attackSamples = attackMs * sr / 1000;
     for (int i = 0; i < n; i++) {
       double s = 0;
-      double t = i / sr;
-      double env = min(1.0, i / attackSamples);
+      double t = (offset + i) / sr;
       for (int h = 0; h < hGains.length; h++) {
         if (hGains[h] < 0.001) continue;
         double hz = freq * (h + 1);
@@ -47,7 +37,6 @@ class VocoderSynth {
         }
         s += sin(2 * pi * hz * t) * hGains[h] * 32768;
       }
-      s *= env;
       int clipped = s.round().clamp(-32768, 32767);
       int byteIdx = (offset + i) * 2;
       if (byteIdx + 1 >= pcm.length) break;
