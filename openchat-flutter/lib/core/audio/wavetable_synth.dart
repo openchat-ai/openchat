@@ -3,7 +3,10 @@
 import 'dart:math';
 import 'dart:typed_data';
 
-// No fixed band bounds — bands track F0 harmonics dynamically
+/// 48kHz Mel band bounds (same as epc_codec.dart)
+const List<double> _bandBounds = [
+  80.0, 160.0, 300.0, 500.0, 800.0, 1200.0, 1800.0, 2600.0, 3800.0, 5400.0, 7600.0, 11000.0, 16000.0,
+];
 
 class VocoderSynth {
   static const int bandCount = 11;

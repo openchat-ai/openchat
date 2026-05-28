@@ -272,23 +272,13 @@ class EpcCodec {
 
           var tag = EpcTag(type: EpcTagType.spectrum);
           tag.trackId = tid;
-          tag.instrument = t.instrument;
+          tag.instrument = 0;
           tag.midiNote = note;
-          tag.onsetFlag = 0;
+          tag.onsetFlag = 1;
           tag.velocity = (corr * 127).round();
           tag.rms = rmsQ;
-          for (int i = 0; i < 11 && i < t.bands.length; i++) tag.subBands[i] = t.bands[i];
+          for (int i = 0; i < 11 && i < bands.length; i++) tag.subBands[i] = bands[i];
           frameEpcs.add(tag.pack());
-        } else {
-          t.stale++;
-          if (t.stale > 3) {
-            toRemove.add(tid);
-            var tag = EpcTag(type: EpcTagType.spectrum);
-            tag.trackId = tid;
-            tag.velocity = 0;
-            tag.rms = 0;
-            frameEpcs.add(tag.pack());
-          }
         }
       }
 
