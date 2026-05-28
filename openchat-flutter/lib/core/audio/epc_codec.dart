@@ -38,8 +38,7 @@ void _fft(Float64List re, Float64List im) {
   }
 }
 
-// Mel-spaced band boundaries (Hz) for 11-band vocoder at 48kHz
-const List<double> _melFreqs = [160, 300, 500, 800, 1200, 1800, 2600, 3800, 5400, 7600, 11000];
+// F0 harmonic band centers — 7 bands at F0×1..F0×7 (extracted per-frame, no fixed bounds)
 
 // ===== Pre-allocated FFT buffers =====
 const int _fftSize = 2048;
@@ -211,7 +210,7 @@ class EpcCodec {
           tag.onsetFlag = 0;
           tag.velocity = (corr * 127).round();
           tag.rms = rmsQ;
-          for (int i = 0; i < 11 && i < t.bands.length; i++) tag.subBands[i] = t.bands[i];
+          for (int i = 0; i < 7 && i < t.bands.length; i++) tag.subBands[i] = t.bands[i];
           frameEpcs.add(tag.pack());
         } else {
           t.stale++;
@@ -245,19 +244,15 @@ class EpcCodec {
           });
           if (dup) continue;
 
-          // Extract Mel subband energies from FFT magnitude
-          var bands = List<int>.generate(11, (b) {
-            double fMin = b == 0 ? 80 : _melFreqs[b - 1];
-            double fMax = _melFreqs[b];
-            if (b == 10) fMax = 8000;
-            int binStart = (fMin * _fftSize / sampleRate).round();
-            int binEnd = (fMax * _fftSize / sampleRate).round();
-            double energy = 0; int count = 0;
-            for (int bin = binStart; bin < binEnd && bin < _fftSize ~/ 2; bin++) {
-              energy += _fftMag[bin]; count++;
-            }
-            double avg = count > 0 ? energy / count : 0;
-            int val = (avg / 32768 * 31).round().clamp(0, 31);
+          // Extract energy at F0 harmonics (7 harmonic bands)
+          var bands = List<int>.generate(7, (h) {
+            double hz = f0 * (h + 1);
+            int binCenter = (hz * _fftSize / sampleRate).round();
+            int binStart = (binCenter - 1).clamp(0, _fftSize ~/ 2 - 1);
+            int binEnd = (binCenter + 1).clamp(0, _fftSize ~/ 2);
+            double energy = 0;
+            for (int bin = binStart; bin < binEnd; bin++) energy += _fftMag[bin];
+            int val = (energy / 32768 * 255).round().clamp(0, 255);
             return val;
           });
           double midi = 12 * (log(f0 / 440) / log(2)) + 69;
@@ -277,7 +272,7 @@ class EpcCodec {
           tag.onsetFlag = 1;
           tag.velocity = (corr * 127).round();
           tag.rms = rmsQ;
-          for (int i = 0; i < 11 && i < bands.length; i++) tag.subBands[i] = bands[i];
+          for (int i = 0; i < 7 && i < bands.length; i++) tag.subBands[i] = bands[i];
           frameEpcs.add(tag.pack());
         }
       }
