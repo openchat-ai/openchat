@@ -312,7 +312,7 @@ class EpcCodec {
       for (int eo = off + 5; eo < off + 5 + dataLen; eo += 12) {
         var tag = EpcTag.unpack(epcData.sublist(eo, eo + 12));
         if (tag.velocity == 0 && tag.rms == 0) { active.remove(tag.trackId); continue; }
-        double freq = 440 * pow(2, (tag.midiNote + tag.cent / 100 - 69) / 12) as double;
+        double freq = 440 * pow(2, (tag.midiNote - 69) / 12) as double;
         if (tag.rms > 0) {
           active[tag.trackId] = _SynthTone(
             freq: freq, subBands: List.from(tag.subBands), rms: tag.rms, velocity: tag.velocity, instrument: tag.instrument,

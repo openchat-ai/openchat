@@ -22,7 +22,7 @@ class VocoderSynth {
       if (hz >= 8000) break;
       double bandEnergy = h <= bandCount ? subBands[h - 1] / 255.0 : subBands[bandCount - 1] / 255.0;
       if (bandEnergy < 0.01) { hGains.add(0); continue; }
-      double rolloff = pow(0.85, h - 1);
+      double rolloff = (pow(0.85, h - 1) as double);
       hGains.add(bandEnergy * rolloff * amp);
     }
 
