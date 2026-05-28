@@ -27,24 +27,18 @@ class VocoderSynth {
     }
 
     double velRatio = vel / 127;
-    double attackMs = 5;
-    double decayRate = 4 - velRatio * 2;
+    double attackMs = 3;
     switch (instrument) {
-      case 0:
-        attackMs = 3; decayRate = 3 - velRatio * 1.5;
-      case 1:
-        attackMs = 20; decayRate = 1.5 - velRatio * 0.5;
-      case 2:
-        attackMs = 2; decayRate = 6 - velRatio * 2;
-      case 3:
-        attackMs = 30; decayRate = 1 - velRatio * 0.5;
+      case 0: attackMs = 3; break;
+      case 1: attackMs = 10; break;
+      case 2: attackMs = 2; break;
+      case 3: attackMs = 15; break;
     }
     double attackSamples = attackMs * sr / 1000;
     for (int i = 0; i < n; i++) {
       double s = 0;
       double t = i / sr;
-      double notePos = i / n;
-      double env = min(1.0, i / attackSamples) * exp(-notePos * decayRate);
+      double env = min(1.0, i / attackSamples);
       for (int h = 0; h < hGains.length; h++) {
         if (hGains[h] < 0.001) continue;
         double hz = freq * (h + 1);

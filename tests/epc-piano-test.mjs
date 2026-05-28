@@ -137,8 +137,7 @@ for (const rf of responseFrames) {
       for (let i = 0; i < nOut; i++) {
         let s = 0;
         const t = i / sr;
-        const notePos = i / nOut;
-        const env = Math.min(1, i / attackSamples) * Math.exp(-notePos * decayRate);
+        const env = Math.min(1, i / 144); // attack ramp 3ms at 48kHz
         for (let h = 0; h < hGains.length; h++) {
           if (hGains[h] < 0.001) continue;
           const hz = tone.freq * (h + 1);
