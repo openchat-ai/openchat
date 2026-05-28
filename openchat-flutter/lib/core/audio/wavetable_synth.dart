@@ -1,4 +1,4 @@
-/// Harmonic envelope synthesizer: 7 harmonic bands × 8b energy at F0×1..F0×7.
+// Harmonic envelope synthesizer: 7 harmonic bands x 8b energy at F0x1..F0x7.
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -7,7 +7,7 @@ class VocoderSynth {
 
   static void mixInto(
     Uint8List pcm, int offset, List<int> subBands,
-    int sr, double freq, double rms, double vel, int n, {int instrument = 0},
+    int sr, double freq, double rms, double vel, int n, {int instrument = 0}
   ) {
     double amp = rms / 255 * vel / 127 * 0.3;
     if (amp < 0.001 || freq < 30) return;
