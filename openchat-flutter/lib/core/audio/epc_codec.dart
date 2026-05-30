@@ -128,6 +128,209 @@ double _quickCheck(List<double> samples, int lag, int half) {
   return n > 0 ? c / sqrt(n) : 0;
 }
 
+// ===== YIN: Autocorrelation-based F0 detection =====
+// Returns list of {freq, conf} — single element for monophonic
+List<Map<String, dynamic>> _yinF0(List<double> samples, int sr) {
+  int len = samples.length;
+  int maxLag = (sr / 40).round();   // 40Hz lower bound
+  int minLag = (sr / 2000).round();  // 2000Hz upper bound
+  if (maxLag > len ~/ 2) maxLag = len ~/ 2;
+  if (minLag < 2) minLag = 2;
+  if (maxLag <= minLag) return [];
+  int n = maxLag; // analysis window = maxLag samples
+
+  // Difference function
+  var diff = Float64List(maxLag);
+  for (int tau = 0; tau < maxLag; tau++) {
+    double d = 0;
+    for (int i = 0; i < n; i++) {
+      if (i + tau >= len) break;
+      double dv = samples[i] - samples[i + tau];
+      d += dv * dv;
+    }
+    diff[tau] = d;
+  }
+
+  // Cumulative mean normalized difference
+  var cmnd = Float64List(maxLag);
+  cmnd[0] = 1;
+  double runningSum = 0;
+  for (int tau = 1; tau < maxLag; tau++) {
+    runningSum += diff[tau];
+    cmnd[tau] = runningSum > 0 ? diff[tau] * tau / runningSum : 1;
+  }
+
+  // Find first minimum below threshold
+  double threshold = 0.15;
+  int bestLag = 0;
+  double bestVal = 1;
+  for (int tau = minLag; tau < maxLag - 1; tau++) {
+    if (cmnd[tau] < cmnd[tau - 1] && cmnd[tau] < cmnd[tau + 1]) {
+      if (cmnd[tau] < threshold) { bestLag = tau; bestVal = cmnd[tau]; break; }
+      if (cmnd[tau] < bestVal) { bestLag = tau; bestVal = cmnd[tau]; }
+    }
+  }
+  if (bestLag < minLag) return [];
+
+  // Parabolic interpolation
+  double refinedLag = bestLag.toDouble();
+  if (bestLag > 0 && bestLag < maxLag - 1) {
+    double alpha = cmnd[bestLag - 1], beta = cmnd[bestLag], gamma = cmnd[bestLag + 1];
+    double denom = alpha - 2 * beta + gamma;
+    if (denom.abs() > 1e-12) refinedLag = bestLag + (alpha - gamma) / (2 * denom);
+  }
+
+  double freq = sr / refinedLag;
+  double conf = max(0.0, 1.0 - bestVal);
+  if (freq > 2000 || freq < 30) return [];
+  return [{'freq': freq, 'corr': conf}];
+}
+
+// ===== Spectral Peak Tracking (from FFT magnitude) =====
+// Returns list of {freq, conf} — up to 3 simultaneous pitches
+List<Map<String, dynamic>> _peakTrackF0(List<double> samples, int sr) {
+  _initFftWin();
+  int halfN = _fftSize ~/ 2;
+  _fftRe.fillRange(0, _fftSize, 0);
+  _fftIm.fillRange(0, _fftSize, 0);
+  int copyLen = _fftSize < samples.length ? _fftSize : samples.length;
+  for (int i = 0; i < copyLen; i++) _fftRe[i] = samples[i] * _fftWin[i];
+  _fft(_fftRe, _fftIm);
+  for (int i = 0; i < halfN; i++) _fftMag[i] = sqrt(_fftRe[i] * _fftRe[i] + _fftIm[i] * _fftIm[i]);
+
+  // Find spectral peaks with parabolic interpolation
+  var rawPeaks = <Map<String, dynamic>>[];
+  for (int i = 2; i < halfN - 2; i++) {
+    if (_fftMag[i] > _fftMag[i - 1] && _fftMag[i] > _fftMag[i - 2] &&
+        _fftMag[i] > _fftMag[i + 1] && _fftMag[i] > _fftMag[i + 2]) {
+      double alpha = _fftMag[i - 1], beta = _fftMag[i], gamma = _fftMag[i + 1];
+      double denom = alpha - 2 * beta + gamma;
+      double fineIdx = i.toDouble();
+      if (denom.abs() > 1e-12) fineIdx = i + (alpha - gamma) / (2 * denom);
+      double freq = fineIdx * sr / _fftSize;
+      if (freq > 30 && freq < 8000) {
+        rawPeaks.add({'freq': freq, 'amp': _fftMag[i]});
+      }
+    }
+  }
+  if (rawPeaks.isEmpty) return [];
+  rawPeaks.sort((a, b) => (b['amp'] as double).compareTo(a['amp'] as double));
+  double maxAmp = rawPeaks[0]['amp'] as double;
+  var strongPeaks = rawPeaks.where((p) => (p['amp'] as double) > maxAmp * 0.1).toList();
+
+  var candidates = <Map<String, dynamic>>[];
+  for (var peak in strongPeaks) {
+    double pf = peak['freq'] as double;
+    // Harmonic support score: check if harmonics have energy
+    double harmonicScore = 0;
+    for (int h = 2; h <= 8; h++) {
+      double hf = pf * h;
+      for (var p2 in rawPeaks) {
+        if ((p2['freq'] as double - hf).abs() / hf < 0.05 &&
+            (p2['amp'] as double) > (peak['amp'] as double) * 0.05) {
+          harmonicScore += (p2['amp'] as double) / maxAmp;
+          break;
+        }
+      }
+    }
+    // Sub-harmonic check: current peak might be a harmonic of a lower fundamental
+    double subScore = 0;
+    for (int h = 2; h <= 4; h++) {
+      double sf = pf / h;
+      for (var p2 in rawPeaks) {
+        if ((p2['freq'] as double - sf).abs() / sf < 0.05 &&
+            (p2['amp'] as double) > (peak['amp'] as double) * 0.2) {
+          subScore += 1;
+          break;
+        }
+      }
+    }
+    double conf = min(1.0, (harmonicScore + subScore * 0.5) / 3);
+    candidates.add({'freq': pf, 'conf': conf, 'subScore': subScore});
+  }
+
+  candidates.sort((a, b) => (b['conf'] as double).compareTo(a['conf'] as double));
+  var result = <Map<String, dynamic>>[];
+  for (var c in candidates) {
+    double cf = c['freq'] as double;
+    bool dup = result.any((r) {
+      double ratio = cf > (r['freq'] as double) ? cf / (r['freq'] as double) : (r['freq'] as double) / cf;
+      return (ratio - ratio.round()).abs() < 0.05;
+    });
+    if (!dup && (c['conf'] as double) > 0.15) {
+      result.add({'freq': cf, 'corr': c['conf']});
+      if (result.length >= 3) break;
+    }
+  }
+  return result;
+}
+
+// ===== Fusion detector: YIN + PeakTrack ensemble =====
+// YIN primary (best single-note), PeakTrack supplementary (chords)
+List<Map<String, dynamic>> _fusionF0(List<double> samples, int sr) {
+  var yin = _yinF0(samples, sr);
+  var peak = _peakTrackF0(samples, sr);
+
+  // Reject YIN GCD false positives: if PeakTrack detects notes
+  // at multiples of YIN's frequency, YIN is likely detecting GCD of chord
+  if (yin.isNotEmpty && peak.isNotEmpty) {
+    double yinF = yin[0]['freq'] as double;
+    bool yinIsGcd = false;
+    for (var p in peak) {
+      double ratio = (p['freq'] as double) / yinF;
+      if (ratio > 3 && (ratio - ratio.round()).abs() < 0.05) {
+        yinIsGcd = true; break;
+      }
+    }
+    if (yinIsGcd) yin = [];
+  }
+
+  // Merge results by frequency proximity
+  var merged = <Map<String, dynamic>>[];
+  for (var n in yin) {
+    n['src'] = 'yin' as dynamic;
+    merged.add(n);
+  }
+  for (var n in peak) {
+    n['src'] = 'peak' as dynamic;
+    bool found = false;
+    for (var m in merged) {
+      double ratio = (n['freq'] as double) > (m['freq'] as double)
+          ? (n['freq'] as double) / (m['freq'] as double)
+          : (m['freq'] as double) / (n['freq'] as double);
+      if (ratio < 1.03) { found = true; break; }
+    }
+    if (!found) merged.add(n);
+  }
+
+  var result = <Map<String, dynamic>>[];
+  for (var m in merged) {
+    double corr = (m['corr'] ?? m['conf'] ?? 0.0) as double;
+    String src = m['src'] as String;
+    bool yinDetected = yin.any((y) => ((y['freq'] as double) / (m['freq'] as double)).clamp(0.97, 1.03) == (y['freq'] as double) / (m['freq'] as double));
+    for (var y in yin) {
+      double ratio = (m['freq'] as double) > (y['freq'] as double)
+          ? (m['freq'] as double) / (y['freq'] as double)
+          : (y['freq'] as double) / (m['freq'] as double);
+      if (ratio < 1.03) { yinDetected = true; break; }
+    }
+    bool peakDetected = false;
+    for (var p in peak) {
+      double ratio = (m['freq'] as double) > (p['freq'] as double)
+          ? (m['freq'] as double) / (p['freq'] as double)
+          : (p['freq'] as double) / (m['freq'] as double);
+      if (ratio < 1.03) { peakDetected = true; break; }
+    }
+    double finalCorr = corr;
+    if (yinDetected && peakDetected) finalCorr = min(1.0, corr + 0.2);
+    if (src == 'peak' && !yinDetected) finalCorr *= 0.8;
+    result.add({'freq': m['freq'], 'corr': finalCorr});
+  }
+
+  result.sort((a, b) => (b['corr'] as double).compareTo(a['corr'] as double));
+  return result.take(3).toList();
+}
+
 // ===== Harmonic extraction from FFT bin =====
 // ===== Response Frame: BB|01|CC|PL|EPCs|Chk|7E =====
 class ResponseFrame {
@@ -227,9 +430,9 @@ class EpcCodec {
       }
       for (var tid in toRemove) _activeTracks.remove(tid);
 
-      // 2. HPS analysis every 4 frames (only when buffer has 2048 samples)
+      // 2. Fusion analysis every 4 frames (YIN + PeakTrack ensemble)
       if (_analysisBuf.length >= 2048 && _frameCount % 4 == 0) {
-      var tones = _hpsMultiF0(_analysisBuf, sampleRate);
+      var tones = _fusionF0(_analysisBuf, sampleRate);
 
         // Extract harmonics for each valid F0
         for (var t in tones) {
