@@ -34,6 +34,7 @@ class NeuralAudioCodec extends EventEmitter {
     // E6 F0 tracking
     this._prevF0 = 0;
     this._f0Buffer = [];
+    this._decodeSampleOffset = 0; // frame-independent phase tracking
 
     logger.info('[NeuralCodec] Initialized with config:', { sampleRate: this.config.sampleRate, frameSize: this.config.frameSize, subBandCount: this.config.subBandCount });
   }
@@ -84,7 +85,11 @@ class NeuralAudioCodec extends EventEmitter {
     this.stats.totalInputBytes += pcmData.length;
     this.stats.totalOutputBytes += output.length;
     this.stats.encodeTime += encodeTime;
-    return { data: output, bitrate: this.calculateBitrate(output.length, pcmData.length), encodeTime, compressionRatio: pcmData.length / output.length, frameCount: frames.length };
+    // Return per-frame metadata for downstream reuse
+    const frameMeta = encodedFrames.map(f => ({
+      rms: f.rms / 255, voiced: f.voiced, f0: (f.f0 || 0) * 10
+    }));
+    return { data: output, bitrate: this.calculateBitrate(output.length, pcmData.length), encodeTime, compressionRatio: pcmData.length / output.length, frameCount: frames.length, frameMeta };
   }
 
   // ===== Decode Pipeline =====
@@ -93,18 +98,43 @@ class NeuralAudioCodec extends EventEmitter {
     if (!this.isReady) throw new Error('Codec not initialized');
     const startTime = Date.now();
     const { frames, originalLength } = this.parseFrames(encodedData);
-    const decodedFrames = frames.map(f => this.decodeFrame(f));
-    const output = Buffer.concat(decodedFrames);
+    const n = this.samplesPerFrame;
+    const stride = Math.floor(n / 2); // 50% overlap
+    const totalOutput = frames.length * stride + stride; // last frame's tail
+
+    // Precompute Hann window
+    const win = new Float64Array(n);
+    for (let i = 0; i < n; i++) win[i] = 0.5 * (1 - Math.cos(2 * Math.PI * i / (n - 1)));
+
+    const outFloat = new Float64Array(totalOutput);
+    for (let fi = 0; fi < frames.length; fi++) {
+      const raw = this.decodeFrame(frames[fi], fi * stride); // pass global sample offset
+      const offset = fi * stride;
+      for (let i = 0; i < n; i++) {
+        const idx = offset + i;
+        if (idx < totalOutput) outFloat[idx] += raw.readInt16LE(i * 2) * win[i];
+      }
+    }
+    // Reset decode phase offset for next decode call
+    this._decodeSampleOffset = 0;
+
+    // Normalize: Hann overlap-add at 50% has gain of ~0.5, so scale by 2
+    const outBuf = Buffer.alloc(totalOutput * 2);
+    for (let i = 0; i < totalOutput; i++) {
+      const v = Math.max(-32768, Math.min(32767, Math.round(outFloat[i] * 2)));
+      outBuf.writeInt16LE(v, i * 2);
+    }
+
     const decodeTime = Date.now() - startTime;
     this.stats.framesDecoded += frames.length;
     this.stats.decodeTime += decodeTime;
-    return { pcm: output, decodeTime, originalLength };
+    return { pcm: outBuf, decodeTime, originalLength };
   }
 
-  decodeFrame(quantized) {
+  decodeFrame(quantized, sampleOffset = 0) {
     const features = this.dequantizeFeatures(quantized);
     const n = this.samplesPerFrame;
-    const mainPcm = this.synthesizeFromFeatures(features);
+    const mainPcm = this.synthesizeFromFeatures(features, sampleOffset);
     const transients = this._synthesizeTransient(features.onset, n);
     const timbreEnergies = this._applyTimbre(features.subBandEnergies, features.timbreIdx, features.timbreResidual);
 
@@ -181,22 +211,61 @@ class NeuralAudioCodec extends EventEmitter {
     return { harmonic, percussive };
   }
 
-  // ===== E6: F0 Tracking =====
+  // ===== E6: F0 Tracking (YIN-based) =====
 
   _trackF0(samples) {
-    const minLag = Math.floor(this.config.sampleRate / 800);
-    const maxLag = Math.floor(this.config.sampleRate / 50);
-    const n = samples.length;
-    const mean = samples.reduce((a, b) => a + b, 0) / n;
-    const centered = samples.map(s => s - mean);
-    let bestCorr = 0, bestLag = 0;
-    for (let lag = minLag; lag <= maxLag; lag += 2) {
-      let corr = 0, norm = 0;
-      for (let i = 0; i < n - lag; i++) { corr += centered[i] * centered[i + lag]; norm += centered[i] ** 2 + centered[i + lag] ** 2; }
-      if (norm > 0) corr /= Math.sqrt(norm);
-      if (corr > bestCorr) { bestCorr = corr; bestLag = lag; }
+    const sr = this.config.sampleRate;
+    const len = samples.length;
+    let maxLag = Math.floor(sr / 40);
+    let minLag = Math.floor(sr / 2000);
+    if (maxLag > len >> 1) maxLag = len >> 1;
+    if (minLag < 2) minLag = 2;
+    if (maxLag <= minLag) { this._prevF0 = 0; return 0; }
+
+    // Difference function
+    const diff = new Float64Array(maxLag);
+    for (let tau = 0; tau < maxLag; tau++) {
+      let d = 0;
+      for (let i = 0; i < maxLag && i + tau < len; i++) {
+        const dv = samples[i] - samples[i + tau];
+        d += dv * dv;
+      }
+      diff[tau] = d;
     }
-    const f0 = bestCorr > 0.3 ? this.config.sampleRate / bestLag : 0.0;
+
+    // Cumulative mean normalized difference
+    const cmnd = new Float64Array(maxLag);
+    cmnd[0] = 1;
+    let runningSum = 0;
+    for (let tau = 1; tau < maxLag; tau++) {
+      runningSum += diff[tau];
+      cmnd[tau] = runningSum > 0 ? diff[tau] * tau / runningSum : 1;
+    }
+
+    // Find first minimum below threshold
+    const threshold = 0.15;
+    let bestLag = 0;
+    let bestVal = 1;
+    for (let tau = minLag; tau < maxLag - 1; tau++) {
+      if (cmnd[tau] < cmnd[tau - 1] && cmnd[tau] < cmnd[tau + 1]) {
+        if (cmnd[tau] < threshold) { bestLag = tau; bestVal = cmnd[tau]; break; }
+        if (cmnd[tau] < bestVal) { bestLag = tau; bestVal = cmnd[tau]; }
+      }
+    }
+
+    if (bestLag < minLag || bestVal > 0.3) { this._prevF0 = 0; return 0; }
+
+    // Parabolic interpolation
+    let refinedLag = bestLag;
+    if (bestLag > 0 && bestLag < maxLag - 1) {
+      const a = cmnd[bestLag - 1], b = cmnd[bestLag], c = cmnd[bestLag + 1];
+      const denom = a - 2 * b + c;
+      if (Math.abs(denom) > 1e-12) refinedLag = bestLag + (a - c) / (2 * denom);
+    }
+
+    const f0 = sr / refinedLag;
+    if (f0 < 30 || f0 > 2000) { this._prevF0 = 0; return 0; }
+
     this._f0Buffer.push(f0);
     if (this._f0Buffer.length > 5) this._f0Buffer.shift();
     const sorted = [...this._f0Buffer].sort((a, b) => a - b);
@@ -206,8 +275,8 @@ class NeuralAudioCodec extends EventEmitter {
 
   // ===== Extract & Quantize =====
 
-  extractFeatures(pcmData) {
-    const samples = this.bufferToSamples(pcmData);
+  extractFeatures(samples) {
+    // samples is number[] (float raw values, already converted from Buffer upstream)
     const n = samples.length;
     let sumSq = 0, peak = 0, sum = 0;
     for (const s of samples) { sumSq += s * s; peak = Math.max(peak, Math.abs(s)); sum += s; }
@@ -253,7 +322,7 @@ class NeuralAudioCodec extends EventEmitter {
 
   // ===== E2: Synthesize =====
 
-  synthesizeFromFeatures(features) {
+  synthesizeFromFeatures(features, sampleOffset = 0) {
     const n = this.samplesPerFrame;
     const output = Buffer.alloc(n * 2);
     const bandCount = this.config.subBandCount;
@@ -267,6 +336,7 @@ class NeuralAudioCodec extends EventEmitter {
     const pulsePeriod = f0 > 20 ? Math.round(this.config.sampleRate / f0) : 0;
 
     for (let i = 0; i < n; i++) {
+      const globalIdx = sampleOffset + i;
       let sample = features.dcOffset * 32768;
       for (let b = 0; b < bandCount; b++) {
         const energy = timbreEnergies[b] || 0;
@@ -275,9 +345,9 @@ class NeuralAudioCodec extends EventEmitter {
         const gain = energy * 32768 * 0.3;
         const freqRatio = freq / (this.config.sampleRate / 2);
         const sineWeight = 1.0 - freqRatio * 0.8;
-        const phase = (i / this.config.sampleRate) * freq * 2 * Math.PI;
+        const phase = (globalIdx / this.config.sampleRate) * freq * 2 * Math.PI;
         let excitation;
-        if (voiced > 0 && pulsePeriod > 0 && i % pulsePeriod < pulsePeriod * 0.3) excitation = Math.sin(phase);
+        if (voiced > 0 && pulsePeriod > 0 && globalIdx % pulsePeriod < pulsePeriod * 0.3) excitation = Math.sin(phase);
         else excitation = Math.random() * 2 - 1;
         sample += Math.sin(phase) * gain * sineWeight * 0.7 + excitation * gain * (1 - sineWeight) * 0.3;
       }
