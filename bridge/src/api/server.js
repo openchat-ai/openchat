@@ -40,6 +40,7 @@ import voiceRouter from './routes/voice.js';
 import signalingRouter from './routes/signaling.js';
 import residentsRouter from './routes/residents.js';
 import sageRouter from './routes/sage.js';
+import synthRouter from './routes/synth.js';
 import configRouter from './routes/config.js';
 import { residentManager } from '../core/agent/resident-manager.js';
 
@@ -215,6 +216,9 @@ async function R(){
 
     // Sage API (智者 — 天人点拨)
     this.app.use('/api/v1/sage', authMiddleware, sageRouter);
+
+    // Synth API (波形合成预览)
+    this.app.use('/api/v1/synth', authMiddleware, synthRouter);
 
     // Config API (SDUI config upload)
     this.app.use('/api/v1/config', authMiddleware, configRouter);

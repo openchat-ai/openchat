@@ -1,5 +1,8 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:http/http.dart' as http;
 import '../../core/theme/app_theme.dart';
 import '../../core/models/resident_model.dart';
 import '../../core/models/agent_model.dart';
@@ -7,6 +10,7 @@ import '../../core/models/sage_model.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/resident_provider.dart';
 import '../../providers/sage_provider.dart';
+import '../../providers/config_provider.dart';
 import '../../core/sdui_config.dart';
 import '../components/resident/resident_profile.dart';
 import '../components/resident/resident_family.dart';
