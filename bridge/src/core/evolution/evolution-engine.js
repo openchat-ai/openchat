@@ -8,9 +8,12 @@ import SkillManager from './skill-manager.js';
 import logger from '../monitoring/logger.js';
 
 export class EvolutionEngine {
-  constructor() {
-    this.experiences = [];
-    this.skillManager = new SkillManager(); // 使用持久化的 SkillManager
+  /**
+   * @param {string|null} storageDir  - Optional custom storage dir for skill files.
+   *                                     Defaults to ~/.openchat.
+   */
+  constructor(storageDir = null) {
+    this.skillManager = new SkillManager(storageDir); // 使用持久化的 SkillManager
     this.memory = new EvolutionMemory(); // 添加记忆系统
     this.loadExperiences();  // 加载已有经验
     this.loadSkills();       // 加载已有 Skills
