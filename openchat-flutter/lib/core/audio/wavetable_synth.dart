@@ -26,7 +26,15 @@ class VocoderSynth {
       hGains.add(bandEnergy * rolloff * amp);
     }
 
+    // Per-frame envelope: 2ms attack + 2ms release, prevents clicks at frame boundaries
+    int attackSamples = (sr ~/ 500).clamp(1, n);     // 2ms
+    int releaseSamples = (sr ~/ 500).clamp(1, n);    // 2ms
+
     for (int i = 0; i < n; i++) {
+      double env = 1.0;
+      if (i < attackSamples) env = i / attackSamples;
+      if (i >= n - releaseSamples) env = (n - 1 - i) / releaseSamples;
+
       double s = 0;
       double t = (offset + i) / sr;
       for (int h = 0; h < hGains.length; h++) {
@@ -37,6 +45,8 @@ class VocoderSynth {
         }
         s += sin(2 * pi * hz * t) * hGains[h] * 32768;
       }
+      s *= env;
+
       int clipped = s.round().clamp(-32768, 32767);
       int byteIdx = (offset + i) * 2;
       if (byteIdx + 1 >= pcm.length) break;
