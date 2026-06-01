@@ -1,15 +1,6 @@
+import os from 'os';
+import { EventEmitter } from 'events';
 import logger from '../monitoring/logger.js';
-/**
- * 设备算力管理器
- *
- * 功能:
- * - 检测设备算力 (CPU/GPU/NPU)
- * - 存储设备能力信息
- * - 根据双方算力选择最佳传输方案
- */
-
-const os = require('os');
-const EventEmitter = require('events');
 
 class DeviceCapabilityManager extends EventEmitter {
   constructor(options = {}) {
@@ -246,56 +237,20 @@ class DeviceCapabilityManager extends EventEmitter {
     const local = this.localDevice;
 
     if (!remote || !local) {
-      return { error: 'Device not found', scheme: 'opus_low' };
+      return { scheme: 'lmdn', reason: 'Device info incomplete, using LMDN default' };
     }
-
-    const remoteLevel = this.getCapabilityLevel(remote);
-    const localLevel = this.getCapabilityLevel(local);
 
     logger.info('[DeviceCapability] Capability levels:', {
-      remote: remoteLevel,
-      local: localLevel
+      remote: this.getCapabilityLevel(remote),
+      local: this.getCapabilityLevel(local)
     });
 
-    // 根据双方算力选择方案
-    let scheme;
-    let reason;
-
-    // 方案选择逻辑
-    if (localLevel === 'ultra' && remoteLevel === 'ultra') {
-      // 都很强: 用 Neural Codec
-      scheme = 'neural';
-      reason = 'Both devices have strong NPU';
-    } else if (localLevel === 'ultra') {
-      // 本地强: 云端编码
-      scheme = 'neural_cloud_encode';
-      reason = 'Local (Bridge) is strong, encoding on server';
-    } else if (remoteLevel === 'ultra') {
-      // 远程强: 本地编码
-      scheme = 'neural';
-      reason = 'Remote device is strong, encoding locally';
-    } else if (localLevel === 'strong' || remoteLevel === 'strong') {
-      // 至少一方较强: Neural Codec 低码率
-      scheme = 'neural';
-      reason = 'At least one device is strong';
-    } else {
-      // 都较弱: 用 Opus
-      scheme = 'opus_low';
-      reason = 'Both devices are weak, using standard compression';
-    }
-
-    // 电量考虑
-    if (remote.powerStatus === 'low') {
-      scheme = 'opus_low';
-      reason += ', downgraded due to low battery';
-    }
-
     return {
-      scheme,
-      reason,
-      localCapability: localLevel,
-      remoteCapability: remoteLevel,
-      recommendedBitrate: this.getRecommendedBitrate(scheme, remoteLevel)
+      scheme: 'lmdn',
+      reason: 'LMDN (MDCT) codec, ~35kbps at 24kHz',
+      localCapability: this.getCapabilityLevel(local),
+      remoteCapability: this.getCapabilityLevel(remote),
+      recommendedBitrate: 35
     };
   }
 
@@ -303,28 +258,7 @@ class DeviceCapabilityManager extends EventEmitter {
    * 获取推荐码率
    */
   getRecommendedBitrate(scheme, level) {
-    const bitrates = {
-      neural: {
-        weak: 8,
-        normal: 16,
-        strong: 32,
-        ultra: 50
-      },
-      opus_high: {
-        weak: 32,
-        normal: 64,
-        strong: 128,
-        ultra: 256
-      },
-      opus_low: {
-        weak: 16,
-        normal: 24,
-        strong: 32,
-        ultra: 48
-      }
-    };
-
-    return bitrates[scheme]?.[level] || 32;
+    return 35;
   }
 
   /**
@@ -367,4 +301,4 @@ class DeviceCapabilityManager extends EventEmitter {
   }
 }
 
-module.exports = { DeviceCapabilityManager };
+export { DeviceCapabilityManager };

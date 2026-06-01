@@ -56,6 +56,7 @@ npm start                    # 启动 Bridge
 npm run dev                  # 开发模式(文件监听)
 npm run lint                 # ESLint 检查（`src/`）
 npm test                     # 运行测试
+npm run push                 # 多策略推送(GitHub→HTTP/1.1→Gitee→SSH)
 npm run pm2:start            # PM2 生产启动
 npm run pm2:stop             # PM2 停止
 npm run pm2:status           # PM2 状态
@@ -93,6 +94,7 @@ npm publish
 - 提交前自动运行 husky pre-commit hook
 - Commit message 格式: `type: description` (feat/fix/chore/refactor/docs)
 - 禁止提交 `.env` 文件（已在 .gitignore 中）
+- **推送策略**（国内网络）：`npm run push` 自动尝试 HTTPS → HTTP/1.1 → Gitee → SSH。Gitee 远程需手动创建 `gitee.com/openchat-ai/openchat` 仓库。代理推送: `git -c http.proxy=http://127.0.0.1:7890 push origin main`
 ---
 
 ## 专家点评系统

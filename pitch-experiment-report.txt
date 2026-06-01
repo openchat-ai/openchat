@@ -1,0 +1,473 @@
+======================================================================
+PITCH DETECTION EXPERIMENT SUITE
+Date: 2026-05-30
+======================================================================
+Sample rate: 48000Hz
+FFT size: 2048
+Note duration: 0.5s
+Test notes (Hz): 65.4, 130.8, 261.6, 523.3, 1046.5
+
+======================================================================
+ROUND 1: ALGORITHM BENCHMARK
+Test set: 7 classes × 5 notes = 35 tests per algorithm
+Total tests: 140
+
+HPS: 11/35 (31.4%) | avgErr=0.255st | avgConf=0.935
+YIN: 30/35 (85.7%) | avgErr=0.024st | avgConf=0.965
+PeakTrack: 21/35 (60.0%) | avgErr=0.081st | avgConf=0.517
+Fusion: 26/35 (74.3%) | avgErr=0.092st | avgConf=0.898
+
+--- Per-class detail ---
+
+[HPS]
+  A Strong harmonic (piano): 2/5 | avgErr=Infinityst | conf=0.80
+  B Weak harmonic (flute): 2/5 | avgErr=Infinityst | conf=0.60
+  C Sustained friction (violin): 2/5 | avgErr=3.214st | conf=0.98
+  D Inharmonic (bell): 1/5 | avgErr=Infinityst | conf=0.57
+  F Bright harmonic (trumpet): 2/5 | avgErr=Infinityst | conf=0.73
+  G Soft harmonic (vocal): 2/5 | avgErr=Infinityst | conf=0.80
+
+[YIN]
+  A Strong harmonic (piano): 5/5 | avgErr=0.022st | conf=0.95
+  B Weak harmonic (flute): 5/5 | avgErr=0.068st | conf=0.96
+  C Sustained friction (violin): 5/5 | avgErr=0.000st | conf=1.00
+  D Inharmonic (bell): 0/5 | avgErr=10.651st | conf=0.82
+  F Bright harmonic (trumpet): 5/5 | avgErr=0.011st | conf=0.96
+  G Soft harmonic (vocal): 5/5 | avgErr=0.020st | conf=0.95
+
+[PeakTrack]
+  A Strong harmonic (piano): 5/5 | avgErr=0.080st | conf=0.44
+  B Weak harmonic (flute): 0/5 | avgErr=Infinityst | conf=0.14
+  C Sustained friction (violin): 5/5 | avgErr=0.090st | conf=0.72
+  D Inharmonic (bell): 1/5 | avgErr=Infinityst | conf=0.03
+  F Bright harmonic (trumpet): 5/5 | avgErr=0.085st | conf=0.47
+  G Soft harmonic (vocal): 5/5 | avgErr=0.077st | conf=0.51
+
+[Fusion]
+  A Strong harmonic (piano): 5/5 | avgErr=0.084st | conf=0.88
+  B Weak harmonic (flute): 5/5 | avgErr=0.105st | conf=0.97
+  C Sustained friction (violin): 5/5 | avgErr=0.078st | conf=0.97
+  D Inharmonic (bell): 1/5 | avgErr=4.094st | conf=0.75
+  F Bright harmonic (trumpet): 5/5 | avgErr=0.081st | conf=0.90
+  G Soft harmonic (vocal): 5/5 | avgErr=0.081st | conf=0.90
+
+--- Ablation: Failure analysis ---
+  HPS: fails on A(Strong harmonic (piano)):3, B(Weak harmonic (flute)):3, C(Sustained friction (violin)):3, D(Inharmonic (bell)):4, F(Bright harmonic (trumpet)):3, G(Soft harmonic (vocal)):3
+  YIN: fails on D(Inharmonic (bell)):5
+  PeakTrack: fails on B(Weak harmonic (flute)):5, D(Inharmonic (bell)):4
+  Fusion: fails on D(Inharmonic (bell)):4
+
+--- Noise rejection (Class E: Cymbal) ---
+  HPS: 5/5 false positives
+  YIN: 0/5 false positives
+  PeakTrack: 5/5 false positives
+  Fusion: 5/5 false positives
+
+--- Hypothesis Verdict ---
+H0: "HPS best on strong harmonic, YIN best on weak harmonic, PeakTrack only works on non-harmonic"
+  Strong harmonic (A): HPS=2/5 YIN=5/5
+  Weak harmonic (B): HPS=2/5 YIN=5/5
+  Inharmonic (D): PeakTrack=1/5 HPS=1/5
+  Fusion overall: 26/30 (86.7%)
+======================================================================
+
+
+======================================================================
+ROUND 2: CHORD DETECTION
+
+
+[HPS]
+  ✗ [261.63,523.25Hz]: 1/2 detected → 257.8Hz
+  ✗ [261.63,293.66Hz]: 1/2 detected → 257.8Hz
+  ✗ [261.63,277.18Hz]: 1/2 detected → 257.8Hz
+  ✗ [220,440Hz]: 1/2 detected → 445.3,210.9Hz
+  ✗ [220,329.63Hz]: 1/2 detected → 328.1Hz
+  ✗ [293.66,440Hz]: 1/2 detected → 445.3Hz
+  ✗ [349.23,523.25Hz]: 1/2 detected → 351.6Hz
+  ✗ [130.81,261.63Hz]: 1/2 detected → 257.8Hz
+  ✗ [130.81,196Hz]: 0/2 detected → 93.8,140.6Hz
+  ✗ [196,261.63Hz]: 1/2 detected → 257.8Hz
+  Dyads: 29/40 (72.5%)
+  ✗ [261.63,392,523.25Hz]: 1/3 detected → 257.8Hz
+  ✗ [130.81,261.63,392Hz]: 1/3 detected → 257.8,140.6Hz
+  ✗ [261.63,440,523.25Hz]: 1/3 detected → 257.8Hz
+  ✗ [196,261.63,329.63Hz]: 2/3 detected → 328.1,257.8Hz
+  ✗ [220,329.63,440Hz]: 2/3 detected → 328.1,445.3,210.9Hz
+  ✗ [293.66,369.99,440Hz]: 2/3 detected → 445.3,375,281.3Hz
+  Triads: 21/30 (70.0%)
+
+[YIN]
+  ✗ [261.63,329.63Hz]: 0/2 detected → 65.7Hz
+  ✗ [261.63,349.23Hz]: 0/2 detected → 87.3Hz
+  ✗ [261.63,392Hz]: 0/2 detected → 130.8Hz
+  ✗ [261.63,440Hz]: 0/2 detected → 87.8Hz
+  ✗ [261.63,523.25Hz]: 1/2 detected → 261.7Hz
+  ✗ [261.63,293.66Hz]: 0/2 detected → 281.3Hz
+  ✗ [261.63,277.18Hz]: 1/2 detected → 269.9Hz
+  ✗ [329.63,392Hz]: 0/2 detected → 65.6Hz
+  ✗ [329.63,440Hz]: 0/2 detected → 110Hz
+  ✗ [392,523.25Hz]: 0/2 detected → 130.8Hz
+  ✗ [440,523.25Hz]: 0/2 detected → 87.5Hz
+  ✗ [220,440Hz]: 1/2 detected → 220.1Hz
+  ✗ [220,329.63Hz]: 0/2 detected → 110Hz
+  ✗ [293.66,440Hz]: 0/2 detected → 146.8Hz
+  ✗ [349.23,523.25Hz]: 0/2 detected → 174.5Hz
+  ✗ [392,659.25Hz]: 0/2 detected → 131.6Hz
+  ✗ [261.63,659.25Hz]: 0/2 detected → 131.7Hz
+  ✗ [130.81,261.63Hz]: 1/2 detected → 130.9Hz
+  ✗ [130.81,196Hz]: 0/2 detected → 65.4Hz
+  ✗ [196,261.63Hz]: 0/2 detected → 65.4Hz
+  Dyads: 4/40 (10.0%)
+  ✗ [261.63,329.63,392Hz]: 0/3 detected → 65.5Hz
+  ✗ [261.63,329.63,440Hz]: 0/3 detected → 87.7Hz
+  ✗ [261.63,349.23,440Hz]: 0/3 detected → 87.6Hz
+  ✗ [261.63,392,523.25Hz]: 0/3 detected → 130.8Hz
+  ✗ [329.63,392,523.25Hz]: 0/3 detected → 65.5Hz
+  ✗ [130.81,261.63,392Hz]: 1/3 detected → 130.8Hz
+  ✗ [261.63,440,523.25Hz]: 0/3 detected → 87.4Hz
+  ✗ [196,261.63,329.63Hz]: 0/3 detected → 65.7Hz
+  ✗ [220,329.63,440Hz]: 0/3 detected → 110Hz
+  ✗ [293.66,369.99,440Hz]: 0/3 detected → 73.5Hz
+  Triads: 1/30 (3.3%)
+
+[PeakTrack]
+  ✗ [261.63,523.25Hz]: 1/2 detected → 260.9Hz
+  ✗ [261.63,293.66Hz]: 1/2 detected → 266.2,1047.3,784.8Hz
+  ✗ [261.63,277.18Hz]: 1/2 detected → 269.4,523.4,1106.7Hz
+  ✗ [220,440Hz]: 1/2 detected → 218.9Hz
+  ✗ [130.81,261.63Hz]: 1/2 detected → 131.4Hz
+  ✗ [130.81,196Hz]: 1/2 detected → 194.8Hz
+  ✗ [196,261.63Hz]: 0/2 detected → 784.2,1047Hz
+  Dyads: 32/40 (80.0%)
+  ✗ [261.63,392,523.25Hz]: 2/3 detected → 260.7,393.1Hz
+  ✗ [130.81,261.63,392Hz]: 1/3 detected → 131.5,1568.5,1175.1Hz
+  ✗ [261.63,440,523.25Hz]: 1/3 detected → 260.9,1759.5,1317.6Hz
+  ✗ [196,261.63,329.63Hz]: 2/3 detected → 195.7,1647,261.2Hz
+  ✗ [220,329.63,440Hz]: 2/3 detected → 218.7,329.1Hz
+  ✗ [293.66,369.99,440Hz]: 2/3 detected → 294.5,440.4,1850.6Hz
+  Triads: 22/30 (73.3%)
+
+[Fusion]
+  ✗ [261.63,523.25Hz]: 1/2 detected → 260.1Hz
+  ✗ [261.63,293.66Hz]: 1/2 detected → 257.8,281.3,266.2Hz
+  ✗ [130.81,196Hz]: 1/2 detected → 93.8,65.4,194.8Hz
+  ✗ [196,261.63Hz]: 1/2 detected → 257.8,65.4,784.2Hz
+  Dyads: 36/40 (90.0%)
+  ✗ [261.63,329.63,392Hz]: 2/3 detected → 259.4,65.5,328.8Hz
+  ✗ [261.63,329.63,440Hz]: 2/3 detected → 328.7,259.5,87.7Hz
+  ✗ [261.63,349.23,440Hz]: 2/3 detected → 259.3,87.6,350.7Hz
+  ✗ [261.63,392,523.25Hz]: 2/3 detected → 259.3,130.8,393.1Hz
+  ✗ [329.63,392,523.25Hz]: 2/3 detected → 65.5,328.7,395.5Hz
+  ✗ [130.81,261.63,392Hz]: 2/3 detected → 257.8,131.2,1568.5Hz
+  ✗ [261.63,440,523.25Hz]: 1/3 detected → 259.4,87.4,1759.5Hz
+  ✗ [196,261.63,329.63Hz]: 2/3 detected → 328.1,65.7,259.5Hz
+  ✗ [220,329.63,440Hz]: 2/3 detected → 218.7,110,328.6Hz
+  ✗ [293.66,369.99,440Hz]: 2/3 detected → 73.5,442.9,375Hz
+  Triads: 19/30 (63.3%)
+
+--- Hypothesis ---
+H0: "Fusion detects dyads >90%, triads <60%. HPS worst on close intervals"
+======================================================================
+
+
+======================================================================
+ROUND 3: NOISE TOLERANCE
+
+Test: A4(440Hz) + C4(261.6Hz) + C6(1046.5Hz) at each SNR
+
+[HPS]
+  clean: 2/3 (67%) avgErr=0.23st
+  +30dB: 2/3 (67%) avgErr=0.23st
+  +20dB: 2/3 (67%) avgErr=0.23st
+  +10dB: 2/3 (67%) avgErr=0.23st
+  +5dB: 2/3 (67%) avgErr=0.23st
+  +0dB: 2/3 (67%) avgErr=0.23st
+[YIN]
+  clean: 3/3 (100%) avgErr=0.01st
+  +30dB: 3/3 (100%) avgErr=0.01st
+  +20dB: 3/3 (100%) avgErr=0.01st
+  +10dB: 3/3 (100%) avgErr=0.01st
+  +5dB: 3/3 (100%) avgErr=0.01st
+  +0dB: 3/3 (100%) avgErr=0.03st
+[PeakTrack]
+  clean: 3/3 (100%) avgErr=0.04st
+  +30dB: 3/3 (100%) avgErr=0.04st
+  +20dB: 3/3 (100%) avgErr=0.04st
+  +10dB: 3/3 (100%) avgErr=0.04st
+  +5dB: 3/3 (100%) avgErr=0.03st
+  +0dB: 3/3 (100%) avgErr=0.04st
+[Fusion]
+  clean: 3/3 (100%) avgErr=0.07st
+  +30dB: 3/3 (100%) avgErr=0.07st
+  +20dB: 3/3 (100%) avgErr=0.07st
+  +10dB: 3/3 (100%) avgErr=0.06st
+  +5dB: 3/3 (100%) avgErr=0.07st
+  +0dB: 3/3 (100%) avgErr=0.07st
+
+--- Hypothesis ---
+H0: "Fusion accuracy unaffected at +20dB, degrades at +10dB"
+======================================================================
+
+
+======================================================================
+ROUND 4: PER-FRAME LATENCY BENCHMARK
+Frame budget: 42.7ms (2048samples @ 48kHz)
+
+  HPS          avg=0.505ms  min=0.484ms  max=0.643ms  budget=1.2%
+  YIN          avg=7.245ms  min=6.782ms  max=10.078ms  budget=17.0%
+  PeakTrack    avg=0.509ms  min=0.480ms  max=0.687ms  budget=1.2%
+  Fusion       avg=8.162ms  min=7.787ms  max=9.263ms  budget=19.1%
+
+--- Real-time feasibility ---
+  Frame duration: 42.7ms
+  HPS every 4 frames (current): ~170.7ms interval
+  Fusion per frame = sum of all 3 + voter
+  Recommendation: YIN alone (best accuracy) or HPS+PeakTrack (faster, dual-path)
+
+--- Hypothesis ---
+H0: "All algorithms complete within 42.7ms frame budget. Fusion runs too slow for per-frame"
+======================================================================
+
+
+======================================================================
+ROUND 5: MDCT-BASED HYBRID FUSION vs GROUND TRUTH
+Can we extract pitch using only MDCT data + PCM buffer (no FFT)?
+
+Approach: FFT-Fusion vs Hybrid-Fusion (MDCT-mag PeakTrack + time YIN)
+Comparison: both against GROUND TRUTH frequency
+
+  Strong harmonic (piano)   65.4Hz corr=0.840 FFT-F=✗ Hyb-F=✓  (FFT=46.9 Hyb=65.6)
+  Strong harmonic (piano)  130.8Hz corr=0.961 FFT-F=✗ Hyb-F=✓  (FFT=140.6 Hyb=131.1)
+  Strong harmonic (piano)  261.6Hz corr=0.940 FFT-F=✓ Hyb-F=✓  (FFT=260.1 Hyb=261.8)
+  Strong harmonic (piano)  523.3Hz corr=0.977 FFT-F=✓ Hyb-F=✓  (FFT=520.4 Hyb=523.4)
+  Strong harmonic (piano) 1046.5Hz corr=0.898 FFT-F=✓ Hyb-F=✓  (FFT=1047.2 Hyb=1046.7)
+  Strong harmonic (piano)   4186Hz corr=0.992 FFT-F=✗ Hyb-F=✗  (FFT=1397.3 Hyb=-)
+  Weak harmonic (flute)   65.4Hz corr=0.779 FFT-F=✓ Hyb-F=✗  (FFT=66.1 Hyb=-)
+  Weak harmonic (flute)  130.8Hz corr=0.996 FFT-F=✗ Hyb-F=✓  (FFT=46.9 Hyb=131.6)
+  Weak harmonic (flute)  261.6Hz corr=0.899 FFT-F=✓ Hyb-F=✓  (FFT=260.0 Hyb=262.1)
+  Weak harmonic (flute)  523.3Hz corr=0.997 FFT-F=✓ Hyb-F=✓  (FFT=519.6 Hyb=523.6)
+  Weak harmonic (flute) 1046.5Hz corr=0.920 FFT-F=✓ Hyb-F=✓  (FFT=1046.9 Hyb=1046.9)
+  Weak harmonic (flute)   4186Hz corr=0.990 FFT-F=✗ Hyb-F=✗  (FFT=1395.9 Hyb=-)
+  Sustained friction (violin)   65.4Hz corr=0.862 FFT-F=✗ Hyb-F=✓  (FFT=70.3 Hyb=65.4)
+  Sustained friction (violin)  130.8Hz corr=0.934 FFT-F=✗ Hyb-F=✓  (FFT=257.8 Hyb=130.8)
+  Sustained friction (violin)  261.6Hz corr=0.937 FFT-F=✓ Hyb-F=✓  (FFT=260.0 Hyb=261.6)
+  Sustained friction (violin)  523.3Hz corr=0.972 FFT-F=✓ Hyb-F=✓  (FFT=520.3 Hyb=523.3)
+  Sustained friction (violin) 1046.5Hz corr=0.937 FFT-F=✗ Hyb-F=✓  (FFT=515.6 Hyb=1046.5)
+  Sustained friction (violin)   4186Hz corr=0.993 FFT-F=✗ Hyb-F=✗  (FFT=281.3 Hyb=-)
+  Inharmonic (bell)   65.4Hz corr=0.783 FFT-F=✗ Hyb-F=✗  (FFT=46.9 Hyb=-)
+  Inharmonic (bell)  130.8Hz corr=0.968 FFT-F=✗ Hyb-F=✗  (FFT=164.1 Hyb=-)
+  Inharmonic (bell)  261.6Hz corr=0.848 FFT-F=✗ Hyb-F=✗  (FFT=328.1 Hyb=125.8)
+  Inharmonic (bell)  523.3Hz corr=0.986 FFT-F=✗ Hyb-F=✗  (FFT=492.2 Hyb=-)
+  Inharmonic (bell) 1046.5Hz corr=0.938 FFT-F=✗ Hyb-F=✗  (FFT=503.3 Hyb=-)
+  Inharmonic (bell)   4186Hz corr=0.989 FFT-F=✗ Hyb-F=✗  (FFT=- Hyb=-)
+  Bright harmonic (trumpet)   65.4Hz corr=0.898 FFT-F=✗ Hyb-F=✓  (FFT=46.9 Hyb=65.5)
+  Bright harmonic (trumpet)  130.8Hz corr=0.939 FFT-F=✗ Hyb-F=✓  (FFT=93.8 Hyb=130.9)
+  Bright harmonic (trumpet)  261.6Hz corr=0.941 FFT-F=✓ Hyb-F=✓  (FFT=260.1 Hyb=261.7)
+  Bright harmonic (trumpet)  523.3Hz corr=0.996 FFT-F=✓ Hyb-F=✓  (FFT=520.4 Hyb=523.4)
+  Bright harmonic (trumpet) 1046.5Hz corr=0.954 FFT-F=✓ Hyb-F=✓  (FFT=1047.2 Hyb=1046.7)
+  Bright harmonic (trumpet)   4186Hz corr=0.991 FFT-F=✗ Hyb-F=✗  (FFT=1399.2 Hyb=-)
+  Soft harmonic (vocal)   65.4Hz corr=0.863 FFT-F=✗ Hyb-F=✗  (FFT=46.9 Hyb=-)
+  Soft harmonic (vocal)  130.8Hz corr=0.945 FFT-F=✗ Hyb-F=✓  (FFT=140.6 Hyb=131.0)
+  Soft harmonic (vocal)  261.6Hz corr=0.952 FFT-F=✓ Hyb-F=✓  (FFT=260.1 Hyb=261.8)
+  Soft harmonic (vocal)  523.3Hz corr=0.967 FFT-F=✓ Hyb-F=✓  (FFT=520.4 Hyb=523.4)
+  Soft harmonic (vocal) 1046.5Hz corr=0.883 FFT-F=✓ Hyb-F=✓  (FFT=1047.2 Hyb=1046.7)
+  Soft harmonic (vocal)   4186Hz corr=0.992 FFT-F=✗ Hyb-F=✗  (FFT=1397.0 Hyb=-)
+
+  Avg spectral correlation: 93.5%
+  FFT-Fusion vs GT: 15/36 = 41.7%
+  Hybrid-Fusion vs GT: 23/36 = 63.9%
+
+--- Hypothesis ---
+H0: "Hybrid Fusion (MDCT PeakTrack + PCM YIN) detects pitch >= 90% of notes"
+H1: "Hybrid-Fusion accuracy within 5% of FFT-Fusion against ground truth"
+======================================================================
+
+
+======================================================================
+ROUND 6: RECONSTRUCTION QUALITY LADDER
+Question: what reconstruction quality is needed for >80% detection accuracy?
+
+Step 1: Detect F0s on original audio
+  Original detection: 248/262 frames (94.7%)
+
+Step 2: Reconstruction quality ladder
+
+Variant           Det→Recon   GT→Recon    Retention 
+--------------------------------------------------
+Q1: 3 harm rand   1.1%     0.8%     1%
+Q2: 5 harm rand   1.1%     1.5%     1%
+Q3: 10 harm rand  0.8%     1.5%     1%
+Q4: 20 harm rand  0.8%     1.5%     1%
+Q5: 5 harm cont   72.9%     92.0%     77%
+Q6: 10 harm cont  71.4%     94.7%     75%
+Q7: 20 harm cont  71.4%     86.6%     75%
+Q8: 5+noise       72.9%     92.0%     77%
+Q9: 5+OLA         72.9%     92.0%     77%
+Q10: 10+OLA       71.4%     94.7%     75%
+Q11: 20+OLA       71.4%     86.6%     75%
+
+Best detection on reconstruction: Q5: 5 harm cont (72.9%)
+
+Step 3: Failure cluster analysis (Q5: 5 harm cont)
+  Single-note failures: 29/245
+  Chord failures: 46/92
+
+--- Conclusions ---
+  Original detection: 94.7%
+  Best reconstruction detection: 72.9%
+  Retention: 77.0%
+  Key insight: Reconstruction quality dominates
+======================================================================
+
+
+======================================================================
+ROUND 7: REALISTIC vs SYNTHETIC INSTRUMENTS
+Do realistic effects (vibrato, body resonance, ADSR, breath noise) degrade detection?
+
+Algo       Instrument             Synth   Realistic  Diff  
+------------------------------------------------------------
+YIN        Realistic piano        100%    100%     =0
+YIN        Realistic flute        100%    100%     =0
+YIN        Realistic violin       100%    100%     =0
+YIN        Realistic bell         0%    0%     =0
+YIN        Realistic trumpet      100%    80%     ↓+1
+
+PeakTrack  Realistic piano        100%    60%     ↓+2
+PeakTrack  Realistic flute        0%    0%     =0
+PeakTrack  Realistic violin       100%    100%     =0
+PeakTrack  Realistic bell         20%    0%     ↓+1
+PeakTrack  Realistic trumpet      100%    60%     ↓+2
+
+Fusion     Realistic piano        100%    100%     =0
+Fusion     Realistic flute        100%    100%     =0
+Fusion     Realistic violin       100%    100%     =0
+Fusion     Realistic bell         20%    0%     ↓+1
+Fusion     Realistic trumpet      100%    100%     =0
+
+
+--- Hypothesis ---
+H0: "Realistic signals degrade detection by <10% vs synthetic"
+======================================================================
+
+
+======================================================================
+ROUND 8: ONSET DETECTION LATENCY
+How fast does Fusion detect a new note onset?
+
+  Onsets created: 10
+  Onsets detected: 10
+  Missed: 0
+  Avg latency: 6.3ms
+  Min latency: 4.0ms
+  Max latency: 8.0ms
+  Raw latencies: 6.7, 8.0, 4.0, 5.3, 6.7, 8.0, 4.0, 5.3, 6.7, 8.0ms
+
+--- Hypothesis ---
+H0: "Fusion detects onsets within 3 frames (~32ms) with <10% miss rate"
+======================================================================
+
+
+======================================================================
+ROUND 9: CONTINUOUS FRAME CONSISTENCY
+How stable is detection during sustained notes? How fast does it transition?
+
+  Notes in scale: 12
+  Total frames: 559 (full frames only)
+  Detections: 559
+  Avg jitter per note: 127.68 millisemitones
+  Max jitter: 638.63 millisemitones
+  Transitions detected: 11
+  Avg frame gap between detections: 1.0 frames
+  Max frame gap: 1 frames
+
+--- Hypothesis ---
+H0: "Frame jitter < 10 millisemitones during sustained notes, transitions complete within 3 frames"
+======================================================================
+
+
+======================================================================
+ROUND 10: PARAMETER SENSITIVITY ANALYSIS
+Which parameter has the biggest impact on detection accuracy?
+
+--- YIN Threshold Sensitivity (FFT=2048, hop=512) ---
+  threshold=0.05  accuracy=85.7%
+  threshold=0.10  accuracy=85.7%
+  threshold=0.15  accuracy=85.7%
+  threshold=0.20  accuracy=85.7%
+  threshold=0.30  accuracy=85.7%
+  threshold=0.40  accuracy=85.7%
+  threshold=0.50  accuracy=85.7%
+
+--- FFT Size Sensitivity (YIN thresh=0.15) ---
+  FFT=1024  peak-detection accuracy=85.7%
+  FFT=2048  peak-detection accuracy=85.7%
+  FFT=4096  peak-detection accuracy=85.7%
+
+--- Conclusions ---
+  YIN threshold: 0.15 is optimal (lower = more false positives, higher = more misses)
+  FFT size: 2048 is sufficient (4096 adds no benefit at 48kHz for 40-2000Hz range)
+
+--- Hypothesis ---
+H0: "YIN threshold 0.15 is optimal across all instrument classes"
+======================================================================
+
+
+======================================================================
+ROUND 11: END-TO-END MDCT CODEC PIPELINE
+Does MDCT→IMDCT→TDAC reconstruction preserve pitch detection?
+
+Signals: 6 short-duration (0.1s) test tones
+
+  A4 5-harm       440Hz pre=440.0/0.70 post=439.4/0.70 ✓→✓
+  C4 3-harm     261.6Hz pre=261.6/0.63 post=265.6/0.50 ✓→✓
+  A4 sine         440Hz pre=N/A post=N/A ✗→✗
+  C5 5-harm     523.3Hz pre=523.3/0.71 post=524.3/0.74 ✓→✓
+  A3 7-harm       220Hz pre=220.0/0.78 post=219.7/0.72 ✓→✓
+  A5 3-harm       880Hz pre=880.0/0.66 post=881.4/0.65 ✓→✓
+
+  Pre-codec OK: 5/6 = 83.3%
+  Post-codec OK: 5/6 = 83.3%
+  Degradation after codec: 0.0%
+
+--- Hypothesis ---
+H0: "MDCT→IMDCT→TDAC preserves pitch detection (≤5% degradation)"
+H1: "Hybrid Fusion on reconstructed audio matches original"
+======================================================================
+
+
+======================================================================
+ROUND 12: QUANTIZATION EFFECT ON PITCH DETECTION
+Simulating codec quantization at various bit depths
+
+  Tone          3bit    4bit    5bit    6bit    8bit
+  131   Hz orig=✓  ✓       ✓       ✓       ✓       ✓       
+  262   Hz orig=✓  ✓       ✓       ✓       ✓       ✓       
+  440   Hz orig=✓  ✓       ✓       ✓       ✓       ✓       
+  880   Hz orig=✓  ✓       ✓       ✓       ✓       ✓       
+  1760  Hz orig=✓  ✓       ✓       ✓       ✓       ✓       
+
+  Summary across 5 tones:
+    3-bit: 5/5 = 100%
+    4-bit: 5/5 = 100%
+    5-bit: 5/5 = 100%
+    6-bit: 5/5 = 100%
+    8-bit: 5/5 = 100%
+
+--- Hypothesis ---
+H0: "≥5-bit quantization preserves pitch detection (≤10% degradation)"
+H1: "3-4 bit quantization destroys pitch info"
+======================================================================
+
+
+======================================================================
+ROUND 13: OPERATING RANGE ACCURACY BREAKDOWN
+Hybrid Fusion accuracy per octave band (80-2000Hz)
+
+  Low (80-160Hz): 9/9 (100.0%)
+  Mid (160-640Hz): 25/25 (100.0%)
+  High (640-2000Hz): 34/35 (97.1%)  fail: 2000Hz
+
+--- Hypothesis ---
+H0: "Hybrid Fusion accuracy ≥ 85% in 160-2000Hz range"
+H1: "Low band (80-160Hz) accuracy < high band due to YIN limitations"
+======================================================================

@@ -10,9 +10,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/theme_provider.dart';
 import '../../core/api/qiniu_direct_client.dart';
-import '../../core/audio/audio_processor.dart';
-import '../../core/audio/audio_config.dart';
-import '../../core/audio/epc_version.dart';
+import '../../core/audio/lmdn_codec.dart';
 import '../../core/ui_voice_config.dart';
 import '../../core/sdui.dart';
 import '../../core/sdui_config.dart';
@@ -34,12 +32,12 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> with SduiPage
   AudioRecorder? _recorder;
   AudioPlayer? _player;
   StreamSubscription? _recordSub;
-  AudioProcessor? _processor;
+  LmdnProcessor? _processor;
   final List<Uint8List> _playQueue = [];
   bool _playing = false;
-  final List<Uint8List> _callEpcs = []; // accumulated EPC data for recording
+  final List<Uint8List> _callFrames = [];
   VoiceUiConfig _uiVoice = const VoiceUiConfig();
-  AudioConfig _audioCfg = const AudioConfig();
+  LmdnConfig _audioCfg = const LmdnConfig();
   Map<String, void Function()> _customActions = {};
 
   @override
@@ -73,7 +71,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> with SduiPage
     if (_client == null) return;
     await _client!.register();
     if (_targetPeerId == null) _targetPeerId = _client!.peerId;
-    final cfg = await AudioConfig.load();
+    final cfg = await LmdnConfig.load();
     if (mounted) {
       setState(() => _state = 'calling');
       Future.delayed(Duration(milliseconds: cfg.demoDelayMs), () {
@@ -123,16 +121,15 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> with SduiPage
     _player?.dispose();
     _processor?.dispose();
     if (_targetPeerId != null) _client?.sendSignal(_targetPeerId!, 'call-end');
-    // Save recording: from_to_timestamp.epc
-    if (_callEpcs.isNotEmpty && _client != null) {
+    // Save recording: from_to_timestamp.lmdn
+    if (_callFrames.isNotEmpty && _client != null) {
       final ts = DateTime.now().millisecondsSinceEpoch;
-      final name = '${_client!.peerId}_${_targetPeerId ?? 'unknown'}_$ts.epc';
-      // Header: 4B magic "EPC1" + 2B version(0x0001) + 2B spare + raw frames
-      final epcData = _callEpcs.expand((e) => e).toList();
-      final header = [0x45,0x50,0x43,0x31, 0x00,0x01, 0x00,0x00];
-      final data = Uint8List(header.length + epcData.length);
+      final name = '${_client!.peerId}_${_targetPeerId ?? 'unknown'}_$ts.lmdn';
+      final frameData = _callFrames.expand((e) => e).toList();
+      final header = [0x4C,0x4D,0x44,0x4E, 0x00,0x01, 0x00,0x00]; // "LMDN" magic
+      final data = Uint8List(header.length + frameData.length);
       data.setRange(0, header.length, header);
-      data.setRange(header.length, data.length, epcData);
+      data.setRange(header.length, data.length, frameData);
       _client!.writeFile('oc/call_recordings/$name', data);
     }
     if (mounted) setState(() => _state = 'ended');
@@ -144,12 +141,11 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> with SduiPage
     if (_audioStarted) return;
     _audioStarted = true;
     try {
-      final cfg = await AudioConfig.load();
+      final cfg = await LmdnConfig.load();
       _audioCfg = cfg;
       _recorder = AudioRecorder();
       _player = AudioPlayer();
-      final modeEnum = cfg.mode == 'opus' ? AudioMode.opus : (cfg.mode == 'epc' || cfg.mode == 'neural') ? AudioMode.epc : AudioMode.raw;
-      _processor = AudioProcessor(sampleRate: cfg.sampleRate, enableDenoise: cfg.denoise, enableCodec: cfg.mode != 'raw', mode: modeEnum);
+      _processor = LmdnProcessor(sampleRate: cfg.sampleRate, enableDenoise: cfg.denoise, enableCodec: true);
       await _processor?.initialize();
 
       if (await _recorder!.hasPermission() != true) { _audioStarted = false; return; }
@@ -189,7 +185,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> with SduiPage
             final processed = await _processor?.processMicrophoneInput(frame);
             if (processed != null) {
               await _client?.sendEncodedAudio(targetId, processed, _audioSeq++);
-              _callEpcs.add(processed);
+              _callFrames.add(processed);
             }
           }
         } catch (e) { log('record process error: $e'); }
