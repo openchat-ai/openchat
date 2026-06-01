@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:developer' show log;
-import 'dart:math';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'audio_pipeline.dart';
 import '../api/qiniu_direct_client.dart';
@@ -23,16 +23,16 @@ void _initMdctTables() {
   _tab = Float64List(_n * 2 * _n);
   _iTab = Float64List(2 * _n * _n);
   for (int i = 0; i < 2 * _n; i++) {
-    _win![i] = sin(pi * (i + 0.5) / (2 * _n));
+    _win![i] = math.sin(math.pi * (i + 0.5) / (2 * _n));
   }
   for (int k = 0; k < _n; k++) {
     for (int n = 0; n < 2 * _n; n++) {
-      _tab![k * 2 * _n + n] = cos(pi / _n * (n + 0.5 + _n / 2) * (k + 0.5));
+      _tab![k * 2 * _n + n] = math.cos(math.pi / _n * (n + 0.5 + _n / 2) * (k + 0.5));
     }
   }
   for (int n = 0; n < 2 * _n; n++) {
     for (int k = 0; k < _n; k++) {
-      _iTab![n * _n + k] = cos(pi / _n * (n + 0.5 + _n / 2) * (k + 0.5));
+      _iTab![n * _n + k] = math.cos(math.pi / _n * (n + 0.5 + _n / 2) * (k + 0.5));
     }
   }
   _tablesReady = true;
@@ -77,10 +77,10 @@ void _fft(Float64List re, Float64List im) {
     }
   }
   for (int len = 2; len <= n; len <<= 1) {
-    final ang = -2 * pi / len;
+    final ang = -2 * math.pi / len;
     for (int i = 0; i < n; i += len) {
       for (int j = 0; j < len >> 1; j++) {
-        final wr = cos(ang * j), wi = sin(ang * j);
+        final wr = math.cos(ang * j), wi = math.sin(ang * j);
         final u = i + j, v = i + j + (len >> 1);
         final tr = wr * re[v] - wi * im[v];
         final ti = wr * im[v] + wi * re[v];
@@ -115,7 +115,7 @@ Map<String, dynamic>? _yinF0(Float64List samples) {
       final a = c[t - 1], b = c[t], cc = c[t + 1];
       final de = a - 2 * b + cc;
       final ft = de.abs() > 1e-12 ? t + (a - cc) / (2 * de) : t.toDouble();
-      return {'freq': _sr / ft, 'conf': max(0.0, 1.0 - c[t])};
+      return {'freq': _sr / ft, 'conf': math.max(0.0, 1.0 - c[t])};
     }
   }
   return null;
@@ -126,14 +126,14 @@ Map<String, dynamic>? _peakTrackF0(Float64List samples) {
   if (samples.length < _fftSize) return null;
   final win = Float64List(_fftSize);
   for (int i = 0; i < _fftSize; i++) {
-    win[i] = 0.5 * (1 - cos(2 * pi * i / (_fftSize - 1)));
+    win[i] = 0.5 * (1 - math.cos(2 * math.pi * i / (_fftSize - 1)));
   }
   final re = Float64List(_fftSize), im = Float64List(_fftSize);
   for (int i = 0; i < _fftSize; i++) re[i] = samples[i] * win[i];
   _fft(re, im);
   final half = _fftSize >> 1;
   final mag = Float64List(half);
-  for (int i = 0; i < half; i++) mag[i] = sqrt(re[i] * re[i] + im[i] * im[i]);
+  for (int i = 0; i < half; i++) mag[i] = math.sqrt(re[i] * re[i] + im[i] * im[i]);
 
   final pk = <Map<String, dynamic>>[];
   for (int i = 2; i < half - 2; i++) {
@@ -171,7 +171,7 @@ Map<String, dynamic>? _peakTrackF0(Float64List samples) {
       );
       if ((m['amp'] as double) > 0) sh++;
     }
-    ca.add({'freq': pf, 'conf': min(1.0, (hs + sh * 0.5) / 3)});
+    ca.add({'freq': pf, 'conf': math.min(1.0, (hs + sh * 0.5) / 3)});
   }
   ca.sort((a, b) => (b['conf'] as double).compareTo(a['conf'] as double));
   return ca.isNotEmpty ? Map<String, dynamic>.from(ca[0]) : null;
@@ -183,8 +183,8 @@ Map<String, dynamic>? _fusionF0(Float64List samples) {
   if (y == null) return pt;
   if (pt == null) return y;
   if ((y['conf'] as double) > 0.5) return y;
-  final lo = min(y['freq'] as double, pt['freq'] as double);
-  final hi = max(y['freq'] as double, pt['freq'] as double);
+  final lo = math.min(y['freq'] as double, pt['freq'] as double);
+  final hi = math.max(y['freq'] as double, pt['freq'] as double);
   final ratio = hi / lo, ro = ratio.round();
   if ((ratio - ro).abs() < 0.05 || (pt['freq'] as double) / (y['freq'] as double) >= 2) {
     return {'freq': y['freq'], 'conf': ((y['conf'] as double) + (pt['conf'] as double)) / 2};
@@ -319,7 +319,7 @@ class LmdnCodec {
         final enb = ((b + 1) * _n / _bands).round();
         double mv = 0;
         for (int k = stb; k < enb; k++) if (X[k].abs() > mv) mv = X[k].abs();
-        final mvIdx = max(0, min(255, (log(max(mv, 1e-10)) / ln2 * 16 + 128).round()));
+        final mvIdx = math.max(0, math.min(255, (math.log(math.max(mv, 1e-10)) / math.ln2 * 16 + 128).round()));
         bw.write(mvIdx, 8);
         if (mv < 1e-10) {
           for (int k = stb; k < enb; k++) bw.write(0, bi);
@@ -327,7 +327,7 @@ class LmdnCodec {
         }
         for (int k = stb; k < enb; k++) {
           final q = (X[k] * scale / mv).round();
-          bw.write(max(0, min((1 << bi) - 1, q + scale)), bi);
+          bw.write(math.max(0, math.min((1 << bi) - 1, q + scale)), bi);
         }
       }
 
@@ -335,7 +335,7 @@ class LmdnCodec {
       if (fi % 4 == 0) {
         final f0Idx = (fi * stride) ~/ hopF0;
         if (f0Idx < f0buf.length && f0buf[f0Idx] > 0) {
-          final midi = 12 * (log(f0buf[f0Idx] / 440) / ln2) + 69;
+          final midi = 12 * (math.log(f0buf[f0Idx] / 440) / math.ln2) + 69;
           final midiInt = midi.round().clamp(0, 127);
           final cent = ((midi - midiInt) * 100).round().clamp(-16, 15);
           final conf = (f0conf[f0Idx] * 15).round().clamp(0, 15);
@@ -401,7 +401,7 @@ class LmdnCodec {
         if (bi == 0) continue;
         final scale = 1 << (bi - 1);
         final mvIdx = br.read(8);
-        final mv = pow(2, (mvIdx - 128) / 16).toDouble();
+        final mv = math.pow(2, (mvIdx - 128) / 16).toDouble();
         final stb = (b * _n / _bands).round();
         final enb = ((b + 1) * _n / _bands).round();
         for (int k = stb; k < enb; k++) {
@@ -423,7 +423,7 @@ class LmdnCodec {
 
       final buf = Uint8List(_n * 2);
       for (int i = 0; i < _n; i++) {
-        final v = max(-32768, min(32767, (out[i] * 32768).round()));
+        final v = math.max(-32768, math.min(32767, (out[i] * 32768).round()));
         buf[i * 2] = v & 0xFF;
         buf[i * 2 + 1] = (v >> 8) & 0xFF;
       }
@@ -448,7 +448,7 @@ class LmdnCodec {
 
   Uint8List _scanBitAllocation(Float64List samples, int totalSamples) {
     final stride = _n;
-    final maxScan = min(500, (totalSamples + stride - 1) ~/ stride);
+    final maxScan = math.min(500, (totalSamples + stride - 1) ~/ stride);
     if (maxScan <= 10) {
       return Uint8List.fromList([4, 3, 2, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     }
@@ -479,10 +479,10 @@ class LmdnCodec {
     final bits = Uint8List(_bands);
     final totalE = bandEnergy.fold(0.0, (s, v) => s + v);
     for (int b = 0; b < _bands; b++) {
-      final ratio = bandEnergy[b] / max(totalE, 1e-10) * _bands;
+      final ratio = bandEnergy[b] / math.max(totalE, 1e-10) * _bands;
       if (ratio < 0.005) { bits[b] = 0; continue; }
-      int bi = max(1, min(7, (ratio * 6).round()));
-      if (isolated.contains(b)) bi = max(bi, 3);
+      int bi = math.max(1, math.min(7, (ratio * 6).round()));
+      if (isolated.contains(b)) bi = math.max(bi, 3);
       bits[b] = bi;
     }
     return bits;
