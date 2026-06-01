@@ -180,6 +180,25 @@ class QiniuDirectClient {
     return RegExp('<Key>([^<]+)</Key>').allMatches(resp.body).map((m) => m.group(1)!).toList();
   }
 
+  /// Like _list but also returns the S3 LastModified epoch-ms for each key,
+  /// parsed straight from the LIST XML (no extra GET per object).
+  Future<List<({String key, int lastModified})>> _listWithTime(String prefix) async {
+    final url = _presignedUrl(prefix, prefix: prefix);
+    final resp = await _client.get(Uri.parse(url)).timeout(const Duration(seconds: 8));
+    if (resp.statusCode != 200) throw Exception('S3 LIST $prefix: HTTP ${resp.statusCode}');
+    final re = RegExp(
+        r'<Contents>[\s\S]*?<Key>([^<]+)</Key>[\s\S]*?<LastModified>([^<]+)</LastModified>[\s\S]*?</Contents>');
+    final out = <({String key, int lastModified})>[];
+    for (final m in re.allMatches(resp.body)) {
+      int ts = 0;
+      try {
+        ts = DateTime.parse(m.group(2)!).millisecondsSinceEpoch;
+      } catch (_) {}
+      out.add((key: m.group(1)!, lastModified: ts));
+    }
+    return out;
+  }
+
   Future<void> _delete(String key) async {
     final url = _presignedUrl(key, method: 'DELETE');
     final req = http.Request('DELETE', Uri.parse(url));
@@ -280,13 +299,34 @@ class QiniuDirectClient {
     await _delete(_regKey);
   }
 
+  /// Lightweight presence refresh: rewrites our user file (updating its
+  /// LastModified) WITHOUT re-running public-IP discovery or UDP setup.
+  /// Keeps us from being filtered out as stale by other peers' discoverUsers.
+  Future<void> heartbeat() async {
+    final body = jsonEncode({
+      'peerId': peerId,
+      'status': 'online',
+      'publicIp': _publicIp,
+      'udpPort': _udpPort,
+      'ts': DateTime.now().millisecondsSinceEpoch,
+    });
+    await _put(_regKey, body);
+  }
+
+  /// Peers whose presence file hasn't been refreshed within [staleMs] are
+  /// treated as offline and skipped. Uses S3 LastModified (no extra GET).
+  static const int userStaleMs = 120000; // 2 min
+
   Future<List<Map<String, dynamic>>> discoverUsers() async {
-    final keys = await _list('oc/users/');
+    final entries = await _listWithTime('oc/users/');
+    final now = DateTime.now().millisecondsSinceEpoch;
     final users = <Map<String, dynamic>>[];
-    for (final key in keys) {
-      // Extract peerId from key path: oc/users/phone_xxx.json -> phone_xxx.json -> phone_xxx
-      final name = key.split('/').last.replaceAll('.json', '');
+    for (final e in entries) {
+      final name = e.key.split('/').last.replaceAll('.json', '');
       if (name == peerId) continue; // skip self
+      // Skip stale peers (file not refreshed recently). lastModified==0 means
+      // we couldn't parse the timestamp -> keep it to be safe.
+      if (e.lastModified > 0 && now - e.lastModified > userStaleMs) continue;
       users.add({'peerId': name, 'status': 'online'});
     }
     return users;
@@ -636,5 +676,17 @@ class QiniuDirectClient {
     _punchTimer?.cancel();
     _udp?.close();
     _client.close();
+  }
+
+  /// Unregister (delete our presence file) and THEN close the http client.
+  /// Using plain dispose() right after unregister() would abort the in-flight
+  /// DELETE, leaving a stale "online" entry in the bucket.
+  Future<void> unregisterAndDispose() async {
+    try {
+      await unregister();
+    } catch (e) {
+      log('error', 'unregisterAndDispose: $e');
+    }
+    dispose();
   }
 }

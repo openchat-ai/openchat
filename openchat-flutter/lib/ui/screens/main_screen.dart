@@ -25,6 +25,10 @@ class _MainScreenState extends ConsumerState<MainScreen> with SduiPageState {
   @override
   String get sduiPage => 'main';
 
+  // Lazy-load tabs: a tab's screen (and its initState side effects like Qiniu
+  // polling) is only built the first time the user actually selects it.
+  final Set<int> _visitedTabs = {0};
+
   Widget _buildScreen(String name) {
     switch (name) {
       case 'home': return const HomeScreen();
@@ -70,6 +74,7 @@ class _MainScreenState extends ConsumerState<MainScreen> with SduiPageState {
     final theme = ref.watch(currentThemeProvider);
     final tabs = _getTabs();
     final clampedIndex = currentIndex.clamp(0, tabs.length - 1);
+    _visitedTabs.add(clampedIndex);
     final fab = sduiLayout['fab'] as Map? ?? {};
     final fabIcon = fab['icon'] as String? ?? 'palette';
     final fabAction = fab['action'] as String? ?? 'theme';
@@ -80,7 +85,9 @@ class _MainScreenState extends ConsumerState<MainScreen> with SduiPageState {
       backgroundColor: theme.background,
       body: IndexedStack(
         index: clampedIndex,
-        children: tabs.map((t) => _buildScreen(t['screen'] as String? ?? 'home')).toList(),
+        children: tabs.asMap().entries.map((e) => _visitedTabs.contains(e.key)
+            ? _buildScreen(e.value['screen'] as String? ?? 'home')
+            : const SizedBox.shrink()).toList(),
       ),
       bottomNavigationBar: _buildBottomNav(context, clampedIndex, theme, tabs),
       floatingActionButton: fab['hidden'] == true ? null : FloatingActionButton(

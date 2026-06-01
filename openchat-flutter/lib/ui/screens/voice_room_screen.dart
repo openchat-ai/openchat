@@ -27,15 +27,16 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> with SduiPage
   String? _targetPeerId;
   String _state = 'calling';
   Timer? _signalTimer;
+  Timer? _audioTimer;
   int _audioSeq = 0;
   bool _muted = false;
+  bool _isSelfTest = false;
   AudioRecorder? _recorder;
   AudioPlayer? _player;
   StreamSubscription? _recordSub;
   LmdnProcessor? _processor;
   final List<Uint8List> _playQueue = [];
   bool _playing = false;
-  final List<Uint8List> _callFrames = [];
   VoiceUiConfig _uiVoice = const VoiceUiConfig();
   LmdnConfig _audioCfg = const LmdnConfig();
   Map<String, void Function()> _customActions = {};
@@ -58,6 +59,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> with SduiPage
     }
 
     if (argMap['selfTest'] == 'true') {
+      _isSelfTest = true;
       _initSelfTest();
     }
   }
@@ -114,27 +116,21 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> with SduiPage
     _startAudio();
   }
 
+  bool _ended = false;
+
   void _endCall() {
+    if (_ended) return; // guard against double invocation (timer + button)
+    _ended = true;
     _audioStarted = false;
     _recordSub?.cancel();
     _recorder?.dispose();
     _player?.dispose();
     _processor?.dispose();
     if (_targetPeerId != null) _client?.sendSignal(_targetPeerId!, 'call-end');
-    // Save recording: from_to_timestamp.lmdn
-    if (_callFrames.isNotEmpty && _client != null) {
-      final ts = DateTime.now().millisecondsSinceEpoch;
-      final name = '${_client!.peerId}_${_targetPeerId ?? 'unknown'}_$ts.lmdn';
-      final frameData = _callFrames.expand((e) => e).toList();
-      final header = [0x4C,0x4D,0x44,0x4E, 0x00,0x01, 0x00,0x00]; // "LMDN" magic
-      final data = Uint8List(header.length + frameData.length);
-      data.setRange(0, header.length, header);
-      data.setRange(header.length, data.length, frameData);
-      _client!.writeFile('oc/call_recordings/$name', data);
-    }
     if (mounted) setState(() => _state = 'ended');
     _signalTimer?.cancel();
-    Navigator.pop(context);
+    _audioTimer?.cancel();
+    if (mounted && Navigator.canPop(context)) Navigator.pop(context);
   }
 
   Future<void> _startAudio() async {
@@ -185,14 +181,15 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> with SduiPage
             final processed = await _processor?.processMicrophoneInput(frame);
             if (processed != null) {
               await _client?.sendEncodedAudio(targetId, processed, _audioSeq++);
-              _callFrames.add(processed);
             }
           }
         } catch (e) { log('record process error: $e'); }
       }, onError: (e) { log('record stream error: $e'); });
 
-      _signalTimer?.cancel();
-      _signalTimer = Timer.periodic(Duration(milliseconds: cfg.pollMs), (_) async {
+      // Use a dedicated audio timer so the signaling timer keeps running
+      // and can still detect remote call-end after we are connected.
+      _audioTimer?.cancel();
+      _audioTimer = Timer.periodic(Duration(milliseconds: cfg.pollMs), (_) async {
         if (_state != 'connected' || _client == null) return;
         try {
           final chunks = await _client!.pollEncodedAudio();
@@ -283,6 +280,10 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> with SduiPage
     _player?.dispose();
     _processor?.dispose();
     _signalTimer?.cancel();
+    _audioTimer?.cancel();
+    // Only dispose the client we created ourselves (self-test). When passed in
+    // from PeopleScreen it is shared and owned by that screen.
+    if (_isSelfTest) _client?.dispose();
     super.dispose();
   }
 
