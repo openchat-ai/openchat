@@ -1,0 +1,12 @@
+{
+  "mode": "lmdn",
+  "sampleRate": 24000,
+  "bufferMs": 1000,
+  "pollMs": 800,
+  "fadeBytes": 240,
+  "fadeSamples": 48,
+  "demoDelayMs": 3000,
+  "denoise": true,
+  "agc": false,
+  "highPass": true
+}
