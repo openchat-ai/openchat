@@ -372,6 +372,7 @@ class LmdnCodec {
 
   Future<LmdnDecoded> decode(Uint8List data) async {
     if (!_isReady) throw Exception('Codec not initialized');
+    _prevY = null; // Reset overlap-add state for new file
     final sw = Stopwatch()..start();
     if (data[0] != 0xBB || data[1] != 0x01 || data[2] != 0xCC) {
       throw Exception('Invalid LMDN frame header');
