@@ -1,0 +1,8 @@
+{
+  "type": "column",
+  "children": [
+    {
+      "type": "users_list"
+    }
+  ]
+}
