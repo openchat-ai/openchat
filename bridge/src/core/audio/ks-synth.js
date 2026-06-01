@@ -57,18 +57,6 @@ export class KsSynth {
   }
 
   /**
-   * 合成贝斯音
-   * @param {{m:number, d:number, c:number}} note
-   * @returns {Float64Array|null}
-   */
-  bass(note) {
-    const freq = 440 * 2 ** ((note.m - 69) / 12);
-    const del = Math.round(this.sr / freq);
-    const dec = 0.9995 ** (1 / del);
-    return this._ksSynth(freq, note.d, 0.2 + note.c * 0.3, dec);
-  }
-
-  /**
    * 合成鼓音
    * @param {{inst:'kick'|'snare'|'hihat'}} note
    * @returns {Float64Array}

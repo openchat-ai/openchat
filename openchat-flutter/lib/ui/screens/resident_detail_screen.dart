@@ -1,8 +1,5 @@
-﻿import 'dart:convert';
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:audioplayers/audioplayers.dart';
-import 'package:http/http.dart' as http;
 import '../../core/theme/app_theme.dart';
 import '../../core/models/resident_model.dart';
 import '../../core/models/agent_model.dart';
@@ -10,13 +7,13 @@ import '../../core/models/sage_model.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/resident_provider.dart';
 import '../../providers/sage_provider.dart';
-import '../../providers/config_provider.dart';
 import '../../core/sdui_config.dart';
 import '../components/resident/resident_profile.dart';
 import '../components/resident/resident_family.dart';
 import '../components/resident/resident_agents.dart';
 import '../components/resident/resident_timeline.dart';
 import '../components/resident/resident_mentor.dart';
+import '../components/resident/resident_music_score.dart';
 
 class ResidentDetailScreen extends ConsumerStatefulWidget {
   final String residentId;
@@ -51,6 +48,18 @@ class _ResidentDetailScreenState extends ConsumerState<ResidentDetailScreen> wit
       ref.read(sageProvider.notifier).loadConversation(id);
     } catch (_) {}
     if (mounted) setState(() => _loading = false);
+  }
+
+  void _showScore() {
+    const gap = 0.05;
+    const dur = 0.4;
+    final midis = [60, 62, 64, 65, 67, 69, 71, 72];
+    final notes = List.generate(midis.length, (i) => ScoreNote(midi: midis[i], startSec: i * (dur + gap), durSec: dur));
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: ref.read(currentThemeProvider).surface,
+      builder: (_) => ResidentMusicScore(title: 'C Major Scale', notes: notes),
+    );
   }
 
   void _showCreateAgentDialog() {
@@ -97,6 +106,7 @@ class _ResidentDetailScreenState extends ConsumerState<ResidentDetailScreen> wit
           actions: _resident != null && _resident!.isActive ? [
             IconButton(icon: const Icon(Icons.auto_awesome_outlined, color: Colors.amberAccent), onPressed: _showCreateAgentDialog, tooltip: 'Wisdom'),
             IconButton(icon: Icon(Icons.add_task_rounded, color: theme.primary), onPressed: _showCreateAgentDialog, tooltip: 'Spawn Agent'),
+            IconButton(icon: const Icon(Icons.music_note, color: Colors.green), onPressed: _showScore, tooltip: 'Sheet Music'),
           ] : null,
           bottom: _resident != null ? TabBar(indicatorColor: theme.primary, labelColor: theme.primary, unselectedLabelColor: theme.textTertiary, tabs: [Tab(text: tab1), Tab(text: tab2)]) : null,
         ),
