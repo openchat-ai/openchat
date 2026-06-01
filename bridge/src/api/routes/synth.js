@@ -41,7 +41,8 @@ router.post('/render', (req, res) => {
   if (!notes || !Array.isArray(notes) || notes.length === 0) {
     return res.status(400).json({ error: 'need notes array' });
   }
-  const totalLen = sampleRate * 5; // 最多 5s
+  const maxEnd = notes.reduce((m, n) => Math.max(m, (n.s || 0) + (n.d || 0.3)), 0);
+  const totalLen = Math.max(Math.ceil(maxEnd * sampleRate), 1);
   const out = synth.render(notes, totalLen);
   if (mixRatio != null) {
     const orig = new Float64Array(totalLen);
