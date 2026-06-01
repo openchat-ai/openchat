@@ -31,6 +31,8 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
   bool _refreshing = false;
   Timer? _pollTimer;
   Map? _uiConfig;
+  int _lastHeartbeatMs = 0;
+  static const int _heartbeatIntervalMs = 30000; // refresh presence every 30s
 
   VoiceUiConfig _uiVoice = const VoiceUiConfig();
 
@@ -76,8 +78,9 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
   @override
   void dispose() {
     _pollTimer?.cancel();
-    _client?.unregister();
-    _client?.dispose();
+    // unregisterAndDispose deletes our presence file BEFORE closing the http
+    // client, so the DELETE isn't aborted (avoids stale "online" entries).
+    _client?.unregisterAndDispose();
     super.dispose();
   }
 
@@ -92,14 +95,24 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
         _error = null;
         _loading = false;
       });
-      final newConfig = await sduiSource.load('people')
-          .timeout(const Duration(seconds: 5));
-      if (newConfig != null) _uiConfig = newConfig;
+      // SDUI config is loaded once in _init(); don't re-fetch every poll cycle
+      // (saves a Qiniu GET per poll). It refreshes on next app launch.
+      if (_uiConfig == null) {
+        final newConfig = await sduiSource.load('people')
+            .timeout(const Duration(seconds: 5));
+        if (newConfig != null) _uiConfig = newConfig;
+      }
       final signals = await _client!.pollIncoming().timeout(const Duration(seconds: 8));
       for (final s in signals) {
         final action = s['action'] as String?;
         final from = s['fromPeerId'] as String?;
         if (action == 'call-request' && from != null && mounted) _showIncomingCall(from);
+      }
+      // Throttled presence heartbeat so our entry isn't filtered as stale.
+      final nowMs = DateTime.now().millisecondsSinceEpoch;
+      if (nowMs - _lastHeartbeatMs >= _heartbeatIntervalMs) {
+        _lastHeartbeatMs = nowMs;
+        await _client!.heartbeat().timeout(const Duration(seconds: 8));
       }
       await _client!.pollDebug().timeout(const Duration(seconds: 8));
     } catch (e) {

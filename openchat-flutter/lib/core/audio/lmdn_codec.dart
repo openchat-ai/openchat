@@ -374,10 +374,16 @@ class LmdnCodec {
     if (!_isReady) throw Exception('Codec not initialized');
     _prevY = null; // Reset overlap-add state for new file
     final sw = Stopwatch()..start();
+    if (data.length < 8) {
+      throw Exception('LMDN frame too short: ${data.length} bytes');
+    }
     if (data[0] != 0xBB || data[1] != 0x01 || data[2] != 0xCC) {
       throw Exception('Invalid LMDN frame header');
     }
     final pl = (data[3] << 16) | (data[4] << 8) | data[5];
+    if (6 + pl > data.length) {
+      throw Exception('LMDN payload overrun: claims $pl bytes, have ${data.length - 6}');
+    }
     final payload = data.sublist(6, 6 + pl);
     final br = _BitReader(payload);
 
@@ -590,8 +596,9 @@ class LmdnProcessor {
       try {
         final decoded = await _codec!.decode(data);
         return decoded.pcm;
-      } catch (_) {
-        return data;
+      } catch (e) {
+        log('processReceivedAudio decode failed: $e');
+        return null; // discard malformed frame instead of playing encoded bytes as PCM noise
       }
     }
 
@@ -609,7 +616,7 @@ class LmdnProcessor {
   double _calculateAudioLevel(Uint8List pcmData) {
     double sum = 0;
     int count = 0;
-    for (int i = 0; i < pcmData.length; i += 2) {
+    for (int i = 0; i + 1 < pcmData.length; i += 2) {
       final sample = pcmData[i] | (pcmData[i + 1] << 8);
       sum += (sample > 32767 ? sample - 65536 : sample).abs();
       count++;
