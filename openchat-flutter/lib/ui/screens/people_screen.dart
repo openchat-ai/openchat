@@ -150,13 +150,17 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
 
   void _callUser(String targetPeerId) async {
     if (_client == null) return;
+    final isLoopback = targetPeerId == _client!.peerId || targetPeerId == 'demo_user';
     try {
-      await _client!.sendSignal(targetPeerId, 'call-request');
+      if (!isLoopback) {
+        await _client!.sendSignal(targetPeerId, 'call-request');
+      }
       if (mounted) {
         _pollTimer?.cancel();
         Navigator.pushNamed(context, '/voice', arguments: {
           'targetPeerId': targetPeerId,
           'client': _client,
+          if (isLoopback) 'selfTest': 'true',
         }).then((_) => _startPoll());
       }
     } catch (_) {

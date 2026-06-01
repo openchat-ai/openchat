@@ -56,19 +56,6 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> with SduiPage
 
     if (_targetPeerId != null && _client != null) {
       _signalTimer = Timer.periodic(const Duration(seconds: 2), (_) => _pollResponse());
-      // Auto-connect after demoDelayMs when calling self (loopback) or demo_user.
-      // Without this the call stays in "calling" forever since there's no real
-      // remote peer to send a call-accept signal.
-      if (_targetPeerId == _client!.peerId || _targetPeerId!.contains('demo')) {
-        LmdnConfig.load().then((cfg) {
-          Future.delayed(Duration(milliseconds: cfg.demoDelayMs), () {
-            if (mounted && _state == 'calling') {
-              setState(() => _state = 'connected');
-              _startAudio();
-            }
-          });
-        });
-      }
     }
 
     if (argMap['selfTest'] == 'true') {
@@ -84,8 +71,9 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> with SduiPage
       _client = QiniuDirectClient(peerId: pid);
     }
     if (_client == null) return;
+    _signalTimer?.cancel(); // no need to poll for peer signals in loopback
     await _client!.register();
-    if (_targetPeerId == null) _targetPeerId = _client!.peerId;
+    _targetPeerId = _client!.peerId; // loopback: send and receive from our own audio dir
     final cfg = await LmdnConfig.load();
     if (mounted) {
       setState(() => _state = 'calling');
