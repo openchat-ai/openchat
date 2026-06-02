@@ -1,12 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-
-class ScoreNote {
-  final int midi;
-  final double startSec;
-  final double durSec;
-  const ScoreNote({required this.midi, required this.startSec, required this.durSec});
-}
+import '../../core/audio/lmdn_codec.dart';
 
 class ResidentMusicScore extends StatefulWidget {
   final String title;
@@ -59,11 +53,14 @@ class _ResidentMusicScoreState extends State<ResidentMusicScore> with SingleTick
           ]),
         ),
         Expanded(child: LayoutBuilder(builder: (context, cons) {
+          final totalSec = widget.notes.isEmpty
+              ? 4.0
+              : widget.notes.map((n) => n.startSec + n.durSec).reduce(math.max).clamp(4.0, 3600.0);
           return CustomPaint(
             size: Size(cons.maxWidth, cons.maxHeight),
             painter: _StaffPainter(
               notes: widget.notes,
-              totalSec: 4.0,
+              totalSec: totalSec,
               progress: _ctrl.value,
             ),
           );

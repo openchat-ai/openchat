@@ -523,6 +523,12 @@ class QiniuDirectClient {
     await _putBinary('oc/audio/$targetPeerId/${peerId}_$seq.enc', data);
   }
 
+  /// Public wrapper: upload binary data to an arbitrary S3 path.
+  Future<void> putBinary(String key, Uint8List data) => _putBinary(key, data);
+
+  /// Public wrapper: download binary data from an arbitrary S3 path.
+  Future<Uint8List> getBinary(String key) => _getBinary(key);
+
   Future<List<Uint8List>> pollEncodedAudio() async {
     final results = <Uint8List>[];
     try {
@@ -541,6 +547,18 @@ class QiniuDirectClient {
       final path = 'oc/recordings/$peerId/${ts}_$fileName';
       await _put(path, base64Encode(data));
     } catch (_) {}
+  }
+
+  /// Save a complete call as a single .epc file (concatenated LMDN frames).
+  /// Uses raw binary upload (not base64) since data is already encoded.
+  Future<void> saveEpcRecord(Uint8List epcData) async {
+    try {
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      final path = 'oc/recordings/$peerId/${ts}.epc';
+      await _putBinary(path, epcData);
+    } catch (e) {
+      log('saveEpcRecord error: $e');
+    }
   }
 
   // Audio relay via Qiniu (fallback)

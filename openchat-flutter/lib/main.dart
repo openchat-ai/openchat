@@ -8,6 +8,7 @@ import 'core/sdui_config.dart';
 import 'ui/screens/main_screen.dart';
 import 'ui/screens/theme_selector_screen.dart';
 import 'ui/screens/voice_room_screen.dart';
+import 'ui/screens/room_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -65,6 +66,9 @@ class _OpenChatAppState extends ConsumerState<OpenChatApp>
       routes: {
         '/theme': (context) => const ThemeSelectorScreen(),
         '/voice': (context) => const VoiceRoomScreen(),
+        '/room': (context) => RoomScreen(
+          roomId: ModalRoute.of(context)!.settings.arguments as String? ?? 'default',
+        ),
       },
     );
   }

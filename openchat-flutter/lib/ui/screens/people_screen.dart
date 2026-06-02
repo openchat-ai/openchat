@@ -242,6 +242,24 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
       onAction: (a) { if (a == 'cancel') Navigator.of(context).pop(); if (a == 'restart') { Navigator.pop(context); Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const Scaffold(body: Center(child: CircularProgressIndicator()))), (r) => false); Future.delayed(const Duration(milliseconds: 100), () => Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const MainScreen()), (r) => false)); } });
   }
 
+  Future<void> _showRoomDialog() async {
+    final controller = TextEditingController(text: 'room_${DateTime.now().millisecondsSinceEpoch}');
+    await showDialog(context: context, builder: (ctx) => AlertDialog(
+      title: const Text('加入语音房间'),
+      content: TextField(
+        controller: controller,
+        decoration: const InputDecoration(labelText: '房间 ID', hintText: '输入房间 ID 或使用默认'),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+        TextButton(onPressed: () {
+          Navigator.pop(ctx);
+          Navigator.pushNamed(context, '/room', arguments: controller.text.trim());
+        }, child: const Text('加入', style: TextStyle(color: Color(0xFF7C4DFF)))),
+      ],
+    ));
+  }
+
   Future<void> _showAudioFiles() async {
     if (_client == null) return;
     final items = await _client!.listAudioFilesWithSize();
@@ -389,6 +407,7 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
           custom: {
             'settings': () => Navigator.pushNamed(context, '/theme'),
             'self_test': () { final c = _client; if (c != null) Navigator.pushNamed(context, '/voice', arguments: {'selfTest': 'true', 'client': c, 'targetPeerId': c.peerId}); },
+            'room:open': () => _showRoomDialog(),
             'audio_files': () => _showAudioFiles(),
             'device:info': () => _showDeviceInfo(),
             'config:get': () => _showConfig(),

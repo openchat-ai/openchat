@@ -239,10 +239,25 @@ class LmdnEncoded {
   LmdnEncoded({required this.data, required this.frameCount});
 }
 
+class ScoreNote {
+  final int midi;
+  final double startSec;
+  final double durSec;
+  const ScoreNote({required this.midi, required this.startSec, required this.durSec});
+}
+
+class ProcessedAudioResult {
+  final Uint8List pcm;
+  final List<ScoreNote> notes;
+  ProcessedAudioResult({required this.pcm, required this.notes});
+}
+
 class LmdnDecoded {
   final Uint8List pcm;
   final int decodeTime;
-  LmdnDecoded({required this.pcm, required this.decodeTime});
+  final List<ScoreNote> notes;
+  LmdnDecoded({required this.pcm, required this.decodeTime, List<ScoreNote>? notes})
+      : notes = notes ?? const [];
 }
 
 // ===== LmdnCodec (LPC + MDCT) =====
@@ -372,67 +387,89 @@ class LmdnCodec {
 
   Future<LmdnDecoded> decode(Uint8List data) async {
     if (!_isReady) throw Exception('Codec not initialized');
-    _prevY = null; // Reset overlap-add state for new file
+    _prevY = null; // Reset overlap-add state for new file/EPC
     final sw = Stopwatch()..start();
-    if (data.length < 8) {
-      throw Exception('LMDN frame too short: ${data.length} bytes');
-    }
-    if (data[0] != 0xBB || data[1] != 0x01 || data[2] != 0xCC) {
-      throw Exception('Invalid LMDN frame header');
-    }
-    final pl = (data[3] << 16) | (data[4] << 8) | data[5];
-    if (6 + pl > data.length) {
-      throw Exception('LMDN payload overrun: claims $pl bytes, have ${data.length - 6}');
-    }
-    final payload = data.sublist(6, 6 + pl);
-    final br = _BitReader(payload);
 
-    final bits = <int>[];
-    for (int b = 0; b < _bands; b++) bits.add(br.read(3));
-
-    final stride = _n;
     final outChunks = <Uint8List>[];
-    int frameIdx = 0;
+    final notes = <ScoreNote>[];
+    final frameSec = _n / _sr; // seconds per MDCT frame
+    int offset = 0;
+    int chunkStartFrame = 0; // global frame offset for this LMDN chunk
+    int globalFrameIdx = 0;
 
-    while (br._pos < payload.length) {
-      final Xq = Float64List(_n);
-      for (int b = 0; b < _bands; b++) {
-        final bi = bits[b];
-        if (bi == 0) continue;
-        final scale = 1 << (bi - 1);
-        final mvIdx = br.read(8);
-        final mv = math.pow(2, (mvIdx - 128) / 16).toDouble();
-        final stb = (b * _n / _bands).round();
-        final enb = ((b + 1) * _n / _bands).round();
-        for (int k = stb; k < enb; k++) {
-          final u = br.read(bi);
-          Xq[k] = (u - (1 << (bi - 1))) * mv / (1 << (bi - 1));
+    while (offset + 8 <= data.length) {
+      if (data[offset] != 0xBB || data[offset + 1] != 0x01 || data[offset + 2] != 0xCC) {
+        break; // no more LMDN frames
+      }
+      final pl = (data[offset + 3] << 16) | (data[offset + 4] << 8) | data[offset + 5];
+      if (offset + 6 + pl + 2 > data.length) break;
+      final payload = data.sublist(offset + 6, offset + 6 + pl);
+      offset += 6 + pl + 2; // skip header(3)+len(3)+payload(pl)+cksum(1)+0x7E(1)
+
+      final br = _BitReader(payload);
+      final bits = <int>[];
+      for (int b = 0; b < _bands; b++) bits.add(br.read(3));
+
+      int frameIdx = 0;
+      while (br._pos < payload.length) {
+        final Xq = Float64List(_n);
+        for (int b = 0; b < _bands; b++) {
+          final bi = bits[b];
+          if (bi == 0) continue;
+          final mvIdx = br.read(8);
+          final mv = math.pow(2, (mvIdx - 128) / 16).toDouble();
+          final stb = (b * _n / _bands).round();
+          final enb = ((b + 1) * _n / _bands).round();
+          for (int k = stb; k < enb; k++) {
+            final u = br.read(bi);
+            Xq[k] = (u - (1 << (bi - 1))) * mv / (1 << (bi - 1));
+          }
         }
-      }
 
-      // Skip F0 metadata (read to keep bitstream aligned)
-      if (frameIdx % 4 == 0) {
-        br.read(7); br.read(5); br.read(4); br.read(1); br.read(3);
-      }
+        // Extract F0 metadata (was previously skipped)
+        if (frameIdx % 4 == 0) {
+          final midiInt = br.read(7);
+          final cent = br.read(5) - 16;
+          final conf = br.read(4);
+          final voiced = br.read(1) == 1;
+          br.read(3); // spare
 
-      final y = _imdct(Xq);
-      final out = Float64List(_n);
-      for (int i = 0; i < _n; i++) {
-        out[i] = (_prevY != null ? _prevY![_n + i] : 0) + y[i];
-      }
+          if (voiced && midiInt > 0) {
+            final sec = globalFrameIdx * frameSec;
+            final dur = 4 * frameSec;
+            if (notes.isNotEmpty && notes.last.midi == midiInt &&
+                (sec - (notes.last.startSec + notes.last.durSec)).abs() < 0.001) {
+              final last = notes.removeLast();
+              notes.add(ScoreNote(midi: midiInt, startSec: last.startSec, durSec: last.durSec + dur));
+            } else {
+              notes.add(ScoreNote(midi: midiInt, startSec: sec, durSec: dur));
+            }
+          }
+        }
 
-      final buf = Uint8List(_n * 2);
-      for (int i = 0; i < _n; i++) {
-        final v = math.max(-32768, math.min(32767, (out[i] * 32768).round()));
-        buf[i * 2] = v & 0xFF;
-        buf[i * 2 + 1] = (v >> 8) & 0xFF;
+        final y = _imdct(Xq);
+        final out = Float64List(_n);
+        for (int i = 0; i < _n; i++) {
+          out[i] = (_prevY != null ? _prevY![_n + i] : 0) + y[i];
+        }
+
+        final buf = Uint8List(_n * 2);
+        for (int i = 0; i < _n; i++) {
+          final v = math.max(-32768, math.min(32767, (out[i] * 32768).round()));
+          buf[i * 2] = v & 0xFF;
+          buf[i * 2 + 1] = (v >> 8) & 0xFF;
+        }
+        outChunks.add(buf);
+        _prevY = y;
+        frameIdx++;
+        globalFrameIdx++;
       }
-      outChunks.add(buf);
-      _prevY = y;
-      frameIdx++;
     }
 
-    // Concatenate chunks
+    if (outChunks.isEmpty) {
+      throw Exception('No decodable LMDN frames found');
+    }
+
     int total = outChunks.fold(0, (s, c) => s + c.length);
     final result = Uint8List(total);
     int off = 0;
@@ -442,8 +479,8 @@ class LmdnCodec {
     }
 
     sw.stop();
-    _framesDecoded = frameIdx;
-    return LmdnDecoded(pcm: result, decodeTime: sw.elapsedMilliseconds);
+    _framesDecoded = globalFrameIdx;
+    return LmdnDecoded(pcm: result, decodeTime: sw.elapsedMilliseconds, notes: notes);
   }
 
   Uint8List _scanBitAllocation(Float64List samples, int totalSamples) {
@@ -589,20 +626,20 @@ class LmdnProcessor {
     return pcmData;
   }
 
-  Future<Uint8List?> processReceivedAudio(Uint8List data) async {
+  Future<ProcessedAudioResult?> processReceivedAudio(Uint8List data) async {
     if (!_isProcessing) return null;
 
     if (_codec != null) {
       try {
         final decoded = await _codec!.decode(data);
-        return decoded.pcm;
+        return ProcessedAudioResult(pcm: decoded.pcm, notes: decoded.notes);
       } catch (e) {
         log('processReceivedAudio decode failed: $e');
-        return null; // discard malformed frame instead of playing encoded bytes as PCM noise
+        return null;
       }
     }
 
-    return data;
+    return ProcessedAudioResult(pcm: data, notes: const []);
   }
 
   Map<String, dynamic> getStats() {

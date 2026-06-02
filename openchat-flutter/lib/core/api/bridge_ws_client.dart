@@ -168,6 +168,12 @@ class BridgeWsClient {
     }));
   }
 
+  /// Send arbitrary JSON via WebSocket.
+  void sendJson(Map<String, dynamic> json) {
+    if (_channel == null || !isConnected) return;
+    _channel!.sink.add(jsonEncode(json));
+  }
+
   void disconnect() {
     _reconnect = false;
     _reconnectTimer?.cancel();
