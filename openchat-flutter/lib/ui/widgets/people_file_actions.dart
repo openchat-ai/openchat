@@ -1,7 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/api/qiniu_direct_client.dart';
-import '../../screens/main_screen.dart';
+import '../screens/main_screen.dart';
 import 'people_dialogs.dart';
 
 class PeopleFileActions {
@@ -39,12 +40,13 @@ class PeopleFileActions {
       final qIdx = action.indexOf('?');
       final key = qIdx >= 0 ? Uri.splitQueryString(action.substring(qIdx + 1))['key'] ?? '' : '';
       if (key.isEmpty) return;
-      client.readFile(key).then((data) {
-        if (!context.mounted || data == null) return;
+      client.getBinary(key).then((data) {
+        if (!context.mounted) return;
+        final content = String.fromCharCodes(data);
         PeopleDialogs.showSdui(context,
           {'type': 'column', 'children': [
             {'type': 'text', 'content': key.split('/').last, 'style': {'bold': true}, 'pad': 8},
-            {'type': 'text', 'content': data, 'style': {'size': 10}}
+            {'type': 'text', 'content': content, 'style': {'size': 10}}
           ]},
           {});
       });
