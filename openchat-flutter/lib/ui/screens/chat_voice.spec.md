@@ -57,7 +57,7 @@ class ChatVoicePlayer {
 |------|------|---------|
 | `chat_voice_recorder.dart` | 录音→编码→上传→WS 发送 | 80 |
 | `chat_voice_player.dart` | S3 下载→解码→播放 | 60 |
-| `chat_screen.dart` | UI 渲染（气泡、输入框、WS 收发），引用上述两文件 | 150 |
+| `chat_screen.dart` | UI 渲染（气泡、输入框、WS 收发），引用上述两文件 | 250 |
 
 ## 调试检查点
 
