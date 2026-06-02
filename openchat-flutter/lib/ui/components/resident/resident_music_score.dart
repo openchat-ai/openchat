@@ -1,6 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import '../../core/audio/lmdn_codec.dart';
+import '../../core/audio/audio.dart';
 
 class ResidentMusicScore extends StatefulWidget {
   final String title;

@@ -4,7 +4,7 @@ import 'dart:math';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/api/qiniu_direct_client.dart';
-import '../../core/audio/lmdn_codec.dart';
+import '../../core/audio/audio.dart';
 
 // === invariants ===
 // - _currentPlayer 同一时间只播一个音频，新 playKey 会停旧的

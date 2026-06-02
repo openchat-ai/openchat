@@ -5,7 +5,7 @@ import 'dart:typed_data';
 import 'package:record/record.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/api/qiniu_direct_client.dart';
-import '../../core/audio/lmdn_codec.dart';
+import '../../core/audio/audio.dart';
 import '../../core/ui_voice_config.dart';
 
 // === invariants ===
