@@ -22,24 +22,24 @@ class QiniuUdpTransport {
 
   /// Discover public IP via ipify/httpbin.
   Future<String> _discoverPublicIp() async {
+    final completer = Completer<String>();
     for (final url in [
       'https://api.ipify.org?format=json',
       'https://httpbin.org/ip',
       'https://api.myip.com',
     ]) {
-      try {
-        final resp = await http
-            .get(Uri.parse(url))
-            .timeout(const Duration(seconds: 3));
-        if (resp.statusCode == 200) {
-          final json = jsonDecode(resp.body);
-          return (json['ip'] as String?) ??
-              (json['origin'] as String?) ??
-              '';
-        }
-      } catch (_) {}
+      http.get(Uri.parse(url)).timeout(const Duration(seconds: 3)).then((resp) {
+        if (completer.isCompleted) return;
+        if (resp.statusCode != 200) return;
+        final json = jsonDecode(resp.body);
+        final ip = (json['ip'] as String?) ?? (json['origin'] as String?) ?? '';
+        if (ip.isNotEmpty) completer.complete(ip);
+      }).catchError((_) {});
     }
-    return '0.0.0.0';
+    Future.delayed(const Duration(seconds: 4), () {
+      if (!completer.isCompleted) completer.complete('0.0.0.0');
+    });
+    return completer.future;
   }
 
   /// Bind a UDP socket and listen for incoming packets.
