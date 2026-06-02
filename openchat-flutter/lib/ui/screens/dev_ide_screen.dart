@@ -24,6 +24,13 @@ class _DevIdeScreenState extends ConsumerState<DevIdeScreen> with SduiPageState 
   final TextEditingController _cmdController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    _logs.insert(0, {'type': 'info', 'text': 'Dev Console ready'});
+    _logs.insert(0, {'type': 'info', 'text': 'Type a command or use Test tab'});
+  }
+
+  @override
   void dispose() {
     _cmdController.dispose();
     super.dispose();
@@ -31,9 +38,20 @@ class _DevIdeScreenState extends ConsumerState<DevIdeScreen> with SduiPageState 
 
   void _execDebug(String action) {
     setState(() => _logs.insert(0, {'type': 'cmd', 'text': '> $action'}));
-    // Mock result for SDUI demo
+    if (action == 'self_test') {
+      Navigator.pushNamed(context, '/voice', arguments: {
+        'selfTest': 'true',
+        'targetPeerId': 'self',
+        'client': null,
+      });
+      return;
+    }
+    if (action == 'audio_files') {
+      setState(() => _logs.insert(0, {'type': 'info', 'text': 'Audio files: not available without Qiniu client'}));
+      return;
+    }
     Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) setState(() => _logs.insert(0, {'type': 'result', 'text': 'ok: $action executed'}));
+      if (mounted) setState(() => _logs.insert(0, {'type': 'result', 'text': 'ok: $action'}));
     });
   }
 
@@ -95,6 +113,7 @@ class _DevIdeScreenState extends ConsumerState<DevIdeScreen> with SduiPageState 
       final parser = SduiParser(onAction: (a) {
         if (a == 'refresh_logs') setState(() => _logs.insert(0, {'type': 'info', 'text': 'Logs refreshed'}));
         else if (a == 'clear_logs') setState(() => _logs.clear());
+        else if (a.startsWith('exec_cmd:')) _execDebug(a.substring(9));
         else _execDebug(a);
       }, vars: {
         'peerId': bridge.peerId ?? '?',
