@@ -72,23 +72,31 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
     _replyPollTimer?.cancel();
     _pollIntervalMs = 2000;
     _replyPollStartTs = DateTime.now().millisecondsSinceEpoch;
-    void poll() {
-      if (DateTime.now().millisecondsSinceEpoch - _replyPollStartTs > 1800000) {
-        log('[chat] poll timeout after 30min, stopping');
-        return;
-      }
-      _replyPollTimer = Timer(const Duration(milliseconds: _pollIntervalMs), () async {
-        final found = await _pollReplies();
-        if (found) {
-          _replyPollTimer?.cancel();
-        } else {
-          _pollIntervalMs = (_pollIntervalMs * 1.5).round().clamp(2000, 10000);
-          poll();
+    SharedPreferences.getInstance().then((prefs) {
+      final history = prefs.getStringList('replyTimes')?.map((s) => int.tryParse(s) ?? 0).toList() ?? [];
+      final maxHistory = history.isEmpty ? 120000 : history.reduce((a, b) => a > b ? a : b);
+      final timeout = (maxHistory * 1.5).round().clamp(120000, 1800000);
+      final focusStart = history.isEmpty ? 5000 : (maxHistory * 0.6).round();
+      final focusEnd = history.isEmpty ? 30000 : (maxHistory * 1.2).round();
+      log('[chat] poll history=$maxHistory ms, focus=[$focusStart, $focusEnd], timeout=$timeout');
+      void poll() {
+        final elapsed = DateTime.now().millisecondsSinceEpoch - _replyPollStartTs;
+        if (elapsed > timeout) {
+          log('[chat] poll timeout after ${timeout ~/ 1000}s');
+          return;
         }
-      });
-    }
-    if (initialDelay > 0) {
-      Future.delayed(Duration(milliseconds: initialDelay), poll);
+        // Dense (2s) in focus window, sparse outside
+        _pollIntervalMs = (elapsed >= focusStart && elapsed <= focusEnd) ? 2000
+            : (_pollIntervalMs * 1.5).round().clamp(5000, 15000);
+        _replyPollTimer = Timer(Duration(milliseconds: _pollIntervalMs), () async {
+          if (await _pollReplies()) _replyPollTimer?.cancel();
+          else poll();
+        });
+      }
+      void start() { poll(); }
+      if (initialDelay > 0) Future.delayed(Duration(milliseconds: initialDelay), start);
+      else start();
+    });
     } else {
       poll();
     }
@@ -132,6 +140,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
         if (text.isEmpty) continue;
         log('[C14] reply $key text="${text.substring(0, min(60, text.length))}"');
         found = true;
+        // Record reply time for adaptive polling
+        if (_replyPollStartTs > 0) {
+          final replyTime = DateTime.now().millisecondsSinceEpoch - _replyPollStartTs;
+          SharedPreferences.getInstance().then((prefs) {
+            final list = prefs.getStringList('replyTimes') ?? [];
+            list.add(replyTime.toString());
+            prefs.setStringList('replyTimes', list.take(20).toList());
+          });
+        }
         if (mounted) {
           setState(() {
             _messages.add({
