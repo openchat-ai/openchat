@@ -37,7 +37,7 @@ class QiniuDirectClient {
   String? get publicIp => _udp.publicIp;
   int? get udpPort => _udp.udpPort;
   int pollIntervalMs = 3000;
-  static const int userStaleMs = 120000;
+  static const int userStaleMs = 1800000;
 
   Future<void> register() async {
     await _udp.setup();
