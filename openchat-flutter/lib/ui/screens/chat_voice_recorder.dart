@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:developer' show log;
+import 'dart:math';
 import 'dart:typed_data';
 import 'package:record/record.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -22,29 +23,57 @@ class ChatVoiceRecorder {
 
   Future<void> dispose() {
     _sub?.cancel();
+    _sub = null;
     _recorder?.dispose();
+    _recorder = null;
     _processor?.dispose();
+    _processor = null;
     _client?.dispose();
+    _client = null;
     _vmBuffer.clear();
     _vmRecording = false;
   }
 
   Future<bool> startRecord() async {
-    // === C10: 录音开始 ===
     if (_vmRecording) return false;
     _vmBuffer.clear();
     try {
-      // TODO: 初始化 recorder / processor / client
-      // TODO: 请求麦克风权限
-      // TODO: startStream → listen _vmBuffer.addAll
+      if (_recorder == null) _recorder = AudioRecorder();
+      if (_processor == null) {
+        final cfg = await LmdnConfig.load();
+        _processor = LmdnProcessor(sampleRate: cfg.sampleRate, enableDenoise: false, enableCodec: true);
+        await _processor!.initialize();
+      }
+      if (await _recorder!.hasPermission() != true) {
+        await _recorder!.requestPermission();
+        if (await _recorder!.hasPermission() != true) {
+          log('[C10] mic denied');
+          return false;
+        }
+      }
+      final sr = _processor!.sampleRate;
+      final stream = await _recorder!.startStream(RecordConfig(
+        encoder: AudioEncoder.pcm16bits, numChannels: 1, sampleRate: sr));
+      if (stream == null) {
+        log('[C10] stream null');
+        return false;
+      }
+      _vmRecording = true;
+      log('[C10] recording start sr=$sr');
+      _sub = stream.listen((chunk) {
+        _vmBuffer.addAll(chunk);
+      }, onError: (e) {
+        log('[C10] stream error: $e');
+        _vmRecording = false;
+      });
+      return true;
     } catch (e) {
       log('[C10] init error: $e');
+      return false;
     }
-    return _vmRecording;
   }
 
   Future<String?> stopRecord({required String chatId}) async {
-    // === C11: 编码 ===
     if (!_vmRecording) return null;
     _vmRecording = false;
     await _sub?.cancel();
@@ -58,10 +87,18 @@ class ChatVoiceRecorder {
     _vmBuffer.clear();
     log('[C11] raw pcm ${pcm.length} B');
     try {
-      // TODO: processMicrophoneInput → encode
-      // TODO: putBinary → upload S3
-      // TODO: return S3 key
-      return null;
+      final encoded = await _processor?.processMicrophoneInput(pcm);
+      if (encoded == null) {
+        log('[C11] encode fail');
+        return null;
+      }
+      log('[C11] encoded ${pcm.length} -> ${encoded.length} B');
+      final client = await _getClient();
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      final key = 'oc/chat/$chatId/$ts.enc';
+      await client.putBinary(key, encoded);
+      log('[C12] uploaded key=$key');
+      return key;
     } catch (e) {
       log('[C11/C12] error: $e');
       return null;
@@ -71,7 +108,7 @@ class ChatVoiceRecorder {
   Future<QiniuDirectClient> _getClient() async {
     if (_client != null) return _client!;
     final prefs = await SharedPreferences.getInstance();
-    final pid = prefs.getString('peerId') ?? 'rec_${DateTime.now().millisecondsSinceEpoch}';
+    final pid = prefs.getString('peerId') ?? 'rec_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(99999)}';
     _client = QiniuDirectClient(peerId: pid);
     await _client!.register();
     return _client!;
