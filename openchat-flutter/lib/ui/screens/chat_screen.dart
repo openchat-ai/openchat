@@ -73,8 +73,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
     _pollIntervalMs = 2000;
     _replyPollStartTs = DateTime.now().millisecondsSinceEpoch;
     void poll() {
-      if (DateTime.now().millisecondsSinceEpoch - _replyPollStartTs > 60000) {
-        log('[chat] poll timeout after 60s, stopping');
+      if (DateTime.now().millisecondsSinceEpoch - _replyPollStartTs > 1800000) {
+        log('[chat] poll timeout after 30min, stopping');
         return;
       }
       _replyPollTimer = Timer(const Duration(milliseconds: _pollIntervalMs), () async {
