@@ -41,14 +41,14 @@ class ChatVoicePlayer {
         final decoded = await proc.processReceivedAudio(raw);
         if (decoded != null && decoded.pcm.isNotEmpty) {
           log('[C14] decoded ${decoded.pcm.length} B');
-          final src = BytesSource(Uint8List.fromList(decoded.pcm));
-          await _currentPlayer!.play(src, mode: PlayerMode.lowLatency);
+          final wav = QiniuDirectClient.wavFromPcm(decoded.pcm);
+          await _currentPlayer!.play(BytesSource(wav));
           return;
         }
       }
-      log('[C14] playing raw bytes');
-      final src = BytesSource(Uint8List.fromList(raw));
-      await _currentPlayer!.play(src, mode: PlayerMode.lowLatency);
+      // No codec: try raw PCM wrapped in WAV
+      final wav = QiniuDirectClient.wavFromPcm(raw);
+      await _currentPlayer!.play(BytesSource(wav));
     } catch (e) {
       log('[C14] error: $e');
     }

@@ -100,9 +100,15 @@ async function processMsg(key) {
     console.warn(`[C13] empty msg, skip ${key}`);
     return;
   }
+  // Strip EPC header: 0xBB + dir(1) + type(1) + len(3) + payload + cs(1) + 0x7E
+  let payload = raw;
+  if (raw[0] === 0xBB && raw.length >= 8) {
+    const pl = (raw[3] << 16) | (raw[4] << 8) | raw[5];
+    payload = raw.slice(6, 6 + pl);
+  }
   let msg;
   try {
-    msg = JSON.parse(raw.toString('utf8'));
+    msg = JSON.parse(payload.toString('utf8'));
   } catch (e) {
     console.error(`[C13] invalid msg JSON in ${key}: ${e.message}`);
     return;
