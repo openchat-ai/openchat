@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:developer' show log;
-import 'dart:math';
+import 'dart:math' hide log;
+import 'dart:typed_data';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/api/qiniu_direct_client.dart';
@@ -37,7 +38,7 @@ class ChatVoicePlayer {
       log('[C14] raw ${raw.length} B');
       final proc = codec ?? _processor;
       if (proc != null) {
-        final decoded = await proc.processPlaybackAudio(raw);
+        final decoded = await proc.processReceivedAudio(raw);
         if (decoded.pcm != null && decoded.pcm!.isNotEmpty) {
           log('[C14] decoded ${decoded.pcm!.length} B');
           final src = BytesSource(Uint8List.fromList(decoded.pcm!));
