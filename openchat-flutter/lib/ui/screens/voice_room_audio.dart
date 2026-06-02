@@ -56,6 +56,15 @@ class VoiceRoomAudio {
       audioCfg = cfg;
       recorder = AudioRecorder();
       player = AudioPlayer();
+      if (localMode) {
+        player.setAudioContext(const AudioContext(
+          android: AudioContextAndroid(
+            isSpeakerphoneOn: false,
+            contentType: AndroidContentType.speech,
+            usageType: AndroidUsageType.voiceCommunication,
+          ),
+        ));
+      }
       processor = LmdnProcessor(sampleRate: cfg.sampleRate, enableDenoise: cfg.denoise, enableCodec: !localMode);
       await processor?.initialize();
       _writeCp('C2', 'processor init ok');
