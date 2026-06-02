@@ -90,6 +90,60 @@ async function processEnc(key) {
   console.log(`[C13f] uploaded ${replyKey}`);
 }
 
+async function processMsg(key) {
+  console.log(`[C13] downloaded text ${key}`);
+  const raw = await qiniuGet(key);
+  if (!raw || raw.length === 0) {
+    console.warn(`[C13] empty msg, skip ${key}`);
+    return;
+  }
+  let msg;
+  try {
+    msg = JSON.parse(raw.toString('utf8'));
+  } catch (e) {
+    console.error(`[C13] invalid msg JSON in ${key}: ${e.message}`);
+    return;
+  }
+  if (msg.type !== 'text' || !msg.text) {
+    console.warn(`[C13] unexpected msg format in ${key}`);
+    return;
+  }
+
+  const text = msg.text;
+  console.log(`[C13c] text=${text.substring(0, 80)}`);
+
+  let response = '';
+  let toolCalls = [];
+  let errMsg = null;
+  try {
+    const r = await processText(text);
+    response = r.response || '';
+    toolCalls = r.toolCalls || [];
+    console.log(`[C13d] toolCalls=${toolCalls.length}`);
+  } catch (e) {
+    errMsg = e.message;
+    console.error(`[C13d] agent error: ${errMsg}`);
+  }
+
+  const reply = response || '(agent returned empty)';
+  console.log(`[C13e] reply="${reply.substring(0, 80)}"`);
+
+  const parts = key.split('/');
+  const chatId = parts.length >= 3 ? parts[2] : 'default';
+  const ts = Date.now();
+  const replyKey = `oc/chat/${chatId}/${ts}-reply.json`;
+
+  const payload = {
+    text: reply,
+    toolCalls,
+    sourceKey: key,
+    ts,
+    ...(errMsg && { error: errMsg }),
+  };
+  await qiniuPut(replyKey, Buffer.from(JSON.stringify(payload), 'utf8'));
+  console.log(`[C13f] uploaded ${replyKey}`);
+}
+
 async function pollLoop() {
   console.log('[skeleton] starting poll loop...');
   while (true) {
@@ -98,11 +152,15 @@ async function pollLoop() {
       for (const key of keys) {
         if (seenKeys.has(key)) continue;
         seenKeys.add(key);
-        if (!key.endsWith('.enc')) continue;
         if (key.includes('-reply')) continue;
+        if (!key.endsWith('.enc') && !key.endsWith('.msg')) continue;
 
         try {
-          await processEnc(key);
+          if (key.endsWith('.enc')) {
+            await processEnc(key);
+          } else {
+            await processMsg(key);
+          }
         } catch (err) {
           console.error(`[skeleton] process error for ${key}:`, err.message);
         }
