@@ -131,9 +131,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState {
     // Upload to Qiniu so the bridge agent can pick it up
     if (_qiniu != null) {
       final ts = DateTime.now().millisecondsSinceEpoch;
+      final msg = jsonEncode({
+        'type': 'text', 'sender': 'user', 'text': text, 'ts': ts,
+      });
       _qiniu!.putBinary(
-        'oc/chat/${widget.chatId}/$ts.txt',
-        Uint8List.fromList(utf8.encode(text)),
+        'oc/chat/${widget.chatId}/$ts.msg',
+        Uint8List.fromList(utf8.encode(msg)),
       ).catchError((e) => log('[chat] text upload fail: $e'));
     }
   }
