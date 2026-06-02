@@ -13,7 +13,7 @@ class QiniuDebugClient {
   final Future<Uint8List> Function(String key) getBinary;
   final Future<List<String>> Function(String prefix) listFiles;
   final Future<void> Function(String key) deleteFile;
-  final Future<Map<String, dynamic>?> Function() discoverUsers;
+  final Future<List<Map<String, dynamic>>> Function() discoverUsers;
   final String Function() getPublicIp;
   final int? Function() getUdpPort;
   final bool Function() hasUdp;
