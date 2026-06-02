@@ -40,7 +40,7 @@ class VoiceRoomAudio {
       audioCfg = cfg;
       recorder = AudioRecorder();
       player = AudioPlayer();
-      processor = LmdnProcessor(sampleRate: cfg.sampleRate, enableDenoise: cfg.denoise, enableCodec: true);
+      processor = LmdnProcessor(sampleRate: cfg.sampleRate, enableDenoise: cfg.denoise, enableCodec: !localMode);
       await processor?.initialize();
       log('[C2] processor init ok');
 
@@ -97,11 +97,14 @@ class VoiceRoomAudio {
             if (processed != null) {
               if (localMode) {
                 localQueue.add(processed);
+                log('[C4] local enc size=${processed.length}');
               } else {
                 await client?.sendEncodedAudio(targetId, processed, audioSeq++);
                 log('[C4] sent seq=$audioSeq size=${processed.length}');
               }
               callFrames.add(processed);
+            } else {
+              log('[C4] encode null');
             }
           }
         } catch (e) {
@@ -119,6 +122,7 @@ class VoiceRoomAudio {
           if (localMode) {
             chunks = List.from(localQueue);
             localQueue.clear();
+            if (chunks.isNotEmpty) log('[C5] local ${chunks.length} chunks');
           } else {
             chunks = await client!.pollEncodedAudio();
             if (chunks.isNotEmpty) log('[C5] polled ${chunks.length} chunks');
@@ -133,6 +137,8 @@ class VoiceRoomAudio {
                 notes.addAll(result.notes);
                 log('[C8] notes=${result.notes.length}');
               }
+            } else {
+              log('[C6] decode null');
             }
           }
           if (!playing) playNext();
