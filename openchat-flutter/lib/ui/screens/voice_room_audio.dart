@@ -12,6 +12,7 @@ import '../../core/ui_voice_config.dart';
 class VoiceRoomAudio {
   AudioRecorder? recorder;
   AudioPlayer? player;
+  AudioPlayer? _vmPlayer;
   LmdnProcessor? processor;
   StreamSubscription? recordSub;
   Timer? audioTimer;
@@ -186,7 +187,7 @@ class VoiceRoomAudio {
         processor = LmdnProcessor(sampleRate: cfg.sampleRate, enableDenoise: false, enableCodec: true);
         await processor!.initialize();
       }
-      if (player == null) player = AudioPlayer();
+      if (_vmPlayer == null) _vmPlayer = AudioPlayer();
       if (await recorder!.hasPermission() != true) {
         await recorder!.hasPermission(request: true);
         if (await recorder!.hasPermission() != true) return;
@@ -229,8 +230,8 @@ class VoiceRoomAudio {
         return;
       }
       final wav = QiniuDirectClient.wavFromPcm(result.pcm);
-      await player?.stop();
-      await player?.play(BytesSource(wav));
+      await _vmPlayer?.stop();
+      await _vmPlayer?.play(BytesSource(wav));
     } catch (e) {
       log('_endVmRecord error: $e');
     }
@@ -293,6 +294,7 @@ class VoiceRoomAudio {
     recordSub?.cancel();
     recorder?.dispose();
     player?.dispose();
+    _vmPlayer?.dispose();
     processor?.dispose();
     audioTimer?.cancel();
     vmBuffer.clear();
