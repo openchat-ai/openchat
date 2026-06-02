@@ -1,21 +1,15 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:async';
-import 'dart:math' hide log;
 import 'dart:developer' show log;
-import 'dart:typed_data';
-import 'package:record/record.dart';
-import 'package:audioplayers/audioplayers.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/bridge_provider.dart';
 import '../../core/api/bridge_ws_client.dart';
-import '../../core/api/qiniu_direct_client.dart';
-import '../../core/audio/lmdn_codec.dart';
-import '../../core/ui_voice_config.dart';
 import '../../core/sdui.dart';
 import '../../core/sdui_config.dart';
+import 'chat_voice_recorder.dart';
+import 'chat_voice_player.dart';
 
 final bridgeWsProvider = Provider<BridgeWsClient>((ref) {
   final client = BridgeWsClient(port: 3800);
@@ -38,12 +32,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState {
   final List<Map<String, dynamic>> _messages = [];
   final ScrollController _scrollController = ScrollController();
   StreamSubscription? _wsSub;
-  QiniuDirectClient? _vmClient;
-  AudioRecorder? _vmRecorder;
-  AudioPlayer? _vmPlayer;
-  LmdnProcessor? _vmProcessor;
-  final List<int> _vmBuffer = [];
+  final _recorder = ChatVoiceRecorder();
+  final _player = ChatVoicePlayer();
   bool _vmRecording = false;
+
   @override
   String get sduiPage => 'chat';
 
@@ -75,32 +67,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState {
     _wsSub?.cancel();
     _controller.dispose();
     _scrollController.dispose();
-    _vmRecorder?.dispose();
-    _vmPlayer?.dispose();
-    _vmProcessor?.dispose();
-    _vmClient?.dispose();
+    _recorder.dispose();
+    _player.dispose();
     super.dispose();
-  }
-
-  Future<QiniuDirectClient> _getVmClient() async {
-    if (_vmClient == null) {
-      final prefs = await SharedPreferences.getInstance();
-      final pid = prefs.getString('peerId') ?? '${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(99999)}';
-      _vmClient = QiniuDirectClient(peerId: pid);
-      await _vmClient!.register();
-    }
-    return _vmClient!;
-  }
-
-  void _scrollBottom() {
-    Future.delayed(const Duration(milliseconds: 100), () {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300), curve: Curves.easeOut,
-        );
-      }
-    });
   }
 
   void _sendText() {
@@ -114,82 +83,39 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState {
     _scrollBottom();
   }
 
-  Future<void> _startVmRecord() async {
-    if (_vmRecording) return;
-    _vmBuffer.clear();
-    try {
-      if (_vmRecorder == null) _vmRecorder = AudioRecorder();
-      if (_vmProcessor == null) {
-        final cfg = await LmdnConfig.load();
-        _vmProcessor = LmdnProcessor(sampleRate: cfg.sampleRate, enableDenoise: false, enableCodec: true);
-        await _vmProcessor!.initialize();
-      }
-      if (_vmPlayer == null) _vmPlayer = AudioPlayer();
-      if (await _vmRecorder!.hasPermission() != true) {
-        await _vmRecorder!.requestPermission();
-        if (await _vmRecorder!.hasPermission() != true) { log('[C10] mic denied'); return; }
-      }
-      final stream = await _vmRecorder!.startStream(RecordConfig(
-        encoder: AudioEncoder.pcm16bits, numChannels: 1, sampleRate: _vmProcessor!.sampleRate));
-      if (stream == null) { log('[C10] stream null'); return; }
-      _vmRecording = true;
-      log('[C10] recording start');
-      if (mounted) setState(() {});
-      stream.listen((chunk) { _vmBuffer.addAll(chunk); },
-        onError: (e) { log('[C10] stream error: $e'); _vmRecording = false; });
-    } catch (e) {
-      log('[C10] init error: $e');
-    }
+  void _startVmRecord() async {
+    final ok = await _recorder.startRecord();
+    if (ok && mounted) setState(() => _vmRecording = true);
   }
 
-  Future<void> _endVmRecord() async {
-    if (!_vmRecording) return;
-    _vmRecording = false;
-    await _vmRecorder?.stop();
-    if (_vmBuffer.isEmpty) { log('[C11] empty buffer'); return; }
-    final pcm = Uint8List.fromList(_vmBuffer);
-    log('[C11] raw pcm ${pcm.length} B');
-    _vmBuffer.clear();
-    try {
-      final encoded = await _vmProcessor?.processMicrophoneInput(pcm);
-      if (encoded == null) { log('[C11] encode fail'); return; }
-      log('[C11] encoded ${pcm.length} -> ${encoded.length} B');
-      final client = await _getVmClient();
-      final ts = DateTime.now().millisecondsSinceEpoch;
-      final key = 'oc/chat/${widget.chatId}/$ts.enc';
-      await client.putBinary(key, encoded);
-      log('[C12] uploaded key=$key');
+  void _endVmRecord() async {
+    final key = await _recorder.stopRecord(chatId: widget.chatId);
+    if (key != null) {
       ref.read(bridgeWsProvider).sendJson({
-        'type': 'voice_msg', 'data': {'key': key, 'sessionId': widget.chatId}
+        'type': 'voice_msg', 'data': {'key': key, 'sessionId': widget.chatId},
       });
       log('[C13] ws sent voice_msg key=$key');
       if (mounted) setState(() {
         _messages.add({'sender': 'me', 'type': 'voice', 'key': key, 'time': DateTime.now().toString().substring(11, 16)});
       });
-      _scrollBottom();
-    } catch (e) {
-      log('[C11/C12] error: $e');
     }
+    if (mounted) setState(() => _vmRecording = false);
+    _scrollBottom();
   }
 
-  void _playVoiceMsg(String key) async {
-    if (_vmPlayer == null) _vmPlayer = AudioPlayer();
-    try {
-      final client = await _getVmClient();
-      log('[C14] download start key=$key');
-      final pcmData = await client.getBinary(key);
-      if (pcmData.isEmpty) { log('[C14] empty data key=$key'); return; }
-      log('[C14] downloaded ${pcmData.length} B');
-      final result = await _vmProcessor?.processReceivedAudio(pcmData);
-      if (result == null) { log('[C14] decode fail'); return; }
-      log('[C14] decoded ${result.pcm.length} B');
-      final wav = QiniuDirectClient.wavFromPcm(result.pcm);
-      await _vmPlayer?.stop();
-      await _vmPlayer?.play(BytesSource(wav));
-      log('[C14] playback start');
-    } catch (e) {
-      log('[C14] error: $e');
-    }
+  void _playVoiceMsg(String key) {
+    _player.playKey(key);
+  }
+
+  void _scrollBottom() {
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300), curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   @override
