@@ -64,7 +64,7 @@ npm run pm2:status           # PM2 状态
 # === Spec → Impl 自动化 ===
 # 写 spec → 同一模型写代码 → pre-commit 检查一致性
 # spec 是 contract（接口边界+检查点），不是设计文档
-node scripts/generate-from-spec.mjs path/to/spec.md   # 可选：手动生成骨架
+# (不自动生成骨架，spec 和 code 一同提交)
 # === Flutter 客户端 ===
 cd openchat-flutter
 
@@ -139,6 +139,62 @@ npm publish
 - SDK/服务调用、业务逻辑、UI 渲染必须在三个文件中
 - 例：`chat_screen.dart`(UI) ← `chat_voice_recorder.dart`(录音) ← `chat_voice_player.dart`(播放)
 - 违反此规则 = diff >200 行时 pre-commit 告警
+
+## Spec-First 工作流（强制）
+
+> 这是 token 节省的真正杠杆。每次新功能/重构都必须严格按此流程。
+
+### 适用场景
+- ✅ 新增 .dart 文件 >50 行
+- ✅ 重构现有 >100 行模块
+- ✅ 修改白名单内的关键模块接口（见 `SPEC_REQUIRED` 列表）
+- ❌ 仅修改 UI 文案、样式微调、日志输出（不需要 spec）
+
+### 流程（4 步，不可跳步）
+
+```
+1. 读现有代码（理解现状）
+2. 写 .spec.md（描述目标状态：接口/边界/不变量/检查点）
+3. 对比 → 重构代码（spec → code）
+4. spec + code 一起提交（pre-commit 强制）
+```
+
+### Spec 模板结构（必须有）
+
+```markdown
+# spec: <模块名>
+> 简短描述 (1-2 行)
+
+## 数据流       # 输入→处理→输出
+## 接口签名     # 类、方法签名（无实现体）
+## 边界条件     # 异常、空输入、并发等
+## 文件清单     # | 文件 | 职责 | 行数上限 |
+## 调试检查点   # | C | grep 关键词 | 预期 |
+## 不变量       # // === invariants === 块
+```
+
+### 白名单（修改必须同步更新 spec）
+
+`scripts/verify-commit.mjs` 的 `SPEC_REQUIRED` 列表强制：
+- `lmdn_codec.dart` + `audio_pipeline.dart`（音频核心）
+- `qiniu_client.dart`（存储核心）
+- `sdui_config.dart`（UI 引擎）
+- `chat_voice_recorder.dart` + `room_screen.dart` + `voice_room_screen.dart`（核心交互屏）
+
+### Pre-commit 检查（`scripts/verify-commit.mjs`）
+
+- [x] spec.md 存在性（新文件 >50 行必须有）
+- [x] spec.md 章节完整性（数据流/接口签名/边界条件/文件清单 必含）
+- [x] invariants 块（>100 行 .dart 必含）
+- [x] 白名单内文件改动时 spec.md 必须同步改动
+- [x] 行数 ≤200 警告
+
+### Spec-First 反模式（违规 = 警告）
+
+- ❌ 先写代码再补 spec（spec 是 contract，不是事后文档）
+- ❌ spec.md 写"漂亮但没用"的章节（如"未来规划"）
+- ❌ spec 与代码签名不一致（编译能过但语义漂移）
+- ❌ 单文件 >200 行不拆
 
 ## 专家点评系统
 

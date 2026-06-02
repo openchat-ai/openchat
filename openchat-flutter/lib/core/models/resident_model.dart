@@ -1,41 +1,8 @@
-/// AI 居民活动记录
-class ResidentActivity {
-  final String id;
-  final DateTime timestamp;
-  final String type;
-  final String message;
-  final String? agentId;
-  final String? agentName;
-  final String? agentRole;
-  final String? task;
-  final String? summary;
+import 'resident_activity.dart';
 
-  const ResidentActivity({
-    required this.id,
-    required this.timestamp,
-    required this.type,
-    required this.message,
-    this.agentId,
-    this.agentName,
-    this.agentRole,
-    this.task,
-    this.summary,
-  });
-
-  factory ResidentActivity.fromJson(Map<String, dynamic> json) {
-    return ResidentActivity(
-      id: json['id'] as String,
-      timestamp: DateTime.parse(json['timestamp'] as String),
-      type: json['type'] as String,
-      message: json['message'] as String,
-      agentId: json['agentId'] as String?,
-      agentName: json['agentName'] as String?,
-      agentRole: json['agentRole'] as String?,
-      task: json['task'] as String?,
-      summary: json['summary'] as String?,
-    );
-  }
-}
+export 'resident_activity.dart';
+export 'feed_item.dart';
+export 'child_summary.dart';
 
 /// 性格特征标签映射（与服务端 TRAIT_POOL 同步）
 const traitLabelMap = {
@@ -82,21 +49,10 @@ class Resident {
   });
 
   factory Resident.fromJson(Map<String, dynamic> json) {
-    // 解析 traits
     Map<String, double> parsedTraits = {};
     if (json['traits'] is Map) {
       for (final entry in (json['traits'] as Map).entries) {
         parsedTraits[entry.key.toString()] = (entry.value as num).toDouble();
-      }
-    }
-
-    // 筛选 notable traits（>=0.7 或 <=0.3）转为可读标签
-    final notableTraits = <String>[];
-    for (final entry in parsedTraits.entries) {
-      if (entry.value >= 0.7) {
-        notableTraits.add(traitLabelMap[entry.key] ?? entry.key);
-      } else if (entry.value <= 0.3) {
-        notableTraits.add('${traitLabelMap[entry.key] ?? entry.key}（弱）');
       }
     }
 
@@ -134,87 +90,4 @@ class Resident {
 
   bool get isActive => status == 'active';
   bool get isDeleted => status == 'deleted';
-}
-
-/// 社区动态流条目 — 聚合所有居民活动
-class FeedItem {
-  final String id;
-  final DateTime timestamp;
-  final String type;
-  final String message;
-  final String? agentName;
-  final String? agentRole;
-  final String? task;
-  final int residentId;
-  final String residentName;
-  final String? summary;
-
-  const FeedItem({
-    required this.id,
-    required this.timestamp,
-    required this.type,
-    required this.message,
-    this.agentName,
-    this.agentRole,
-    this.task,
-    required this.residentId,
-    required this.residentName,
-    this.summary,
-  });
-
-  factory FeedItem.fromJson(Map<String, dynamic> json) {
-    return FeedItem(
-      id: json['id'] as String,
-      timestamp: DateTime.parse(json['timestamp'] as String),
-      type: json['type'] as String,
-      message: json['message'] as String,
-      agentName: json['agentName'] as String?,
-      agentRole: json['agentRole'] as String?,
-      task: json['task'] as String?,
-      residentId: json['residentId'] as int,
-      residentName: json['residentName'] as String,
-      summary: json['summary'] as String?,
-    );
-  }
-}
-
-/// 子代摘要（用于家谱列表）
-class ChildSummary {
-  final int id;
-  final String name;
-  final String status;
-  final DateTime createdAt;
-  final int depth;
-  final Map<String, double> traits;
-  final int activityCount;
-
-  const ChildSummary({
-    required this.id,
-    required this.name,
-    required this.status,
-    required this.createdAt,
-    required this.depth,
-    required this.traits,
-    required this.activityCount,
-  });
-
-  factory ChildSummary.fromJson(Map<String, dynamic> json) {
-    Map<String, double> t = {};
-    if (json['traits'] is Map) {
-      for (final entry in (json['traits'] as Map).entries) {
-        t[entry.key.toString()] = (entry.value as num).toDouble();
-      }
-    }
-    return ChildSummary(
-      id: json['id'] as int,
-      name: json['name'] as String,
-      status: json['status'] as String,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      depth: json['depth'] as int,
-      traits: t,
-      activityCount: json['activityCount'] as int? ?? 0,
-    );
-  }
-
-  bool get isActive => status == 'active';
 }
