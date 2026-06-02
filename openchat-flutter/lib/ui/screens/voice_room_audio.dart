@@ -20,7 +20,7 @@ class VoiceRoomAudio {
   final List<Uint8List> playQueue = [];
   final List<Uint8List> localQueue = [];
   final List<Uint8List> callFrames = [];
-  final List notes = [];
+  List notes = [];
   bool playing = false;
   bool muted = false;
   bool localMode = true;
@@ -45,7 +45,7 @@ class VoiceRoomAudio {
       log('[C2] processor init ok');
 
       if (await recorder!.hasPermission() != true) {
-        await recorder!.requestPermission();
+        await recorder!.hasPermission(request: true);
         if (await recorder!.hasPermission() != true) {
           log('[C2] mic denied');
           return;
@@ -157,7 +157,7 @@ class VoiceRoomAudio {
       }
       if (player == null) player = AudioPlayer();
       if (await recorder!.hasPermission() != true) {
-        await recorder!.requestPermission();
+        await recorder!.hasPermission(request: true);
         if (await recorder!.hasPermission() != true) return;
       }
       final stream = await recorder!.startStream(RecordConfig(
