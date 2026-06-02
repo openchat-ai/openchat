@@ -44,6 +44,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState {
   final Set<String> _seenReplyKeys = {};
   bool _vmRecording = false;
   int _startupTs = 0;
+  int _pollIntervalMs = 2000;
 
   @override
   String get sduiPage => 'chat';
@@ -53,7 +54,27 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState {
     super.initState();
     _startupTs = DateTime.now().millisecondsSinceEpoch;
     _messages.add({'sender': 'ai', 'type': 'text', 'text': 'Hello! How can I help you?', 'time': '10:00'});
-    _initQiniuPoll();
+  }
+
+  void _startReplyPoll({int initialDelay = 0}) {
+    _replyPollTimer?.cancel();
+    _pollIntervalMs = 2000;
+    void poll() {
+      _replyPollTimer = Timer(const Duration(milliseconds: _pollIntervalMs), () async {
+        final found = await _pollReplies();
+        if (found) {
+          _replyPollTimer?.cancel();
+        } else {
+          _pollIntervalMs = (_pollIntervalMs * 1.5).round().clamp(2000, 10000);
+          poll();
+        }
+      });
+    }
+    if (initialDelay > 0) {
+      Future.delayed(Duration(milliseconds: initialDelay), poll);
+    } else {
+      poll();
+    }
   }
 
   Future<void> _initQiniuPoll() async {
@@ -62,21 +83,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState {
     try {
       _qiniu = QiniuDirectClient(peerId: pid);
       await _qiniu!.register();
-      _replyPollTimer = Timer.periodic(const Duration(seconds: 2), (_) => _pollReplies());
-      log('[chat] reply poll started for chatId=${widget.chatId}');
+      log('[chat] qiniu init ok for chatId=${widget.chatId}');
     } catch (e) {
       log('[chat] qiniu init failed: $e');
     }
   }
 
-  Future<void> _pollReplies() async {
-    if (_qiniu == null) return;
+  Future<bool> _pollReplies() async {
+    if (_qiniu == null) return false;
+    bool found = false;
     try {
       final keys = await _qiniu!.listFiles('oc/chat/${widget.chatId}/');
       for (final key in keys) {
         if (_seenReplyKeys.contains(key)) continue;
         if (!key.endsWith('-reply.json')) continue;
-        // Only display replies created after this screen opened
         final tsMatch = RegExp(r'/(\d+)-reply\.json$').firstMatch(key);
         final ts = tsMatch != null ? int.tryParse(tsMatch.group(1) ?? '0') ?? 0 : 0;
         _seenReplyKeys.add(key);
@@ -94,6 +114,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState {
         final text = (json['text'] as String?) ?? (json['error'] as String? ?? '');
         if (text.isEmpty) continue;
         log('[C14] reply $key text="${text.substring(0, min(60, text.length))}"');
+        found = true;
         if (mounted) {
           setState(() {
             _messages.add({
@@ -107,6 +128,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState {
     } catch (e) {
       log('[poll] error: $e');
     }
+    return found;
   }
 
   @override
@@ -149,7 +171,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState {
       _qiniu!.putBinary(
         'oc/chat/${widget.chatId}/$ts.msg',
         frame,
-      ).catchError((e) => log('[chat] text upload fail: $e'));
+      ).then((_) => _startReplyPoll(initialDelay: 1500))
+       .catchError((e) => log('[chat] text upload fail: $e'));
     }
   }
 
@@ -166,6 +189,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState {
         _messages.add({'sender': 'me', 'type': 'voice', 'key': key,
           'time': DateTime.now().toString().substring(11, 16)});
       });
+      _startReplyPoll(initialDelay: 2000);
     }
     if (mounted) setState(() => _vmRecording = false);
     _scrollBottom();
