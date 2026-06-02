@@ -62,10 +62,9 @@ npm run pm2:stop             # PM2 停止
 npm run pm2:status           # PM2 状态
 
 # === Spec → Impl 自动化 ===
-# 写 spec → staged → pre-commit 自动生成骨架
-# 然后快速模型按 spec 填充 impl
-node scripts/generate-from-spec.mjs --staged          # pre-commit 自动执行
-node scripts/generate-from-spec.mjs path/to/spec.md   # 手动触发单文件
+# 写 spec → 同一模型写代码 → pre-commit 检查一致性
+# spec 是 contract（接口边界+检查点），不是设计文档
+node scripts/generate-from-spec.mjs path/to/spec.md   # 可选：手动生成骨架
 # === Flutter 客户端 ===
 cd openchat-flutter
 
