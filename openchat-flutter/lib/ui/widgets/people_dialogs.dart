@@ -42,7 +42,8 @@ class PeopleDialogs {
   }
 
   static Future<void> showAudioFiles(BuildContext context, QiniuDirectClient client, Map? uiConfig) async {
-    final items = await client.listAudioFilesWithSize();
+    final keys = await client.listFiles('oc/audio/');
+    final items = keys.map((k) => <String, dynamic>{'key': k, 'size': 0}).toList();
     if (!context.mounted) return;
     final layout = uiConfig?['audioFilesLayout'];
     final parser = SduiParser(vars: {
