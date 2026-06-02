@@ -46,10 +46,13 @@ async function processEnc(key) {
     console.warn(`[C13] empty enc, skip ${key}`);
     return;
   }
-  if (encData[0] !== 0xBB || encData[1] !== 0x01 || encData[2] !== 0xCC) {
-    console.error(`[C13] invalid EPC header in ${key}`);
+  if (encData[0] !== 0xBB) {
+    console.error(`[C13] invalid EPC header in ${key}: got 0x${encData[0].toString(16)}, expected 0xBB`);
     return;
   }
+  const epcVersion = encData[1];
+  const epcType = encData[2];
+  console.log(`[C13] EPC v=${epcVersion} type=${epcType} size=${encData.length}B`);
 
   const decoded = await codec.decode(Buffer.from(encData));
   console.log(`[C13b] decoded pcm=${decoded.pcm.length}B score=${decoded.score.length}`);

@@ -140,7 +140,7 @@ class SkeletonCodec {
   async decode(encodedData) {
     if (!this.isReady) throw new Error('Codec not initialized');
     const startTime = Date.now();
-    if (encodedData[0] !== 0xBB || encodedData[1] !== 0x01 || encodedData[2] !== 0xCC) throw new Error('Invalid EPC header');
+    if (encodedData[0] !== 0xBB) throw new Error('Invalid EPC header');
     const pl = (encodedData[3] << 16) | (encodedData[4] << 8) | encodedData[5];
     const payload = Buffer.from(encodedData.slice(6, 6 + pl));
 
