@@ -33,6 +33,22 @@ class VoiceRoomAudio {
   bool Function() isMounted = () => false;
   void Function(void Function()) setStateCb = (_) {};
 
+  int _lastCpTs = 0;
+
+  /// Write checkpoint to S3 (throttled: max 1 write/sec).
+  void _writeCp(String label, String detail) {
+    log('[$label] $detail');
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now - _lastCpTs < 1000) return;
+    _lastCpTs = now;
+    final c = client;
+    if (c != null) {
+      c.writeFile('oc/debug/${c.peerId}/checkpoint.json', {
+        'label': label, 'detail': detail, 'ts': now,
+      });
+    }
+  }
+
   Future<void> startAudio() async {
     if (audioTimer != null) return; // _audioStarted guard
     try {
@@ -42,24 +58,24 @@ class VoiceRoomAudio {
       player = AudioPlayer();
       processor = LmdnProcessor(sampleRate: cfg.sampleRate, enableDenoise: cfg.denoise, enableCodec: !localMode);
       await processor?.initialize();
-      log('[C2] processor init ok');
+      _writeCp('C2', 'processor init ok');
 
       if (await recorder!.hasPermission() != true) {
         await recorder!.hasPermission(request: true);
         if (await recorder!.hasPermission() != true) {
-          log('[C2] mic denied');
+          _writeCp('C2', 'mic denied');
           return;
         }
       }
-      log('[C2] mic perm ok');
+      _writeCp('C2', 'mic perm ok');
 
       final stream = await recorder!.startStream(RecordConfig(
           encoder: AudioEncoder.pcm16bits, numChannels: 1, sampleRate: cfg.sampleRate));
       if (stream == null) {
-        log('[C3] stream null');
+        _writeCp('C3', 'stream null');
         return;
       }
-      log('[C3] record stream started');
+      _writeCp('C3', 'record stream started');
 
       final bufSize = cfg.bufferBytes;
       final fadeBytes = cfg.fadeBytes;
@@ -97,14 +113,14 @@ class VoiceRoomAudio {
             if (processed != null) {
               if (localMode) {
                 localQueue.add(processed);
-                log('[C4] local enc size=${processed.length}');
+                _writeCp('C4', 'local enc size=${processed.length}');
               } else {
                 await client?.sendEncodedAudio(targetId, processed, audioSeq++);
-                log('[C4] sent seq=$audioSeq size=${processed.length}');
+                _writeCp('C4', 'sent seq=$audioSeq size=${processed.length}');
               }
               callFrames.add(processed);
             } else {
-              log('[C4] encode null');
+              _writeCp('C4', 'encode null');
             }
           }
         } catch (e) {
@@ -122,23 +138,23 @@ class VoiceRoomAudio {
           if (localMode) {
             chunks = List.from(localQueue);
             localQueue.clear();
-            if (chunks.isNotEmpty) log('[C5] local ${chunks.length} chunks');
+            if (chunks.isNotEmpty) _writeCp('C5', 'local ${chunks.length} chunks');
           } else {
             chunks = await client!.pollEncodedAudio();
-            if (chunks.isNotEmpty) log('[C5] polled ${chunks.length} chunks');
+            if (chunks.isNotEmpty) _writeCp('C5', 'polled ${chunks.length} chunks');
           }
           if (chunks.isEmpty) return;
           for (final c in chunks) {
             final result = await processor?.processReceivedAudio(c);
             if (result != null) {
               playQueue.add(result.pcm);
-              log('[C6] decoded ${result.pcm.length} B');
+              _writeCp('C6', 'decoded ${result.pcm.length} B');
               if (result.notes.isNotEmpty && isMounted()) {
                 notes.addAll(result.notes);
-                log('[C8] notes=${result.notes.length}');
+                _writeCp('C8', 'notes=${result.notes.length}');
               }
             } else {
-              log('[C6] decode null');
+              _writeCp('C6', 'decode null');
             }
           }
           if (!playing) playNext();
