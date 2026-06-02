@@ -47,7 +47,7 @@ class ChatInputArea extends StatelessWidget {
         Listener(
           onPointerDown: (_) => onStartRecord(),
           onPointerUp: (_) => onEndRecord(),
-          onPointerCancel: () => onEndRecord(),
+          onPointerCancel: (event) => onEndRecord(),
           child: Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
