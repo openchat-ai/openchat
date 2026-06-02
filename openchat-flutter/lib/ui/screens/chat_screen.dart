@@ -33,7 +33,7 @@ class ChatScreen extends ConsumerStatefulWidget {
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState {
+class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, WidgetsBindingObserver {
   final TextEditingController _controller = TextEditingController();
   final List<Map<String, dynamic>> _messages = [];
   final ScrollController _scrollController = ScrollController();
@@ -45,6 +45,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState {
   bool _vmRecording = false;
   int _startupTs = 0;
   int _pollIntervalMs = 2000;
+  int _replyPollStartTs = 0;
 
   @override
   String get sduiPage => 'chat';
@@ -52,14 +53,30 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _startupTs = DateTime.now().millisecondsSinceEpoch;
     _messages.add({'sender': 'ai', 'type': 'text', 'text': 'Hello! How can I help you?', 'time': '10:00'});
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _pollReplies();
+  }
+
+  void _manualCheck() {
+    _replyPollTimer?.cancel();
+    _pollReplies();
   }
 
   void _startReplyPoll({int initialDelay = 0}) {
     _replyPollTimer?.cancel();
     _pollIntervalMs = 2000;
+    _replyPollStartTs = DateTime.now().millisecondsSinceEpoch;
     void poll() {
+      if (DateTime.now().millisecondsSinceEpoch - _replyPollStartTs > 60000) {
+        log('[chat] poll timeout after 60s, stopping');
+        return;
+      }
       _replyPollTimer = Timer(const Duration(milliseconds: _pollIntervalMs), () async {
         final found = await _pollReplies();
         if (found) {
@@ -133,6 +150,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _replyPollTimer?.cancel();
     _qiniu?.dispose();
     _controller.dispose();
