@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:developer' show log;
-import 'dart:math';
+import 'dart:math' hide log;
 import 'dart:typed_data';
 import 'package:record/record.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -45,7 +45,7 @@ class ChatVoiceRecorder {
         await _processor!.initialize();
       }
       if (await _recorder!.hasPermission() != true) {
-        await _recorder!.requestPermission();
+        await _recorder!.hasPermission(request: true);
         if (await _recorder!.hasPermission() != true) {
           log('[C10] mic denied');
           return false;
