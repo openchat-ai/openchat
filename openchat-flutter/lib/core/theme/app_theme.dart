@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'theme_presets.dart';
+import 'theme_presets.dart' as presets;
 
 export 'theme_presets.dart';
 
@@ -75,10 +75,16 @@ class AppTheme {
   });
 
   static List<AppTheme> get all => [
-    glassmorphism,
-    minimalZen,
-    natureOrganic,
-    retroWave,
-    corporatePro,
+    presets.glassmorphism,
+    presets.minimalZen,
+    presets.natureOrganic,
+    presets.retroWave,
+    presets.corporatePro,
   ];
+
+  static final AppTheme glassmorphism = presets.glassmorphism;
+  static final AppTheme minimalZen = presets.minimalZen;
+  static final AppTheme natureOrganic = presets.natureOrganic;
+  static final AppTheme retroWave = presets.retroWave;
+  static final AppTheme corporatePro = presets.corporatePro;
 }
