@@ -39,9 +39,9 @@ class ChatVoicePlayer {
       final proc = codec ?? _processor;
       if (proc != null) {
         final decoded = await proc.processReceivedAudio(raw);
-        if (decoded.pcm != null && decoded.pcm!.isNotEmpty) {
-          log('[C14] decoded ${decoded.pcm!.length} B');
-          final src = BytesSource(Uint8List.fromList(decoded.pcm!));
+        if (decoded != null && decoded.pcm.isNotEmpty) {
+          log('[C14] decoded ${decoded.pcm.length} B');
+          final src = BytesSource(Uint8List.fromList(decoded.pcm));
           await _currentPlayer!.play(src, mode: PlayerMode.lowLatency);
           return;
         }
