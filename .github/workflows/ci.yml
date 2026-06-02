@@ -103,7 +103,20 @@ jobs:
             --title "OpenChat APK $(date +%Y-%m-%d)" \
             --generate-notes \
             "openchat-flutter/build/app/outputs/flutter-apk/openchat.apk"
-      - name: Clean old workflow runs on main
+
+  cleanup:
+    if: ${{ always() && github.event_name == 'push' }}
+    needs: [bridge-check]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Keep only 2 most recent workflow runs on main
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh run list --branch main --limit 20 --json databaseId --jq '.[].databaseId' | while read id; do if [ "$id" != "${{ github.run_id }}" ]; then gh run delete "$id" --yes 2>/dev/null || true; fi; done
+        run: |
+          RUN_IDS=$(gh run list --branch main --limit 50 --json databaseId \
+            --jq '.[].databaseId' | tail -n +3)
+          for id in $RUN_IDS; do
+            gh run delete "$id" --yes 2>/dev/null || true
+          done
