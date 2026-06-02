@@ -1,6 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import '../../core/audio/audio.dart';
+import '../../../core/audio/audio.dart';
 
 class ResidentMusicScore extends StatefulWidget {
   final String title;
@@ -55,7 +55,7 @@ class _ResidentMusicScoreState extends State<ResidentMusicScore> with SingleTick
         Expanded(child: LayoutBuilder(builder: (context, cons) {
           final totalSec = widget.notes.isEmpty
               ? 4.0
-              : widget.notes.map((n) => n.startSec + n.durSec).reduce(math.max).clamp(4.0, 3600.0);
+              : widget.notes.map((n) => n.startSec + n.durSec).reduce(max).clamp(4.0, 3600.0);
           return CustomPaint(
             size: Size(cons.maxWidth, cons.maxHeight),
             painter: _StaffPainter(
