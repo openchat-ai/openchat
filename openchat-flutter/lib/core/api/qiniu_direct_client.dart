@@ -485,25 +485,36 @@ class QiniuDirectClient {
   // Encoded audio relay (neural codec, no WAV header)
   Future<void> _putBinary(String key, Uint8List data) async {
     if (_useFormUpload) {
-      final uri = Uri.parse('https://upload-z0.qiniup.com/');
-      final request = http.MultipartRequest('POST', uri)
-        ..fields['token'] = _uploadToken(key)
-        ..fields['key'] = key
-        ..files.add(http.MultipartFile.fromBytes('file', data));
-      final streamed = await _client.send(request).timeout(const Duration(seconds: 15));
-      final resp = await http.Response.fromStream(streamed);
-      if (resp.statusCode != 200) throw Exception('Form PUT $key: HTTP ${resp.statusCode} ${resp.body}');
-    } else {
-      final url = _presignedUrl(key, method: 'PUT');
-      final resp = await _client.put(Uri.parse(url), headers: {'Content-Type': 'application/octet-stream'}, body: data)
-          .timeout(const Duration(seconds: 10));
-      if (resp.statusCode != 200) throw Exception('S3 PUT $key: HTTP ${resp.statusCode}');
+      try {
+        final uri = Uri.parse('https://upload-z0.qiniup.com/');
+        final request = http.MultipartRequest('POST', uri)
+          ..fields['token'] = _uploadToken(key)
+          ..fields['key'] = key
+          ..files.add(http.MultipartFile.fromBytes('file', data));
+        final streamed = await _client.send(request).timeout(const Duration(seconds: 15));
+        final resp = await http.Response.fromStream(streamed);
+        if (resp.statusCode == 200) return;
+        log('Form PUT $key: HTTP ${resp.statusCode}, fallback to S3...');
+      } catch (e) {
+        log('Form PUT $key error: $e, fallback to S3...');
+      }
     }
+    // S3 PUT fallback (avoids Qiniu form upload issues with binary data)
+    final url = _presignedUrl(key, method: 'PUT');
+    final resp = await _client.put(Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'x-amz-content-sha256': 'UNSIGNED-PAYLOAD',
+        },
+        body: data).timeout(const Duration(seconds: 10));
+    if (resp.statusCode != 200) throw Exception('S3 PUT $key: HTTP ${resp.statusCode}');
   }
 
   Future<Uint8List> _getBinary(String key) async {
     final url = _presignedUrl(key);
-    final resp = await _client.get(Uri.parse(url)).timeout(const Duration(seconds: 8));
+    final resp = await _client.get(Uri.parse(url),
+        headers: {'x-amz-content-sha256': 'UNSIGNED-PAYLOAD'})
+        .timeout(const Duration(seconds: 8));
     if (resp.statusCode != 200) throw Exception('S3 GET $key: HTTP ${resp.statusCode}');
     return resp.bodyBytes;
   }
