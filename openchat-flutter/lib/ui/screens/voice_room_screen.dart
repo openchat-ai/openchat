@@ -145,7 +145,10 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen> with SduiPage
       _processor = LmdnProcessor(sampleRate: cfg.sampleRate, enableDenoise: cfg.denoise, enableCodec: true);
       await _processor?.initialize();
 
-      if (await _recorder!.hasPermission() != true) { _audioStarted = false; return; }
+      if (await _recorder!.hasPermission() != true) {
+        await _recorder!.requestPermission();
+        if (await _recorder!.hasPermission() != true) { _audioStarted = false; return; }
+      }
 
       final stream = await _recorder!.startStream(RecordConfig(
         encoder: AudioEncoder.pcm16bits, numChannels: 1, sampleRate: cfg.sampleRate));
