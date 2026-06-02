@@ -97,9 +97,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
       if (initialDelay > 0) Future.delayed(Duration(milliseconds: initialDelay), start);
       else start();
     });
-    } else {
-      poll();
-    }
   }
 
   Future<void> _initQiniuPoll() async {
