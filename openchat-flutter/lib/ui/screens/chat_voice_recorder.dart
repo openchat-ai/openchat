@@ -21,7 +21,7 @@ class ChatVoiceRecorder {
   final List<int> _vmBuffer = [];
   bool _vmRecording = false;
 
-  Future<void> dispose() {
+  Future<void> dispose() async {
     _sub?.cancel();
     _sub = null;
     _recorder?.dispose();
