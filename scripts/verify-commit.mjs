@@ -36,7 +36,17 @@ function run(cmd) {
 
 // ── 1. 获取本次变更的 dart 文件 ──────────────────────────
 const changedRaw = run('git diff --cached --name-only --diff-filter=ACMR');
-const dartFiles = changedRaw.split('\n').filter(f => f.endsWith('.dart') && existsSync(resolve(cwd, f)));
+const allFiles = changedRaw.split('\n').filter(Boolean);
+const dartFiles = allFiles.filter(f => f.endsWith('.dart') && existsSync(resolve(cwd, f)));
+const specFiles = allFiles.filter(f => f.endsWith('.spec.md') && existsSync(resolve(cwd, f)));
+
+// 如有 staged spec，自动生成骨架
+if (specFiles.length > 0) {
+  for (const sf of specFiles) {
+    info(`spec 变更: ${sf} → 自动生成骨架...`);
+    execSync(`node "${resolve(cwd, 'scripts/generate-from-spec.mjs')}" "${sf}"`, { cwd, stdio: 'inherit' });
+  }
+}
 
 if (dartFiles.length === 0) {
   info('无 Dart 文件变更，跳过代码检查');

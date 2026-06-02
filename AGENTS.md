@@ -60,6 +60,12 @@ npm run push                 # 多策略推送(GitHub→HTTP/1.1→Gitee→SSH)
 npm run pm2:start            # PM2 生产启动
 npm run pm2:stop             # PM2 停止
 npm run pm2:status           # PM2 状态
+
+# === Spec → Impl 自动化 ===
+# 写 spec → staged → pre-commit 自动生成骨架
+# 然后快速模型按 spec 填充 impl
+node scripts/generate-from-spec.mjs --staged          # pre-commit 自动执行
+node scripts/generate-from-spec.mjs path/to/spec.md   # 手动触发单文件
 # === Flutter 客户端 ===
 cd openchat-flutter
 

@@ -1,46 +1,62 @@
 import 'dart:async';
 import 'dart:developer' show log;
+import 'dart:math';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/api/qiniu_direct_client.dart';
 import '../../core/audio/lmdn_codec.dart';
-import '../../core/ui_voice_config.dart';
 
 // === invariants ===
-// - playKey 每次调用前先 stop（防止重叠播放）
-// - _player 在 dispose() 前必须 dispose
-// - getBinary 失败时返回 null，不抛异常
+// - _currentPlayer 同一时间只播一个音频，新 playKey 会停旧的
+// - _processor 生命周期 = class 生命周期，dispose 时释放
 
 class ChatVoicePlayer {
-  QiniuDirectClient? _client;
-  AudioPlayer? _player;
+  AudioPlayer? _currentPlayer;
   LmdnProcessor? _processor;
+  QiniuDirectClient? _client;
 
-  Future<void> dispose() {
-    _player?.dispose();
+  Future<void> dispose() async {
+    await _currentPlayer?.stop();
+    _currentPlayer?.dispose();
+    _currentPlayer = null;
     _processor?.dispose();
-    _client?.dispose();
+    _processor = null;
   }
 
-  Future<bool> playKey(String key) async {
-    // === C14: 下载 → 解码 → 播放 ===
+  Future<void> playKey(String key, {LmdnProcessor? codec}) async {
+    if (_currentPlayer == null) _currentPlayer = AudioPlayer();
+    await _currentPlayer!.stop();
     try {
       final client = await _getClient();
-      log('[C14] download start key=$key');
-      // TODO: getBinary → download LMDN data
-      // TODO: processReceivedAudio → decode PCM
-      // TODO: wavFromPcm → audioplayers.play
-      return false;
+      log('[C14] downloading key=$key');
+      final raw = await client.getBinary(key);
+      if (raw == null || raw.isEmpty) {
+        log('[C14] empty response');
+        return;
+      }
+      log('[C14] raw ${raw.length} B');
+      final proc = codec ?? _processor;
+      if (proc != null) {
+        final decoded = await proc.processPlaybackAudio(raw);
+        if (decoded.pcm != null && decoded.pcm!.isNotEmpty) {
+          log('[C14] decoded ${decoded.pcm!.length} B');
+          final src = BytesSource(Uint8List.fromList(decoded.pcm!));
+          await _currentPlayer!.play(src, mode: PlayerMode.lowLatency);
+          return;
+        }
+      }
+      log('[C14] playing raw bytes');
+      final src = BytesSource(Uint8List.fromList(raw));
+      await _currentPlayer!.play(src, mode: PlayerMode.lowLatency);
     } catch (e) {
       log('[C14] error: $e');
-      return false;
     }
   }
 
   Future<QiniuDirectClient> _getClient() async {
     if (_client != null) return _client!;
     final prefs = await SharedPreferences.getInstance();
-    final pid = prefs.getString('peerId') ?? 'play_${DateTime.now().millisecondsSinceEpoch}';
+    final pid = prefs.getString('peerId') ?? 'play_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(99999)}';
     _client = QiniuDirectClient(peerId: pid);
     await _client!.register();
     return _client!;
