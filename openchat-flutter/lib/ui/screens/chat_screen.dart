@@ -127,8 +127,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState {
         'time': DateTime.now().toString().substring(11, 16)});
     });
     _controller.clear();
-    // v0: 文本聊天暂不走 Qiniu（语音链路优先）。后续可加 oc/chat/$chatId/$ts.txt 上传
     _scrollBottom();
+    // Upload to Qiniu so the bridge agent can pick it up
+    if (_qiniu != null) {
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      _qiniu!.putBinary(
+        'oc/chat/${widget.chatId}/$ts.txt',
+        Uint8List.fromList(utf8.encode(text)),
+      ).catchError((e) => log('[chat] text upload fail: $e'));
+    }
   }
 
   void _startVmRecord() async {
