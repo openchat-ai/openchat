@@ -494,9 +494,9 @@ class QiniuDirectClient {
         final streamed = await _client.send(request).timeout(const Duration(seconds: 15));
         final resp = await http.Response.fromStream(streamed);
         if (resp.statusCode == 200) return;
-        log('Form PUT $key: HTTP ${resp.statusCode}, fallback to S3...');
+        log('warn', 'Form PUT $key: HTTP ${resp.statusCode}, fallback to S3...');
       } catch (e) {
-        log('Form PUT $key error: $e, fallback to S3...');
+        log('warn', 'Form PUT $key error: $e, fallback to S3...');
       }
     }
     // S3 PUT fallback (avoids Qiniu form upload issues with binary data)
