@@ -75,7 +75,7 @@ class SettingsThemeSection extends ConsumerWidget {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('选择主题', style: TextStyle(color: theme.textPrimary, fontSize: 15, fontWeight: FontWeight.w500)),
               const SizedBox(height: 12),
-              for (final t in const [
+              for (final t in [
                 {'theme': AppTheme.glassmorphism, 'name': 'Glass'},
                 {'theme': AppTheme.minimalZen, 'name': 'Zen'},
                 {'theme': AppTheme.natureOrganic, 'name': 'Nature'},
