@@ -114,7 +114,7 @@ class LmdnCodec {
     final payload = bw.finish();
     final frame = Uint8List(7 + payload.length + 2);
     int off = 0;
-    frame[off++] = 0xBB; frame[off++] = 0x01; frame[off++] = 0xCC;
+    frame[off++] = 0xBB; frame[off++] = 0x00; frame[off++] = 0xCC;
     final pl = payload.length;
     frame[off++] = (pl >> 16) & 0xFF;
     frame[off++] = (pl >> 8) & 0xFF;
@@ -144,7 +144,7 @@ class LmdnCodec {
     int globalFrameIdx = 0;
 
     while (offset + 8 <= data.length) {
-      if (data[offset] != 0xBB || data[offset + 1] != 0x01 || data[offset + 2] != 0xCC) {
+      if (data[offset] != 0xBB) {
         break;
       }
       final pl = (data[offset + 3] << 16) | (data[offset + 4] << 8) | data[offset + 5];
