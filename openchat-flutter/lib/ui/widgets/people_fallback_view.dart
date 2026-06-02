@@ -9,7 +9,7 @@ class PeopleFallbackView extends StatelessWidget {
   final List<Map<String, dynamic>> users;
   final QiniuDirectClient? client;
   final AppTheme theme;
-  final VoidCallback onRefresh;
+  final Future<void> Function() onRefresh;
   final VoidCallback onSpawnDemo;
   final void Function(String peerId) onCall;
 
