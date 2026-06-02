@@ -142,14 +142,14 @@ async function processMsg(key) {
   const ts = Date.now();
   const replyKey = `oc/chat/${chatId}/${ts}-reply.json`;
 
-  const payload = {
+  const replyPayload = {
     text: reply,
     toolCalls,
     sourceKey: key,
     ts,
     ...(errMsg && { error: errMsg }),
   };
-  await qiniuPut(replyKey, Buffer.from(JSON.stringify(payload), 'utf8'));
+  await qiniuPut(replyKey, Buffer.from(JSON.stringify(replyPayload), 'utf8'));
   console.log(`[C13f] uploaded ${replyKey}`);
 }
 
