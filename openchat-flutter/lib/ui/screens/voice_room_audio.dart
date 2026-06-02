@@ -56,8 +56,8 @@ class VoiceRoomAudio {
       audioCfg = cfg;
       recorder = AudioRecorder();
       player = AudioPlayer();
-      if (localMode) {
-        player.setAudioContext(const AudioContext(
+      if (localMode && player != null) {
+        player!.setAudioContext(AudioContext(
           android: AudioContextAndroid(
             isSpeakerphoneOn: false,
             contentType: AndroidContentType.speech,
