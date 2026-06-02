@@ -1,6 +1,10 @@
 #!/bin/sh
 # OpenChat 提交前自动测试
 
+if [ -f ".husky/../scripts/verify-commit.mjs" ]; then
+  node scripts/verify-commit.mjs || { echo "❌ verify-commit 未通过"; exit 1; }
+fi
+
 echo "🔍 运行提交前检查..."
 
 # 0. Commit message lint

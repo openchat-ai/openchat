@@ -13,7 +13,7 @@
 
 > **🔴 SDUI 优先原则**: 任何 UI/行为/配置的变更，先判断能否用 SDUI JSON 或 file:write 实现。能，就不改代码。不得用 Flutter Dart 实现 SDUI 已支持的事。
 > **编译边界**: 改代码前先查 `docs/COMPILATION_BOUNDARY.md` 决策树。约 85% 改动不该触发 APK 编译（仍需编译的场景见文档"仍需 APK 的常见场景"表格）。
-> **改动积攒**: Flutter 改动攒够 3-5 个再提交+推送（除非是 crash 修复）。
+> **小步高频**：一个功能一次提交，不改代码后提交。diff >500 行 → `node scripts/verify-commit.mjs` 报警告，拆分为多个提交。
 ---
 
 ## 技术栈
@@ -91,11 +91,49 @@ npm publish
 - 模型类使用 freezed + json_serializable
 
 ### Git
-- 提交前自动运行 husky pre-commit hook
+- 提交前自动运行 husky pre-commit hook（含 `scripts/verify-commit.mjs` 检查）
 - Commit message 格式: `type: description` (feat/fix/chore/refactor/docs)
 - 禁止提交 `.env` 文件（已在 .gitignore 中）
 - **推送策略**（国内网络）：`npm run push` 自动尝试 HTTPS → HTTP/1.1 → Gitee → SSH。Gitee 远程需手动创建 `gitee.com/openchat-ai/openchat` 仓库。代理推送: `git -c http.proxy=http://127.0.0.1:7890 push origin main`
 ---
+
+## 代码设计规则（可执行，不可讨价还价）
+
+> 这些规则通过 `scripts/verify-commit.mjs` 在 pre-commit 中自动检查。不遵守 = 提交被拒绝。
+
+### R1. 文件行数上限：200 行
+- 单个 .dart 文件不超过 200 行（pre-commit 告警，不强制拒绝）
+- 超出的必须拆分为多个文件，每个文件 1 个类 + 1 个单一职责
+
+### R2. invariants 约束块（>100 行必须含）
+- 超过 100 行的文件必须包含 `// === invariants ===` 注释块
+- 块内列出该文件的所有运行时约束
+- 示例：
+  ```
+  // === invariants ===
+  // - _playQueue 只在主 isolate 读写，无锁
+  // - pollMs 必须 < bufferBytes / (sampleRate*2) 否则丢帧
+  // - _audioTimer 在 dispose() 前必须 cancel
+  ```
+
+### R3. 新增 >50 行必须有 .spec.md
+- 新增 .dart 文件超过 50 行，必须附带同名的 `.spec.md` 文件（见 `docs/spec-template.md`）
+- spec 由顶级模型（Opus/Claude）撰写，代码由廉价模型按 spec 翻译
+- 修改代码后必须同步更新 spec，否则 git hook 拒绝
+
+### R4. 总 diff ≤500 行
+- 每次提交总 diff 超过 500 行 → pre-commit 告警
+- 必须拆分为独立功能的多个提交
+
+### R5. 调试检查点全覆盖
+- 每个涉及网络/编解码/异步流程的功能必须有 `[C{N}]` 日志检查点
+- 检查点按顺序编号，覆盖：入口、成功路径、错误路径
+- 索引表统一维护在 `docs/voice-data-flow.md` 的"调试检查点索引"章节
+
+### R6. 一个文件一个责任
+- SDK/服务调用、业务逻辑、UI 渲染必须在三个文件中
+- 例：`chat_screen.dart`(UI) ← `chat_voice_recorder.dart`(录音) ← `chat_voice_player.dart`(播放)
+- 违反此规则 = diff >200 行时 pre-commit 告警
 
 ## 专家点评系统
 
@@ -166,7 +204,7 @@ npm publish
 5. **本地验证** — 改代码后，先在本地跑通相关测试和 lint
 5. **推送前自问** — 是否遗漏了边界情况？是否有调用方没考虑到？这个改动是否真的可交付？
 6. **宁可多测一次，不可多推一次** — 用户每安装一次新版成本极高，推送前必须确认没有低级错误
-7. **批量推送** — 积累多个改动后一次性推送，减少 CI 重复跑和用户安装次数
+7. **批量推送** — 积累多个改动后一次性推送，减少 CI 重复跑和用户安装次数（与 R4 冲突时，以 R4 为准：单次 diff ≤500 行，可多个功能合推但不得堆砌）
 8. **Flutter 代码推送前必须做 API 签对签** — 无法运行 `flutter analyze` 时，必须去 pub.dev 查目标包的构造函数签名、方法签名、枚举值，逐行核对。不得猜测 API 签名。涉及原生编译（NDK/Gradle）的修改，必须先检查 `gradle.properties`、`build.gradle`、`minSdk` 等配置。
 
 ### 四项基本原则（硬约束）
