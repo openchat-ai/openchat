@@ -52,7 +52,7 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
     _client = QiniuDirectClient(peerId: peerId);
     try {
       await _client!.register().timeout(const Duration(seconds: 8));
-      await _client!.fetchConfig().timeout(const Duration(seconds: 8));
+      await QiniuDirectClient.fetchConfigFile('oc/config/app.json').timeout(const Duration(seconds: 8));
       _uiConfig = await sduiSource.load('people')
           .timeout(const Duration(seconds: 8));
       _pollTimer = Timer.periodic(Duration(milliseconds: _client!.pollIntervalMs), (_) => _pollUsers());
@@ -168,7 +168,7 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
       try {
         return PeopleSduiView(
           users: _users,
-          uiConfig: _uiConfig!,
+          uiConfig: _uiConfig! as Map<String, dynamic>,
           client: _client!,
           theme: theme,
           onRefresh: _pollUsers,
