@@ -6,7 +6,7 @@
   "fadeBytes": 240,
   "fadeSamples": 48,
   "demoDelayMs": 3000,
-  "denoise": true,
+  "denoise": false,
   "agc": false,
-  "highPass": true
+  "highPass": false
 }
