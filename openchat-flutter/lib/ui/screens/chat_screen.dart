@@ -1,25 +1,27 @@
-﻿import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'dart:async';
+﻿import 'dart:async';
+import 'dart:convert';
 import 'dart:developer' show log;
-import '../../core/theme/app_theme.dart';
-import '../../providers/theme_provider.dart';
-import '../../providers/bridge_provider.dart';
-import '../../core/api/bridge_ws_client.dart';
+import 'dart:math' show min;
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/api/qiniu_client.dart';
 import '../../core/sdui.dart';
 import '../../core/sdui_config.dart';
-import 'chat_voice_recorder.dart';
-import 'chat_voice_player.dart';
+import '../../core/theme/app_theme.dart';
+import '../../providers/theme_provider.dart';
 import 'chat_bubble.dart';
-import 'chat_input_area.dart';
 import 'chat_empty_state.dart';
+import 'chat_input_area.dart';
+import 'chat_voice_player.dart';
+import 'chat_voice_recorder.dart';
 
-final bridgeWsProvider = Provider<BridgeWsClient>((ref) {
-  final client = BridgeWsClient(port: 3800);
-  client.connect();
-  ref.onDispose(() => client.dispose());
-  return client;
-});
+// === invariants ===
+// - All communication with Bridge is via Qiniu (no WebSocket, no IP)
+// - _replyPollTimer cancels in dispose() to prevent leaks
+// - _seenReplyKeys persists in memory only; _startupTs filters historical replies
+// - QiniuDirectClient is shared between recorder/player/poll loop via this screen
+//   (recorder + player have their own internal clients; this one is for polling only)
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String chatId;
@@ -34,10 +36,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState {
   final TextEditingController _controller = TextEditingController();
   final List<Map<String, dynamic>> _messages = [];
   final ScrollController _scrollController = ScrollController();
-  StreamSubscription? _wsSub;
   final _recorder = ChatVoiceRecorder();
   final _player = ChatVoicePlayer();
+  QiniuDirectClient? _qiniu;
+  Timer? _replyPollTimer;
+  final Set<String> _seenReplyKeys = {};
   bool _vmRecording = false;
+  int _startupTs = 0;
 
   @override
   String get sduiPage => 'chat';
@@ -45,29 +50,68 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState {
   @override
   void initState() {
     super.initState();
-    _messages.addAll([
-      {'sender': 'ai', 'type': 'text', 'text': 'Hello! How can I help you?', 'time': '10:00'},
-    ]);
-    _wsSub = ref.read(bridgeWsProvider).messages.listen((msg) {
-      if (msg.type == 'chat_chunk' || msg.type == 'chat_response') {
-        final content = msg.data['content'] as String? ?? msg.data['text'] as String? ?? '';
-        if (content.isNotEmpty) setState(() {
-          _messages.add({'sender': 'ai', 'type': 'text', 'text': content, 'time': DateTime.now().toString().substring(11, 16)});
-        });
+    _startupTs = DateTime.now().millisecondsSinceEpoch;
+    _messages.add({'sender': 'ai', 'type': 'text', 'text': 'Hello! How can I help you?', 'time': '10:00'});
+    _initQiniuPoll();
+  }
+
+  Future<void> _initQiniuPoll() async {
+    final prefs = await SharedPreferences.getInstance();
+    final pid = prefs.getString('peerId') ?? 'chat_${DateTime.now().millisecondsSinceEpoch}';
+    try {
+      _qiniu = QiniuDirectClient(peerId: pid);
+      await _qiniu!.register();
+      _replyPollTimer = Timer.periodic(const Duration(seconds: 2), (_) => _pollReplies());
+      log('[chat] reply poll started for chatId=${widget.chatId}');
+    } catch (e) {
+      log('[chat] qiniu init failed: $e');
+    }
+  }
+
+  Future<void> _pollReplies() async {
+    if (_qiniu == null) return;
+    try {
+      final keys = await _qiniu!.listFiles('oc/chat/${widget.chatId}/');
+      for (final key in keys) {
+        if (_seenReplyKeys.contains(key)) continue;
+        if (!key.endsWith('-reply.json')) continue;
+        // Only display replies created after this screen opened
+        final tsMatch = RegExp(r'/(\d+)-reply\.json$').firstMatch(key);
+        final ts = tsMatch != null ? int.tryParse(tsMatch.group(1) ?? '0') ?? 0 : 0;
+        _seenReplyKeys.add(key);
+        if (ts > 0 && ts < _startupTs) continue;
+
+        final bytes = await _qiniu!.getBinary(key);
+        if (bytes.isEmpty) continue;
+        Map<String, dynamic> json;
+        try {
+          json = jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
+        } catch (e) {
+          log('[C14] json parse fail $key: $e');
+          continue;
+        }
+        final text = (json['text'] as String?) ?? (json['error'] as String? ?? '');
+        if (text.isEmpty) continue;
+        log('[C14] reply $key text="${text.substring(0, min(60, text.length))}"');
+        if (mounted) {
+          setState(() {
+            _messages.add({
+              'sender': 'ai', 'type': 'text', 'text': text,
+              'time': DateTime.now().toString().substring(11, 16),
+            });
+          });
+          _scrollBottom();
+        }
       }
-      if (msg.type == 'voice_msg') {
-        final key = msg.data['key'] as String?;
-        if (key != null) { setState(() {
-          _messages.add({'sender': 'ai', 'type': 'voice', 'key': key, 'time': DateTime.now().toString().substring(11, 16)});
-          log('[C13] received voice_msg key=$key');
-        }); }
-      }
-    });
+    } catch (e) {
+      log('[poll] error: $e');
+    }
   }
 
   @override
   void dispose() {
-    _wsSub?.cancel();
+    _replyPollTimer?.cancel();
+    _qiniu?.dispose();
     _controller.dispose();
     _scrollController.dispose();
     _recorder.dispose();
@@ -79,10 +123,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
     setState(() {
-      _messages.add({'sender': 'me', 'type': 'text', 'text': text, 'time': DateTime.now().toString().substring(11, 16)});
+      _messages.add({'sender': 'me', 'type': 'text', 'text': text,
+        'time': DateTime.now().toString().substring(11, 16)});
     });
     _controller.clear();
-    ref.read(bridgeWsProvider).sendMessage(text, sessionId: widget.chatId);
+    // v0: 文本聊天暂不走 Qiniu（语音链路优先）。后续可加 oc/chat/$chatId/$ts.txt 上传
     _scrollBottom();
   }
 
@@ -94,12 +139,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState {
   void _endVmRecord() async {
     final key = await _recorder.stopRecord(chatId: widget.chatId);
     if (key != null) {
-      ref.read(bridgeWsProvider).sendJson({
-        'type': 'voice_msg', 'data': {'key': key, 'sessionId': widget.chatId},
-      });
-      log('[C13] ws sent voice_msg key=$key');
+      log('[C12] uploaded $key, polling for reply...');
       if (mounted) setState(() {
-        _messages.add({'sender': 'me', 'type': 'voice', 'key': key, 'time': DateTime.now().toString().substring(11, 16)});
+        _messages.add({'sender': 'me', 'type': 'voice', 'key': key,
+          'time': DateTime.now().toString().substring(11, 16)});
       });
     }
     if (mounted) setState(() => _vmRecording = false);

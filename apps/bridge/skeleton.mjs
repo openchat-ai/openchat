@@ -1,37 +1,45 @@
-// Bridge side skeleton: WebSocket server on /ws (port 3800)
-// Receives voice_msg → lmdn decode → agent → reply via chat_response
+// Bridge side skeleton: polls oc/chat/ for *.enc, processes via lmdn+agent,
+// writes back *-reply.json. NO WebSocket, NO IP needed.
+//
+// Architecture: Qiniu-as-Signaling. Bridge can run anywhere (PC, server, NAS).
+// Phone and Bridge communicate purely via Qiniu object storage.
 //
 // Usage: node apps/bridge/skeleton.mjs
-//   ⚠️ Must stop main Bridge first (it also binds port 3800)
 //
 // See docs/WALKING-SKELETON-SPEC.md for full data flow.
 
-import { createServer } from 'node:http';
-import { WebSocketServer } from 'ws';
 import { SkeletonCodec } from './skeleton-codec.mjs';
-import { qiniuGet } from './skeleton-qiniu.mjs';
+import { qiniuList, qiniuGet, qiniuPut } from './skeleton-qiniu.mjs';
 import { processText } from './skeleton-agent.mjs';
 
-const PORT = parseInt(process.env.SKELETON_PORT || '3800', 10);
-const WS_PATH = '/ws';
-
 // === invariants ===
-// - Shared codec instance (avoid re-init per request)
-// - voice_msg.data.key must point to oc/chat/$chatId/$ts.enc
-// - chat_response.data.sessionId must echo back so App routes to correct chat
-// - No TTS, no reply.enc upload — reply is text via WS only
+// - All cross-device data flows through Qiniu, never direct connection
+// - Bridge polls oc/chat/ every POLL_INTERVAL_MS
+// - Only .enc files without "-reply" suffix are processed
+// - Reply is JSON text uploaded to oc/chat/$chatId/$ts-reply.json
+// - seenKeys persists in memory only (process restart re-scans)
+
+const POLL_INTERVAL_MS = 2000;
+const CHAT_PREFIX = 'oc/chat/';
+const seenKeys = new Set();
 
 const codec = new SkeletonCodec();
 await codec.initialize();
 console.log('[skeleton] codec ready @ 24kHz');
 
-async function handleVoiceMsg(ws, msg) {
-  const { key, sessionId } = msg.data || {};
-  if (!key) {
-    console.error('[skeleton] voice_msg missing key');
-    return;
+// On startup, mark existing files as seen to avoid replaying history
+async function primeSeenKeys() {
+  try {
+    const keys = await qiniuList(CHAT_PREFIX);
+    for (const k of keys) seenKeys.add(k);
+    console.log(`[skeleton] primed seenKeys with ${keys.length} existing entries`);
+  } catch (e) {
+    console.warn('[skeleton] prime failed:', e.message);
   }
-  console.log(`[C13] received voice_msg key=${key} session=${sessionId}`);
+}
+
+async function processEnc(key) {
+  console.log(`[C13] downloaded ${key}`);
 
   const encData = await qiniuGet(key);
   if (!encData || encData.length === 0) {
@@ -49,77 +57,62 @@ async function handleVoiceMsg(ws, msg) {
   const text = '你好'; // v0: hard-code STT
   console.log(`[C13c] text=${text}`);
 
-  const { response, toolCalls } = await processText(text);
-  const reply = response || '(empty reply)';
-  console.log(`[C13d] toolCalls=${toolCalls.length}`);
+  let response = '';
+  let toolCalls = [];
+  let errMsg = null;
+  try {
+    const r = await processText(text);
+    response = r.response || '';
+    toolCalls = r.toolCalls || [];
+    console.log(`[C13d] toolCalls=${toolCalls.length}`);
+  } catch (e) {
+    errMsg = e.message;
+    console.error(`[C13d] agent error: ${errMsg}`);
+  }
+
+  const reply = response || '(agent returned empty)';
   console.log(`[C13e] reply="${reply.substring(0, 80)}"`);
 
-  ws.send(JSON.stringify({
-    type: 'chat_response',
-    data: { content: reply, sessionId },
-    sessionId,
-  }));
-  console.log('[C13e] sent chat_response');
+  // Derive chatId from key: oc/chat/<chatId>/<ts>.enc
+  const parts = key.split('/');
+  const chatId = parts.length >= 3 ? parts[2] : 'default';
+  const ts = Date.now();
+  const replyKey = `oc/chat/${chatId}/${ts}-reply.json`;
+
+  const payload = {
+    text: reply,
+    toolCalls,
+    sourceKey: key,
+    ts,
+    ...(errMsg && { error: errMsg }),
+  };
+  await qiniuPut(replyKey, Buffer.from(JSON.stringify(payload), 'utf8'));
+  console.log(`[C13f] uploaded ${replyKey}`);
 }
 
-async function handleTextChat(ws, msg) {
-  const text = msg.data?.message || '';
-  if (!text) return;
-  console.log(`[skeleton] text chat: ${text}`);
-  const { response } = await processText(text);
-  ws.send(JSON.stringify({
-    type: 'chat_response',
-    data: { content: response || '(empty)', sessionId: msg.sessionId },
-    sessionId: msg.sessionId,
-  }));
-}
-
-const httpServer = createServer((req, res) => {
-  if (req.url === '/health') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'ok', service: 'skeleton', codec: 'lmdn-24k' }));
-    return;
-  }
-  res.writeHead(404);
-  res.end();
-});
-
-const wss = new WebSocketServer({ server: httpServer, path: WS_PATH });
-
-wss.on('connection', (ws, req) => {
-  console.log(`[skeleton] ws client connected from ${req.socket.remoteAddress}`);
-  ws.send(JSON.stringify({
-    type: 'bridge_handshake',
-    data: { peerId: 'skeleton-bridge', service: 'skeleton' },
-  }));
-
-  ws.on('message', async (raw) => {
-    let msg;
-    try { msg = JSON.parse(raw.toString()); } catch (e) {
-      console.error('[skeleton] invalid json:', e.message);
-      return;
-    }
-
+async function pollLoop() {
+  console.log('[skeleton] starting poll loop...');
+  while (true) {
     try {
-      if (msg.type === 'voice_msg') await handleVoiceMsg(ws, msg);
-      else if (msg.type === 'chat') await handleTextChat(ws, msg);
-      else if (msg.type === 'ping') ws.send(JSON.stringify({ type: 'pong', data: {} }));
+      const keys = await qiniuList(CHAT_PREFIX);
+      for (const key of keys) {
+        if (seenKeys.has(key)) continue;
+        seenKeys.add(key);
+        if (!key.endsWith('.enc')) continue;
+        if (key.includes('-reply')) continue;
+
+        try {
+          await processEnc(key);
+        } catch (err) {
+          console.error(`[skeleton] process error for ${key}:`, err.message);
+        }
+      }
     } catch (err) {
-      console.error(`[skeleton] handler error (${msg.type}):`, err.message);
-      ws.send(JSON.stringify({
-        type: 'chat_response',
-        data: { content: `❌ Error: ${err.message}`, sessionId: msg.sessionId },
-        sessionId: msg.sessionId,
-      }));
+      console.error('[skeleton] poll error:', err.message);
     }
-  });
+    await new Promise(r => setTimeout(r, POLL_INTERVAL_MS));
+  }
+}
 
-  ws.on('close', () => console.log('[skeleton] ws client disconnected'));
-  ws.on('error', (err) => console.error('[skeleton] ws error:', err.message));
-});
-
-httpServer.listen(PORT, () => {
-  console.log(`[skeleton] WS server listening on :${PORT}${WS_PATH}`);
-  console.log(`[skeleton] HTTP health at :${PORT}/health`);
-  console.log('[skeleton] waiting for voice_msg...');
-});
+await primeSeenKeys();
+pollLoop().catch(console.error);
