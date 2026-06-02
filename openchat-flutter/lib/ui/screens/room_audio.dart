@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:developer' show log;
-import 'dart:math';
+import 'dart:math' hide log;
 import 'dart:typed_data';
 import 'package:record/record.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -61,7 +61,7 @@ class RoomAudio {
       log('[C15] processor+player init ok');
 
       if (await _recorder!.hasPermission() != true) {
-        await _recorder!.requestPermission();
+        await _recorder!.hasPermission(request: true);
         if (await _recorder!.hasPermission() != true) { _audioStarted = false; log('[C15] mic perm denied'); return; }
       }
       log('[C15] mic perm ok');
