@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' show log;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'sdui.dart';
@@ -6,6 +7,7 @@ import 'sdui.dart';
 class SduiActions {
   static void handle(BuildContext context, String action,
       {VoidCallback? onRefresh, VoidCallback? onDemo, Map<String, VoidCallback>? custom}) {
+    log('[C19] sdui action=$action');
     if (action == 'refresh') { onRefresh?.call(); return; }
     if (action == 'demo') { onDemo?.call(); return; }
     if (action.startsWith('navigate:')) {
