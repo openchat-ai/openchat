@@ -4,6 +4,7 @@ import { sessionManager } from '../session-manager.js';
 import { PromptBuilder } from '../convergence/prompt-builder.js';
 import { agentMonitor } from './agent-monitor.js';
 import { QualityChecker, Corrector } from '../quality/quality-check-system.js';
+import * as responseCache from '../response-cache.js';
 import logger from '../monitoring/logger.js';
 
 /**
@@ -79,6 +80,7 @@ export class AgentEngine {
     }
 
     let currentContext = await memoryManager.getContext(sessionId);
+    currentContext = currentContext.slice(-6);
 
     if (ragContext.length > 0) {
       const ragMessages = ragContext.map(r => ({
@@ -90,171 +92,107 @@ export class AgentEngine {
 
     await memoryManager.addMessage(sessionId, 'user', userMessage);
 
-    const executionTrace = { actions: [], startTime: Date.now() };
-    let iteration = 0;
-    let finalizedResponse = null;
-    let isTaskComplete = false;
+    const session = sessionManager.getSession(sessionId);
+    if (!session) throw new Error(`Session ${sessionId} not found`);
+    const provider = sessionManager.getProvider(session.providerType);
+
+    const cached = responseCache.get(userMessage, session.model);
+    if (cached) {
+      onEvent({ type: AgentEvents.CONTENT, content: cached, iteration: 0 });
+      onEvent({ type: AgentEvents.COMPLETE, response: cached, iterations: 0, fromCache: true });
+      await memoryManager.addMessage(sessionId, 'assistant', cached);
+      return cached;
+    }
 
     const tools = this.useFunctionCalling ? pluginManager.getToolsForFunctionCalling() : null;
-
-    // 记录执行开始
     const agentId = `agent-${sessionId}`;
+    const systemPrompt = await PromptBuilder.buildSystemPrompt(1);
+    let messages = [
+      { role: 'system', content: systemPrompt },
+      ...currentContext
+    ];
+
     agentMonitor.recordExecutionStart(agentId, userMessage, { sessionId, userId });
 
-    while (iteration < this.maxIterations && !isTaskComplete) {
-      iteration++;
+    // 【两轮制】Pass 1: 工具可以调，Pass 2: 只收最终答案
+    let finalizedResponse = null;
 
-      // 发送迭代事件
-      onEvent({ type: AgentEvents.ITERATION, iteration, max: this.maxIterations });
-
-      const systemPrompt = await PromptBuilder.buildSystemPrompt(1);
-      const messages = [
-        { role: 'system', content: systemPrompt },
-        ...currentContext
-      ];
-
-      const session = sessionManager.getSession(sessionId);
-      if (!session) throw new Error(`Session ${sessionId} not found`);
-      const provider = sessionManager.getProvider(session.providerType);
-
+    for (let pass = 1; pass <= 2; pass++) {
       const chatOptions = {};
-      if (tools && tools.length > 0) {
+      if (pass === 1 && tools && tools.length > 0) {
         chatOptions.tools = tools;
         chatOptions.tool_choice = 'auto';
       }
 
-      // 发送思考事件
-      onEvent({ type: AgentEvents.THINKING, iteration });
-
-      // 尝试流式调用
+      onEvent({ type: AgentEvents.THINKING, iteration: pass });
       let content = '';
       let toolCalls = null;
 
       try {
-        // 使用流式 API
         const stream = provider.chatStream(session.model, messages, chatOptions);
-
         for await (const chunk of stream) {
           if (chunk.type === 'content') {
             content += chunk.content;
-            // 实时推送内容
-            onEvent({ type: AgentEvents.CONTENT, content: chunk.content, iteration });
+            onEvent({ type: AgentEvents.CONTENT, content: chunk.content, iteration: pass });
           } else if (chunk.type === 'tool_calls') {
             toolCalls = chunk.toolCalls;
           }
         }
       } catch (e) {
-        // 流式不支持，降级到非流式
         const response = await provider.chat(session.model, messages, chatOptions);
         content = response.content;
         toolCalls = response.toolCalls;
       }
 
-      // 检查是否完成
-      if (content && content.startsWith('FINAL:')) {
-        finalizedResponse = content.replace('FINAL:', '').trim();
-        isTaskComplete = true;
-        break;
-      }
-
-      // 处理工具调用
-      if (toolCalls && toolCalls.length > 0) {
+      if (pass === 1 && toolCalls && toolCalls.length > 0) {
         for (const tc of toolCalls) {
           const toolName = tc.name;
           const args = typeof tc.arguments === 'string' ? JSON.parse(tc.arguments) : tc.arguments;
-
-          // 发送工具调用事件
-          onEvent({ type: AgentEvents.TOOL_CALL, tool: toolName, args, iteration });
+          onEvent({ type: AgentEvents.TOOL_CALL, tool: toolName, args, iteration: pass });
 
           try {
             const toolResult = await pluginManager.executeTool(toolName, args, { sessionId, userId });
-
-            executionTrace.actions.push({ tool: toolName, args, result: toolResult, mode: 'fc' });
-
-            // 记录工具调用到监控
             agentMonitor.recordToolCall(agentId, toolName, args, toolResult);
+            onEvent({ type: AgentEvents.TOOL_RESULT, tool: toolName, result: toolResult, iteration: pass });
 
-            // 发送工具结果事件
-            onEvent({ type: AgentEvents.TOOL_RESULT, tool: toolName, result: toolResult, iteration });
-
-            // 使用格式化后的结果
             const formattedResult = pluginManager.formatToolResult(toolName, toolResult);
             await memoryManager.addMessage(sessionId, 'assistant', `[Tool Call] ${toolName}`);
             await memoryManager.addMessage(sessionId, 'system', formattedResult);
-
-            currentContext = await memoryManager.getContext(sessionId);
           } catch (error) {
-            executionTrace.actions.push({ tool: toolName, args, error: error.message, mode: 'fc' });
-            onEvent({ type: AgentEvents.ERROR, tool: toolName, error: error.message, iteration });
+            onEvent({ type: AgentEvents.ERROR, tool: toolName, error: error.message, iteration: pass });
             await memoryManager.addMessage(sessionId, 'system', `[Tool Error] ${toolName}: ${error.message}`);
-            currentContext = await memoryManager.getContext(sessionId);
           }
         }
-      } else if (content && content.includes('ACTION:')) {
-        // 降级：文本解析
-        const match = content.match(/ACTION:\s*(\w+)\s*({.*})/);
-        if (match) {
-          const [, toolName, argsJson] = match;
-          let args;
-          try {
-            args = JSON.parse(argsJson);
-
-            onEvent({ type: AgentEvents.TOOL_CALL, tool: toolName, args, iteration, mode: 'text' });
-
-            const toolResult = await pluginManager.executeTool(toolName, args, { sessionId, userId });
-
-            executionTrace.actions.push({ tool: toolName, args, result: toolResult, mode: 'text' });
-
-            onEvent({ type: AgentEvents.TOOL_RESULT, tool: toolName, result: toolResult, iteration });
-
-            // 使用格式化后的结果
-            const formattedResult = pluginManager.formatToolResult(toolName, toolResult);
-            await memoryManager.addMessage(sessionId, 'assistant', `Action: ${toolName}`);
-            await memoryManager.addMessage(sessionId, 'system', formattedResult);
-            currentContext = await memoryManager.getContext(sessionId);
-          } catch (error) {
-            executionTrace.actions.push({ tool: toolName, args, error: error.message, mode: 'text' });
-            onEvent({ type: AgentEvents.ERROR, tool: toolName, error: error.message, iteration });
-            await memoryManager.addMessage(sessionId, 'system', `Error executing ${toolName}: ${error.message}`);
-            currentContext = await memoryManager.getContext(sessionId);
-          }
-        }
+        // Pass 2: different system prompt — verify then answer
+        messages = [
+          { role: 'system', content: 'Tool results received. Check whether they answer the user question, then respond concisely. Do not call tools again.' },
+          { role: 'user', content: userMessage },
+          ...(await memoryManager.getContext(sessionId)).slice(-3)
+        ];
       } else {
-        // 返回结果
-        finalizedResponse = content;
-        isTaskComplete = true;
+        finalizedResponse = content || '';
+        break;
       }
     }
 
-    if (iteration >= this.maxIterations && !isTaskComplete) {
-      finalizedResponse = "I've reached the maximum number of reasoning steps and could not complete the task.";
+    if (!finalizedResponse) {
+      finalizedResponse = "I could not complete the task.";
     }
 
-    // 发送完成事件
+    responseCache.set(userMessage, session.model, finalizedResponse);
+
     onEvent({
       type: AgentEvents.COMPLETE,
       response: finalizedResponse,
-      iterations: iteration,
-      actions: executionTrace.actions.length
+      iterations: finalizedResponse ? 1 : 2,
+      actions: 0
     });
 
-    // 记录执行完成到监控
     agentMonitor.recordExecutionComplete(agentId, {
-      success: isTaskComplete && iteration < this.maxIterations,
+      success: true,
       response: finalizedResponse,
-      iterations: iteration
+      iterations: 1
     });
-
-    // ✨ 质量检查与纠偏
-    if (this.enableQualityCheck && finalizedResponse) {
-      const qualityResult = await this._checkAndCorrectResponse(
-        finalizedResponse,
-        sessionId,
-        userId,
-        onEvent
-      );
-      finalizedResponse = qualityResult;
-    }
 
     await memoryManager.addMessage(sessionId, 'assistant', finalizedResponse);
     return finalizedResponse;

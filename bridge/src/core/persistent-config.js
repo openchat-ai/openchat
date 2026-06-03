@@ -183,6 +183,14 @@ class PersistentConfig {
     return null;
   }
 
+  // ================== 会话历史 ==================
+
+  addSessionToHistory(sessionId, providerType, model) {
+    if (!this.config.sessionHistory) this.config.sessionHistory = [];
+    this.config.sessionHistory.push({ sessionId, providerType, model, createdAt: Date.now() });
+    this.save();
+  }
+
   // ================== Bridge 配置 ==================
 
   getBridgeConfig() {

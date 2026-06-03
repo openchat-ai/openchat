@@ -1,4 +1,4 @@
-import { providerManager, getRuntimeApiKey, getRuntimeBaseUrl } from 'provider-kit';
+import { getProviderConfig, getRuntimeApiKey, getRuntimeBaseUrl } from '../core/provider-service.js';
 
 export class AiProvider {
   constructor(id, name) {
@@ -24,6 +24,10 @@ export class AiProvider {
 
   async chat(model, messages) {
     throw new Error('chat() must be implemented by subclass');
+  }
+
+  async embed(text, model) {
+    throw new Error('embed() not supported by this provider');
   }
 
   async verifyConnection() {
@@ -55,7 +59,7 @@ function isOpenAICompatibleProvider(type) {
 
   // 动态检查：从 provider-manager 获取 transport 配置
   // 如果 transport 是 'openai_chat'，则使用 OpenAI 兼容接口
-  const config = providerManager.getProviderConfig(type);
+  const config = getProviderConfig(type);
   if (config && config.transport === 'openai_chat') {
     return true;
   }
@@ -213,7 +217,7 @@ class OpenAiProvider extends AiProvider {
   }
 
   getDefaultEndpoint() {
-    const config = providerManager.getProviderConfig(this.providerType);
+    const config = getProviderConfig(this.providerType);
     if (config && config.baseUrl) {
       return config.baseUrl;
     }
@@ -274,6 +278,32 @@ class OpenAiProvider extends AiProvider {
       usage: data.usage,
       created: data.created
     };
+  }
+
+  async embed(input, model) {
+    const apiKey = this.apiKey || getRuntimeApiKey('openai');
+    const embedModel = model || 'text-embedding-3-small';
+    const isBatch = Array.isArray(input);
+    const response = await fetch(`${this.endpoint}/embeddings`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: embedModel,
+        input: isBatch ? input : input
+      })
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error?.message || `Embedding API error: ${response.status}`);
+    }
+    const data = await response.json();
+    if (isBatch) {
+      return data.data.sort((a, b) => a.index - b.index).map(d => d.embedding);
+    }
+    return data.data[0].embedding;
   }
 }
 
@@ -482,5 +512,5 @@ class DeepSeekProvider extends AiProvider {
   }
 }
 
-// 导出辅助函数以便测试
-export { isOpenAICompatibleProvider };
+// 导出辅助函数和类
+export { isOpenAICompatibleProvider, OpenAiProvider };

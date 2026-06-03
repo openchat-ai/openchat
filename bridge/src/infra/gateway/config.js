@@ -10,7 +10,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { homedir } from 'os';
 import * as readline from 'readline';
-import { providerRegistry } from 'provider-kit';
+import * as providerService from '../../core/provider-service.js';
 
 const CONFIG_DIR = path.join(homedir(), '.openchat');
 const GATEWAY_CONFIG_FILE = path.join(CONFIG_DIR, 'gateway-config.json');
@@ -98,7 +98,7 @@ async function question(rl, prompt) {
  */
 function getProviderModels(provider) {
   try {
-    const providerInstance = providerRegistry.getProvider(provider);
+    const providerInstance = providerService.getProvider(provider);
     if (!providerInstance) {
       return null;
     }
@@ -125,7 +125,7 @@ async function addKeyInteractive() {
     }
 
     // 步骤 2: 获取已配置的 Provider
-    const configuredProviders = providerRegistry.listConfigured();
+    const configuredProviders = providerService.listConfigured();
     if (configuredProviders.length === 0) {
       console.log('❌ 没有已配置的 Provider，请先添加 API Key');
       console.log('💡 使用: node manage-providers.js add <provider-id> <api-key>');

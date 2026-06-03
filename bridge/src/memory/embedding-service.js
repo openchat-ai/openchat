@@ -10,7 +10,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import { USER_DIR } from '../core/persistent-config.js';
 import { persistentConfig } from '../core/persistent-config.js';
-import { providerManager } from 'provider-kit';
+import { sessionManager } from '../core/session-manager.js';
 
 const CACHE_DIR = path.join(USER_DIR, 'vectors', 'cache');
 const CACHE_FILE = path.join(CACHE_DIR, 'embedding_cache.json');
@@ -224,23 +224,13 @@ export class EmbeddingService {
    * 获取 API 配置
    */
   getApiConfig(provider) {
-    const apiKey = persistentConfig.getApiKey(provider);
-    if (!apiKey) {
+    const providerInstance = sessionManager.getProvider(provider);
+    if (!providerInstance) {
       return null;
     }
-
-    const providerConfig = providerManager.getProvider(provider);
-
-    // 不同 provider 的 endpoint
-    const endpointMap = {
-      openrouter: 'https://openrouter.ai/api/v1',
-      openai: 'https://api.openai.com/v1',
-      siliconflow: 'https://api.siliconflow.cn/v1',
-    };
-
     return {
-      apiKey,
-      baseUrl: endpointMap[provider] || providerConfig?.baseUrl || 'https://api.openai.com/v1',
+      apiKey: providerInstance.apiKey,
+      baseUrl: providerInstance.endpoint,
       model: this.getEmbeddingModel(provider)
     };
   }
@@ -251,34 +241,14 @@ export class EmbeddingService {
   async callEmbeddingAPI(text, model) {
     const provider = this.getEmbeddingProvider();
     const config = this.getApiConfig(provider);
-
     if (!config) {
       throw new Error(`No API key configured for embedding. Run: connect ${provider}`);
     }
-
-    const { apiKey, baseUrl } = config;
-    const embeddingModel = model || config.model;
-
-    // OpenAI 兼容 API
-    const response = await fetch(`${baseUrl}/embeddings`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: embeddingModel,
-        input: text
-      })
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.error?.message || `Embedding API error: ${response.status}`);
+    const providerInstance = sessionManager.getProvider(provider);
+    if (!providerInstance) {
+      throw new Error(`Provider ${provider} not connected. Run: skeleton init first`);
     }
-
-    const data = await response.json();
-    return data.data[0].embedding;
+    return providerInstance.embed(text, model || config.model);
   }
 
   /**
@@ -287,43 +257,19 @@ export class EmbeddingService {
   async callEmbeddingAPIBatch(texts, model) {
     const provider = this.getEmbeddingProvider();
     const config = this.getApiConfig(provider);
-
     if (!config) {
       throw new Error(`No API key configured for embedding. Run: connect ${provider}`);
     }
-
-    const { apiKey, baseUrl } = config;
-    const embeddingModel = model || config.model;
-
+    const providerInstance = sessionManager.getProvider(provider);
+    if (!providerInstance) {
+      throw new Error(`Provider ${provider} not connected. Run: skeleton init first`);
+    }
     const allResults = [];
-
-    // 分批处理
     for (let i = 0; i < texts.length; i += this.batchSize) {
       const batch = texts.slice(i, i + this.batchSize);
-
-      const response = await fetch(`${baseUrl}/embeddings`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: embeddingModel,
-          input: batch
-        })
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.error?.message || `Embedding API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      // 按 index 排序
-      const sorted = data.data.sort((a, b) => a.index - b.index);
-      allResults.push(...sorted.map(d => d.embedding));
+      const embeddings = await providerInstance.embed(batch, model || config.model);
+      allResults.push(...embeddings);
     }
-
     return allResults;
   }
 

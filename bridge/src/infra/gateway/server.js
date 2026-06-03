@@ -22,7 +22,8 @@
 
 import http from 'http';
 import { URL } from 'url';
-import { providerRegistry } from 'provider-kit';
+import * as providerService from '../../core/provider-service.js';
+import { sessionManager } from '../../core/session-manager.js';
 import * as fs from 'fs';
 import * as path from 'path';
 import { homedir } from 'os';
@@ -279,11 +280,11 @@ class GatewayServer {
    * 处理非流式请求
    */
   async handleNormalRequest(res, provider, model, messages, options) {
-    const response = await providerRegistry.chat(messages, {
-      providerId: provider,
-      model,
-      ...options
-    });
+    const providerInstance = sessionManager.getProvider(provider);
+    if (!providerInstance) {
+      throw new Error(`Provider ${provider} not connected`);
+    }
+    const response = await providerInstance.chat(model, messages);
 
     // 转换为 OpenAI 格式
     const openaiResponse = {
@@ -321,7 +322,7 @@ class GatewayServer {
       'Connection': 'keep-alive'
     });
 
-    const providerInstance = providerRegistry.getProvider(provider);
+    const providerInstance = providerService.getProvider(provider);
     if (!providerInstance) {
       throw new Error(`Provider ${provider} not found`);
     }
@@ -392,15 +393,15 @@ class GatewayServer {
     if (keyConfig) {
       // 如果提供了虚拟 Key，只返回该 Provider 的模型
       const provider = keyConfig.provider;
-      const providerInstance = providerRegistry.getProvider(provider);
+      const providerInstance = providerService.getProvider(provider);
 
       if (!providerInstance) {
         this.sendError(res, 404, `Provider ${provider} not found`, 'not_found');
         return;
       }
 
-      const providerModels = providerRegistry.getModels(provider);
-      const providerInfo = providerRegistry.listConfigured().find(p => p.id === provider);
+      const providerModels = providerService.getModels(provider);
+      const providerInfo = providerService.listConfigured().find(p => p.id === provider);
 
       for (const model of providerModels) {
         models.push({
@@ -421,10 +422,10 @@ class GatewayServer {
       }
     } else {
       // 无虚拟 Key：返回所有 Provider 的所有模型
-      const providers = providerRegistry.listConfigured();
+      const providers = providerService.listConfigured();
 
       for (const provider of providers) {
-        const providerModels = providerRegistry.getModels(provider.id);
+        const providerModels = providerService.getModels(provider.id);
         for (const model of providerModels) {
           models.push({
             id: model,
@@ -465,7 +466,7 @@ class GatewayServer {
         model: config.model,
         enabled: config.enabled
       })),
-      providers: providerRegistry.listConfigured()
+      providers: providerService.listConfigured()
     });
   }
 

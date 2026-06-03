@@ -1,6 +1,6 @@
 import { messageBus, MESSAGE_TYPES } from '../message-bus.js';
 import { persistentConfig } from '../persistent-config.js';
-import { providerManager, PRESET_PROVIDERS, DEFAULT_PROVIDER } from 'provider-kit';
+import * as providerService from '../provider-service.js';
 import { EvolutionEngine } from '../evolution/evolution-engine.js';
 import { securityManager } from '../security/security-manager.js';
 import { ResponseParser } from '../quality/response-parser.js';
@@ -39,7 +39,7 @@ export class AgentSession {
     this.agentId = agentId;
     this.config = {
       name: config.name || `agent-${agentId.substring(0, 8)}`,
-      provider: config.provider || currentProvider || DEFAULT_PROVIDER,
+      provider: config.provider || currentProvider || providerService.DEFAULT_PROVIDER,
       model: config.model || persistentConfig.getCurrentModel() || null,
       systemPrompt: config.systemPrompt || 'You are a helpful AI assistant.',
       maxIterations: config.maxIterations || 10,
@@ -158,7 +158,7 @@ export class AgentSession {
     
     const providers = persistentConfig.listProviders();
     for (const p of providers) {
-      const pConfig = providerManager.getProviderConfig(p);
+      const pConfig = providerService.getProviderConfig(p);
       if (pConfig) {
         const apiKey = persistentConfig.getApiKey(p);
         this._router.registerProvider(p, { ...pConfig, apiKey: apiKey || pConfig.apiKey });
@@ -461,7 +461,7 @@ export class AgentSession {
 
     // Phase B: 无 API key → 自动回退到 Ollama（skipAuth，本地模型）
     if (!apiKey) {
-      const ollamaConfig = providerManager.getProviderConfig('ollama');
+      const ollamaConfig = providerService.getProviderConfig('ollama');
       if (ollamaConfig) {
         logger.info('[Agent] API key 未配置，自动回退到 Ollama');
         providerName = 'ollama';
@@ -474,7 +474,7 @@ export class AgentSession {
       return { content: 'No API key configured. Please set: config set <provider> <api_key>' };
     }
 
-    const providerConfig = providerManager.getProviderConfig(providerName);
+    const providerConfig = providerService.getProviderConfig(providerName);
     if (!providerConfig) {
       return { content: `Unsupported provider: ${providerName}` };
     }
@@ -492,7 +492,7 @@ export class AgentSession {
   async callApi(provider, apiKey, model, messages) {
     await this._limiter.adapt();
     
-    const providerConfig = providerManager.getProviderConfig(provider);
+    const providerConfig = providerService.getProviderConfig(provider);
     if (!providerConfig || !providerConfig.baseUrl) {
       return { content: `Provider ${provider} missing baseUrl config` };
     }
@@ -915,7 +915,7 @@ export class AgentSession {
       agentId: this.agentId,
       name: this.config.name,
       provider: this.config.provider,
-      model: this.config.model || providerManager.getDefaultModel(this.config.provider),
+      model: this.config.model || providerService.getDefaultModel(this.config.provider),
       state: this.state,
       iterationCount: this.iterationCount,
       maxIterations: this.config.maxIterations,

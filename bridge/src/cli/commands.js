@@ -9,7 +9,7 @@ import { socialConnector } from '../core/collaboration/social-connector.js';
 import { knowledgeNetwork } from '../core/memory/knowledge-network.js';
 import { CommunityManager } from '../core/collaboration/community-manager.js';
 import { securityManager } from '../security/security-manager.js';
-import { providerManager } from 'provider-kit';
+import * as providerService from '../core/provider-service.js';
 import { memoryManager } from '../memory/memory-manager.js';
 import { vectorStore } from '../memory/vector-store.js';
 import { embeddingService } from '../memory/embedding-service.js';
@@ -52,7 +52,7 @@ export const commands = {
    */
   async connect(args) {
     const [pName, apiKey] = args;
-    const providers = providerManager.listProviders();
+    const providers = providerService.listProviders();
 
     // No args → show available providers
     if (!pName) {
@@ -256,7 +256,7 @@ export const commands = {
   help() {
     const currentProvider = persistentConfig.getPreference('currentProvider');
     const currentModel = persistentConfig.getPreference('currentModel');
-    const pname = currentProvider ? (providerManager.getProvider(currentProvider)?.nameCn || currentProvider) : null;
+    const pname = currentProvider ? (providerService.getProvider(currentProvider)?.nameCn || currentProvider) : null;
 
     console.log('');
     console.log('  OPENCHAT BRIDGE v2.0');
@@ -503,7 +503,7 @@ export const commands = {
 
     // provider <name> - show provider info
     if (name) {
-      const p = providerManager.getProvider(name);
+      const p = providerService.getProvider(name);
       if (!p) {
         console.log(`\n✗ 未知服务商: ${name}\n`);
         return;
@@ -511,7 +511,7 @@ export const commands = {
       console.log(`\n【${p.nameCn || p.name}】`);
       console.log(`  端点: ${p.baseUrl || 'N/A'}`);
       console.log(`  默认: ${p.defaultModel || 'None'}`);
-      const models = providerManager.listModels(name);
+      const models = providerService.listModels(name);
       if (models.length > 0) {
         console.log(`  模型 (${models.length}):`);
         models.slice(0, 10).forEach((m, i) => {
@@ -527,7 +527,7 @@ export const commands = {
     }
 
     // provider - list all
-    const providers = providerManager.listProviders();
+    const providers = providerService.listProviders();
     const { PROVIDER_ALIASES } = await import('provider-kit');
 
     // Build reverse mapping: canonical -> aliases
@@ -579,7 +579,7 @@ export const commands = {
 
     for (const provider of keys) {
       const apiKey = pc.getApiKey(provider);
-      const p = providerManager.getProvider(provider);
+      const p = providerService.getProvider(provider);
       if (!p || !apiKey || apiKey === 'sk-test') continue;
 
       try {
@@ -600,7 +600,7 @@ export const commands = {
         if (resp.ok) {
           const json = await resp.json();
           if (!json.error) {
-            const models = providerManager.listModels(provider);
+            const models = providerService.listModels(provider);
             const modelName = json.model || p.defaultModel;
             console.log(`  ✓ ${provider} (${modelName}) - ${models.length} 个模型`);
             working.push({ provider, model: modelName });
@@ -860,7 +860,7 @@ export const commands = {
   },
 
   status() {
-    const providers = providerManager.listProviders();
+    const providers = providerService.listProviders();
     const sessions = sessionManager.listSessions();
 
     console.log('');
@@ -916,7 +916,7 @@ export const commands = {
     // 查看服务商详情
     if (subCmd === 'show' && args.length >= 2) {
       const providerName = args[1].toLowerCase();
-      const config = providerManager.getProviderConfig(providerName);
+      const config = providerService.getProviderConfig(providerName);
 
       if (!config) {
         console.log(`✗ Provider not found: ${providerName}`);
@@ -947,7 +947,7 @@ export const commands = {
       persistentConfig.setPreference(`provider_url_${providerName}`, url);
 
       // 更新 providerManager
-      providerManager.addCustomProvider(providerName, url, persistentConfig.getApiKey(providerName));
+      providerService.addCustomProvider(providerName, url, persistentConfig.getApiKey(providerName));
 
       console.log(`✓ ${providerName} URL set to: ${url}`);
       return;
@@ -980,7 +980,7 @@ export const commands = {
       // 检查是否有自定义 URL
       const customUrl = persistentConfig.getPreference(`provider_url_${key}`);
       if (customUrl) {
-        providerManager.addCustomProvider(key, customUrl, value);
+        providerService.addCustomProvider(key, customUrl, value);
       }
 
       return;
@@ -1196,13 +1196,13 @@ export const commands = {
 
     // model <name> <model> - switch model directly
     if (providerName && modelQuery) {
-      const provider = providerManager.getProvider(providerName);
+      const provider = providerService.getProvider(providerName);
       if (!provider) {
         console.log(`\n✗ 未知服务商: ${providerName}\n`);
         return;
       }
 
-      let models = providerManager.listModels(providerName);
+      let models = providerService.listModels(providerName);
 
       // Try local discovery for ollama/lmstudio
       if (providerName === 'ollama-cloud' || providerName === 'lmstudio' || providerName === 'ollama') {
@@ -1269,8 +1269,8 @@ export const commands = {
             console.log('\n✗ 未设置当前服务商\n');
             return;
           }
-          const provider = providerManager.getProvider(currentProvider);
-          const models = providerManager.listModels(currentProvider);
+          const provider = providerService.getProvider(currentProvider);
+          const models = providerService.listModels(currentProvider);
           if (models.length === 0) {
             console.log(`\n【${provider?.nameCn || currentProvider}】 ○ 无模型\n`);
             return;
@@ -1291,7 +1291,7 @@ export const commands = {
           persistentConfig.setPreference('currentProvider', item.provider);
           persistentConfig.setPreference('currentModel', item.model);
           persistentConfig.recordModelUse(item.provider, item.model);
-          const p = providerManager.getProvider(item.provider);
+          const p = providerService.getProvider(item.provider);
           console.log(`\n✓ 已切换为 ${p?.nameCn || item.provider} / ${item.model}\n`);
           return;
         }
@@ -1299,19 +1299,19 @@ export const commands = {
         // 其他数字 = 从当前服务商模型列表选择
         const currentProvider = persistentConfig.getPreference('currentProvider');
         if (currentProvider) {
-          const models = providerManager.listModels(currentProvider);
+          const models = providerService.listModels(currentProvider);
           if (num >= 1 && num <= models.length) {
             const model = models[num - 1];
             persistentConfig.setPreference('currentModel', model);
             persistentConfig.recordModelUse(currentProvider, model);
-            const p = providerManager.getProvider(currentProvider);
+            const p = providerService.getProvider(currentProvider);
             console.log(`\n✓ 已切换为 ${p?.nameCn || currentProvider} / ${model}\n`);
             return;
           }
         }
 
         // 尝试切换到对应序号的 provider
-        const providers = providerManager.listProviders();
+        const providers = providerService.listProviders();
         if (num >= 1 && num <= providers.length) {
           const p = providers[num - 1];
           persistentConfig.setPreference('currentProvider', p.name);
@@ -1341,7 +1341,7 @@ export const commands = {
           persistentConfig.setPreference('currentProvider', item.provider);
           persistentConfig.setPreference('currentModel', item.model);
           persistentConfig.recordModelUse(item.provider, item.model);
-          const p = providerManager.getProvider(item.provider);
+          const p = providerService.getProvider(item.provider);
           console.log(`\n✓ 已切换为 ${p?.nameCn || item.provider} / ${item.model}\n`);
           return;
         }
@@ -1349,7 +1349,7 @@ export const commands = {
         // 多个匹配，显示列表
         console.log(`\n【最近使用】匹配 "${providerName}"`);
         recentMatch.slice(0, 10).forEach((item, i) => {
-          const p = providerManager.getProvider(item.provider);
+          const p = providerService.getProvider(item.provider);
           const name = p ? p.nameCn : item.provider;
           const isCurrent = item.model === currentModel && item.provider === current;
           console.log(`  ${i+1}. ${name} / ${item.model}${isCurrent ? ' [当前]' : ''}`);
@@ -1359,7 +1359,7 @@ export const commands = {
       }
 
       // 当作服务商名处理
-      const provider = providerManager.getProvider(providerName);
+      const provider = providerService.getProvider(providerName);
       if (!provider) {
         console.log(`\n✗ 未找到: ${providerName}`);
         console.log('  provider 查看所有服务商\n');
@@ -1367,7 +1367,7 @@ export const commands = {
       }
 
       // 显示该服务商的模型列表
-      let models = providerManager.listModels(providerName);
+      let models = providerService.listModels(providerName);
 
       if (models.length === 0) {
         console.log(`\n【${provider.nameCn}】 ○ 无模型\n`);
@@ -1392,7 +1392,7 @@ export const commands = {
       console.log('  暂无使用记录');
     } else {
       recentModels.forEach((item, i) => {
-        const p = providerManager.getProvider(item.provider);
+        const p = providerService.getProvider(item.provider);
         const name = p ? p.nameCn : item.provider;
         const isCurrent = item.model === currentModel && item.provider === current;
         console.log(`  ${i+1}. ${name} / ${item.model}${isCurrent ? ' [当前]' : ''}`);
@@ -1402,9 +1402,9 @@ export const commands = {
     // 添加"更多"选项
     const currentProvider = persistentConfig.getPreference('currentProvider');
     if (currentProvider) {
-      const provider = providerManager.getProvider(currentProvider);
+      const provider = providerService.getProvider(currentProvider);
       if (provider) {
-        const allModels = providerManager.listModels(currentProvider);
+        const allModels = providerService.listModels(currentProvider);
         console.log(`  99. 更多 (${provider.nameCn} 全部 ${allModels.length} 个模型)`);
       }
     }
@@ -1423,7 +1423,7 @@ export const commands = {
     }
 
     const [name, baseUrl, apiKey, model] = args;
-    providerManager.addCustomProvider(name, baseUrl, apiKey, model);
+    providerService.addCustomProvider(name, baseUrl, apiKey, model);
     persistentConfig.setApiKey(name, apiKey);
     console.log(`Added custom provider: ${name}`);
     console.log(`  URL: ${baseUrl}`);

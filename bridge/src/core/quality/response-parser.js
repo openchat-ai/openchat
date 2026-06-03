@@ -2,7 +2,7 @@
  * 响应解析器
  * 支持多种 LLM 提供商的响应格式
  */
-import { providerManager } from 'provider-kit';
+import * as providerService from '../provider-service.js';
 import logger from '../monitoring/logger.js';
 
 export class ResponseParser {
@@ -74,7 +74,7 @@ export class ResponseParser {
 
   parse(data, provider = 'generic') {
     let parserName = provider;
-    const config = providerManager.getProviderConfig(provider);
+    const config = providerService.getProviderConfig(provider);
     if (config && config.transport === 'openai_chat') {
       parserName = 'openai';
     }
