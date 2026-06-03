@@ -15,14 +15,9 @@ import qiniu from 'qiniu';
 import { createHmac, createHash } from 'crypto';
 
 // 七牛云配置（优先 .env，没有则用默认演示账号）
-const _ak = String.fromCharCode(106,118,106,77,82,56,90,67,53,55,86,122,84,48,68,104,55,97,86,122,104,101,76,119,75,114,90,118,72,87,77,115,113,81,53,72,86,122,112,71);
-const _sk = String.fromCharCode(116,102,109,83,49,50,86,84,70,77,95,102,115,48,78,74,97,77,82,72,85,119,48,57,84,86,107,87,72,65,117,90,120,54,119,98,45,102,73,113);
 const config = {
-  accessKey: process.env.QINIU_ACCESS_KEY || _ak,
-  secretKey: process.env.QINIU_SECRET_KEY || _sk,
-  bucket: process.env.QINIU_BUCKET || 'dapin-xp',
-  region: process.env.QINIU_REGION || 'cn-east-1',
-  domain: process.env.QINIU_DOMAIN || 'https://dapin-xp.s3.cn-east-1.qiniucs.com',
+  accessKey: process.env.QINIU_ACCESS_KEY || 'jvjMR8ZC57VzT0Dh7aVzheLwKrZvHWMsqQ5HVzpG',
+  secretKey: process.env.QINIU_SECRET_KEY || 'tfmS12VTFM_fs0NJaMRHUw09TVkWHAuZx6wb-fIq',
   bucketPrefix: process.env.QINIU_BUCKET_PREFIX || 'openchat',
 };
 
@@ -65,7 +60,7 @@ class QiniuSignaling {
    * 生成预签名 URL (用于手机直接读取)
    */
   getSignedUrl(key, expires = 300) {
-    const host = config.domain.replace('https://', '');
+    const host = 'dapin-xp.s3.cn-east-1.qiniucs.com';
     const amzDate = new Date().toISOString().replace(/[:-]|\.\d{3}/g, '');
     const dateStamp = amzDate.slice(0, 8);
     const credential = `${config.accessKey}/${dateStamp}/${config.region}/s3/aws4_request`;
@@ -388,65 +383,6 @@ class QiniuSignaling {
     }, intervalMs);
 
     return timer;
-  }
-
-  /**
-   * List objects with given prefix (S3-compatible)
-   */
-  async listObjects(prefix) {
-    const url = this.getListSignedUrl(prefix, 30);
-    const resp = await fetch(url);
-    if (!resp.ok) return [];
-    const xml = await resp.text();
-    const keys = [];
-    const regex = /<Key>([^<]+)<\/Key>/g;
-    let m;
-    while ((m = regex.exec(xml)) !== null) keys.push({ key: m[1] });
-    return keys;
-  }
-
-  getListSignedUrl(prefix, expires = 300) {
-    const host = config.domain.replace('https://', '');
-    const amzDate = new Date().toISOString().replace(/[:-]|\.\d{3}/g, '');
-    const dateStamp = amzDate.slice(0, 8);
-    const credential = `${config.accessKey}/${dateStamp}/${config.region}/s3/aws4_request`;
-
-    const params = {
-      'prefix': prefix,
-      'X-Amz-Algorithm': 'AWS4-HMAC-SHA256',
-      'X-Amz-Credential': credential,
-      'X-Amz-Date': amzDate,
-      'X-Amz-Expires': expires.toString(),
-      'X-Amz-SignedHeaders': 'host',
-    };
-
-    const sortedKeys = Object.keys(params).sort();
-    const canonicalQueryString = sortedKeys
-      .map(k => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`)
-      .join('&');
-
-    const canonicalUri = '/';
-    const canonicalHeaders = `host:${host}\n`;
-    const signedHeaders = 'host';
-    const payloadHash = 'UNSIGNED-PAYLOAD';
-
-    const canonicalRequest = [
-      'GET', canonicalUri, canonicalQueryString,
-      canonicalHeaders, signedHeaders, payloadHash
-    ].join('\n');
-
-    const algorithm = 'AWS4-HMAC-SHA256';
-    const credentialScope = `${dateStamp}/${config.region}/s3/aws4_request`;
-    const hashedRequest = createHash('sha256').update(canonicalRequest).digest('hex');
-    const stringToSign = [algorithm, amzDate, credentialScope, hashedRequest].join('\n');
-
-    const kDate = createHmac('sha256', 'AWS4' + config.secretKey).update(dateStamp).digest();
-    const kRegion = createHmac('sha256', kDate).update(config.region).digest();
-    const kService = createHmac('sha256', kRegion).update('s3').digest();
-    const kSigning = createHmac('sha256', kService).update('aws4_request').digest();
-    const signature = createHmac('sha256', kSigning).update(stringToSign).digest('hex');
-
-    return `${config.domain}/?${canonicalQueryString}&X-Amz-Signature=${signature}`;
   }
 
   /**

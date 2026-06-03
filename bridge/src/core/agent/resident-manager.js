@@ -198,7 +198,7 @@ export class ResidentManager extends EventEmitter {
           try {
             const queryMsg = createLLMProviderQueryMessage({ from: p2p.peerId || '' });
             p2p.sendTo(peerId, queryMsg);
-          } catch (_) { logger.warn('[ResidentManager] proxy request failed'); }
+          } catch (_) {}
         });
 
         this._proxyListenerRegistered = true;

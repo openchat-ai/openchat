@@ -2,8 +2,6 @@
  * 多模态处理器
  * 处理图像、音频、视频等多媒体内容
  */
-import logger from '../monitoring/logger.js';
-
 export class MultimodalHandler {
   constructor(options = {}) {
     this._imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.ico', '.avif', '.tiff'];
@@ -104,7 +102,7 @@ export class MultimodalHandler {
       if (this._imageHosts.some(host => urlObj.hostname.includes(host))) {
         return true;
       }
-    } catch (e) { logger.warn('[Multimodal] isImageUrl parse failed: %s', e.message); }
+    } catch (e) {}
 
     return false;
   }
@@ -114,7 +112,7 @@ export class MultimodalHandler {
       const urlObj = new URL(url);
       const pathname = urlObj.pathname.toLowerCase();
       return this._audioExtensions.some(ext => pathname.endsWith(ext));
-    } catch (e) { logger.warn('[Multimodal] isAudioUrl parse failed: %s', e.message); }
+    } catch (e) {}
     return false;
   }
 
@@ -123,7 +121,7 @@ export class MultimodalHandler {
       const urlObj = new URL(url);
       const pathname = urlObj.pathname.toLowerCase();
       return this._videoExtensions.some(ext => pathname.endsWith(ext));
-    } catch (e) { logger.warn('[Multimodal] isVideoUrl parse failed: %s', e.message); }
+    } catch (e) {}
     return false;
   }
 

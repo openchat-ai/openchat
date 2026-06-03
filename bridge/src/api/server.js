@@ -12,7 +12,6 @@ import net from 'net';
 import * as path from 'path';
 import * as fs from 'fs';
 import { fileURLToPath } from 'url';
-import logger from '../core/monitoring/logger.js';
 import { WebSocketServer } from 'ws';
 import swaggerUi from 'swagger-ui-express';
 
@@ -40,8 +39,6 @@ import voiceRouter from './routes/voice.js';
 import signalingRouter from './routes/signaling.js';
 import residentsRouter from './routes/residents.js';
 import sageRouter from './routes/sage.js';
-import synthRouter from './routes/synth.js';
-import configRouter from './routes/config.js';
 import { residentManager } from '../core/agent/resident-manager.js';
 
 class APIServer {
@@ -113,8 +110,8 @@ class APIServer {
       maxAge: 86400 // 24 hours
     }));
 
-    // 请求日志（跳过内部心跳/状态轮询）
-    this.app.use(morgan('combined', { skip: (req) => req.url === '/api/heartbeat' || req.url === '/api/status' }));
+    // 请求日志
+    this.app.use(morgan('combined'));
 
     // 请求体解析 - 限制大小
     this.app.use(express.json({ limit: '1mb' }));
@@ -136,18 +133,12 @@ class APIServer {
       res.json({ peers: connected.map(id => ({ peerId: id.slice(0, 8) })) });
     });
 
-    // List all registered users (TopicRegistry + Qiniu-registered phones)
+    // List all registered users (via TopicRegistry)
     this.app.get('/users', (req, res) => {
-      const users = [];
-      // TopicRegistry peers (TCP-connected)
-      if (this.swarm) {
-        const topic = req.query.topic || 'users';
-        const topicUsers = this.swarm.topicRegistry.getPeers(topic);
-        if (Array.isArray(topicUsers)) users.push(...topicUsers);
-      }
-      // Qiniu-registered phones
-      if (this._qiniuUsers) users.push(...this._qiniuUsers);
-      res.json({ users });
+      if (!this.swarm) return res.json({ users: [] });
+      const topic = req.query.topic || 'users';
+      const users = this.swarm.topicRegistry.getPeers(topic);
+      res.json({ users: Array.isArray(users) ? users : [] });
     });
 
     // OpenAPI docs (no auth required)
@@ -216,12 +207,6 @@ async function R(){
 
     // Sage API (智者 — 天人点拨)
     this.app.use('/api/v1/sage', authMiddleware, sageRouter);
-
-    // Synth API (波形合成预览)
-    this.app.use('/api/v1/synth', authMiddleware, synthRouter);
-
-    // Config API (SDUI config upload)
-    this.app.use('/api/v1/config', authMiddleware, configRouter);
 
     // Community feed — 社区动态流（聚合所有居民最新活动）
     this.app.get('/api/v1/community/feed', authMiddleware, (req, res, next) => {
@@ -379,11 +364,11 @@ async function R(){
         if (data) {
           for (const [id, s] of this._signalingRooms) {
             if (id !== peerId) {
-              try { s.write(data); } catch (err) { logger.warn('[Qiniu] write failed: %s', err.message); }
+              try { s.write(data); } catch {}
             }
           }
         }
-      } catch { logger.warn('[Qiniu] read-announce failed'); }
+      } catch {}
     });
   }
 
@@ -435,7 +420,7 @@ async function R(){
           if ((cmd === 0x01 || cmd === 0x02) && registeredPeerId) {
             for (const [id, s] of this._signalingRooms) {
               if (id !== registeredPeerId) {
-                try { s.write(frame); } catch { logger.warn('[TCP] forward write failed'); }
+                try { s.write(frame); } catch {}
               }
             }
             if (this.swarm) {
@@ -467,32 +452,12 @@ async function R(){
 
     const tcpPort = this.port + 1;
     this._tcpServer.listen(tcpPort, () => {
-      // TCP signaling (legacy, phones now use Qiniu-direct)
+      console.log(`[Signaling] TCP server on port ${tcpPort}`);
     });
 
     // Init signal relay for Qiniu-based address exchange
     this._signalRelay = new SignalRelay(qiniuSignaling, 'bridge-' + (this.port || 3800));
     this._signalRelay.init();
-
-    // Poll Qiniu for phone registrations (every 10s)
-    this._qiniuUsers = [];
-    this._qiniuPollTimer = setInterval(async () => {
-      try {
-        const fileList = await qiniuSignaling.listObjects('oc/users/');
-        const users = [];
-        for (const f of (fileList || [])) {
-          try {
-            const raw = await qiniuSignaling.readFrom({
-              name: process.env.QINIU_BUCKET || 'dapin-xp',
-              domain: process.env.QINIU_DOMAIN || 'https://dapin-xp.s3.cn-east-1.qiniucs.com',
-            }, f.key);
-            const parsed = JSON.parse(raw.toString());
-            users.push(parsed);
-          } catch (_) {}
-        }
-        this._qiniuUsers = users;
-      } catch (_) {}
-    }, 10000);
 
     // Inject shared rooms + relay into signaling routes
     const { setSignalingContext } = await import('./routes/signaling.js');

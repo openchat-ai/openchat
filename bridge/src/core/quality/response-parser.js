@@ -2,7 +2,7 @@
  * 响应解析器
  * 支持多种 LLM 提供商的响应格式
  */
-import { providerManager } from '../../providers/provider-manager.js';
+import { providerManager } from 'provider-kit';
 import logger from '../monitoring/logger.js';
 
 export class ResponseParser {

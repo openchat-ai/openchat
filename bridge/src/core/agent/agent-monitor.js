@@ -1,4 +1,5 @@
 import { messageBus, MESSAGE_TYPES } from '../message-bus.js';
+import { AGENT_STATES } from './agent-session.js';
 import fs from 'fs/promises';
 import path from 'path';
 import logger from '../monitoring/logger.js';
@@ -77,7 +78,7 @@ export class AgentMonitor {
     }
 
     this.subscriptions.forEach(unsub => {
-      try { unsub(); } catch (e) { logger.warn('[AgentMonitor] unsub failed: %s', e.message); }
+      try { unsub(); } catch (e) {}
     });
     this.subscriptions = [];
 

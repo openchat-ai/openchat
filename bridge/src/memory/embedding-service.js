@@ -10,7 +10,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import { USER_DIR } from '../core/persistent-config.js';
 import { persistentConfig } from '../core/persistent-config.js';
-import { providerManager } from '../providers/provider-manager.js';
+import { providerManager } from 'provider-kit';
 
 const CACHE_DIR = path.join(USER_DIR, 'vectors', 'cache');
 const CACHE_FILE = path.join(CACHE_DIR, 'embedding_cache.json');

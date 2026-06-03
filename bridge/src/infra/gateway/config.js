@@ -10,7 +10,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { homedir } from 'os';
 import * as readline from 'readline';
-import { providerRegistry } from '../../providers/provider-registry.js';
+import { providerRegistry } from 'provider-kit';
 
 const CONFIG_DIR = path.join(homedir(), '.openchat');
 const GATEWAY_CONFIG_FILE = path.join(CONFIG_DIR, 'gateway-config.json');

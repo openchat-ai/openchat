@@ -9,7 +9,7 @@ import { socialConnector } from '../core/collaboration/social-connector.js';
 import { knowledgeNetwork } from '../core/memory/knowledge-network.js';
 import { CommunityManager } from '../core/collaboration/community-manager.js';
 import { securityManager } from '../security/security-manager.js';
-import { providerManager } from '../providers/provider-manager.js';
+import { providerManager } from 'provider-kit';
 import { memoryManager } from '../memory/memory-manager.js';
 import { vectorStore } from '../memory/vector-store.js';
 import { embeddingService } from '../memory/embedding-service.js';
@@ -361,7 +361,7 @@ export const commands = {
     }
 
     try {
-      const { createLocalProvider } = await import('../providers/local-provider.js');
+      const { createLocalProvider } = await import('provider-kit');
       const provider = createLocalProvider(name, config);
       await provider.connect(config);
       sessionManager.providers.set(name, provider);
@@ -394,7 +394,7 @@ export const commands = {
 
     // provider presets - list all preset providers
     if (name === 'presets') {
-      const { listPresetProviders } = await import('../providers/openai-compatible.js');
+      const { listPresetProviders } = await import('provider-kit');
       const presets = listPresetProviders();
 
       console.log('\n╔═══════════════════════════════════════════════════════════╗');
@@ -432,7 +432,7 @@ export const commands = {
 
     // provider search <keyword> - search presets
     if (name === 'search' && key) {
-      const { listPresetProviders } = await import('../providers/openai-compatible.js');
+      const { listPresetProviders } = await import('provider-kit');
       const presets = listPresetProviders();
       const keyword = key.toLowerCase();
 
@@ -528,7 +528,7 @@ export const commands = {
 
     // provider - list all
     const providers = providerManager.listProviders();
-    const { PROVIDER_ALIASES } = await import('../providers/provider-manager.js');
+    const { PROVIDER_ALIASES } = await import('provider-kit');
 
     // Build reverse mapping: canonical -> aliases
     const canonicalToAliases = {};
@@ -572,7 +572,7 @@ export const commands = {
     console.log('');
 
     const pc = persistentConfig;
-    const { providerManager } = await import('../providers/provider-manager.js');
+    const { providerManager } = await import('provider-kit');
     const keys = Object.keys(pc.config.apiKeys);
 
     const working = [];
@@ -1209,7 +1209,7 @@ export const commands = {
         try {
           const localModels = await fetchLocalModels(providerName);
           if (localModels.length > 0) models = localModels;
-        } catch (e) { /* noop - fallback to existing models */ }
+        } catch (e) {}
       }
 
       if (modelQuery.includes('/')) {

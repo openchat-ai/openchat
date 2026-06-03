@@ -210,10 +210,6 @@ const residents = residentManager.list(null);
 
   // ================== 居民决策 ==================
 
-  _getHealthScore() {
-    return 100;
-  }
-
   _processResident(resident) {
     const id = resident.id || resident.name;
     const traits = resident.traits || {};
@@ -1104,7 +1100,7 @@ ${recentActivities || '才刚来到这个世界，还没有什么经历。'}
           );
           if (r?.content) failMsg = r.content.trim().substring(0, 200);
           talker.cleanup();
-        } catch (_) { logger.warn('[ResidentScheduler] failMsg generation failed'); }
+        } catch (_) {}
         sageManager.ask(residentId, failMsg);
       }
 
@@ -1302,7 +1298,7 @@ ${resB.name} 的性格：勤奋度 ${pct(resB.traits?.diligence ?? 0.5)}，创�
 
     } finally {
       if (agent) {
-        try { agent.cleanup(); } catch (_) { logger.warn('[ResidentScheduler] agent cleanup failed'); }
+        try { agent.cleanup(); } catch (_) {}
       }
 
       [resA.id, resB.id].forEach(id => {
