@@ -19,6 +19,7 @@ import { processText, initProvider } from './skeleton-agent.mjs';
 // - Skips files with "-reply" suffix
 // - Reply is JSON text uploaded to oc/chat/$chatId/$ts-reply.json
 // - seenKeys persists in memory only (process restart re-scans)
+// - LLM session is created once via initProvider(); reused per call
 
 const POLL_INTERVAL_MS = 2000;
 const CHAT_PREFIX = 'oc/chat/';
@@ -28,12 +29,31 @@ const codec = new SkeletonCodec();
 await codec.initialize();
 console.log('[skeleton] codec ready @ 24kHz');
 
-// On startup, mark existing files as seen to avoid replaying history
+try {
+  await initProvider();
+} catch (e) {
+  console.error('[skeleton] initProvider FAILED:', e.message);
+  console.error('[skeleton] will fall back to canned replies');
+}
+
+// On startup: mark only replied files as seen. Unreplied .msg/.enc are processed.
 async function primeSeenKeys() {
   try {
     const keys = await qiniuList(CHAT_PREFIX);
-    for (const k of keys) seenKeys.add(k);
-    console.log(`[skeleton] primed seenKeys with ${keys.length} existing entries`);
+    const replies = keys.filter(k => k.includes('-reply.json'));
+    const repliedSources = new Set();
+    for (const r of replies) {
+      seenKeys.add(r);
+      try {
+        const data = await qiniuGet(r);
+        if (data) repliedSources.add(JSON.parse(data.toString('utf8')).sourceKey);
+      } catch {}
+    }
+    for (const k of keys) {
+      if (k.includes('-reply.json')) continue;
+      if (repliedSources.has(k)) seenKeys.add(k);
+    }
+    console.log(`[skeleton] primed seenKeys: ${seenKeys.size} replied, ${keys.length - seenKeys.size} unproc pending`);
   } catch (e) {
     console.warn('[skeleton] prime failed:', e.message);
   }
@@ -47,16 +67,16 @@ async function processEnc(key) {
     console.warn(`[C13] empty enc, skip ${key}`);
     return;
   }
-  if (encData[0] !== 0xBB || encData[1] !== 0x01 || encData[2] !== 0xCC) {
-    console.error(`[C13] invalid EPC header in ${key}`);
+  if (encData[0] !== 0xBB || encData[2] !== 0xCC) {
+    console.error(`[C13] invalid EPC header in ${key}: dir=0x${encData[1]?.toString(16)} type=0x${encData[2]?.toString(16)}`);
     return;
   }
 
   const decoded = await codec.decode(Buffer.from(encData));
   console.log(`[C13b] decoded pcm=${decoded.pcm.length}B score=${decoded.score.length}`);
 
-  const text = '你好'; // v0: hard-code STT
-  console.log(`[C13c] text=${text} (STT hard-coded)`);
+  const text = '[用户发来一段语音消息]'; // v0: no STT yet
+  console.log(`[C13c] text=${text} (STT not wired, using placeholder)`);
 
   let response = '';
   let toolCalls = [];
@@ -65,13 +85,11 @@ async function processEnc(key) {
     const r = await processText(text);
     response = r.response || '';
     toolCalls = r.toolCalls || [];
-    console.log(`[C13d] toolCalls=${toolCalls.length}`);
   } catch (e) {
     errMsg = e.message;
-    console.error(`[C13d] agent error: ${errMsg}`);
+    console.error(`[C13c] processText error: ${e.message}`);
   }
-
-  const reply = response || '(agent returned empty)';
+  const reply = response || (errMsg ? `[agent error] ${errMsg}` : '(agent returned empty)');
   console.log(`[C13e] reply="${reply.substring(0, 80)}"`);
 
   // Derive chatId from key: oc/chat/<chatId>/<ts>.enc
@@ -126,13 +144,11 @@ async function processMsg(key) {
     const r = await processText(text);
     response = r.response || '';
     toolCalls = r.toolCalls || [];
-    console.log(`[C13d] toolCalls=${toolCalls.length}`);
   } catch (e) {
     errMsg = e.message;
-    console.error(`[C13d] agent error: ${errMsg}`);
+    console.error(`[C13c] processText error: ${e.message}`);
   }
-
-  const reply = response || '(agent returned empty)';
+  const reply = response || (errMsg ? `[agent error] ${errMsg}` : '(agent returned empty)');
   console.log(`[C13e] reply="${reply.substring(0, 80)}"`);
 
   const parts = key.split('/');
@@ -180,6 +196,5 @@ async function pollLoop() {
   }
 }
 
-await initProvider();
 await primeSeenKeys();
 pollLoop().catch(console.error);

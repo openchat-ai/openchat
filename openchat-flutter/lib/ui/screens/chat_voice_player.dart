@@ -15,6 +15,10 @@ class ChatVoicePlayer {
   AudioPlayer? _currentPlayer;
   LmdnProcessor? _processor;
   QiniuDirectClient? _client;
+  String? _currentKey;
+  void Function(String? key, int durationMs)? onStateChange;
+
+  String? get currentKey => _currentKey;
 
   Future<void> dispose() async {
     await _currentPlayer?.stop();
@@ -46,8 +50,18 @@ class ChatVoicePlayer {
       final decoded = await (codec ?? _processor)!.processReceivedAudio(raw);
       if (decoded != null && decoded.pcm.isNotEmpty) {
         log('[C14] decoded ${decoded.pcm.length} B');
+        final cfg = await LmdnConfig.load();
+        final durationMs = (decoded.pcm.length / (cfg.sampleRate * 2) * 1000).round();
         final wav = QiniuDirectClient.wavFromPcm(decoded.pcm);
+        _currentKey = key;
+        onStateChange?.call(key, durationMs);
         await _currentPlayer!.play(BytesSource(wav));
+        _currentPlayer!.onPlayerComplete.first.then((_) {
+          if (_currentKey == key) {
+            _currentKey = null;
+            onStateChange?.call(null, 0);
+          }
+        });
       }
     } catch (e) {
       log('[C14] error: $e');
