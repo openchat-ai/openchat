@@ -1,6 +1,6 @@
 // 实验三 V3：DSP + 频谱自校验 + 帧间置信度累积 + 多窗口 FFT
 import fs from 'fs';
-import LpcMdctCodec from '../bridge/src/core/audio/lpc-mdct-codec.js';
+import LmdnCodec from '../bridge/src/core/audio/lmdn-codec.mjs';
 
 const SR = 48000, HOP = 1024;
 

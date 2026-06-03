@@ -2,7 +2,7 @@
 // Runs in-process as part of the main Bridge (no child process).
 // See apps/bridge/skeleton.mjs for the original standalone version.
 
-import { SkeletonCodec } from '../../../apps/bridge/skeleton-codec.mjs';
+import LmdnCodec from '../core/audio/lmdn-codec.mjs';
 import { qiniuList, qiniuGet, qiniuPut } from '../../../apps/bridge/skeleton-qiniu.mjs';
 import { processText, initProvider } from '../../../apps/bridge/skeleton-agent.mjs';
 
@@ -150,7 +150,7 @@ export async function startChatPoll() {
   if (_started) return;
   _started = true;
 
-  const codec = new SkeletonCodec();
+  const codec = new LmdnCodec();
   await codec.initialize();
   _codec = codec;
   console.log('[chat-poller] codec ready');

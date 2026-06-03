@@ -1,7 +1,7 @@
 // calibrate_lmdn.mjs — 原始 NNLS vs LPC+MDCT→NNLS F1 对比
 import fs from 'fs';
 import { parseMidi } from 'midi-file';
-import LpcMdctCodec from '../bridge/src/core/audio/lpc-mdct-codec.js';
+import LpcMdctCodec from '../bridge/src/core/audio/lmdn-codec.mjs';
 
 const SR = 48000, HOP = 1024, FS = 2048, HALF = FS >> 1, NM = 21, NX = 108, NC = 88;
 

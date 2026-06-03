@@ -41,7 +41,11 @@ class LmdnCodec {
     }
 
     if (_bits == null) {
-      _bits = _scanBitAllocation(samples, totalSamples);
+      final scanned = _scanBitAllocation(samples, totalSamples);
+      // 仅当至少有一个带分配到 bit 时才锁定分配，否则下次重扫
+      if (scanned.any((b) => b > 0)) {
+        _bits = scanned;
+      }
     }
 
     final hopF0 = (_n * 2).round();
@@ -267,6 +271,11 @@ class LmdnCodec {
     }
     return bits;
   }
+
+// === invariants ===
+// - _bits 首次扫描若全带 0 则不锁定，下次 encode 重扫；否则冻结
+// - _prevY 跨 decode 调用持久，确保 TDAC 连续性；独立流前需 reset()
+// - 仅 N=96 受支持（MDCT 表大小）；sampleRate 仅影响 F0 计算
 
   void reset() { _prevY = null; _bits = null; }
 
