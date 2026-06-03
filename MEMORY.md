@@ -67,6 +67,7 @@
 
 ## 最近会话摘要
 
+- [2026-06-03] **Bridge agent 端到端打通**：手机录音 → 微信 → Qiniu → bridge → agent → 文字气泡，中午实测成功。provider-kit 收口为单 import gate（provider-service.js），agent 改为 2-pass 系统（call-tools + final-answer），加 response cache + 上下文截断，prompt 改 20-token CoT。修复 config.json 缺逗号导致的静默 parse 失败。
 - [2026-05-25] **音频链路 E1 完成**：队列播放 + 淡入淡出 + Opus 集成 + SDUI 三模式可切（raw/opus/neural）。RNNoise/AGC/VAD 管线已接入并通过 CI。AGENTS.md 新增 SDUI 优先原则（UI 变动先问 SDUI 能不能做，不 rebuild）。AGENTS.md 新增 Flutter API 签对签规则（推送前去 pub.dev 逐行核对 API）。修复 OpenRouter API key 泄露（git filter-repo 误删仓库后从 CI 引用恢复）。清理 33 个 apk-* tag 和所有旧 Actions runs。
 
 - [2026-05-16] **项目定位大讨论**：通过多角色审视（VC、安全研究员、贡献者、核心工程师、Petals 开发者、考古学家、学生用户、记者、Flutter App 视角）确认项目真实竞争力在 P2P 语音通讯，而非分布式大模型。AI 居民社区方向保留但标注为实验。
@@ -244,6 +245,7 @@
 - **Flutter**: voice_client.dart 编译修复 + people_screen.dart 修复 + record pkg 升级到 6.x
 - **Demo**: `npm run demo` 一键 sandbox 体验脚本正常
 - **P2P教程**: docs/p2p-voice-tutorial.md 完成
+- **Bridge Agent E2E**: ✅ 手机录音 → 微信 → Qiniu → bridge → agent → 文字气泡 (2026-06-03)
 
 ## 版本计划（时间管理师监管）
 
@@ -290,6 +292,17 @@
 | E4 | 音色模型：16-class 码本 + 残差编码 + 合成时音色整形 | ✅ |
 | E5 | Source separation：HPSS 谐波-打击乐分离 + 多轨合成 | ✅ |
 | E6 | 乐谱表示：自相关 F0 追踪 + 脉冲列激励 + 有声/无声判断 | ✅ |
+
+### 工作线 F：Bridge Agent + IM Bot — Walking Skeleton 已通
+| 版本 | 交付 | 状态 |
+|------|------|------|
+| F1 | provider-kit 收口为单 import gate (provider-service.js) | ✅ |
+| F2 | agent 2-pass 系统 (call-tools + final-answer) | ✅ |
+| F3 | system prompt 改 20-token CoT | ✅ |
+| F4 | response cache + 上下文截断 | ✅ |
+| F5 | skeleton-agent.mjs + skeleton.mjs walking skeleton | ✅ |
+| F6 | 端到端 IM 链路 (手机录音 → Qiniu → bridge → 文字气泡) | ✅ v0.3.0 (2026-06-03) |
+| F7 | 国内免费模型 + forge proxy 评估 | 📋 |
 
 ### 里程碑
 | 版本 | 含义 | 条件 |

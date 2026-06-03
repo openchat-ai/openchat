@@ -51,6 +51,78 @@ scripts/         — gen-version.mjs (build-time URL generation)
 tests/           — preflight.mjs, verify scripts
 ```
 
+## Configuration
+
+Bridge reads `~/.openchat/config.json` at startup. Most users only need to set provider credentials.
+
+### Minimal config
+
+```json
+{
+  "provider": {
+    "minimax": {
+      "options": {
+        "baseURL": "https://api.minimaxi.com/anthropic/v1",
+        "apiKey": "<YOUR_MINIMAX_KEY>"
+      },
+      "models": {
+        "MiniMax-M3": { "name": "MiniMax-M3" }
+      }
+    }
+  },
+  "providers": {
+    "openrouter": {
+      "apiKey": "<YOUR_OPENROUTER_KEY>"
+    }
+  },
+  "current": {
+    "provider": "openrouter",
+    "model": "openrouter/free"
+  }
+}
+```
+
+### Top-level fields
+
+| Field | Required | Purpose |
+|-------|----------|---------|
+| `provider.<name>` | one of | Built-in provider preset with explicit baseURL (anthropic/openai/openrouter/minimax/qwen/...) |
+| `providers.<name>.apiKey` | depends | API key for that provider |
+| `current.provider` | yes | Active provider (must match a key in `provider.*` or `providers.*`) |
+| `current.model` | yes | Model ID for the active provider |
+| `bridge.*` | no | Bridge runtime (port 3800, mode, qiniu toggle, token budget) |
+| `sessionHistory[]` | auto | Persisted session list (managed by bridge, do not edit) |
+
+### Provider presets
+
+Two ways to declare a provider:
+
+- **`provider.<name>`** (object form) — explicit `baseURL` + `models` map. Use for vendors with non-default endpoints (Chinese models via OpenRouter, Anthropic-compatible proxies, etc.)
+- **`providers.<name>.apiKey`** (shorthand) — just an API key; `baseURL` and models inferred from preset name. Use for stock OpenAI / Anthropic / OpenRouter.
+
+For Chinese free models (Qwen / GLM / DeepSeek / MiniMax), prefer the object form with `baseURL` pointing at OpenRouter's free route, e.g. `model: "qwen/qwen-2.5-7b-instruct:free"`.
+
+### Verify
+
+```bash
+node -e "console.log(JSON.parse(require('fs').readFileSync(process.env.HOME+'/.openchat/config.json','utf-8')).current)"
+# → { provider: 'openrouter', model: 'openrouter/free' }
+```
+
+## Bridge Agent (optional)
+
+When Bridge is running, the same IM channels (WeChat / Lark / Telegram) used for P2P voice signaling also route to an LLM agent:
+
+```
+Phone IM ──→ Qiniu S3 ──→ Bridge skeleton ──→ agent (LLM + tools) ──→ reply text
+                              │
+                              └─ session store (~/.openchat/sessions/)
+```
+
+- **Walking skeleton**: `apps/bridge/skeleton.mjs` — minimal headless agent loop, useful for E2E smoke test
+- **Full engine**: `bridge/src/core/agent/agent-engine.js` — 2-pass agent (call tools → final answer), 20-token CoT prompt, response cache, context truncation
+- **LLM provider**: `bridge/src/core/provider-service.js` — single import gate, all provider-kit calls go through here
+
 ## Build
 
 ```bash
@@ -63,6 +135,7 @@ tests/           — preflight.mjs, verify scripts
 
 | Version | Date | Key changes |
 |---------|------|-------------|
+| v0.3.0 | 2026-06-03 | Bridge agent E2E (IM → Qiniu → LLM → text), provider-kit single import gate, 2-pass agent, response cache |
 | v0.2.0 | 2026-05-22 | Qiniu Direct + SDUI + Debug channel + audio relay |
 | v0.1.1 | 2026-05-21 | PM2 fix, CI Flutter, sandbox presets |
 | v0.1.0 | 2026-05-21 | Flutter connectivity, port 3800 unified |
