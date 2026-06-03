@@ -1,0 +1,1679 @@
+﻿flutter-check	UNKNOWN STEP	锘?026-06-02T09:59:09.1836411Z Current runner version: '2.334.0'
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:09.1862007Z ##[group]Runner Image Provisioner
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:09.1862801Z Hosted Compute Agent
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:09.1863605Z Version: 20260520.533
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:09.1864230Z Commit: 189110e25284a9812c124fd27b339e2fb4f2f9db
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:09.1864906Z Build Date: 2026-05-20T17:44:04Z
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:09.1865562Z Worker ID: {a85bf3a2-e404-4c7e-956f-42ea0bb1a0c3}
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:09.1866235Z Azure Region: southcentralus
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:09.1866808Z ##[endgroup]
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:09.1868217Z ##[group]Operating System
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:09.1868784Z Ubuntu
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:09.1869337Z 24.04.4
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:09.1869806Z LTS
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:09.1870294Z ##[endgroup]
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:09.1870806Z ##[group]Runner Image
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:09.1871430Z Image: ubuntu-24.04
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:09.1871991Z Version: 20260525.161.1
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:09.1873298Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260525.161/images/ubuntu/Ubuntu2404-Readme.md
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:09.1874684Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260525.161
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:09.1875553Z ##[endgroup]
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:09.1876703Z ##[group]GITHUB_TOKEN Permissions
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:09.1878646Z Contents: read
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:09.1879306Z Metadata: read
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:09.1879844Z Packages: read
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:09.1880431Z ##[endgroup]
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:09.1882596Z Secret source: Actions
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:09.1883662Z Prepare workflow directory
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:09.2327635Z Prepare all required actions
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:09.2365216Z Getting action download info
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:09.6270464Z Download action repository 'actions/checkout@v4' (SHA:34e114876b0b11c390a56381ad16ebd13914f8d5)
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:09.7351632Z Download action repository 'subosito/flutter-action@v2' (SHA:1a449444c387b1966244ae4d4f8c696479add0b2)
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.1243144Z Getting action download info
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.3202001Z Download action repository 'actions/cache@v5' (SHA:27d5ce7f107fe9357f9df03efb73ab90386fccae)
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.4730539Z Complete job name: flutter-check
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.5604423Z ##[group]Run actions/checkout@v4
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.5605761Z with:
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.5606586Z   repository: openchat-ai/openchat
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.5615883Z   token: ***
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.5616674Z   ssh-strict: true
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.5617483Z   ssh-user: git
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.5618321Z   persist-credentials: true
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.5619237Z   clean: true
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.5620067Z   sparse-checkout-cone-mode: true
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.5621042Z   fetch-depth: 1
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.5621847Z   fetch-tags: false
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.5622687Z   show-progress: true
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.5623582Z   lfs: false
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.5624350Z   submodules: false
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.5625191Z   set-safe-directory: true
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.5626320Z env:
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.5627134Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.5628165Z ##[endgroup]
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6587670Z Syncing repository: openchat-ai/openchat
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6590630Z ##[group]Getting Git version info
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6591912Z Working directory is '/home/runner/work/openchat/openchat'
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6594011Z [command]/usr/bin/git version
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6631467Z git version 2.54.0
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6651895Z ##[endgroup]
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6664968Z Temporarily overriding HOME='/home/runner/work/_temp/dc0d2c48-4537-447c-b2c7-c16fce9e318b' before making global git config changes
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6667963Z Adding repository directory to the temporary git global config as a safe directory
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6671233Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/openchat/openchat
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6711096Z Deleting the contents of '/home/runner/work/openchat/openchat'
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6714833Z ##[group]Initializing the repository
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6718801Z [command]/usr/bin/git init /home/runner/work/openchat/openchat
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6795408Z hint: Using 'master' as the name for the initial branch. This default branch name
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6798574Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6802189Z hint: to use in all of your new repositories, which will suppress this warning,
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6804619Z hint: call:
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6805538Z hint:
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6806659Z hint: 	git config --global init.defaultBranch <name>
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6807947Z hint:
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6809336Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6811346Z hint: 'development'. The just-created branch can be renamed via this command:
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6812877Z hint:
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6814091Z hint: 	git branch -m <name>
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6815011Z hint:
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6816660Z hint: Disable this message with "git config set advice.defaultBranchName false"
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6819089Z Initialized empty Git repository in /home/runner/work/openchat/openchat/.git/
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6822920Z [command]/usr/bin/git remote add origin https://github.com/openchat-ai/openchat
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6849641Z ##[endgroup]
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6851893Z ##[group]Disabling automatic garbage collection
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6854216Z [command]/usr/bin/git config --local gc.auto 0
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6878069Z ##[endgroup]
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6880352Z ##[group]Setting up auth
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6885304Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.6912870Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.7197095Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.7221420Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.7390599Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.7418195Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.7587512Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.7615092Z ##[endgroup]
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.7617432Z ##[group]Fetching the repository
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:10.7626541Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +a80ebc99cd37ff1b6602064804fc46056ce77419:refs/remotes/origin/main
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.6933817Z From https://github.com/openchat-ai/openchat
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.6937201Z  * [new ref]         a80ebc99cd37ff1b6602064804fc46056ce77419 -> origin/main
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.6962564Z ##[endgroup]
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.6964424Z ##[group]Determining the checkout info
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.6965963Z ##[endgroup]
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.6968933Z [command]/usr/bin/git sparse-checkout disable
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.7005655Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.7028283Z ##[group]Checking out the ref
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.7031488Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.7489274Z Switched to a new branch 'main'
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.7491114Z branch 'main' set up to track 'origin/main'.
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.7497335Z ##[endgroup]
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.7532787Z [command]/usr/bin/git log -1 --format=%H
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.7551692Z a80ebc99cd37ff1b6602064804fc46056ce77419
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.8045771Z ##[group]Run subosito/flutter-action@v2
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.8046762Z with:
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.8047475Z   flutter-version: 3.41
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.8048266Z   channel: stable
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.8049026Z   architecture: X64
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.8049956Z   cache: false
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.8050708Z   pub-cache-path: default
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.8051531Z   dry-run: false
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.8052426Z   git-source: https://github.com/flutter/flutter.git
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.8053591Z env:
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.8054342Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.8055284Z ##[endgroup]
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.8201402Z ##[group]Run chmod +x "$GITHUB_ACTION_PATH/setup.sh"
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.8202775Z ^[[36;1mchmod +x "$GITHUB_ACTION_PATH/setup.sh"^[[0m
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.8226991Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.8228122Z env:
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.8228900Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.8229907Z ##[endgroup]
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.8377984Z ##[group]Run $GITHUB_ACTION_PATH/setup.sh -p \
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.8379217Z ^[[36;1m$GITHUB_ACTION_PATH/setup.sh -p \^[[0m
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.8380259Z ^[[36;1m  -n '3.41' \^[[0m
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.8381079Z ^[[36;1m  -f '' \^[[0m
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.8381903Z ^[[36;1m  -a 'X64' \^[[0m
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.8382710Z ^[[36;1m  -k '' \^[[0m
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.8383630Z ^[[36;1m  -c '' \^[[0m
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.8384410Z ^[[36;1m  -l '' \^[[0m
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.8385216Z ^[[36;1m  -d 'default' \^[[0m
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.8386271Z ^[[36;1m  -g 'https://github.com/flutter/flutter.git' \^[[0m
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.8387388Z ^[[36;1m  stable^[[0m
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.8406449Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.8407590Z env:
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.8408386Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:11.8409374Z ##[endgroup]
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:12.0597793Z ##[group]Run $GITHUB_ACTION_PATH/setup.sh \
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:12.0598936Z ^[[36;1m$GITHUB_ACTION_PATH/setup.sh \^[[0m
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:12.0599920Z ^[[36;1m  -n '3.41.9' \^[[0m
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:12.0600783Z ^[[36;1m  -a 'x64' \^[[0m
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:12.0601834Z ^[[36;1m  -c '/opt/hostedtoolcache/flutter/stable-3.41.9-x64' \^[[0m
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:12.0603213Z ^[[36;1m  -d '/home/runner/.pub-cache' \^[[0m
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:12.0604209Z ^[[36;1m  stable^[[0m
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:12.0623792Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:12.0624951Z env:
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:12.0625741Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:12.0626721Z ##[endgroup]
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:12.2509817Z   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:12.2513431Z                                  Dload  Upload   Total   Spent    Left  Speed
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:12.2515295Z 
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:12.5797434Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:13.5798123Z   2 1448M    2 36.0M    0     0   109M      0  0:00:13 --:--:--  0:00:13  109M
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:14.5821315Z  30 1448M   30  446M    0     0   335M      0  0:00:04  0:00:01  0:00:03  335M
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:15.5793548Z  61 1448M   61  890M    0     0   381M      0  0:00:03  0:00:02  0:00:01  381M
+flutter-check	UNKNOWN STEP	2026-06-02T09:59:15.8220032Z  92 1448M   92 1339M    0     0   402M      0  0:00:03  0:00:03 --:--:--  402M
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:08.4198060Z 100 1448M  100 1448M    0     0   405M      0  0:00:03  0:00:03 --:--:--  405M
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:08.4260228Z ##[group]Run flutter pub get
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:08.4260535Z ^[[36;1mflutter pub get^[[0m
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:08.4278342Z shell: /usr/bin/bash -e {0}
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:08.4278736Z env:
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:08.4278975Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:08.4279366Z   FLUTTER_ROOT: /opt/hostedtoolcache/flutter/stable-3.41.9-x64/flutter
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:08.4279747Z   PUB_CACHE: /home/runner/.pub-cache
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:08.4280007Z ##[endgroup]
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:13.1295766Z Resolving dependencies...
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:13.7919200Z Downloading packages...
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0580554Z + _fe_analyzer_shared 85.0.0 (100.0.0 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0581193Z + analyzer 7.7.1 (13.0.0 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0581712Z + args 2.7.0
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0582323Z + async 2.13.1
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0583263Z + audioplayers 6.7.0
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0583631Z + audioplayers_android 5.2.1
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0584033Z + audioplayers_darwin 6.4.0
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0584478Z + audioplayers_linux 4.2.1
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0584863Z + audioplayers_platform_interface 7.1.1
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0585305Z + audioplayers_web 5.2.1
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0585646Z + audioplayers_windows 4.3.1
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0586045Z + battery_plus 6.2.3 (7.0.0 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0586454Z + battery_plus_platform_interface 2.0.1
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0587199Z + boolean_selector 2.1.2
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0587897Z + build 2.5.4 (4.0.6 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0588618Z + build_config 1.1.2 (1.3.0 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0589032Z + build_daemon 4.1.1
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0589391Z + build_resolvers 2.5.4 (3.0.4 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0589846Z + build_runner 2.5.4 (2.15.0 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0590310Z + build_runner_core 9.1.2 (9.3.2 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0590758Z + built_collection 5.1.1
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0591171Z + built_value 8.12.6
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0591585Z + characters 1.4.1
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0591991Z + checked_yaml 2.0.4
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0592365Z + clock 1.1.2
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0592665Z + code_assets 1.2.1
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0593128Z + code_builder 4.11.1
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0593450Z + collection 1.19.1
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0593855Z + connectivity_plus 6.1.5 (7.1.1 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0594399Z + connectivity_plus_platform_interface 2.1.0
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0594887Z + convert 3.1.2
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0595227Z + crypto 3.0.7
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0595595Z + dart_style 3.1.1 (3.1.9 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0596009Z + dbus 0.7.13
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0596334Z + device_info_plus 10.1.2 (13.1.0 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0596981Z + device_info_plus_platform_interface 7.0.3 (8.1.0 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0597567Z + dio 5.9.2
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0597942Z + dio_web_adapter 2.1.2
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0598355Z + equatable 2.0.8
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0598766Z + fake_async 1.3.3
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0599147Z + ffi 2.2.0
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0599500Z + file 7.0.1
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0599866Z + fixnum 1.1.1
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0600277Z + flutter 0.0.0 from sdk flutter
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0600761Z + flutter_lints 6.0.0
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0601218Z + flutter_riverpod 2.6.1 (3.3.1 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0601767Z + flutter_test 0.0.0 from sdk flutter
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0602341Z + flutter_web_plugins 0.0.0 from sdk flutter
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0602885Z + freezed 2.5.8 (3.2.5 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0603548Z + freezed_annotation 2.4.4 (3.1.0 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0604100Z + frontend_server_client 4.0.0
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0604551Z + glob 2.1.3
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0604963Z + graphs 2.3.2
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0605343Z + hooks 2.0.1
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0605705Z + http 1.6.0
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0606089Z + http_multi_server 3.2.2
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0606526Z + http_parser 4.1.2
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0606910Z + io 1.0.5
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0607257Z + jni 1.0.0
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0607629Z + jni_flutter 1.0.1
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0608012Z + js 0.7.2
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0608417Z + json_annotation 4.9.0 (4.12.0 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0609340Z + json_serializable 6.9.5 (6.14.0 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0609892Z + leak_tracker 11.0.2
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0610354Z + leak_tracker_flutter_testing 3.0.10
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0610896Z + leak_tracker_testing 3.0.2
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0611411Z + lints 6.1.0
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0611784Z + logging 1.3.0
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0612197Z + matcher 0.12.19 (0.12.20 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0612681Z + material_color_utilities 0.13.0
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0613309Z + meta 1.17.0 (1.18.2 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0613661Z + mime 2.0.0
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0613999Z + nm 0.5.0
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0614361Z + objective_c 9.4.1
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0614775Z + package_config 2.2.0
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0615189Z + path 1.9.1
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0615591Z + path_provider 2.1.5
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0616057Z + path_provider_android 2.3.1
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0616734Z + path_provider_foundation 2.6.0
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0617284Z + path_provider_linux 2.2.1
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0617835Z + path_provider_platform_interface 2.1.2
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0618282Z + path_provider_windows 2.3.0
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0618667Z + petitparser 7.0.2
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0618983Z + platform 3.1.6
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0619366Z + plugin_platform_interface 2.1.8
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0619888Z + pool 1.5.2
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0620236Z + pub_semver 2.2.0
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0620616Z + pubspec_parse 1.5.0
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0621024Z + record 6.2.1 (7.0.0 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0621484Z + record_android 1.5.2 (2.0.1 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0621985Z + record_ios 1.2.1 (2.0.0 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0622477Z + record_linux 1.3.1 (2.0.0 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0623115Z + record_macos 1.2.2 (2.0.0 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0623650Z + record_platform_interface 1.6.0 (2.0.0 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0624196Z + record_use 0.6.0
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0624601Z + record_web 1.3.0 (2.0.0 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0625083Z + record_windows 1.0.7 (2.0.0 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0625586Z + riverpod 2.6.1 (3.2.1 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0626144Z + sdui_engine 1.0.0 from path ../packages/sdui_engine
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0626702Z + shared_preferences 2.5.5
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0627112Z + shared_preferences_android 2.4.23
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0627559Z + shared_preferences_foundation 2.5.6
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0628070Z + shared_preferences_linux 2.4.1
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0628559Z + shared_preferences_platform_interface 2.4.2
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0629078Z + shared_preferences_web 2.4.3
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0629551Z + shared_preferences_windows 2.4.1
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0630016Z + shelf 1.4.2
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0630379Z + shelf_web_socket 3.0.0
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0630820Z + sky_engine 0.0.0 from sdk flutter
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0631299Z + source_gen 2.0.0 (4.2.3 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0631784Z + source_helper 1.3.7 (1.3.12 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0632265Z + source_span 1.10.2
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0632646Z + stack_trace 1.12.1
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0633174Z + state_notifier 1.0.0
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0633593Z + stream_channel 2.1.4
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0633990Z + stream_transform 2.1.1
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0634409Z + string_scanner 1.4.1
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0634822Z + synchronized 3.4.0+1 (3.4.1 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0635287Z + term_glyph 1.2.2
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0635676Z + test_api 0.7.10 (0.7.12 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0636112Z + timing 1.0.2
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0636468Z + typed_data 1.4.0
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0636835Z + upower 0.7.0
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0637158Z + uuid 4.5.3
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0637517Z + vector_math 2.2.0 (2.3.0 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0637968Z + vm_service 15.2.0
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0638349Z + watcher 1.2.1
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0638706Z + web 1.1.1
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0639046Z + web_socket 1.0.1
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0639421Z + web_socket_channel 3.0.3
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0639854Z + win32 5.15.0 (6.3.0 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0640318Z + win32_registry 1.1.5 (3.0.3 available)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0640809Z + xdg_directories 1.1.0
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0641207Z + xml 7.0.1
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0641752Z + yaml 3.1.3
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0642219Z Changed 135 dependencies!
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0642866Z 35 packages have newer versions incompatible with dependency constraints.
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.0643815Z Try `flutter pub outdated` for more information.
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.4787713Z ##[group]Run flutter analyze --no-fatal-infos --no-fatal-warnings
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.4788187Z ^[[36;1mflutter analyze --no-fatal-infos --no-fatal-warnings^[[0m
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.4803992Z shell: /usr/bin/bash -e {0}
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.4804254Z env:
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.4804479Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.4804858Z   FLUTTER_ROOT: /opt/hostedtoolcache/flutter/stable-3.41.9-x64/flutter
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.4805229Z   PUB_CACHE: /home/runner/.pub-cache
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:18.4805491Z ##[endgroup]
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.2896025Z Analyzing openchat-flutter...                                   
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.2901018Z 
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.2932371Z    info 鈥?Use the null-aware marker '?' rather than a null check via an 'if' 鈥?lib/core/api/agent_client.dart:24:9 鈥?use_null_aware_elements
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.2936514Z warning 鈥?Unused import: 'qiniu_models.dart' 鈥?lib/core/api/qiniu_client.dart:8:8 鈥?unused_import
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.2938117Z    info 鈥?Empty catch block 鈥?lib/core/api/qiniu_client.dart:145:17 鈥?empty_catches
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.2939478Z warning 鈥?Unused import: 'qiniu_http.dart' 鈥?lib/core/api/qiniu_config.dart:6:8 鈥?unused_import
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.2940896Z warning 鈥?Unused import: 'qiniu_config.dart' 鈥?lib/core/api/qiniu_debug.dart:4:8 鈥?unused_import
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.2942432Z warning 鈥?Unused import: 'qiniu_models.dart' 鈥?lib/core/api/qiniu_debug.dart:5:8 鈥?unused_import
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.2944049Z warning 鈥?Unused import: 'qiniu_s3_sign.dart' 鈥?lib/core/api/qiniu_debug.dart:6:8 鈥?unused_import
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.2945565Z    info 鈥?Don't invoke 'print' in production code 鈥?lib/core/api/qiniu_debug.dart:121:3 鈥?avoid_print
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.2947014Z    info 鈥?Don't invoke 'print' in production code 鈥?lib/core/api/qiniu_debug.dart:126:3 鈥?avoid_print
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.2948494Z warning 鈥?Unused import: 'dart:typed_data' 鈥?lib/core/api/qiniu_http.dart:2:8 鈥?unused_import
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.2949999Z warning 鈥?Unused import: 'dart:typed_data' 鈥?lib/core/api/qiniu_models.dart:1:8 鈥?unused_import
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.2951395Z warning 鈥?Unused import: 'dart:typed_data' 鈥?lib/core/api/qiniu_s3_sign.dart:2:8 鈥?unused_import
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.2952836Z warning 鈥?Unused import: 'dart:convert' 鈥?lib/core/api/qiniu_xml_parser.dart:1:8 鈥?unused_import
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.2954717Z    info 鈥?Use the null-aware marker '?' rather than a null check via an 'if' 鈥?lib/core/api/resident_client.dart:15:9 鈥?use_null_aware_elements
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.2956683Z    info 鈥?Use the null-aware marker '?' rather than a null check via an 'if' 鈥?lib/core/api/resident_client.dart:16:9 鈥?use_null_aware_elements
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.2958629Z    info 鈥?Use the null-aware marker '?' rather than a null check via an 'if' 鈥?lib/core/api/resources_client.dart:13:7 鈥?use_null_aware_elements
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.2985027Z    info 鈥?Use the null-aware marker '?' rather than a null check via an 'if' 鈥?lib/core/api/resources_client.dart:14:7 鈥?use_null_aware_elements
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.2987016Z    info 鈥?Use the null-aware marker '?' rather than a null check via an 'if' 鈥?lib/core/api/resources_client.dart:15:7 鈥?use_null_aware_elements
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3014317Z    info 鈥?Use the null-aware marker '?' rather than a null check via an 'if' 鈥?lib/core/api/resources_client.dart:16:7 鈥?use_null_aware_elements
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3019447Z    info 鈥?The private field _enabledRNNOISE could be 'final' 鈥?lib/core/audio/audio_pipeline.dart:11:8 鈥?prefer_final_fields
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3021304Z    info 鈥?The private field _enabledVAD could be 'final' 鈥?lib/core/audio/audio_pipeline.dart:12:8 鈥?prefer_final_fields
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3023156Z    info 鈥?The private field _enabledAGC could be 'final' 鈥?lib/core/audio/audio_pipeline.dart:13:8 鈥?prefer_final_fields
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3024818Z    info 鈥?The private field _enabledHighPass could be 'final' 鈥?lib/core/audio/audio_pipeline.dart:14:8 鈥?prefer_final_fields
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3027058Z    info 鈥?The private field _rnnoiseProcessingTime could be 'final' 鈥?lib/core/audio/audio_pipeline.dart:20:7 鈥?prefer_final_fields
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3028990Z    info 鈥?Use interpolation to compose strings and values 鈥?lib/core/audio/audio_pipeline.dart:233:20 鈥?prefer_interpolation_to_compose_strings
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3031030Z    info 鈥?Use interpolation to compose strings and values 鈥?lib/core/audio/audio_pipeline.dart:234:24 鈥?prefer_interpolation_to_compose_strings
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3033130Z    info 鈥?Use interpolation to compose strings and values 鈥?lib/core/audio/audio_pipeline.dart:239:13 鈥?prefer_interpolation_to_compose_strings
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3035049Z    info 鈥?Unnecessary 'late' modifier 鈥?lib/core/audio/harmonic_codebook.dart:17:10 鈥?unnecessary_late
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3036541Z warning 鈥?The value of the local variable 'sf' isn't used 鈥?lib/core/audio/lmdn_codec.dart:38:11 鈥?unused_local_variable
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3038248Z    info 鈥?The 'if' statement could be replaced by a null-aware assignment 鈥?lib/core/audio/lmdn_codec.dart:45:5 鈥?prefer_conditional_assignment
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3040087Z    info 鈥?Statements in a for should be enclosed in a block 鈥?lib/core/audio/lmdn_codec.dart:56:67 鈥?curly_braces_in_flow_control_structures
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3042158Z    info 鈥?Statements in a for should be enclosed in a block 鈥?lib/core/audio/lmdn_codec.dart:68:38 鈥?curly_braces_in_flow_control_structures
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3044078Z    info 鈥?Statements in a for should be enclosed in a block 鈥?lib/core/audio/lmdn_codec.dart:73:65 鈥?curly_braces_in_flow_control_structures
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3045973Z    info 鈥?Statements in a for should be enclosed in a block 鈥?lib/core/audio/lmdn_codec.dart:83:41 鈥?curly_braces_in_flow_control_structures
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3047958Z    info 鈥?Statements in a for should be enclosed in a block 鈥?lib/core/audio/lmdn_codec.dart:87:43 鈥?curly_braces_in_flow_control_structures
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3049988Z    info 鈥?Statements in a for should be enclosed in a block 鈥?lib/core/audio/lmdn_codec.dart:124:35 鈥?curly_braces_in_flow_control_structures
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3051919Z    info 鈥?Statements in a for should be enclosed in a block 鈥?lib/core/audio/lmdn_codec.dart:157:40 鈥?curly_braces_in_flow_control_structures
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3053895Z    info 鈥?The variable name 'Xq' isn't a lowerCamelCase identifier 鈥?lib/core/audio/lmdn_codec.dart:161:15 鈥?non_constant_identifier_names
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3055709Z warning 鈥?The value of the local variable 'cent' isn't used 鈥?lib/core/audio/lmdn_codec.dart:177:17 鈥?unused_local_variable
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3057367Z warning 鈥?The value of the local variable 'conf' isn't used 鈥?lib/core/audio/lmdn_codec.dart:178:17 鈥?unused_local_variable
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3059219Z    info 鈥?Statements in a for should be enclosed in a block 鈥?lib/core/audio/lmdn_codec.dart:242:65 鈥?curly_braces_in_flow_control_structures
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3061070Z    info 鈥?Statements in a for should be enclosed in a block 鈥?lib/core/audio/lmdn_codec.dart:248:41 鈥?curly_braces_in_flow_control_structures
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3062885Z    info 鈥?Statements in a for should be enclosed in a block 鈥?lib/core/audio/lmdn_codec.dart:252:38 鈥?curly_braces_in_flow_control_structures
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3064945Z    info 鈥?Use interpolation to compose strings and values 鈥?lib/core/audio/lmdn_codec.dart:279:27 鈥?prefer_interpolation_to_compose_strings
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3066861Z    info 鈥?The variable name 'ML' isn't a lowerCamelCase identifier 鈥?lib/core/audio/lmdn_f0.dart:10:9 鈥?non_constant_identifier_names
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3068736Z    info 鈥?Statements in a for should be enclosed in a block 鈥?lib/core/audio/lmdn_f0.dart:44:38 鈥?curly_braces_in_flow_control_structures
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3070669Z    info 鈥?Statements in a for should be enclosed in a block 鈥?lib/core/audio/lmdn_f0.dart:48:34 鈥?curly_braces_in_flow_control_structures
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3072346Z warning 鈥?The declaration '_sr' isn't referenced 鈥?lib/core/audio/lmdn_mdct.dart:4:11 鈥?unused_element
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3074368Z warning 鈥?The declaration '_bands' isn't referenced 鈥?lib/core/audio/lmdn_mdct.dart:6:11 鈥?unused_element
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3075898Z warning 鈥?The declaration '_fftSize' isn't referenced 鈥?lib/core/audio/lmdn_mdct.dart:7:11 鈥?unused_element
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3077623Z    info 鈥?Statements in a for should be enclosed in a block 鈥?lib/core/audio/lmdn_mdct.dart:65:39 鈥?curly_braces_in_flow_control_structures
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3079483Z    info 鈥?Statements in a for should be enclosed in a block 鈥?lib/core/sdui_config.dart:102:27 鈥?curly_braces_in_flow_control_structures
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3082119Z    info 鈥?The import of 'package:sdui_engine/sdui_engine.dart' is unnecessary because all of the used elements are also provided by the import of 'core/sdui_config.dart' 鈥?lib/main.dart:4:8 鈥?unnecessary_import
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3085030Z    info 鈥?The type of the right operand ('String') isn't a subtype or a supertype of the left operand ('AgentStatus') 鈥?lib/ui/components/resident/resident_agents.dart:13:49 鈥?unrelated_type_equality_checks
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3087830Z    info 鈥?The type of the right operand ('String') isn't a subtype or a supertype of the left operand ('AgentStatus') 鈥?lib/ui/components/resident/resident_agents.dart:28:36 鈥?unrelated_type_equality_checks
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3090166Z    info 鈥?Statements in an if should be enclosed in a block 鈥?lib/ui/screens/agent_hub_screen.dart:66:38 鈥?curly_braces_in_flow_control_structures
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3092170Z    info 鈥?Statements in an if should be enclosed in a block 鈥?lib/ui/screens/agent_hub_screen.dart:67:55 鈥?curly_braces_in_flow_control_structures
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3094243Z warning 鈥?Unused import: 'package:flutter_riverpod/flutter_riverpod.dart' 鈥?lib/ui/screens/agent_hub_widgets.dart:2:8 鈥?unused_import
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3096036Z warning 鈥?Unused import: '../../core/theme/app_theme.dart' 鈥?lib/ui/screens/chat_list_screen.dart:4:8 鈥?unused_import
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3098474Z warning 鈥?The library 'package:openchat_flutter/ui/screens/chat_screen.dart' doesn't export a member with the hidden name 'bridgeWsProvider' 鈥?lib/ui/screens/chat_list_screen.dart:10:32 鈥?undefined_hidden_name
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3100800Z    info 鈥?Unnecessary use of multiple underscores 鈥?lib/ui/screens/chat_list_screen.dart:54:18 鈥?unnecessary_underscores
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3102636Z   error 鈥?The method 'Uint8List' isn't defined for the type '_ChatScreenState' 鈥?lib/ui/screens/chat_screen.dart:138:21 鈥?undefined_method
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3104658Z    info 鈥?Statements in a for should be enclosed in a block 鈥?lib/ui/screens/chat_screen.dart:146:37 鈥?curly_braces_in_flow_control_structures
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3106619Z    info 鈥?Statements in an if should be enclosed in a block 鈥?lib/ui/screens/chat_screen.dart:164:20 鈥?curly_braces_in_flow_control_structures
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3108313Z warning 鈥?Unused import: 'dart:typed_data' 鈥?lib/ui/screens/chat_voice_player.dart:4:8 鈥?unused_import
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3110134Z    info 鈥?The 'if' statement could be replaced by a null-aware assignment 鈥?lib/ui/screens/chat_voice_player.dart:28:5 鈥?prefer_conditional_assignment
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3112241Z warning 鈥?The operand can't be 'null', so the condition is always 'false' 鈥?lib/ui/screens/chat_voice_player.dart:34:15 鈥?unnecessary_null_comparison
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3114183Z warning 鈥?Unused import: '../../core/ui_voice_config.dart' 鈥?lib/ui/screens/chat_voice_recorder.dart:9:8 鈥?unused_import
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3116144Z    info 鈥?The 'if' statement could be replaced by a null-aware assignment 鈥?lib/ui/screens/chat_voice_recorder.dart:41:7 鈥?prefer_conditional_assignment
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3118247Z warning 鈥?The operand can't be 'null', so the condition is always 'false' 鈥?lib/ui/screens/chat_voice_recorder.dart:57:18 鈥?unnecessary_null_comparison
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3119817Z warning 鈥?Dead code 鈥?lib/ui/screens/chat_voice_recorder.dart:57:27 鈥?dead_code
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3121116Z warning 鈥?Unused import: 'dart:convert' 鈥?lib/ui/screens/dev_ide_screen.dart:3:8 鈥?unused_import
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3123145Z    info 鈥?Statements in an if should be enclosed in a block 鈥?lib/ui/screens/dev_ide_screen.dart:114:34 鈥?curly_braces_in_flow_control_structures
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3125161Z    info 鈥?Statements in an if should be enclosed in a block 鈥?lib/ui/screens/dev_ide_screen.dart:115:37 鈥?curly_braces_in_flow_control_structures
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3127212Z    info 鈥?Statements in an if should be enclosed in a block 鈥?lib/ui/screens/dev_ide_screen.dart:116:45 鈥?curly_braces_in_flow_control_structures
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3129150Z    info 鈥?Statements in an if should be enclosed in a block 鈥?lib/ui/screens/dev_ide_screen.dart:117:14 鈥?curly_braces_in_flow_control_structures
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3130918Z warning 鈥?Unused import: 'dart:async' 鈥?lib/ui/screens/home_screen.dart:2:8 鈥?unused_import
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3132198Z warning 鈥?Unused import: 'dart:async' 鈥?lib/ui/screens/main_screen.dart:2:8 鈥?unused_import
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3133694Z warning 鈥?Unused import: 'voice_room_screen.dart' 鈥?lib/ui/screens/main_screen.dart:10:8 鈥?unused_import
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3135408Z    info 鈥?Statements in an if should be enclosed in a block 鈥?lib/ui/screens/main_screen.dart:95:37 鈥?curly_braces_in_flow_control_structures
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3137317Z    info 鈥?Statements in an if should be enclosed in a block 鈥?lib/ui/screens/main_screen.dart:96:55 鈥?curly_braces_in_flow_control_structures
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3139125Z warning 鈥?Unused import: '../../core/theme/app_theme.dart' 鈥?lib/ui/screens/people_screen.dart:7:8 鈥?unused_import
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3140850Z warning 鈥?The value of the field '_refreshing' isn't used 鈥?lib/ui/screens/people_screen.dart:28:8 鈥?unused_field
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3142708Z warning 鈥?The operand can't be 'null', so the condition is always 'true' 鈥?lib/ui/screens/people_screen.dart:90:23 鈥?unnecessary_null_comparison
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3144626Z warning 鈥?Unused import: '../../core/theme/app_theme.dart' 鈥?lib/ui/screens/resident_detail_screen.dart:4:8 鈥?unused_import
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3146473Z warning 鈥?The operand can't be 'null', so the condition is always 'false' 鈥?lib/ui/screens/room_audio.dart:71:18 鈥?unnecessary_null_comparison
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3147972Z warning 鈥?Dead code 鈥?lib/ui/screens/room_audio.dart:71:27 鈥?dead_code
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3149604Z    info 鈥?The local variable '_buffer' starts with an underscore 鈥?lib/ui/screens/room_audio.dart:75:17 鈥?no_leading_underscores_for_local_identifiers
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3151494Z warning 鈥?Unused import: '../../core/theme/app_theme.dart' 鈥?lib/ui/screens/room_screen.dart:3:8 鈥?unused_import
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3153369Z    info 鈥?Statements in an if should be enclosed in a block 鈥?lib/ui/screens/room_screen.dart:87:37 鈥?curly_braces_in_flow_control_structures
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3155349Z    info 鈥?Statements in an if should be enclosed in a block 鈥?lib/ui/screens/room_screen.dart:88:30 鈥?curly_braces_in_flow_control_structures
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3157108Z warning 鈥?Unused import: '../../core/theme/app_theme.dart' 鈥?lib/ui/screens/settings_screen.dart:3:8 鈥?unused_import
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3158790Z warning 鈥?Unused import: '../../core/theme/app_theme.dart' 鈥?lib/ui/screens/task_detail_screen.dart:3:8 鈥?unused_import
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3160297Z warning 鈥?Unused import: 'dart:async' 鈥?lib/ui/screens/theme_selector_screen.dart:2:8 鈥?unused_import
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3162517Z    info 鈥?'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion 鈥?lib/ui/screens/theme_selector_screen.dart:27:84 鈥?deprecated_member_use
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3164743Z warning 鈥?Unused import: '../../core/ui_voice_config.dart' 鈥?lib/ui/screens/voice_room_audio.dart:8:8 鈥?unused_import
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3166610Z warning 鈥?The operand can't be 'null', so the condition is always 'false' 鈥?lib/ui/screens/voice_room_audio.dart:84:18 鈥?unnecessary_null_comparison
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3168120Z warning 鈥?Dead code 鈥?lib/ui/screens/voice_room_audio.dart:84:27 鈥?dead_code
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3169954Z    info 鈥?The 'if' statement could be replaced by a null-aware assignment 鈥?lib/ui/screens/voice_room_audio.dart:184:7 鈥?prefer_conditional_assignment
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3171847Z    info 鈥?The 'if' statement could be replaced by a null-aware assignment 鈥?lib/ui/screens/voice_room_audio.dart:190:7 鈥?prefer_conditional_assignment
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3173969Z warning 鈥?The operand can't be 'null', so the condition is always 'false' 鈥?lib/ui/screens/voice_room_audio.dart:197:18 鈥?unnecessary_null_comparison
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3175489Z warning 鈥?Dead code 鈥?lib/ui/screens/voice_room_audio.dart:197:27 鈥?dead_code
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3177211Z    info 鈥?Statements in an if should be enclosed in a block 鈥?lib/ui/screens/voice_room_screen.dart:183:22 鈥?curly_braces_in_flow_control_structures
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3179015Z warning 鈥?Unused import: '../../core/theme/app_theme.dart' 鈥?lib/ui/widgets/action_card.dart:3:8 鈥?unused_import
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3180672Z    info 鈥?Unnecessary use of multiple underscores 鈥?lib/ui/widgets/connection_banner.dart:87:18 鈥?unnecessary_underscores
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3182363Z warning 鈥?Unused import: '../../core/theme/app_theme.dart' 鈥?lib/ui/widgets/image_card.dart:3:8 鈥?unused_import
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3183974Z warning 鈥?Unused import: '../../core/theme/app_theme.dart' 鈥?lib/ui/widgets/list_card.dart:3:8 鈥?unused_import
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3185457Z warning 鈥?Unused import: 'dart:convert' 鈥?lib/ui/widgets/people_file_actions.dart:1:8 鈥?unused_import
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3187173Z    info 鈥?Don't use 'BuildContext's across async gaps 鈥?lib/ui/widgets/people_file_actions.dart:86:28 鈥?use_build_context_synchronously
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3189075Z    info 鈥?Don't use 'BuildContext's across async gaps 鈥?lib/ui/widgets/people_file_actions.dart:110:80 鈥?use_build_context_synchronously
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3190774Z warning 鈥?Unused import: '../../core/theme/app_theme.dart' 鈥?lib/ui/widgets/stat_card.dart:3:8 鈥?unused_import
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3191612Z 
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3249170Z 111 issues found. (ran in 14.1s)
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3303556Z ##[error]Process completed with exit code 1.
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3513468Z Post job cleanup.
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.3591754Z Post job cleanup.
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.4363325Z [command]/usr/bin/git version
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.4395312Z git version 2.54.0
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.4428616Z Temporarily overriding HOME='/home/runner/work/_temp/9bb522d3-2b0a-4cd9-83e2-87b4f0c6d391' before making global git config changes
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.4429898Z Adding repository directory to the temporary git global config as a safe directory
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.4433706Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/openchat/openchat
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.4463999Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.4490445Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.4663780Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.4685965Z http.https://github.com/.extraheader
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.4695088Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.4720450Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.4886311Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.4911008Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.5185747Z Cleaning up orphan processes
+flutter-check	UNKNOWN STEP	2026-06-02T10:00:33.5417238Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+bridge-check	UNKNOWN STEP	锘?026-06-02T09:59:09.0803887Z Current runner version: '2.334.0'
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.0829100Z ##[group]Runner Image Provisioner
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.0829986Z Hosted Compute Agent
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.0830636Z Version: 20260520.533
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.0831277Z Commit: 189110e25284a9812c124fd27b339e2fb4f2f9db
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.0832001Z Build Date: 2026-05-20T17:44:04Z
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.0832775Z Worker ID: {c4c85c3e-16ec-4c04-8e43-d36c0b86191a}
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.0833718Z Azure Region: northcentralus
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.0834382Z ##[endgroup]
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.0836280Z ##[group]Operating System
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.0836928Z Ubuntu
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.0837528Z 24.04.4
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.0838081Z LTS
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.0838570Z ##[endgroup]
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.0839166Z ##[group]Runner Image
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.0839757Z Image: ubuntu-24.04
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.0840409Z Version: 20260525.161.1
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.0841705Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260525.161/images/ubuntu/Ubuntu2404-Readme.md
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.0843587Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260525.161
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.0844599Z ##[endgroup]
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.0845871Z ##[group]GITHUB_TOKEN Permissions
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.0848031Z Contents: read
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.0848708Z Metadata: read
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.0849304Z Packages: read
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.0850142Z ##[endgroup]
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.0852698Z Secret source: Actions
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.0854170Z Prepare workflow directory
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.1282412Z Prepare all required actions
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.1320085Z Getting action download info
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.5786013Z Download action repository 'actions/checkout@v4' (SHA:34e114876b0b11c390a56381ad16ebd13914f8d5)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.6953837Z Download action repository 'actions/setup-node@v4' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.8898265Z Complete job name: bridge-check
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.9682487Z ##[group]Run actions/checkout@v4
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.9683795Z with:
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.9684314Z   repository: openchat-ai/openchat
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.9689205Z   token: ***
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.9689673Z   ssh-strict: true
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.9690145Z   ssh-user: git
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.9690631Z   persist-credentials: true
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.9691163Z   clean: true
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.9691643Z   sparse-checkout-cone-mode: true
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.9692204Z   fetch-depth: 1
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.9692679Z   fetch-tags: false
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.9693346Z   show-progress: true
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.9693855Z   lfs: false
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.9694310Z   submodules: false
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.9694800Z   set-safe-directory: true
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.9695624Z env:
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.9696122Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:09.9696732Z ##[endgroup]
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.0726365Z Syncing repository: openchat-ai/openchat
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.0728589Z ##[group]Getting Git version info
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.0729414Z Working directory is '/home/runner/work/openchat/openchat'
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.0730514Z [command]/usr/bin/git version
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.0778218Z git version 2.54.0
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.0832411Z ##[endgroup]
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.0847320Z Temporarily overriding HOME='/home/runner/work/_temp/25bc75e3-2349-44df-902b-0f23429d8d21' before making global git config changes
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.0849537Z Adding repository directory to the temporary git global config as a safe directory
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.0853032Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/openchat/openchat
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.0901832Z Deleting the contents of '/home/runner/work/openchat/openchat'
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.0906689Z ##[group]Initializing the repository
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.0911184Z [command]/usr/bin/git init /home/runner/work/openchat/openchat
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.1013024Z hint: Using 'master' as the name for the initial branch. This default branch name
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.1015157Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.1017703Z hint: to use in all of your new repositories, which will suppress this warning,
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.1019619Z hint: call:
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.1021073Z hint:
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.1022692Z hint: 	git config --global init.defaultBranch <name>
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.1024693Z hint:
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.1026275Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.1028548Z hint: 'development'. The just-created branch can be renamed via this command:
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.1030243Z hint:
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.1031593Z hint: 	git branch -m <name>
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.1033039Z hint:
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.1035219Z hint: Disable this message with "git config set advice.defaultBranchName false"
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.1037741Z Initialized empty Git repository in /home/runner/work/openchat/openchat/.git/
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.1041653Z [command]/usr/bin/git remote add origin https://github.com/openchat-ai/openchat
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.1081296Z ##[endgroup]
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.1083521Z ##[group]Disabling automatic garbage collection
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.1085094Z [command]/usr/bin/git config --local gc.auto 0
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.1116738Z ##[endgroup]
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.1118220Z ##[group]Setting up auth
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.1123464Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.1159372Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.1544406Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.1588870Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.1845931Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.1882551Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.2134232Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.2174724Z ##[endgroup]
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.2176479Z ##[group]Fetching the repository
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.2185601Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +a80ebc99cd37ff1b6602064804fc46056ce77419:refs/remotes/origin/main
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.9404289Z From https://github.com/openchat-ai/openchat
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.9406194Z  * [new ref]         a80ebc99cd37ff1b6602064804fc46056ce77419 -> origin/main
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.9436817Z ##[endgroup]
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.9437959Z ##[group]Determining the checkout info
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.9439555Z ##[endgroup]
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.9446439Z [command]/usr/bin/git sparse-checkout disable
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.9490176Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.9517050Z ##[group]Checking out the ref
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:10.9520733Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:11.0122851Z Switched to a new branch 'main'
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:11.0124979Z branch 'main' set up to track 'origin/main'.
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:11.0135755Z ##[endgroup]
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:11.0184519Z [command]/usr/bin/git log -1 --format=%H
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:11.0206734Z a80ebc99cd37ff1b6602064804fc46056ce77419
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:11.0572166Z ##[group]Run actions/setup-node@v4
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:11.0573740Z with:
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:11.0574641Z   node-version: 24
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:11.0575588Z   cache: npm
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:11.0576679Z   cache-dependency-path: bridge/package-lock.json
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:11.0578102Z   always-auth: false
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:11.0579110Z   check-latest: false
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:11.0592075Z   token: ***
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:11.0593615Z env:
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:11.0594596Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:11.0595884Z ##[endgroup]
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:11.2025740Z Found in cache @ /opt/hostedtoolcache/node/24.16.0/x64
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:11.2030832Z (node:2276) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:11.2034343Z (Use `node --trace-deprecation ...` to show where the warning was created)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:11.2036817Z ##[group]Environment details
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:11.5618522Z node: v24.16.0
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:11.5619684Z npm: 11.13.0
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:11.5620565Z yarn: 1.22.22
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:11.5622187Z ##[endgroup]
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:11.5660051Z [command]/opt/hostedtoolcache/node/24.16.0/x64/bin/npm config get cache
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:11.6745823Z /home/runner/.npm
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:11.8101357Z Cache hit for: node-cache-Linux-x64-npm-01b79c2181082ebcb36e2b841aaafe5eeaf7b9a724d95ac0b0c1a2964ead7911
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:11.8226266Z (node:2276) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:12.9264892Z Received 121634816 of 142828290 (85.2%), 115.8 MBs/sec
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:13.1764493Z Received 142828290 of 142828290 (100.0%), 108.8 MBs/sec
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:13.1783896Z Cache Size: ~136 MB (142828290 B)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:13.1841662Z [command]/usr/bin/tar -xf /home/runner/work/_temp/a965f4f6-37c1-466c-accd-4ca15fbed611/cache.tzst -P -C /home/runner/work/openchat/openchat --use-compress-program unzstd
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:13.4601378Z Cache restored successfully
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:13.4673330Z Cache restored from key: node-cache-Linux-x64-npm-01b79c2181082ebcb36e2b841aaafe5eeaf7b9a724d95ac0b0c1a2964ead7911
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:13.4916974Z ##[group]Run npm ci
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:13.4917310Z ^[[36;1mnpm ci^[[0m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:13.4954966Z shell: /usr/bin/bash -e {0}
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:13.4955268Z env:
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:13.4955529Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:13.4955834Z ##[endgroup]
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:16.9621002Z npm warn deprecated boolean@3.2.0: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:23.4081898Z 
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:23.4083000Z > peertalk@1.0.0 prepare
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:23.4084509Z > husky
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:23.4085082Z 
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:23.4784760Z .git can't be found
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:23.4785716Z added 476 packages, and audited 480 packages in 10s
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:23.4794159Z 
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:23.4794875Z 64 packages are looking for funding
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:23.4796051Z   run `npm fund` for details
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:23.4973746Z 
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:23.4974606Z 9 vulnerabilities (1 low, 6 moderate, 2 high)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:23.4975137Z 
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:23.4975554Z To address issues that do not require attention, run:
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:23.4976338Z   npm audit fix
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:23.4976694Z 
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:23.4977195Z To address all issues (including breaking changes), run:
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:23.4977896Z   npm audit fix --force
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:23.4978326Z 
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:23.4987350Z Run `npm audit` for details.
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:23.6924549Z ##[group]Run npx eslint src/ --quiet
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:23.6924941Z ^[[36;1mnpx eslint src/ --quiet^[[0m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:23.6951003Z shell: /usr/bin/bash -e {0}
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:23.6951265Z env:
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:23.6951497Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:23.6951805Z ##[endgroup]
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:26.7047012Z ##[group]Run npm test
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:26.7047464Z ^[[36;1mnpm test^[[0m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:26.7083705Z shell: /usr/bin/bash -e {0}
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:26.7084135Z env:
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:26.7084514Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:26.7084997Z ##[endgroup]
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:26.8106544Z 
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:26.8107263Z > peertalk@1.0.0 test
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:26.8109150Z > node --experimental-test-module-mocks --test --test-force-exit src/core/__tests__/*.test.mjs src/core/__tests__/*.test.js src/p2p/__tests__/*.test.js tests/benchmarks/*.js
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:26.8110801Z 
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:26.9506338Z 馃И 寮€濮?Phase 6 楂樼骇鍔熻兘闆嗘垚娴嬭瘯...
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:26.9533649Z 
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:26.9564575Z 鉁?MultiModelTester 鍒濆鍖?- 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:26.9594015Z 鉁?鍗曚釜妯″瀷娴嬭瘯 - 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:26.9594904Z 鉁?澶氭ā鍨嬩氦鍙夐獙璇?- 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:26.9624221Z 鉁?鍩哄噯妯″瀷瀵规瘮 - 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:26.9624901Z 鉁?鏅鸿兘妯″瀷鎺ㄨ崘 - 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:26.9625530Z 鉁?閫昏緫鎶曟瘨娴嬭瘯 - 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:26.9626169Z 鉁?鎻愮ず璇嶆敞鍏ユ祴璇?- 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:26.9626913Z 鉁?杈圭晫鍊兼敾鍑绘祴璇?- 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:26.9627633Z 鉁?瀹屾暣瀵规姉娴嬭瘯 - 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:26.9628310Z No sessions found to load
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:26.9629277Z 鉁?涓?MultiModelTester 闆嗘垚 - 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:26.9673715Z 
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:26.9703920Z ==================================================
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:26.9714017Z 鎬昏: 10 涓祴璇?bridge-check	UNKNOWN STEP	2026-06-02T09:59:26.9734033Z 鉁?閫氳繃: 10
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:26.9763896Z 鉂?澶辫触: 0
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:26.9793921Z ==================================================
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.0540790Z [09:59:26] ^[[32mINFO^[[39m (2444): ^[[36m馃殌 鐢熶骇妯″紡锛氭枃浠剁洃鍚凡绂佺敤锛堜娇鐢ㄧ儹鏇存柊锛塣[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.0604884Z [09:59:26] ^[[32mINFO^[[39m (2444): ^[[36m绯荤粺鍒濆鍖栧紑濮媈[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.0634465Z [09:59:26] ^[[32mINFO^[[39m (2444): ^[[36m绯荤粺鍒濆鍖栧畬鎴恀[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.0651293Z [09:59:26] ^[[32mINFO^[[39m (2444): ^[[36m绯荤粺鍏抽棴涓?..^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.0654488Z [09:59:26] ^[[32mINFO^[[39m (2444): ^[[36m鉁?绯荤粺宸插畨鍏ㄥ叧闂璣[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.1764854Z 鉁?src/core/__tests__/advanced-integration.test.js (313.085686ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.2411061Z 鈻?AgentEngine
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.2454120Z   鈻?exports
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.2454775Z     鉁?AgentEvents contains 7 types (3.371826ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.2484982Z   鉁?exports (4.304625ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.2513972Z   鈻?constructor
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.2514563Z     鉁?accepts injected deps (1.558404ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.2515203Z     鉁?default options (0.178315ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.2515780Z     鉁?custom options (0.208381ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.2516315Z   鉁?constructor (2.521702ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.2516824Z   鈻?process()
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.2517376Z     鉁?rejects when session not found (1.109292ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.2518065Z     鉁?returns a string response (3.768441ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.2518755Z     鉁?writes to memory during process (1.16161ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.2519518Z     鉁?handles empty user message (0.474882ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.2520095Z   鉁?process() (8.123411ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.2520604Z   鈻?_checkAndCorrectResponse
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.2521407Z     鉁?passes through when quality check passes (4.329593ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.2555856Z     鉁?corrects when check fails (1.515463ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.2603911Z   鉁?_checkAndCorrectResponse (6.02309ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.2613832Z   鈻?performSelfVerification
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.2634240Z     鉁?returns null when judge tool unavailable (0.310973ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.2688969Z   鉁?performSelfVerification (0.424997ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.2713805Z   鈻?edge cases
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.2734101Z     鉁?process with null sessionId throws (0.821791ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.2779754Z   鉁?edge cases (0.931598ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.2833897Z 鉁?AgentEngine (27.337019ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.2890675Z [09:59:27] ^[[32mINFO^[[39m (2445): ^[[36m[Agent] 鑷宸ュ叿涓嶅彲鐢紝璺宠繃楠岃瘉^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.2914144Z [09:59:27] ^[[32mINFO^[[39m (2445): ^[[36m[Agent] 鑷宸ュ叿涓嶅彲鐢紝璺宠繃楠岃瘉^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.2940049Z [09:59:27] ^[[32mINFO^[[39m (2445): ^[[36m[Agent] 鑷宸ュ叿涓嶅彲鐢紝璺宠繃楠岃瘉^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.3014741Z [09:59:27] ^[[32mINFO^[[39m (2445): ^[[36m[QC] 璐ㄩ噺妫€鏌? 100/100, 閫氳繃: false^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.3044458Z [09:59:27] ^[[32mINFO^[[39m (2445): ^[[36m[QC] 妫€娴嬪埌璐ㄩ噺闂: ^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.3084128Z [09:59:27] ^[[31mERROR^[[39m (2445): ^[[36m[QC] 璐ㄩ噺妫€鏌ュ紓甯?^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.3124273Z [09:59:27] ^[[32mINFO^[[39m (2445): ^[[36m[QC] 璐ㄩ噺妫€鏌? 100/100, 閫氳繃: false^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.3180441Z [09:59:27] ^[[32mINFO^[[39m (2445): ^[[36m[QC] 妫€娴嬪埌璐ㄩ噺闂: ^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.3205937Z [09:59:27] ^[[31mERROR^[[39m (2445): ^[[36m[QC] 璐ㄩ噺妫€鏌ュ紓甯?^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.3224209Z [09:59:27] ^[[32mINFO^[[39m (2445): ^[[36m[Agent] 鑷宸ュ叿涓嶅彲鐢紝璺宠繃楠岃瘉^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.3254166Z [09:59:27] ^[[32mINFO^[[39m (2445): ^[[36m[Agent] 鑷宸ュ叿涓嶅彲鐢紝璺宠繃楠岃瘉^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.9896494Z 鈻?Agent loop E2E 鈥?resident full think/act cycle
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.9914619Z   鉁?scheduler processes resident and calls assignTask (2.749304ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.9924587Z   鉁?scheduler respects concurrency limits (0.277789ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.9925817Z   鉁?scheduler processes multiple residents in tick (0.330447ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:27.9927168Z 鉁?Agent loop E2E 鈥?resident full think/act cycle (4.560847ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.2354717Z 鈻?AI Person System
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.2360966Z   鉁?AIPerson identity layer: create, route messages, manage state (2.579928ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.2362864Z   鉁?Resident system: create resident, think via event mock returns content (2.444316ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.2370118Z   鉁?ValidatorRegistry: register, run, unregister custom validators (0.659111ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.2371717Z   鉁?QualityChecker runs built-in checks (0.864364ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.2372908Z 鉁?AI Person System (8.580304ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.2417547Z [09:59:28] ^[[32mINFO^[[39m (2475): ^[[36m[AI-test-1] 鎵ц鎿嶄綔:^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.2429000Z [09:59:28] ^[[32mINFO^[[39m (2475): ^[[36m[AI-test-1] 鎵ц鍛戒护:^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3748668Z 鉁?NnlsDetector: constructor defaults (2.770644ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3750060Z 鉁?NnlsDetector: initialize builds dict and H matrix (63.575584ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3751556Z 鉁?NnlsDetector: detect returns array with correct shape (151.054934ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3752871Z 鉁?NnlsDetector: detectDrums returns array (10.13167ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3754446Z 鉁?NnlsDetector: detect empty signal returns empty (52.658308ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3755567Z 鉁?KsSynth: constructor (0.279963ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3756767Z 鉁?KsSynth: guitar returns Float64Array or null for null note (2.423125ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3757962Z 鉁?KsSynth: bass returns Float64Array (1.096878ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3758985Z 鉁?KsSynth: bass handles null note (1.115573ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3760202Z 鉁?KsSynth: drum returns Float64Array for each type (8.571435ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3761351Z 鉁?KsSynth: render mixes multiple notes (7.603728ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3762358Z 鉁?KsSynth: mix blends two arrays (0.236572ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3763864Z 鉁?KsSynth: _ksSynth NaN guard returns null for invalid freq (0.17146ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3765212Z 鉁?KsSynth: _ksSynth envelope does not break before t=0.001 (1.247259ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3766226Z 鈻?circuit breaker pattern
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3767016Z   鉁?starts closed (0.905952ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3767841Z   鉁?opens after threshold failures (0.57853ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3768686Z   鉁?blocks calls when open (3.946477ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3769680Z   鉁?transitions to half-open after reset timeout (60.98106ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3770655Z   鉁?reset clears state (0.37482ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3771524Z 鉁?circuit breaker pattern (68.636545ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3772354Z 馃И 寮€濮?Phase 6 CLI 闆嗘垚娴嬭瘯...
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3772840Z 
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3773501Z 鉁?CLI 鍒濆鍖?- 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3774206Z 鉁?/skill list 鍛戒护 - 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3774925Z 鉁?/skill add 鍛戒护 - 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3775616Z 鉁?/test models 鍛戒护 - 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3776320Z 鉁?/test adversarial 鍛戒护 - 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3777021Z 鉁?/monitor 鍛戒护 - 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3777660Z 鉁?/report 鍛戒护 - 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3778348Z 鉁?/model recommend 鍛戒护 - 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3778994Z 鉁?CLI 鍏抽棴 - 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3779391Z 
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3780167Z ==================================================
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3780933Z 鎬昏: 9 涓祴璇?bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3781595Z 鉁?閫氳繃: 9
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3782428Z 鉂?澶辫触: 0
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3783354Z ==================================================
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3784567Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m馃殌 鐢熶骇妯″紡锛氭枃浠剁洃鍚凡绂佺敤锛堜娇鐢ㄧ儹鏇存柊锛塣[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3785639Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m绯荤粺鍒濆鍖栧紑濮媈[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3786652Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m绯荤粺鍒濆鍖栧畬鎴恀[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3788059Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m鉁?鑷繘鍖栫郴缁熷凡鍒濆鍖朸[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3789115Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m馃摝 娌℃湁 Skills^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3790195Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m鏂?Skill 宸叉坊鍔燸[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3791432Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m鉁?Skill 宸叉坊鍔? skill-1780394367866^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3792621Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m   瀹夊叏璇勫垎: 100/100^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3793994Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m馃И 澶氭ā鍨嬩氦鍙夐獙璇佺粨鏋?bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3794864Z ^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3795884Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m  鎻愮ず璇? "杩欐槸涓€涓祴璇曟彁绀鸿瘝"^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3797141Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m  妯″瀷鏁? 6^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3797956Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m  鍏辫瘑: 100.0% 妯″瀷鎴愬姛^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3798610Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m  骞冲潎寤惰繜: 1134.40ms^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3799258Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m  骞冲潎鎴愭湰: $0.0367^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3799835Z [09:59:27] ^[[32mINFO^[[39m (2497):
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3800345Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3800959Z 鈺斺晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晽
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3801543Z 鈺?         瀵规姉楠岃瘉娴嬭瘯鎶ュ憡                              鈺?bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3802146Z 鈺氣晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨暆
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3802506Z 
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3802869Z 鏃堕棿: 2026-06-02T09:59:27.874Z
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3803713Z 浠ｇ爜闀垮害: 32 瀛楃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3804105Z 
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3804343Z 娴嬭瘯缁熻:
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3804749Z   鎬绘祴璇曟暟: 3
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3805126Z   鉁?閫氳繃: 2
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3805491Z   鉂?澶辫触: 1
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3805687Z 
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3805869Z 璇︾粏缁撴灉:
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3806250Z   閫昏緫鎶曟瘨: 鉁?閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3806650Z   鎻愮ず璇嶆敞鍏? 鉁?閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3807120Z   杈圭晫鍊兼敾鍑? 鈿狅笍  璀﹀憡
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3807375Z 
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3807588Z 鎬讳綋鐘舵€? 鈿狅笍 WARNING
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3807971Z ^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3808545Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m寤鸿鏀硅繘:^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3809076Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m  1. 娣诲姞鏇村鐨勮緭鍏ラ獙璇佸拰杈圭晫妫€鏌[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3809640Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3810124Z 馃搳 绯荤粺鐘舵€?
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3810385Z ^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3810760Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m  鍒濆鍖? 鉁區[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3811248Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m  杩愯鏃堕棿: 0h 0m 0s^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3811654Z [09:59:27] ^[[32mINFO^[[39m (2497):
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3812296Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m  Skills 鎬绘暟: 1^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3812781Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m  浼氳瘽鎬绘暟: 0^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3813820Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m  娲昏穬浼氳瘽: 0^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3814539Z [09:59:27] ^[[32mINFO^[[39m (2497):
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3815164Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m  鎬荤粡楠? 0^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3815771Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m  鎴愬姛鐜? 0%^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3816884Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m  鎶€鑳芥暟: 0^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3817465Z [09:59:27] ^[[32mINFO^[[39m (2497):
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3818089Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m鈺斺晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晽
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3818648Z 鈺?        OpenChat 鑷繘鍖栫郴缁?- 瀹屾暣绯荤粺鎶ュ憡                  鈺?bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3819137Z 鈺氣晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨暆
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3819354Z 
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3819478Z 鍒濆鍖栫姸鎬? 鉁?宸插垵濮嬪寲
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3819741Z 杩愯鏃堕棿: 0h 0m 0s
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3819870Z 
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3820004Z Phase 1-2 鍩虹璁炬柦:
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3820259Z   Skill 鎬绘暟: 1
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3820486Z   宸ヤ綔浼氳瘽鎬绘暟: 0
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3820705Z   娲昏穬浼氳瘽: 0
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3820917Z   瀹夊叏瑙勫垯: 3
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3821029Z 
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3821139Z 杩涘寲寮曟搸:
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3821348Z   鎬荤粡楠? 0
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3821558Z   鎴愬姛鐜? 0%
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3821784Z   鑷姩鐢熸垚 Skills: 0
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3821909Z 
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3822051Z Phase 3 鑷姩鍖栫郴缁?
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3822296Z   鑷姩閲嶅惎 - 鎬绘鏁? 0
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3822533Z   娌欑鐜 - 鎬诲垱寤? 0
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3822784Z   鑷姩鍥炴粴 - 鎬绘鏁? 0
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3823021Z   娴嬭瘯娴佺▼ - 鎵ц娆℃暟: 0
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3823485Z 
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3823726Z Phase 4 鐩戞帶绯荤粺:
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3824172Z   鎶€鏈儏鎶?- 鏀堕泦娆℃暟: 0
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3824623Z   绯荤粺鐩戞帶 - 璇锋眰鎬绘暟: 0
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3825044Z   鐩戞帶 - 骞冲潎寤惰繜: 0ms
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3825468Z   鐩戞帶 - 绯荤粺鎴愬姛鐜? 100%
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3825871Z ^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3826593Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3827187Z 馃 妯″瀷鎺ㄨ崘 (浼樺厛绾? cost)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3827585Z ^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3828222Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m  鎺ㄨ崘妯″瀷: llama2^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3829264Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m  鎻愪緵鍟? Meta/Ollama^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3830107Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m  鎴愭湰: free^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3831053Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m  鍘熷洜: llama2 鐨勬垚鏈渶浣庯紙free锛塣[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3831778Z [09:59:27] ^[[32mINFO^[[39m (2497):
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3832341Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3832842Z 馃攧 姝ｅ湪鍏抽棴绯荤粺...^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3833659Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m绯荤粺鍏抽棴涓?..^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3834397Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m鉁?绯荤粺宸插畨鍏ㄥ叧闂璣[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3835106Z [09:59:27] ^[[32mINFO^[[39m (2497): ^[[36m鉁?绯荤粺宸插叧闂璣[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3835917Z 鉁?src/core/__tests__/cli-integration.test.js (283.241638ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3836633Z 鈻?EvolutionEngine Integration
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3837264Z   鉁?constructor initializes correctly (1.866806ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3837942Z   鉁?add and save skill to disk (14.87722ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3838549Z   鉁?load saved skill (6.152857ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3839158Z   鉁?skill manager tracks skills (0.409946ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3839857Z   鉁?analyze experience (1.221421ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3840541Z   鉁?empty skill manager returns null (0.40709ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3841328Z 鉁?EvolutionEngine Integration (27.100493ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3841917Z 鈻?EvolutionMemory
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3842356Z   鈻?remember / recall
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3843051Z     鉁?remember stores and recall retrieves by key (1.144487ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3844213Z     鉁?recall returns null for non-existent key (0.154148ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3845085Z     鉁?remember with no scope uses _default scope (0.438909ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3845836Z     鉁?remember stores metadata (0.34823ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3846692Z   鉁?remember / recall (2.994782ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3847203Z   鈻?forget
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3847797Z     鉁?forget removes entry and returns true (0.682334ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3848607Z     鉁?forget non-existent key returns false (0.245719ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3849234Z   鉁?forget (1.543482ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3849669Z   鈻?search
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3850156Z     鉁?search by key prefix (0.584021ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3850825Z     鉁?search by value content (0.385951ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3851675Z     鉁?search with scope filter (0.292206ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3852316Z     鉁?search with limit (0.346378ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3853022Z     鉁?search non-matching returns empty (0.239708ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3853865Z   鉁?search (3.493143ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3854357Z   鈻?getAllKeys / getStats
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3854978Z     鉁?getAllKeys returns scoped keys (0.234668ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3855734Z     鉁?getStats returns count and keys (0.223628ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3856424Z   鉁?getAllKeys / getStats (0.68551ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3856990Z   鈻?progress tracking
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3857755Z     鉁?rememberProgress stores and getProgress retrieves (0.465048ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3858618Z     鉁?updateProgress merges details (0.4124ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3859425Z     鉁?updateProgress creates entry if not exists (0.311161ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3860155Z   鉁?progress tracking (1.437424ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3860654Z   鈻?clear
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3861160Z     鉁?clear removes all entries (0.550317ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3861748Z   鉁?clear (0.685841ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.3862302Z 鉁?EvolutionMemory (14.246042ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4317828Z 馃И 寮€濮?Phase 6 瀹屾暣绯荤粺闆嗘垚娴嬭瘯...
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4343707Z 
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4364154Z 鉁?绯荤粺鍒濆鍖?- 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4369933Z 鉁?娣诲姞 Skill - 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4377204Z 鉁?鎵ц Skill - 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4378286Z 鉁?鍒涘缓宸ヤ綔浼氳瘽 - 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4379061Z 鉁?淇濆瓨宸ヤ綔浼氳瘽 - 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4379669Z 鉁?鑾峰彇绯荤粺鐘舵€?- 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4380276Z 鉁?鐢熸垚绯荤粺鎶ュ憡 - 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4380919Z 鉁?瀹夊叏妫€鏌?- 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4381513Z 鉁?绯荤粺鍏抽棴 - 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4381886Z 
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4382357Z ==================================================
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4383435Z 鎬昏: 9 涓祴璇?bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4384064Z 鉁?閫氳繃: 9
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4384662Z 鉂?澶辫触: 0
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4385379Z ==================================================
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4386577Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m馃殌 鐢熶骇妯″紡锛氭枃浠剁洃鍚凡绂佺敤锛堜娇鐢ㄧ儹鏇存柊锛塣[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4387765Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m绯荤粺鍒濆鍖栧紑濮媈[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4388798Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m绯荤粺鍒濆鍖栧畬鎴恀[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4389877Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m馃殌 鐢熶骇妯″紡锛氭枃浠剁洃鍚凡绂佺敤锛堜娇鐢ㄧ儹鏇存柊锛塣[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4390994Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m绯荤粺鍒濆鍖栧紑濮媈[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4392048Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m绯荤粺鍒濆鍖栧畬鎴恀[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4393422Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m鏂?Skill 宸叉坊鍔燸[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4395146Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m馃殌 鐢熶骇妯″紡锛氭枃浠剁洃鍚凡绂佺敤锛堜娇鐢ㄧ儹鏇存柊锛塣[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4396428Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m绯荤粺鍒濆鍖栧紑濮媈[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4397552Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m绯荤粺鍒濆鍖栧畬鎴恀[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4398619Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m鏂?Skill 宸叉坊鍔燸[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4399717Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36mSkill 鎵ц寮€濮媈[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4400883Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36mSkill 鎵ц瀹屾垚^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4402174Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m馃殌 鐢熶骇妯″紡锛氭枃浠剁洃鍚凡绂佺敤锛堜娇鐢ㄧ儹鏇存柊锛塣[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4403913Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m绯荤粺鍒濆鍖栧紑濮媈[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4405040Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m绯荤粺鍒濆鍖栧畬鎴恀[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4406222Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m鏂颁細璇濆凡鍒涘缓^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4407460Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m馃殌 鐢熶骇妯″紡锛氭枃浠剁洃鍚凡绂佺敤锛堜娇鐢ㄧ儹鏇存柊锛塣[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4408558Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m绯荤粺鍒濆鍖栧紑濮媈[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4409604Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m绯荤粺鍒濆鍖栧畬鎴恀[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4410718Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m鏂颁細璇濆凡鍒涘缓^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4411890Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m浼氳瘽宸蹭繚瀛榐[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4413466Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m馃殌 鐢熶骇妯″紡锛氭枃浠剁洃鍚凡绂佺敤锛堜娇鐢ㄧ儹鏇存柊锛塣[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4414701Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m绯荤粺鍒濆鍖栧紑濮媈[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4415814Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m绯荤粺鍒濆鍖栧畬鎴恀[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4417064Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m馃殌 鐢熶骇妯″紡锛氭枃浠剁洃鍚凡绂佺敤锛堜娇鐢ㄧ儹鏇存柊锛塣[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4418299Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m绯荤粺鍒濆鍖栧紑濮媈[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4419462Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m绯荤粺鍒濆鍖栧畬鎴恀[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4420744Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m馃殌 鐢熶骇妯″紡锛氭枃浠剁洃鍚凡绂佺敤锛堜娇鐢ㄧ儹鏇存柊锛塣[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4421838Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m绯荤粺鍒濆鍖栧紑濮媈[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4422832Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m绯荤粺鍒濆鍖栧畬鎴恀[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4424234Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m鏂?Skill 宸叉坊鍔燸[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4425537Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m馃殌 鐢熶骇妯″紡锛氭枃浠剁洃鍚凡绂佺敤锛堜娇鐢ㄧ儹鏇存柊锛塣[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4426725Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m绯荤粺鍒濆鍖栧紑濮媈[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4427826Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m绯荤粺鍒濆鍖栧畬鎴恀[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4428966Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m绯荤粺鍏抽棴涓?..^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.4430057Z [09:59:28] ^[[32mINFO^[[39m (2538): ^[[36m鉁?绯荤粺宸插畨鍏ㄥ叧闂璣[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.5456026Z 鉁?src/core/__tests__/evolution-system.test.js (256.787718ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.5929710Z 鈻?Forge
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.5930627Z   鉁?constructor sets defaults (1.080578ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.5931823Z   鉁?addValidator appends to chain (0.268501ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.5932693Z   鈻?_verify
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.5934967Z     鉁?passes valid text (0.541441ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.5935840Z     鉁?rejects too short (0.223157ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.5936683Z     鉁?rejects refusal pattern (0.210112ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.5937669Z     鉁?rejects too long (0.225821ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.5938711Z     鉁?custom validator rejects (0.258372ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.5939658Z   鉁?_verify (2.079092ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.5940570Z   鈻?solve with generalization fallback
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.5941789Z     鉁?solves via solver when generalization succeeds (1.946163ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.5942889Z     鉁?returns answer with source field (0.6376ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.5944186Z   鉁?solve with generalization fallback (3.023796ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.5945028Z   鈻?circuit breaker
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.5945807Z     鉁?opens after 3 LLM failures (0.366835ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.5946749Z     鉁?setLLMHandler resets circuit breaker (0.204362ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.5947682Z   鉁?circuit breaker (0.794143ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.5948397Z   鈻?learn and verify
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.5949209Z     鉁?learn stores valid answer (0.689848ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.5950111Z     鉁?learn skips invalid answer (0.143047ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.5950963Z   鉁?learn and verify (1.009055ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.5951701Z   鈻?search delegation
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.5952875Z     鉁?search returns array (0.396811ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.5954262Z     鉁?embedSearch returns array (0.281987ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.5955276Z   鉁?search delegation (0.849337ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.5955964Z   鈻?sync
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.5956630Z     鉁?sync starts gossip manager (0.288248ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.5957371Z   鉁?sync (0.446523ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.5958005Z   鉁?edge cases (0.149879ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.5958701Z 鉁?Forge (11.948772ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.6590574Z 馃И 寮€濮?Phase 3-4 闆嗘垚娴嬭瘯...
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.6591174Z 
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.6591753Z 鉁?AutoRestartManager 鍒濆鍖?- 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.6592558Z 鉁?SandboxManager 鍒涘缓娌欑 - 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.6593577Z 鉁?SandboxManager 鍚姩娌欑 - 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.6596598Z 鉁?AutoRollbackManager 鍒濆鍖?- 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.6599701Z 鉁?TestOrchestrator 閰嶇疆 - 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.6600568Z 鉁?IntelligenceCollector 鏀堕泦 - 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.6601425Z 鉁?IntelligenceCollector 杩囨护 - 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.6602180Z 鉁?Monitor 璁板綍璇锋眰 - 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.6602919Z 鉁?Monitor 璁板綍閿欒 - 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.6604028Z 鉁?Monitor 鍛婅瑙﹀彂 - 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.6604753Z 鉁?EvolutionSystem 鍖呭惈鏂版ā鍧?- 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.6605531Z 鉁?EvolutionSystem 鍒濆鍖?- 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.6606286Z 鉁?EvolutionSystem 瀹屾暣鎶ュ憡 - 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.6607057Z 鉁?EvolutionSystem 瀹屾暣鐘舵€?- 閫氳繃
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.6607526Z 
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.6607982Z ==================================================
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.6608712Z 鎬昏: 14 涓祴璇?bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.6609297Z 鉁?閫氳繃: 14
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.6609874Z 鉂?澶辫触: 0
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.6610458Z ==================================================
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.6611484Z [09:59:28] ^[[32mINFO^[[39m (2560): ^[[36m馃殌 鐢熶骇妯″紡锛氭枃浠剁洃鍚凡绂佺敤锛堜娇鐢ㄧ儹鏇存柊锛塣[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.6612594Z [09:59:28] ^[[32mINFO^[[39m (2560): ^[[36m馃殌 鐢熶骇妯″紡锛氭枃浠剁洃鍚凡绂佺敤锛堜娇鐢ㄧ儹鏇存柊锛塣[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.6613914Z [09:59:28] ^[[32mINFO^[[39m (2560): ^[[36m绯荤粺鍒濆鍖栧紑濮媈[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.6614934Z [09:59:28] ^[[32mINFO^[[39m (2560): ^[[36m绯荤粺鍒濆鍖栧畬鎴恀[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.6616195Z [09:59:28] ^[[32mINFO^[[39m (2560): ^[[36m馃殌 鐢熶骇妯″紡锛氭枃浠剁洃鍚凡绂佺敤锛堜娇鐢ㄧ儹鏇存柊锛塣[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.6617321Z [09:59:28] ^[[32mINFO^[[39m (2560): ^[[36m绯荤粺鍒濆鍖栧紑濮媈[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.6618318Z [09:59:28] ^[[32mINFO^[[39m (2560): ^[[36m绯荤粺鍒濆鍖栧畬鎴恀[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.6619431Z [09:59:28] ^[[32mINFO^[[39m (2560): ^[[36m馃殌 鐢熶骇妯″紡锛氭枃浠剁洃鍚凡绂佺敤锛堜娇鐢ㄧ儹鏇存柊锛塣[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.6620500Z [09:59:28] ^[[32mINFO^[[39m (2560): ^[[36m绯荤粺鍒濆鍖栧紑濮媈[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.6621515Z [09:59:28] ^[[32mINFO^[[39m (2560): ^[[36m绯荤粺鍒濆鍖栧畬鎴恀[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:28.6622670Z 鉁?src/core/__tests__/phase34-integration.test.js (278.907633ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:29.4871125Z 鈻?resident integration
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:29.4872000Z   鉁?create resident with custom ID (2.296318ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:29.4872839Z   鉁?get resident by custom ID (0.452305ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:29.4873920Z   鉁?memory remember and recall (0.525922ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:29.4876767Z   鉁?memory search with scope isolation (0.828677ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:29.4881312Z   鉁?resident think via event mock (1.515389ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:29.4888249Z   鉁?resident multi-path reasoning (0.598037ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:29.4902635Z 鉁?resident integration (9.134226ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6310119Z 鉁?all src/ files pass node --check syntax (5994.775143ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6390639Z 鈻?ConvergenceEngine
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6417275Z   鉁?constructor sets defaults (1.517634ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6418087Z   鉁?constructor accepts options (0.200254ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6418959Z   鉁?compete returns winner when solver meets threshold (0.954673ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6420536Z   鉁?compete discards slow decompositions when winner already found (11.221413ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6421553Z   鉁?analyze returns null for unknown problem (0.296684ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6422501Z   鉁?analyze returns analysis for a completed competition (0.411399ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6423686Z 鉁?ConvergenceEngine (16.488298ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6424263Z 鈻?FairyGuardian
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6424817Z   鉁?constructor sets myPort (0.25685ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6425512Z   鉁?receiveHeartbeat records heartbeat (0.470819ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6426230Z   鉁?checkAll is noop when not main node (0.416187ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6426955Z   鉁?getStats returns counts (0.254705ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6427527Z 鉁?FairyGuardian (1.89567ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6427980Z 鈻?tool-registry
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6428499Z   鉁?list returns 4 default tools (1.142474ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6429122Z   鉁?get returns named tool (0.218428ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6429779Z   鉁?get returns undefined for unknown tool (0.188552ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6430491Z   鉁?call unknown tool returns error (0.283369ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6431194Z   鉁?call calculate with valid expression (3.425386ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6432062Z   鉁?call calculate with invalid expression returns error (1.618362ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6432994Z   鉁?call calculate without expression returns error (0.254074ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6433988Z   鉁?call finish returns finished flag (0.298717ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6434872Z   鉁?call read_memory without query returns error (0.232634ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6435746Z   鉁?call web_fetch without url returns error (0.395519ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6436491Z   鉁?call web_fetch with localhost blocked (0.36942ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6437289Z   鉁?call web_fetch with private IP blocked (0.322713ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6438085Z   鉁?call web_fetch with invalid URL returns error (0.796598ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6438881Z   鉁?getSystemPrompt contains tool names (0.250938ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6439564Z 鉁?tool-registry (11.834809ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6440380Z [09:59:29] ^[[33mWARN^[[39m (2659): ^[[36m[IGNORE] Invalid URL^[[39m
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6440972Z 鈻?VectorMemory
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6441333Z   鈻?store
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6441799Z     鉁?stores with Chinese text (1.687862ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6442385Z     鉁?stores with English text (0.443578ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6442982Z     鉁?stores metadata (0.272829ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6443814Z     鉁?supports custom source (0.275585ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6444373Z   鉁?store (3.823559ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6444815Z   鈻?search
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6445421Z     鉁?finds semantically related Chinese text (0.698084ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6446221Z     鉁?returns empty for unrelated query (1.321538ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6447037Z     鉁?search by resident filters correctly (0.617122ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6447791Z     鉁?search returns scored results (0.663158ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6448428Z     鉁?search with limit (0.777702ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6449166Z     鉁?search empty query returns nothing (0.76075ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6449814Z   鉁?search (6.453692ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6450112Z   鈻?getResidentEntries
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6450501Z     鉁?returns entries for specific resident (0.579572ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6450977Z     鉁?returns empty for unknown resident (0.28393ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6451687Z   鉁?getResidentEntries (1.133326ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6452239Z   鈻?getStats
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6452773Z     鉁?returns correct stats (0.283189ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6453719Z   鉁?getStats (0.70193ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6454841Z 鉁?VectorMemory (13.36052ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6455504Z 鈻?voice signaling
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6456110Z   鉁?Bridge voice routes exist (76.359656ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6456855Z 鉁?voice signaling (77.288391ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6457484Z 鈻?TopicRegistry gossip sync
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6458262Z   鉁?announce on nodeA discoverable from nodeB (1.893386ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6459185Z   鉁?announce on nodeB discoverable from nodeA (0.24119ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6460071Z   鉁?excludePeerId filters local peer (0.181529ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6461216Z   鉁?non-existent topic returns empty (0.282187ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6462054Z   鉁?leave removes peer from both nodes (0.295452ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6462874Z   鉁?ttl expiry cleans stale peers (600.34394ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6464000Z 鉁?TopicRegistry gossip sync (605.342654ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6464691Z 鈻?TopicRegistry edge cases
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6465464Z   鉁?handleMessage with null msg does nothing (0.313314ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6466336Z   鉁?multiple topics isolated (0.252482ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6467125Z 鉁?TopicRegistry edge cases (0.784745ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6467837Z 鈻?Generalization accuracy benchmark
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6468534Z   鉁?single shape answer exists (1.248812ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6469295Z 鉁?Generalization accuracy benchmark (2.515798ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6470109Z 鈻?VectorMemory recall/MAP benchmark
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6470857Z   鉁?recall returns stored value (0.704525ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6471678Z   鉁?search returns relevant results (0.980972ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6472496Z   鉁?search with scope isolation (0.231132ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6473646Z 鉁?VectorMemory recall/MAP benchmark (2.264067ms)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6474318Z 鈩?tests 138
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6474753Z 鈩?suites 40
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6475203Z 鈩?pass 138
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6475633Z 鈩?fail 0
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6476065Z 鈩?cancelled 0
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6476523Z 鈩?skipped 0
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6476914Z 鈩?todo 0
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6477343Z 鈩?duration_ms 7795.225967
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.6597947Z Post job cleanup.
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.7833025Z (node:4512) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.7834232Z (Use `node --trace-deprecation ...` to show where the warning was created)
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.7837830Z Cache hit occurred on the primary key node-cache-Linux-x64-npm-01b79c2181082ebcb36e2b841aaafe5eeaf7b9a724d95ac0b0c1a2964ead7911, not saving cache.
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.7982330Z Post job cleanup.
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.8846358Z [command]/usr/bin/git version
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.8882968Z git version 2.54.0
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.8921178Z Temporarily overriding HOME='/home/runner/work/_temp/1097a6e4-af14-4358-ba0c-a997018a04c0' before making global git config changes
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.8922805Z Adding repository directory to the temporary git global config as a safe directory
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.8926910Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/openchat/openchat
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.8964769Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.8998105Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.9221739Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.9245708Z http.https://github.com/.extraheader
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.9256334Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.9289801Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.9510055Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.9539841Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:34.9890320Z Cleaning up orphan processes
+bridge-check	UNKNOWN STEP	2026-06-02T09:59:35.0227176Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-node@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+cleanup	UNKNOWN STEP	锘?026-06-02T09:59:39.7791571Z Current runner version: '2.334.0'
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.7817946Z ##[group]Runner Image Provisioner
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.7819105Z Hosted Compute Agent
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.7819726Z Version: 20260520.533
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.7820398Z Commit: 189110e25284a9812c124fd27b339e2fb4f2f9db
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.7821222Z Build Date: 2026-05-20T17:44:04Z
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.7821930Z Worker ID: {87d5924c-06b3-484f-8dbe-cf614452435c}
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.7822680Z Azure Region: eastus
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.7823287Z ##[endgroup]
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.7824683Z ##[group]Operating System
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.7825410Z Ubuntu
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.7825969Z 24.04.4
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.7826493Z LTS
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.7827104Z ##[endgroup]
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.7827769Z ##[group]Runner Image
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.7828445Z Image: ubuntu-24.04
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.7829227Z Version: 20260525.161.1
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.7830583Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260525.161/images/ubuntu/Ubuntu2404-Readme.md
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.7832143Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260525.161
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.7833205Z ##[endgroup]
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.7834318Z ##[group]GITHUB_TOKEN Permissions
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.7836342Z Actions: write
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.7836999Z Metadata: read
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.7837565Z ##[endgroup]
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.7840186Z Secret source: Actions
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.7840967Z Prepare workflow directory
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.8235210Z Prepare all required actions
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.8286915Z Complete job name: cleanup
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.9010084Z ##[group]Run RUN_IDS=$(gh run list --branch main --limit 50 --json databaseId \
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.9011423Z ^[[36;1mRUN_IDS=$(gh run list --branch main --limit 50 --json databaseId \^[[0m
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.9012355Z ^[[36;1m  --jq '.[].databaseId' | tail -n +3)^[[0m
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.9013124Z ^[[36;1mfor id in $RUN_IDS; do^[[0m
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.9013894Z ^[[36;1m  gh run delete "$id" --yes 2>/dev/null || true^[[0m
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.9014789Z ^[[36;1mdone^[[0m
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.9271867Z shell: /usr/bin/bash -e {0}
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.9272982Z env:
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.9273596Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.9278784Z   GH_TOKEN: ***
+cleanup	UNKNOWN STEP	2026-06-02T09:59:39.9279542Z ##[endgroup]
+cleanup	UNKNOWN STEP	2026-06-02T09:59:40.0824137Z failed to determine base repo: failed to run git: fatal: not a git repository (or any of the parent directories): .git
+cleanup	UNKNOWN STEP	2026-06-02T09:59:40.0825160Z 
+cleanup	UNKNOWN STEP	2026-06-02T09:59:40.0949162Z Cleaning up orphan processes
+bridge-build	UNKNOWN STEP	锘?026-06-02T09:59:39.8905238Z Current runner version: '2.334.0'
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:39.8930068Z ##[group]Runner Image Provisioner
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:39.8930982Z Hosted Compute Agent
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:39.8931582Z Version: 20260520.533
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:39.8932301Z Commit: 189110e25284a9812c124fd27b339e2fb4f2f9db
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:39.8933083Z Build Date: 2026-05-20T17:44:04Z
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:39.8933804Z Worker ID: {c2727618-c70e-4a36-85d5-31ea935ca4bc}
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:39.8934810Z Azure Region: eastus
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:39.8935686Z ##[endgroup]
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:39.8937622Z ##[group]Operating System
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:39.8938910Z Ubuntu
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:39.8939765Z 24.04.4
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:39.8940746Z LTS
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:39.8941573Z ##[endgroup]
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:39.8942555Z ##[group]Runner Image
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:39.8943556Z Image: ubuntu-24.04
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:39.8944535Z Version: 20260525.161.1
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:39.8946534Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260525.161/images/ubuntu/Ubuntu2404-Readme.md
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:39.8949320Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260525.161
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:39.8950834Z ##[endgroup]
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:39.8952733Z ##[group]GITHUB_TOKEN Permissions
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:39.8955302Z Contents: read
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:39.8956194Z Metadata: read
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:39.8957212Z Packages: read
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:39.8958062Z ##[endgroup]
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:39.8961782Z Secret source: Actions
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:39.8963226Z Prepare workflow directory
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:39.9517731Z Prepare all required actions
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:39.9570151Z Getting action download info
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.4069757Z Download action repository 'actions/checkout@v4' (SHA:34e114876b0b11c390a56381ad16ebd13914f8d5)
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.5241721Z Download action repository 'actions/setup-node@v4' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.7116484Z Complete job name: bridge-build
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.7851594Z ##[group]Run actions/checkout@v4
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.7852501Z with:
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.7853027Z   repository: openchat-ai/openchat
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.7858336Z   token: ***
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.7859000Z   ssh-strict: true
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.7859486Z   ssh-user: git
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.7859988Z   persist-credentials: true
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.7860519Z   clean: true
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.7861005Z   sparse-checkout-cone-mode: true
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.7861569Z   fetch-depth: 1
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.7862052Z   fetch-tags: false
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.7862539Z   show-progress: true
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.7863043Z   lfs: false
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.7863505Z   submodules: false
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.7863997Z   set-safe-directory: true
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.7864755Z env:
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.7865234Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.7865842Z ##[endgroup]
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.8840417Z Syncing repository: openchat-ai/openchat
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.8842455Z ##[group]Getting Git version info
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.8843441Z Working directory is '/home/runner/work/openchat/openchat'
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.8844601Z [command]/usr/bin/git version
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.8885225Z git version 2.54.0
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.8937956Z ##[endgroup]
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.8954176Z Temporarily overriding HOME='/home/runner/work/_temp/78c21830-05ff-4722-9301-d24beee7ac3a' before making global git config changes
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.8956784Z Adding repository directory to the temporary git global config as a safe directory
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.8959999Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/openchat/openchat
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.9006066Z Deleting the contents of '/home/runner/work/openchat/openchat'
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.9012121Z ##[group]Initializing the repository
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.9017307Z [command]/usr/bin/git init /home/runner/work/openchat/openchat
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.9095814Z hint: Using 'master' as the name for the initial branch. This default branch name
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.9098130Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.9100986Z hint: to use in all of your new repositories, which will suppress this warning,
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.9102717Z hint: call:
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.9103696Z hint:
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.9104949Z hint: 	git config --global init.defaultBranch <name>
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.9106563Z hint:
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.9107932Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.9111452Z hint: 'development'. The just-created branch can be renamed via this command:
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.9113220Z hint:
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.9114389Z hint: 	git branch -m <name>
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.9115790Z hint:
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.9117418Z hint: Disable this message with "git config set advice.defaultBranchName false"
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.9119987Z Initialized empty Git repository in /home/runner/work/openchat/openchat/.git/
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.9123714Z [command]/usr/bin/git remote add origin https://github.com/openchat-ai/openchat
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.9149528Z ##[endgroup]
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.9150988Z ##[group]Disabling automatic garbage collection
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.9153215Z [command]/usr/bin/git config --local gc.auto 0
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.9185414Z ##[endgroup]
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.9186788Z ##[group]Setting up auth
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.9192354Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.9229614Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.9560094Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.9593107Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.9820891Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:40.9851665Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:41.0079247Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:41.0113026Z ##[endgroup]
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:41.0120948Z ##[group]Fetching the repository
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:41.0122451Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +a80ebc99cd37ff1b6602064804fc46056ce77419:refs/remotes/origin/main
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:41.4829363Z From https://github.com/openchat-ai/openchat
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:41.4830993Z  * [new ref]         a80ebc99cd37ff1b6602064804fc46056ce77419 -> origin/main
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:41.4861533Z ##[endgroup]
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:41.4862645Z ##[group]Determining the checkout info
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:41.4864202Z ##[endgroup]
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:41.4869173Z [command]/usr/bin/git sparse-checkout disable
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:41.4914172Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:41.4942506Z ##[group]Checking out the ref
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:41.4946166Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:41.5558677Z Switched to a new branch 'main'
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:41.5560436Z branch 'main' set up to track 'origin/main'.
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:41.5571013Z ##[endgroup]
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:41.5612672Z [command]/usr/bin/git log -1 --format=%H
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:41.5636622Z a80ebc99cd37ff1b6602064804fc46056ce77419
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:41.5989364Z ##[group]Run actions/setup-node@v4
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:41.5990534Z with:
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:41.5991374Z   node-version: 24
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:41.5992311Z   always-auth: false
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:41.5993281Z   check-latest: false
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:41.6005022Z   token: ***
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:41.6005896Z env:
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:41.6006807Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:41.6008025Z ##[endgroup]
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:41.7403205Z Found in cache @ /opt/hostedtoolcache/node/24.16.0/x64
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:41.7407033Z (node:2292) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:41.7410332Z (Use `node --trace-deprecation ...` to show where the warning was created)
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:41.7412697Z ##[group]Environment details
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:42.0623251Z node: v24.16.0
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:42.0624570Z npm: 11.13.0
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:42.0625673Z yarn: 1.22.22
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:42.0627946Z ##[endgroup]
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:42.0803291Z ##[group]Run npm ci
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:42.0804329Z ^[[36;1mnpm ci^[[0m
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:42.0843620Z shell: /usr/bin/bash -e {0}
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:42.0844703Z env:
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:42.0845630Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:42.0846835Z ##[endgroup]
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:46.5786532Z npm warn deprecated boolean@3.2.0: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:57.2103674Z 
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:57.2104400Z > peertalk@1.0.0 prepare
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:57.2104925Z > husky
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:57.2105125Z 
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:57.2637754Z .git can't be found
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:57.2638790Z added 476 packages, and audited 480 packages in 15s
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:57.2639454Z 
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:57.2642371Z 64 packages are looking for funding
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:57.2643090Z   run `npm fund` for details
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:57.2820081Z 
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:57.2820941Z 9 vulnerabilities (1 low, 6 moderate, 2 high)
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:57.2821483Z 
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:57.2821875Z To address issues that do not require attention, run:
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:57.2822485Z   npm audit fix
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:57.2822751Z 
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:57.2823152Z To address all issues (including breaking changes), run:
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:57.2823763Z   npm audit fix --force
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:57.2824020Z 
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:57.2824398Z Run `npm audit` for details.
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:57.4343726Z ##[group]Run npm pack
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:57.4344060Z ^[[36;1mnpm pack^[[0m
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:57.4372688Z shell: /usr/bin/bash -e {0}
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:57.4372976Z env:
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:57.4373213Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:57.4373524Z ##[endgroup]
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:57.6823281Z 
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:57.6823992Z > peertalk@1.0.0 prepare
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:57.6824438Z > husky
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:57.6824608Z 
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:57.9940179Z npm warn gitignore-fallback No .npmignore file found, using .gitignore for file exclusion. Consider creating a .npmignore file to explicitly control published files.
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4653698Z npm notice
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4656329Z npm notice 馃摝  peertalk@1.0.0
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4656911Z npm notice Tarball Contents
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4713835Z npm notice 1.2kB .env.example
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4714539Z npm notice 333B .env.ollama.example
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4715105Z npm notice 9B .husky/pre-commit
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4715679Z npm notice 517B Dockerfile
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4716216Z npm notice 1.5kB PRINCIPLE_TRACKING.json
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4716801Z npm notice 1.0kB bin/openchat.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4717619Z npm notice 455B config.schema.json
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4718202Z npm notice 372B config.yaml
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4718891Z npm notice 776B eslint.config.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4719406Z npm notice 302B jest.config.json
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4719971Z npm notice 1.2kB memory/core-logic.md
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4720588Z npm notice 986B memory/debugging.md
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4721092Z npm notice 3.1kB package.json
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4721624Z npm notice 1.2kB refresh-baidu.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4723414Z npm notice 1.1kB scripts/add-self-learner.mjs
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4724078Z npm notice 27.2kB scripts/build-deploy.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4724662Z npm notice 680B scripts/check_size.mjs
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4725221Z npm notice 712B scripts/cleanup-dirs.mjs
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4725762Z npm notice 1.9kB scripts/demo.mjs
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4726313Z npm notice 2.7kB scripts/do-evaluate.mjs
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4727289Z npm notice 2.1kB scripts/evaluate-age.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4727841Z npm notice 3.8kB scripts/evaluate-iq.mjs
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4728446Z npm notice 6.4kB scripts/fix-core-imports.mjs
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4729294Z npm notice 2.5kB scripts/launch-seven.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4729885Z npm notice 1.4kB scripts/mental-age-method.txt
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4730479Z npm notice 6.9kB scripts/models-dev.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4731019Z npm notice 2.6kB scripts/onboarding.sh
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4731522Z npm notice 2.0kB scripts/push.mjs
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4732100Z npm notice 2.2kB scripts/start-api-server.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4732723Z npm notice 871B scripts/start-self-learn.mjs
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4733332Z npm notice 701B scripts/test-openrouter.mjs
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4733966Z npm notice 26.0kB scripts/upgrade-providers.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4734571Z npm notice 3.9kB scripts/upgrade-seven.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4735180Z npm notice 1.1kB scripts/upload-config.mjs
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4735752Z npm notice 723B scripts/watch_files.mjs
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4736371Z npm notice 2.7kB src/agents/agent-role-factory.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4737002Z npm notice 7.1kB src/agents/feedback-aggregator.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4737618Z npm notice 2.1kB src/agents/roles/base-agent.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4738298Z npm notice 6.2kB src/agents/roles/code-quality-analyzer.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4739133Z npm notice 1.6kB src/agents/roles/custom.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4739800Z npm notice 7.6kB src/agents/roles/performance-analyzer.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4740505Z npm notice 4.9kB src/agents/roles/security-auditor.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4741090Z npm notice 357B src/api-entry.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4741579Z npm notice 4.0kB src/api/integration.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4742158Z npm notice 2.2kB src/api/integrations/index.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4742686Z npm notice 2.8kB src/api/middleware/auth.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4743257Z npm notice 890B src/api/middleware/error-handler.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4744057Z npm notice 6.5kB src/api/middleware/metrics.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4744646Z npm notice 4.1kB src/api/middleware/rate-limiter.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4745279Z npm notice 4.5kB src/api/middleware/request-validator.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4745892Z npm notice 6.0kB src/api/middleware/security.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4746448Z npm notice 4.5kB src/api/openapi.json
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4746946Z npm notice 5.4kB src/api/routes/agents.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4747469Z npm notice 6.4kB src/api/routes/config.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4747994Z npm notice 2.9kB src/api/routes/decisions.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4748665Z npm notice 3.6kB src/api/routes/feedback.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4749185Z npm notice 2.6kB src/api/routes/health.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4749681Z npm notice 8.1kB src/api/routes/legacy.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4750191Z npm notice 1.4kB src/api/routes/metrics.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4750689Z npm notice 6.3kB src/api/routes/p2p.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4751254Z npm notice 3.0kB src/api/routes/residents.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4751796Z npm notice 3.1kB src/api/routes/resources.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4752331Z npm notice 2.5kB src/api/routes/sage.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4752973Z npm notice 8.1kB src/api/routes/signaling.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4753555Z npm notice 6.4kB src/api/routes/skills.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4754103Z npm notice 2.4kB src/api/routes/synth.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4754660Z npm notice 1.4kB src/api/routes/topic-registry.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4755085Z npm notice 4.1kB src/api/routes/updates.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4755486Z npm notice 2.8kB src/api/routes/versions.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4756160Z npm notice 11.7kB src/api/routes/voice.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4756797Z npm notice 19.5kB src/api/server.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4757346Z npm notice 376B src/cli-entry.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4757876Z npm notice 3.2kB src/cli/auto-detect.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4758370Z npm notice 4.2kB src/cli/bridge-cli.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4759035Z npm notice 90.4kB src/cli/commands.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4759581Z npm notice 12.2kB src/cli/provider-manager.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4760121Z npm notice 5.7kB src/config/cli-args.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4760899Z npm notice 2.0kB src/config/model-selection.json
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4761517Z npm notice 149.3kB src/config/provider-models.json
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4762056Z npm notice 530B src/constants.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4762657Z npm notice 5.8kB src/core/__tests__/advanced-integration.test.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4763376Z npm notice 4.8kB src/core/__tests__/agent-engine.test.mjs
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4764063Z npm notice 4.3kB src/core/__tests__/agent-loop-e2e.test.mjs
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4764722Z npm notice 6.2kB src/core/__tests__/ai-person.test.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4765404Z npm notice 4.2kB src/core/__tests__/audio-detect-synth.test.mjs
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4766124Z npm notice 2.8kB src/core/__tests__/circuit-breaker.test.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4766810Z npm notice 3.7kB src/core/__tests__/cli-integration.test.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4767532Z npm notice 3.1kB src/core/__tests__/evolution-integration.test.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4768273Z npm notice 4.5kB src/core/__tests__/evolution-memory.test.mjs
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4769160Z npm notice 5.1kB src/core/__tests__/evolution-system.test.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4769968Z npm notice 3.6kB src/core/__tests__/forge.test.mjs
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4770701Z npm notice 8.2kB src/core/__tests__/phase34-integration.test.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4771449Z npm notice 3.1kB src/core/__tests__/resident-integration.test.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4772134Z npm notice 1.3kB src/core/__tests__/smoke-import.test.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4772771Z npm notice 3.3kB src/core/__tests__/subsystems.test.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4773415Z npm notice 3.2kB src/core/__tests__/tool-registry.test.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4774110Z npm notice 3.7kB src/core/__tests__/vector-memory.test.mjs
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4774771Z npm notice 721B src/core/__tests__/voice-signaling.test.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4775556Z npm notice 9.5kB src/core/agent/agent-communication-protocol.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4776445Z npm notice 23.9kB src/core/agent/agent-engine.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4777106Z npm notice 11.4kB src/core/agent/agent-monitor.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4777684Z npm notice 11.9kB src/core/agent/ai-person-factory.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4778327Z npm notice 10.9kB src/core/agent/ai-person-manager.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4779112Z npm notice 11.0kB src/core/agent/ai-personhood.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4779752Z npm notice 5.4kB src/core/agent/body.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4780358Z npm notice 7.4kB src/core/agent/deity-governance.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4780961Z npm notice 16.4kB src/core/agent/deity-system.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4781514Z npm notice 15.4kB src/core/agent/energy-deity.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4782098Z npm notice 5.9kB src/core/agent/identity-generator.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4782695Z npm notice 15.3kB src/core/agent/mirror-deity.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4783172Z npm notice 22.8kB src/core/agent/resident-decisions.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4783595Z npm notice 22.6kB src/core/agent/resident-manager.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4784015Z npm notice 53.5kB src/core/agent/resident-scheduler.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4784393Z npm notice 5.0kB src/core/agent/sage.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4784760Z npm notice 13.6kB src/core/audio/audio-pipeline.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4785202Z npm notice 7.2kB src/core/audio/device-capability-manager.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4785612Z npm notice 3.9kB src/core/audio/ks-synth.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4785998Z npm notice 13.3kB src/core/audio/lpc-mdct-codec.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4786398Z npm notice 13.2kB src/core/audio/multimodal-handler.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4786790Z npm notice 7.7kB src/core/audio/nnls-detector.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4787165Z npm notice 8.2kB src/core/audio/voice-gateway.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4787509Z npm notice 5.9kB src/core/cli-args.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4787927Z npm notice 9.3kB src/core/collaboration/collaboration-engine.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4788417Z npm notice 5.4kB src/core/collaboration/collaboration-manager.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4789133Z npm notice 8.5kB src/core/collaboration/community-manager.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4789632Z npm notice 11.6kB src/core/collaboration/multi-agent-coordinator.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4790335Z npm notice 13.9kB src/core/collaboration/social-connector.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4790793Z npm notice 11.9kB src/core/collaboration/task-orchestrator.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4791238Z npm notice 8.6kB src/core/collaboration/task-planner.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4791683Z npm notice 4.3kB src/core/convergence/convergence-engine.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4792132Z npm notice 6.5kB src/core/convergence/inductive-reasoner.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4792596Z npm notice 6.9kB src/core/convergence/natural-language-parser.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4793070Z npm notice 9.2kB src/core/convergence/problem-decomposer.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4793508Z npm notice 1.4kB src/core/convergence/prompt-builder.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4793948Z npm notice 7.6kB src/core/convergence/question-normalizer.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4794393Z npm notice 9.5kB src/core/convergence/reasoning-engine.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4794841Z npm notice 11.0kB src/core/convergence/result-aggregator.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4795282Z npm notice 4.3kB src/core/convergence/solution-engine.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4795743Z npm notice 3.2kB src/core/convergence/solution-optimizer.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4796213Z npm notice 15.9kB src/core/convergence/symbolic-reasoner.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4796641Z npm notice 5.8kB src/core/convergence/theorem-db.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4797066Z npm notice 10.9kB src/core/convergence/thinking-path.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4797508Z npm notice 21.7kB src/core/convergence/universal-solver.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4797945Z npm notice 6.7kB src/core/evolution/evolution-cli.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4798368Z npm notice 9.8kB src/core/evolution/evolution-engine.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4799042Z npm notice 4.4kB src/core/evolution/evolution-memory.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4799487Z npm notice 11.0kB src/core/evolution/evolution-system.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4799966Z npm notice 15.2kB src/core/evolution/experience-accumulator.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4800568Z npm notice 3.7kB src/core/evolution/forge.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4800968Z npm notice 3.2kB src/core/evolution/generalization.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4801377Z npm notice 20.5kB src/core/evolution/learning-core.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4801788Z npm notice 545B src/core/evolution/learning-loop.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4802194Z npm notice 6.2kB src/core/evolution/self-evolution.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4802598Z npm notice 241B src/core/evolution/self-learner.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4803045Z npm notice 5.0kB src/core/evolution/skill-manager.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4803477Z npm notice 4.8kB src/core/evolution/variant-generator.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4803860Z npm notice 472B src/core/fetch-models.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4804195Z npm notice 3.1kB src/core/handlers.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4804529Z npm notice 6.6kB src/core/INTEGRATION.md
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4804887Z npm notice 12.1kB src/core/memory/data-miner.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4805316Z npm notice 6.7kB src/core/memory/intelligence-collector.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4805753Z npm notice 19.0kB src/core/memory/knowledge-base.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4806168Z npm notice 17.6kB src/core/memory/knowledge-network.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4806602Z npm notice 6.6kB src/core/memory/memory-manager-enhanced.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4807018Z npm notice 9.2kB src/core/memory/neural-brain.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4807395Z npm notice 5.6kB src/core/memory/neural-mesh.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4807761Z npm notice 8.7kB src/core/memory/semantic-nn.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4808129Z npm notice 2.1kB src/core/memory/subconscious.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4808672Z npm notice 5.6kB src/core/memory/teacher-llm.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4809243Z npm notice 11.9kB src/core/memory/vector-memory.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4809615Z npm notice 1.7kB src/core/message-bus.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4809975Z npm notice 2.0kB src/core/model-selection.json
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4810408Z npm notice 10.8kB src/core/monitoring/auto-restart-manager.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4810883Z npm notice 3.2kB src/core/monitoring/auto-rollback-manager.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4811319Z npm notice 7.9kB src/core/monitoring/cost-monitor.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4811952Z npm notice 7.2kB src/core/monitoring/enhanced-stability-system.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4812390Z npm notice 459B src/core/monitoring/logger.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4812789Z npm notice 1.7kB src/core/monitoring/monitor-cli.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4813182Z npm notice 6.5kB src/core/monitoring/monitor.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4813628Z npm notice 3.2kB src/core/monitoring/monitoring-health-check.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4814086Z npm notice 985B src/core/monitoring/monitoring-index.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4814555Z npm notice 6.2kB src/core/monitoring/performance-monitor.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4815019Z npm notice 8.4kB src/core/monitoring/performance-scorer.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4815444Z npm notice 27.7kB src/core/monitoring/resilience.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4815883Z npm notice 8.7kB src/core/monitoring/system-health-checker.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4816301Z npm notice 4.0kB src/core/p2r/bridge-spawn.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4816687Z npm notice 4.8kB src/core/p2r/fairy-gossip.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4817055Z npm notice 2.6kB src/core/p2r/fairy-guardian.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4817445Z npm notice 14.8kB src/core/p2r/house-orchestrator.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4817809Z npm notice 6.1kB src/core/p2r/house.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4818203Z npm notice 11.2kB src/core/p2r/launch-strategies.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4818811Z npm notice 5.5kB src/core/p2r/llm-proxy-agent.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4819266Z npm notice 8.6kB src/core/persistent-config.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4819670Z npm notice 8.8kB src/core/persistent-session-manager.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4820059Z npm notice 2.3kB src/core/persistent-store.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4820417Z npm notice 4.1kB src/core/protocol-message.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4820795Z npm notice 149.3kB src/core/provider-models.json
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4821195Z npm notice 16.5kB src/core/qiniu-signaling.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4821586Z npm notice 6.5kB src/core/quality/adversarial-test.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4822141Z npm notice 4.3kB src/core/quality/code-analyzer.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4822537Z npm notice 6.7kB src/core/quality/code-reviewer.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4822938Z npm notice 8.8kB src/core/quality/content-analyzer.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4823361Z npm notice 5.3kB src/core/quality/content-manager.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4823767Z npm notice 11.3kB src/core/quality/decision-engine.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4824154Z npm notice 6.8kB src/core/quality/model-selector.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4824575Z npm notice 6.3kB src/core/quality/multi-model-tester.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4825068Z npm notice 11.8kB src/core/quality/quality-check-system.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4825536Z npm notice 61.1kB src/core/quality/quality-scorer.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4825937Z npm notice 3.6kB src/core/quality/response-parser.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4826328Z npm notice 16.2kB src/core/quality/schema-manager.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4826750Z npm notice 17.5kB src/core/quality/strategy-optimizer.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4827177Z npm notice 27.3kB src/core/quality/strategy-registry.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4827589Z npm notice 9.2kB src/core/quality/test-orchestrator.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4827953Z npm notice 2.0kB src/core/router.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4828331Z npm notice 3.0kB src/core/security/error-boundary.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4829006Z npm notice 3.3kB src/core/security/error-classifier.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4829414Z npm notice 15.4kB src/core/security/safe-evolution.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4829810Z npm notice 3.7kB src/core/security/safe-exec.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4830202Z npm notice 10.7kB src/core/security/sandbox-manager.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4830606Z npm notice 8.7kB src/core/security/security-checker.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4831012Z npm notice 2.7kB src/core/security/security-manager.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4831413Z npm notice 7.7kB src/core/security/security-sandbox.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4831831Z npm notice 11.1kB src/core/security/streaming-validator.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4832314Z npm notice 39.9kB src/core/security/structured-output-validator.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4832748Z npm notice 5.4kB src/core/session-manager.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4833254Z npm notice 1.3kB src/core/signal-relay.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4833604Z npm notice 4.8kB src/core/tool-registry.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4833939Z npm notice 1.5kB src/gateway/base.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4834266Z npm notice 992B src/gateway/telegram.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4834614Z npm notice 3.7kB src/infra/dashboard-html.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4834957Z npm notice 1.5kB src/infra/gateway-base.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4835317Z npm notice 1.0kB src/infra/gateway-telegram.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4835688Z npm notice 12.1kB src/infra/gateway/config.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4836039Z npm notice 16.5kB src/infra/gateway/server.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4836393Z npm notice 19.1kB src/infra/route-handlers.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4836707Z npm notice 37.2kB src/main.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4837041Z npm notice 9.6kB src/memory/embedding-service.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4837423Z npm notice 5.6kB src/memory/hybrid-retriever.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4837785Z npm notice 9.7kB src/memory/memory-manager.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4838152Z npm notice 905B src/memory/provider-models.json
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4838689Z npm notice 8.5kB src/memory/vector-store.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4839120Z npm notice 3.2kB src/monitoring/health-check.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4839468Z npm notice 926B src/monitoring/index.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4839861Z npm notice 7.0kB src/optimization/adaptive-compression.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4840253Z npm notice 3.1kB src/optimization/cache.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4840599Z npm notice 6.3kB src/optimization/cleanup.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4840971Z npm notice 3.8kB src/optimization/compression.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4841366Z npm notice 3.2kB src/optimization/network-detector.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4841788Z npm notice 6.7kB src/optimization/tiered-cache.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4842208Z npm notice 3.4kB src/p2p/__tests__/p2p-registry.test.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4842598Z npm notice 7.0kB src/p2p/connection-manager.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4843079Z npm notice 3.1kB src/p2p/discovery.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4843424Z npm notice 8.5kB src/p2p/fault-tolerance.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4843790Z npm notice 6.0kB src/p2p/gossip-manager.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4844123Z npm notice 4.2kB src/p2p/identity.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4844438Z npm notice 14.9kB src/p2p/messages.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4844763Z npm notice 2.1kB src/p2p/nat-traversal.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4845102Z npm notice 5.9kB src/p2p/offline-queue.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4845429Z npm notice 5.8kB src/p2p/p2p-net.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4845753Z npm notice 1.8kB src/p2p/peer-registry.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4846136Z npm notice 1.3kB src/p2p/peer-registry/http-backend.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4846562Z npm notice 5.6kB src/p2p/peer-registry/qiniu-backend.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4846936Z npm notice 2.4kB src/p2p/priority-queue.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4847277Z npm notice 6.8kB src/p2p/routing-engine.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4847610Z npm notice 3.0kB src/p2p/topic-registry.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4847958Z npm notice 14.8kB src/plugins/agent-tools.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4848305Z npm notice 3.1kB src/plugins/eng-plugins.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4848850Z npm notice 9.4kB src/plugins/error-recovery.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4849228Z npm notice 8.9kB src/plugins/plugin-manager.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4849601Z npm notice 2.8kB src/plugins/self-test-plugin.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4849974Z npm notice 2.2kB src/plugins/system-plugins.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4850323Z npm notice 4.1kB src/protocol/message.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4850677Z npm notice 13.7kB src/providers/ai-provider.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4851061Z npm notice 9.6kB src/providers/anthropic-adapter.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4851452Z npm notice 8.5kB src/providers/azure-adapter.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4851846Z npm notice 10.2kB src/providers/bedrock-adapter.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4852233Z npm notice 7.7kB src/providers/cohere-adapter.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4852604Z npm notice 7.1kB src/providers/gemini-adapter.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4852987Z npm notice 4.7kB src/providers/local-provider.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4853379Z npm notice 23.3kB src/providers/openai-compatible.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4853928Z npm notice 8.4kB src/providers/provider-manager.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4854321Z npm notice 8.2kB src/providers/provider-registry.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4854687Z npm notice 7.5kB src/security/sandbox.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4855046Z npm notice 2.7kB src/security/security-manager.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4855420Z npm notice 5.4kB src/session/session-manager.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4855847Z npm notice 2.3kB src/storage/persistent-store.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4856248Z npm notice 9.6kB src/updates/compatibility-checker.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4856647Z npm notice 8.8kB src/updates/hot-update-manager.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4857037Z npm notice 7.5kB src/updates/signature-verifier.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4857427Z npm notice 11.1kB src/updates/skill-installer.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4857796Z npm notice 5.9kB src/updates/version-manager.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4858172Z npm notice 9.3kB src/updates/version-snapshot.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4858692Z npm notice 4.5kB test-utils/chaos-test.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4859076Z npm notice 2.8kB test-utils/deepseek-integration.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4859450Z npm notice 1.2kB test-utils/eval-setup.json
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4859826Z npm notice 2.8kB test-utils/groq-integration.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4860208Z npm notice 2.7kB test-utils/integration-guide.md
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4860586Z npm notice 5.5kB test-utils/llm-integration.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4860944Z npm notice 8.3kB test-utils/llm-judge.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4861313Z npm notice 3.0kB test-utils/ollama-integration.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4861696Z npm notice 4.6kB test-utils/property-test.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4862051Z npm notice 7.5kB test-utils/replay-test.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4862445Z npm notice 2.7kB test-utils/siliconflow-integration.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4862838Z npm notice 843B test-utils/test-framework.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4863212Z npm notice 1.3kB test-utils/test-siliconflow.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4863739Z npm notice 449B test/check-env.mjs
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4864081Z npm notice 2.9kB test/e2e/auth-ws.test.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4864455Z npm notice 4.2kB test/e2e/bridge-lifecycle.test.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4864836Z npm notice 3.3kB test/e2e/rate-limit.test.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4865207Z npm notice 8.7kB test/e2e/signaling-webrtc.test.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4865570Z npm notice 4.1kB test/e2e/ws-chat.test.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4865929Z npm notice 15.5kB test/integration/api.test.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4866363Z npm notice 9.7kB test/integration/signaling-lifecycle.test.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4866824Z npm notice 854B test/integration/test-agent-evolution.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4867255Z npm notice 11.9kB test/integration/test-agent-monitor.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4867669Z npm notice 14.8kB test/integration/test-agent-session.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4868084Z npm notice 685B test/integration/test-agent-spawn.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4868643Z npm notice 425B test/integration/test-api.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4869081Z npm notice 447B test/integration/test-baidu.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4869480Z npm notice 53B test/integration/test-chat-persist.txt
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4869892Z npm notice 569B test/integration/test-cli-refresh.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4870306Z npm notice 78B test/integration/test-commands.txt
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4870733Z npm notice 196B test/integration/test-evolution-command.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4871150Z npm notice 548B test/integration/test-evolve.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4871534Z npm notice 70B test/integration/test-full.txt
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4871906Z npm notice 9B test/integration/test-help.txt
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4872297Z npm notice 70B test/integration/test-history.txt
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4872684Z npm notice 497B test/integration/test-iterate.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4873093Z npm notice 277B test/integration/test-model-command.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4873511Z npm notice 230B test/integration/test-model-search.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4873918Z npm notice 722B test/integration/test-model-select.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4874328Z npm notice 216B test/integration/test-no-encryption.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4874872Z npm notice 17B test/integration/test-persist.txt
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4875270Z npm notice 236B test/integration/test-provider-help.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4875660Z npm notice 18B test/integration/test-simple.txt
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4876053Z npm notice 243B test/integration/test-sync-current.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4876424Z npm notice 7.7kB test/observe-bridge.mjs
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4876816Z npm notice 2.1kB tests/benchmarks/resident-benchmarks.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4877235Z npm notice 2.1kB tests/contract/api-contract.test.js
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4877612Z npm notice 268.8kB tests/synth_scale.wav
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4877945Z npm notice 3.4kB tests/voice-demo.mjs
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4878300Z npm notice 7.7kB tools/eval-generalization.mjs
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4878819Z npm notice 2.4kB topic-test.mjs
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4879113Z npm notice Tarball Details
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4879391Z npm notice name: peertalk
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4879666Z npm notice version: 1.0.0
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4879990Z npm notice filename: peertalk-1.0.0.tgz
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4880347Z npm notice package size: 699.1 kB
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4880674Z npm notice unpacked size: 2.9 MB
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4881061Z npm notice shasum: 8205beeb7b8449c23be2fe5967d5af9c84fd8cfe
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4881548Z npm notice integrity: sha512-sXrt7FWXvW5UW[...]PcNIJkT/mm7vA==
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4881920Z npm notice total files: 343
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4882209Z npm notice
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4882529Z .git can't be foundpeertalk-1.0.0.tgz
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.4984382Z Post job cleanup.
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.6195038Z (node:2425) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.6195901Z (Use `node --trace-deprecation ...` to show where the warning was created)
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.6390374Z Post job cleanup.
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.7206645Z [command]/usr/bin/git version
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.7243179Z git version 2.54.0
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.7281600Z Temporarily overriding HOME='/home/runner/work/_temp/463d0a5e-7bb5-4db0-9e03-e777584ac2da' before making global git config changes
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.7283090Z Adding repository directory to the temporary git global config as a safe directory
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.7284897Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/openchat/openchat
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.7322916Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.7356879Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.7590004Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.7615538Z http.https://github.com/.extraheader
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.7625561Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.7658266Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.7918144Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.7948714Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.8307502Z Cleaning up orphan processes
+bridge-build	UNKNOWN STEP	2026-06-02T09:59:58.8610823Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-node@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

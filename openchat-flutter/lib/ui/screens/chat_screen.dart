@@ -56,6 +56,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
     WidgetsBinding.instance.addObserver(this);
     _startupTs = DateTime.now().millisecondsSinceEpoch;
     _messages.add({'sender': 'ai', 'type': 'text', 'text': 'Hello! How can I help you?', 'time': '10:00'});
+    _initQiniuPoll();
   }
 
   @override
