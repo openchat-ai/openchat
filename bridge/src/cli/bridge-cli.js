@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { executeCommand } from './commands.js';
 import { persistentConfig } from '../core/persistent-config.js';
-import { providerManager } from '../providers/provider-manager.js';
+import { providerManager } from 'provider-kit';
 
 /**
  * 创建 CLI 交互界面，返回方法集合供 Bridge 调用

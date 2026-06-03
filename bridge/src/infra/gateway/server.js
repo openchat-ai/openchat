@@ -22,7 +22,7 @@
 
 import http from 'http';
 import { URL } from 'url';
-import { providerRegistry } from '../../providers/provider-registry.js';
+import { providerRegistry } from 'provider-kit';
 import * as fs from 'fs';
 import * as path from 'path';
 import { homedir } from 'os';

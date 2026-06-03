@@ -465,13 +465,38 @@ return map[ruleName] || [];
   }
 
   /**
-   * LLM 教学：给一个问题+答案，自动提炼新规则
+   * 从 LLM 老师那里学新规则
    */
   learn(question, answer, concept) {
+    // 尝试从题目中提取模式
+    const nums = question.match(/\d+/g)?.map(Number) || [];
+
+    if (nums.length >= 2) {
+      // 自动生成规则：匹配同类问题
+      const sig = question.replace(/\d+/g, '#').substring(0, 60);
+      const pattern = new RegExp(sig.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/#/g, '\\d+'));
+
+      this.addRule(`learned_${Date.now()}`, concept || 'general', (q) => {
+        if (!pattern.test(q)) return null;
+        const newNums = q.match(/\d+/g)?.map(Number) || [];
+        if (newNums.length !== nums.length) return null;
+        let result = String(answer);
+        for (let i = 0; i < nums.length; i++) {
+          result = result.replace(new RegExp(String(nums[i]), 'g'), String(newNums[i]));
+        }
+        return isNaN(result) ? result : parseFloat(result);
+      }, 2);
+    }
+  }
+
+  /**
+   * LLM 教学：给一个问题+答案，自动提炼新规则
+   */
+  learn(question, answer) {
     const nums = question.match(/\d+/g)?.map(Number) || [];
     if (nums.length < 2) return null;
 
-    if (!concept) concept = this._guessConcept(question);
+    const concept = this._guessConcept(question);
     const sig = question.replace(/\d+/g, '#').substring(0, 80);
     const escaped = sig.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/#/g, '\\d+');
     const pattern = new RegExp(escaped);

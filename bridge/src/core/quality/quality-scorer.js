@@ -1511,9 +1511,8 @@ export class QualityScorer {
 
   _logGamma(x) {
     const coefficients = [
-      // eslint-disable-next-line no-loss-of-precision
-      76.18009172947148, -86.50532032941677, 24.01409824083091,
-      -1.231739572450155, 0.001208650973866179, -5.395239384953e-6
+      76.18009172947146, -86.50532032941677, 24.01409824083091,
+      -1.231739572450155, 0.001208650973866179, -0.000005395239384953
     ];
     
     let y = x;
@@ -1525,7 +1524,7 @@ export class QualityScorer {
       sum += coefficients[j] / ++y;
     }
     
-    return -tmp + Math.log(2.5066282746310002 * sum / x);
+    return -tmp + Math.log(2.5066282746310005 * sum / x);
   }
 
   _betaCF(a, b, x) {

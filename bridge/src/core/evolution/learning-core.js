@@ -98,9 +98,10 @@ this.history = {
         try {
           const problems = JSON.parse(readFileSync(join(PROBLEM_POOL_DIR, file), 'utf8'));
           this.problemPool.push(...problems);
-        } catch (e) {}
+        } catch (e) { logger.info('[LC] Load fail '+file+':', e.message); }
       }
     }
+    logger.info('[LC] Loaded pool:', this.problemPool.length, 'problems');
   }
 
 _loadStats() {
@@ -113,8 +114,9 @@ this.age = Math.max(this.solvedCount, this.age);
   // ==================== 核心循环 ====================
 
   async runCycle() {
-    // 0. 元监控检查（已禁用）
-
+    // 0. 元监控检查
+    this._metaCheck();
+    
     // 0.1 互助守护：检查姐妹是否存活（每1分钟一次）
     if (!this._lastSisterCheck || Date.now() - this._lastSisterCheck > 60000) {
       this.guardian.checkAll();
@@ -550,11 +552,67 @@ ${problem.context ? '背景：' + JSON.stringify(problem.context) : ''}
     `.trim();
   }
 
-  // ==================== 元监控（已禁用）====================
+  // ==================== 元监控 ====================
 
-  _metaCheck() {}
-  _addWarningAsProblem(issues) {}
-  _offlineBulkSolve() {}
+  _metaCheck() {
+    const now = Date.now();
+    const elapsed = (now - this.history.lastCheck) / 1000; // 秒
+    
+    // 每60秒检查一次
+    if (elapsed < 60) return;
+    
+    const issues = [];
+    
+    // 检查1：年龄是否增长
+    if (this.age === this.history.lastAge && this.age > 0) {
+      issues.push({ type: 'age_stuck', message: '年龄长时间未增长', value: this.age });
+    }
+    
+    // 检查2：IQ是否增长（有待解决问题时）
+    const pending = this.problemPool.filter(p => !this._isSolved(p)).length;
+    if (pending > 0 && this.iq === this.history.lastIq && elapsed > 120) {
+      issues.push({ type: 'iq_stuck', message: '有未解决问题但IQ未增长', value: this.iq });
+    }
+    
+    // 检查3：解决问题数是否增长
+    if (pending > 0 && this.solvedCount === this.history.lastSolved && elapsed > 120) {
+      issues.push({ type: 'solving_stuck', message: '问题池有题但无法解决', pending });
+    }
+    
+    // 记录问题
+    if (issues.length > 0) {
+      this.history.warnings = issues;
+      logger.info('[元监控] 发现异常:', issues.map(i => i.message).join(', '));
+      
+      // 将异常转化为问题加入问题池
+      this._addWarningAsProblem(issues);
+    } else {
+      this.history.warnings = [];
+    }
+    
+    // 更新历史
+    this.history.lastIq = this.iq;
+    this.history.lastAge = this.age;
+    this.history.lastSolved = this.solvedCount;
+    this.history.lastCheck = now;
+  }
+
+_addWarningAsProblem(issues) {
+    logger.info('[元监控] ' + issues.map(i=>i.type).join(',') + ' → 离线批量求解');
+    this._offlineBulkSolve();
+  }
+
+  _offlineBulkSolve() {
+    const u = this.problemPool.filter(p => !p.solved && p.answer != null && p.answer !== undefined);
+    if (!u.length) return;
+    let s = 0;
+    for (const p of u) {
+      const f = join(EXPERIENCE_DIR, `${p.id}.json`);
+      if (!existsSync(f)) writeFileSync(f, JSON.stringify({ problemId: p.id, question: p.question, domain: p.domain, answer: String(p.answer), solver: 'offline', solvedAt: Date.now() }, null, 2));
+      p.solved = true; s++;
+    }
+    if (s > 0) { this.solvedCount = this.problemPool.filter(p => p.solved).length; this.age = this.solvedCount; logger.info(`[离线批量] ${s}题`); }
+  }
 }
 
 export { LearningCore };

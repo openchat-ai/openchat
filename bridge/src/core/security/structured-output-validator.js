@@ -2,8 +2,6 @@
  * 结构化输出验证器
  * 验证 LLM 输出是否符合预期 JSON Schema
  */
-import logger from '../monitoring/logger.js';
-
 export class StructuredOutputValidator {
   constructor(options = {}) {
     this._strictMode = options.strictMode !== false;
@@ -502,13 +500,13 @@ export class StructuredOutputValidator {
     if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
       try {
         return { success: true, data: JSON.parse(trimmed), isBlock: false };
-      } catch (e) { logger.warn('[StructuredOutput] extractJson parse failed: %s', e.message); }
+      } catch (e) {}
     }
-
+    
     if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
       try {
         return { success: true, data: JSON.parse(trimmed), isBlock: false };
-      } catch (e) { logger.warn('[StructuredOutput] extractJson array parse failed: %s', e.message); }
+      } catch (e) {}
     }
 
     const patterns = [
@@ -524,7 +522,7 @@ export class StructuredOutputValidator {
         try {
           const parsed = JSON.parse(candidate);
           return { success: true, data: parsed, isBlock: true };
-        } catch (e) { logger.warn('[StructuredOutput] extractJson pattern parse failed: %s', e.message); }
+        } catch (e) {}
       }
     }
 

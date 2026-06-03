@@ -1,13 +1,10 @@
 /**
  * Quick test of openrouter API
- * Usage: OPENROUTER_API_KEY=sk-or-v1-xxx node test-openrouter.mjs
  */
-const apiKey = process.env.OPENROUTER_API_KEY;
-if (!apiKey) { console.error('Set OPENROUTER_API_KEY env var'); process.exit(1); }
 const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
   method: 'POST',
   headers: {
-    'Authorization': `Bearer ${apiKey}`,
+    'Authorization': 'Bearer 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',
     'Content-Type': 'application/json'
   },
   body: JSON.stringify({

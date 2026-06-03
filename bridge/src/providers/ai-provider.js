@@ -1,4 +1,4 @@
-import { providerManager, getRuntimeApiKey, getRuntimeBaseUrl } from './provider-manager.js';
+import { providerManager, getRuntimeApiKey, getRuntimeBaseUrl } from 'provider-kit';
 
 export class AiProvider {
   constructor(id, name) {

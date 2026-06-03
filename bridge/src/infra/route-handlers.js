@@ -1,5 +1,5 @@
 import { persistentConfig } from '../core/persistent-config.js';
-import { providerRegistry } from '../providers/provider-registry.js';
+import { providerRegistry } from 'provider-kit';
 import { memoryManager } from '../memory/memory-manager.js';
 import { sessionManager } from '../session/session-manager.js';
 import { agentMonitor } from '../core/agent/agent-monitor.js';
@@ -393,7 +393,7 @@ export function createHandlers(bridge, CONFIG, crypto) {
   async function autoConfigProviders(detectedTools) {
     for (const tool of detectedTools) {
       try {
-        const { createLocalProvider } = await import('../providers/local-provider.js');
+        const { createLocalProvider } = await import('provider-kit');
         const provider = createLocalProvider(tool.name, {
           mode: 'command',
           command: tool.command,

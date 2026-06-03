@@ -2,8 +2,6 @@
  * 内容分析器
  * 分析文本内容：代码检测、JSON提取、敏感信息过滤等
  */
-import logger from '../monitoring/logger.js';
-
 export class ContentAnalyzer {
   constructor(options = {}) {
     this._codePatterns = [
@@ -130,14 +128,14 @@ export class ContentAnalyzer {
       try {
         JSON.parse(trimmed);
         return true;
-      } catch (e) { logger.warn('[ContentAnalyzer] isJsonContent parse failed: %s', e.message); }
+      } catch (e) {}
     }
 
     if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
       try {
         JSON.parse(trimmed);
         return true;
-      } catch (e) { logger.warn('[ContentAnalyzer] isJsonContent array parse failed: %s', e.message); }
+      } catch (e) {}
     }
 
     const jsonBlockPattern = /```json\s*([\s\S]*?)\s*```/gi;
@@ -146,7 +144,7 @@ export class ContentAnalyzer {
       try {
         JSON.parse(match[1]);
         return true;
-      } catch (e) { logger.warn('[ContentAnalyzer] isJsonContent block parse failed: %s', e.message); }
+      } catch (e) {}
     }
 
     return false;
@@ -158,13 +156,13 @@ export class ContentAnalyzer {
     if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
       try {
         return { success: true, data: JSON.parse(trimmed), isBlock: false };
-      } catch (e) { logger.warn('[ContentAnalyzer] extractJson parse failed: %s', e.message); }
+      } catch (e) {}
     }
 
     if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
       try {
         return { success: true, data: JSON.parse(trimmed), isBlock: false };
-      } catch (e) { logger.warn('[ContentAnalyzer] extractJson array parse failed: %s', e.message); }
+      } catch (e) {}
     }
 
     const jsonBlockPattern = /```json\s*([\s\S]*?)\s*```/gi;
@@ -172,7 +170,7 @@ export class ContentAnalyzer {
     while ((match = jsonBlockPattern.exec(content)) !== null) {
       try {
         return { success: true, data: JSON.parse(match[1]), isBlock: true };
-      } catch (e) { logger.warn('[ContentAnalyzer] extractJson block parse failed: %s', e.message); }
+      } catch (e) {}
     }
 
     return { success: false, data: null, isBlock: false };

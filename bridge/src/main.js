@@ -18,9 +18,10 @@ import { initCore } from './core/handlers.js';
 import { CLIGateway, WSGateway } from './gateway/base.js';
 import { persistentConfig } from './core/persistent-config.js';
 import { forge } from './core/evolution/forge.js';
-import { providerManager } from './providers/provider-manager.js';
-import { providerRegistry } from './providers/provider-registry.js';
+import { providerManager } from 'provider-kit';
+import { providerRegistry } from 'provider-kit';
 import { memoryManager } from './memory/memory-manager.js';
+import { agentMonitor } from './core/agent/agent-monitor.js';
 import { AIPerson, aiPersonRegistry, createFounder } from './core/agent/ai-personhood.js';
 import { Deity, deitySystemManager, DEITY_TYPE } from './core/agent/deity-system.js';
 import { MirrorDeity, mirrorDeity, initializeMirrorDeitySystem } from './core/agent/mirror-deity.js';
@@ -34,23 +35,12 @@ import { CollaborationEngine } from './core/collaboration/collaboration-engine.j
 import { residentManager } from './core/agent/resident-manager.js';
 import { residentScheduler } from './core/agent/resident-scheduler.js';
 import { LearningCore } from './core/evolution/learning-core.js';
-import P2PNet from './p2p/p2p-net.js';
+import P2PSwarm, { hasPublicAddress, getPublicIPv4 } from './p2p/p2p-net.js';
 import { MessageType as P2PMessageType } from './p2p/messages.js';
 import { PeerRegistry } from './p2p/peer-registry.js';
 import { QiniuBackend } from './p2p/peer-registry/qiniu-backend.js';
 import { HttpBackend } from './p2p/peer-registry/http-backend.js';
 import logger from './core/monitoring/logger.js';
-
-// Helper: get public IPv4 address (non-internal)
-function getPublicIPv4() {
-  const nets = os.networkInterfaces();
-  for (const name of Object.keys(nets)) {
-    for (const net of nets[name] || []) {
-      if (net.family === 'IPv4' && !net.internal) return net.address;
-    }
-  }
-  return null;
-}
 
 // Helper: fetch models from Bridge's own HTTP API for a local provider
 async function fetchLocalModelsFromBridge(providerName) {
@@ -77,7 +67,7 @@ const isInteractive = args.includes('--cli') || args.includes('-i');
 
 const isSandbox = process.argv.includes('--sandbox');
 const isHeadless = savedBridge.mode === 'cli' && !isInteractive ? false : !isInteractive;
-const isPublic = !!savedBridge.advertiseHost;
+const isPublic = hasPublicAddress() || !!savedBridge.advertiseHost;
 
 // 支持 --port 命令行参数覆盖配置
 const portArgIndex = args.findIndex(a => a.startsWith('--port='));
@@ -242,20 +232,62 @@ export class Bridge {
 
     initCore();
 
-    // 启动 P2P 网络（直连 TCP + TopicRegistry）
+    // 启动 P2P 网络（在 API 服务器之前，以便注入 swarm 实例）
     try {
+      // 构造 PeerRegistry（多核心）
+      const backends = [];
+      if (CONFIG.qiniuEnabled) backends.push(new QiniuBackend());
+      if (CONFIG.cores.length > 0) backends.push(new HttpBackend(CONFIG.cores));
+      const peerId = `bridge_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const registry = backends.length > 0 ? new PeerRegistry(backends, peerId) : null;
+      this.registry = registry;
+
       const p2pOpts = {
-        identity: { name: CONFIG.bridgeName },
-        hostId: hostId,
-        knownPeers: CONFIG.directConnect || [],
+        topic: CONFIG.bridge?.topic 
+          ? Buffer.from(CONFIG.bridge.topic).slice(0, 32) 
+          : Buffer.from('openchat-community').subarray(0, 32),
+        identity: { name: CONFIG.bridgeName, region: CONFIG.bridgeRegion, residentCount: 0 },
+        hostIsPublic: CONFIG.isPublic,
+        wsSignalingUrl: CONFIG.wsSignalingUrl,
+        registry
       };
-      this.p2p = new P2PNet(p2pOpts);
+      if (CONFIG.dhtPort) p2pOpts.dhtPort = CONFIG.dhtPort;
+      if (CONFIG.localBootstrap.length > 0) p2pOpts.localBootstrap = CONFIG.localBootstrap;
+      if (CONFIG.directConnect.length > 0) p2pOpts.knownPeers = CONFIG.directConnect;
+      this.p2p = new P2PSwarm(p2pOpts);
       await this.p2p.start();
 
-      // Direct TCP 监听已禁用
-      console.log(`[P2P] 网络已启动`);
+      // 公网节点：注册到所有 backend，并定时心跳
+      // 只注册真正有公网 IP 的节点（0.0.0.0 不可路由，存了也没用）
+      if (CONFIG.isPublic && registry) {
+        const publicIp = getPublicIPv4() || CONFIG.advertiseHost || '';
+        if (!publicIp) {
+          console.log('[P2P] 无公网 IP，跳过 peer registry 注册（仍作为 Hyperswarm 中继）');
+        } else {
+          const publishInfo = {
+            host: publicIp,
+            port: CONFIG.port,
+            dhtPort: CONFIG.dhtPort || 0,
+            publicRelay: true,
+            wsSignaling: `ws://${publicIp}:${CONFIG.port}/signaling`
+          };
+          await registry.publishPeer(publishInfo).catch(e => {
+            console.log(`[P2P] 注册中心注册失败: ${e.message}`);
+          });
+          console.log(`[P2P] 公网节点已注册到对等网络 (${publicIp})`);
+          this._peerHeartbeat = setInterval(async () => {
+            try { await registry.publishPeer(publishInfo); }
+            catch (e) { console.log(`[P2P] 心跳注册失败: ${e.message}`); }
+          }, 60000);
+        }
+      }
+      // 启动直连 TCP 服务器（局域网 / 本地绕过 DHT）
+      if (CONFIG.directListen > 0) {
+        this.p2p.listenDirect(CONFIG.directListen);
+      }
+      console.log(`[P2P] Hyperswarm 网络已加入`);
     } catch (p2pErr) {
-      console.log(`[P2P] 启动失败: ${p2pErr.message}`);
+      console.log(`[P2P] 启动跳过: ${p2pErr.message}`);
     }
 
     // 自动构建 deploy/（静默执行，仅失败时显示错误摘要）
@@ -290,7 +322,9 @@ export class Bridge {
       });
       console.log(`[API] 统一服务器: http://localhost:${CONFIG.port}`);
       console.log(`[API] 端点: /api/v1/agents, /api/v1/p2p, /api/v1/updates, /api/v1/skills, /api/v1/versions, /api/v1/resources`);
-      // 启动 AI 居民调度器（已禁用）
+      // 启动 AI 居民调度器
+      residentScheduler.start();
+      console.log(`[调度器] 居民自主生活循环已启动`);
 
       // 注册 P2P 事件监听
       if (this.p2p) {
@@ -331,17 +365,132 @@ export class Bridge {
           });
         });
 
-        // P2R: 居民治家（已禁用）
-        this.house = null;
-        this.houseOrchestrator = null;
-        this.safeEvolution = null;
-        this.bridgeSpawn = null;
-        this.llmProxy = null;
+        // P2R: 居民治家初始化（try 块防止 HouseOrchestrator 报错阻止后续初始化）
+        try {
+        const { SafeEvolution } = await import('./core/safe-evolution.js');
+        const { BridgeSpawn } = await import('./core/bridge-spawn.js');
+        const { detectBestStrategy } = await import('./core/launch-strategies.js');
+        const { House } = await import('./core/house.js');
+        const { LLMProxyAgent } = await import('./core/llm-proxy-agent.js');
 
-        // P2R-K: 收敛引擎（已禁用）
+        const safeEvo = new SafeEvolution(this.p2p, this.p2p.peerId || 'bridge-1');
 
-        // 学习核心（已禁用）
-        this.learningCore = null;
+        // 初始化默认 House（主 Bridge / 子 Bridge 各自创建）
+        if (!this.house) {
+          const bridgeId = this.p2p.peerId || 'bridge-1';
+          this.house = new House(effectiveHouseId, bridgeId, hostId, 'default');
+          await this.house.init();
+        }
+
+        const detectedStrategy = detectBestStrategy();
+        console.log(`[Launch] 启动策略: ${detectedStrategy}`);
+        const bridgeSpawn = new BridgeSpawn(this.p2p, hostId, this.house, detectedStrategy);
+
+        // Fairy spawn：必须在 HouseOrchestrator 前（避免其报错阻止）
+        if (isMain) {
+          for (let i = 0; i < 6; i++) {
+            const c = bridgeSpawn.spawnNesting({ name: `仙女${i+1}` });
+            if (c) console.log(`[P2R] 仙女${i+1} port=${c.port}`);
+          }
+        }
+
+        const { HouseOrchestrator } = await import('./core/house-orchestrator.js');
+        this.houseOrchestrator = new HouseOrchestrator(this.p2p, this.p2p.peerId || 'bridge-1', safeEvo, this.house, bridgeSpawn);
+        residentScheduler.houseOrchestrator = this.houseOrchestrator;
+        this.safeEvolution = safeEvo;
+        this.bridgeSpawn = bridgeSpawn;
+
+        // LLM 代理：接收子桥的 LLM 调用请求
+        this.llmProxy = new LLMProxyAgent(this.p2p, { enabled: true });
+        this.llmProxy.start();
+        console.log('[P2R] HouseOrchestrator + SafeEvolution + BridgeSpawn + LLMProxy 已启动');
+
+        // Fairy spawn：端口 3002-3007
+        if (isMain) {
+          for (let i = 0; i < 6; i++) {
+            const c = bridgeSpawn.spawnNesting({ name: `仙女${i+1}` });
+            if (c) console.log(`[P2R] 仙女${i+1} port=${c.port}`);
+          }
+        }
+        } catch (e) { console.log(`[启动] P2R 初始化失败: ${e.message}`); }
+
+        // P2R-K: 收敛引擎 — 问题分解→竞标→求解→择优
+        try {
+          const { ProblemDecomposer } = await import('./core/problem-decomposer.js');
+          const { ConvergenceEngine } = await import('./core/convergence-engine.js');
+          const { SolutionEngine } = await import('./core/solution-engine.js');
+          const { SolutionOptimizer } = await import('./core/solution-optimizer.js');
+          this.problemDecomposer = new ProblemDecomposer();
+          this.convergenceEngine = new ConvergenceEngine();
+          this.solutionEngine = new SolutionEngine();
+          this.solutionOptimizer = new SolutionOptimizer();
+
+          // 注入收敛系统到居民调度器
+          const { residentScheduler } = await import('./core/resident-scheduler.js');
+          residentScheduler.setConvergenceSystem(
+            this.knowledgeBase,
+            this.problemDecomposer,
+            this.convergenceEngine,
+            this.solutionEngine,
+            this.solutionOptimizer
+          );
+
+          console.log('[P2R-K] 收敛引擎已启动 (分解+竞标+求解+优化)');
+        } catch (e) {
+          console.log(`[P2R-K] 收敛引擎启动失败: ${e.message}`);
+        }
+
+        // 启动学习核心
+        this.learningCore = new LearningCore(this.knowledgeBase, this.p2p, port, residentScheduler);
+        if (isMain) {
+          this._startLearningCore();
+          console.log(`[学习核心] 🌟 主模式 IQ=${this.learningCore.iq} Age=${this.learningCore.age} Solved=${this.learningCore.solvedCount}`);
+        } else {
+          console.log(`[学习核心] 🧚 仙女模式`);
+          this._startFairyMonitor();
+          this._startHeartbeat();
+        }
+
+        // P2R-K: 响应邻居的问题求解请求
+        this.p2p.on(P2PMessageType.PROBLEM_SOLVE, async (data) => {
+          const p = data.payload || {};
+          try {
+            const domain = p.domain || 'general';
+
+            // 1. 先查知识库
+            let kbHit = false;
+            if (this.knowledgeBase && p.question) {
+              const kbAns = this.knowledgeBase.answer(domain, p.question);
+              if (kbAns && kbAns.verified) {
+                kbHit = true;
+              }
+            }
+
+            // 2. 加入调度器队列（让居民按 traits 分角色求解）
+            try {
+              const { residentScheduler } = await import('./core/resident-scheduler.js');
+              residentScheduler.addProblem({
+                problemId: p.problemId,
+                domain,
+                question: p.question,
+                subQuestions: p.subQuestions || [],
+                from: data.from,
+              });
+            } catch (e) { logger.warn({ err: e }, 'P2R-K 问题处理失败'); }
+
+            // 3. 回复（先返回 KB 能回答的部分）
+            const result = {
+              problemId: p.problemId,
+              ok: true,
+              answer: kbHit ? 'solved' : 'pending',
+              fromBridge: this.p2p?.peerId || '?',
+              note: kbHit ? '知识库命中' : '已分发居民求解',
+            };
+            this.p2p.sendTo(data.from, { type: P2PMessageType.PROBLEM_RESULT, payload: result });
+          } catch (e) {
+            console.log(`[P2R-K] 求解失败: ${e.message}`);
+          }
+        });
 
         // P2R: 窟验证回复
         this.p2p.on('safe-house-verify', (data) => {
@@ -379,7 +528,7 @@ export class Bridge {
 
             // 为迁入居民创建独立 House
             if (!this._migratedHouse) {
-              const { House: ImportedHouse } = await import('./core/p2r/house.js');
+              const { House: ImportedHouse } = await import('./core/house.js');
               const migratedHouseId = `${hostId}_migrated`;
               this._migratedHouse = new ImportedHouse(migratedHouseId, this.p2p?.peerId || 'bridge-1', hostId, 'migrated');
               await this._migratedHouse.init();
@@ -408,7 +557,7 @@ export class Bridge {
           if (payload.raw && this.apiServer) {
             const raw = Buffer.from(payload.raw, 'base64');
             for (const s of this.apiServer._signalingRooms.values()) {
-              try { s.write(raw); } catch { /* noop - conn closed */ }
+              try { s.write(raw); } catch {}
             }
             return;
           }
@@ -417,7 +566,7 @@ export class Bridge {
           if (!targetPeerId || !this.apiServer) return;
           const target = this.apiServer._signalingRooms?.get(targetPeerId);
           if (target) {
-            try { target.write(Buffer.from(JSON.stringify({ type: 'signaling_message', data: payload.data }))); } catch { /* noop - conn closed */ }
+            try { target.write(Buffer.from(JSON.stringify({ type: 'signaling_message', data: payload.data }))); } catch {}
           }
         });
 
@@ -497,9 +646,22 @@ export class Bridge {
 
     // 无头模式：日志输出
     if (CONFIG.headless) {
+      // WebSocket 已在统一 API 服务器中启动
+
+      // 公网节点自动补全 WS 信令地址（若未显式指定）
+      if (!CONFIG.wsSignalingUrl && CONFIG.isPublic) {
+        const publicIp = getPublicIPv4();
+        if (publicIp) {
+          CONFIG.wsSignalingUrl = `ws://${publicIp}:${CONFIG.port}/signaling`;
+          if (this.p2p) this.p2p.wsSignalingUrl = CONFIG.wsSignalingUrl;
+        }
+      }
       const host = CONFIG.host === '0.0.0.0' ? '0.0.0.0' : 'localhost';
       console.log('');
-      console.log(`[API] http://${host}:${CONFIG.port} (Qiniu 信令: enabled)`);
+      console.log(`[HTTP] API: http://${host}:${CONFIG.port}`);
+      console.log(`[WS]   Chat: ws://${host}:${CONFIG.port}/ws`);
+      const sigUrl = CONFIG.wsSignalingUrl || `ws://${host}:${CONFIG.port}/signaling`;
+      console.log(`[WS]   Voice: ${sigUrl}${CONFIG.wsSignalingUrl ? '' : ' (未配置 wsSignaling, 仅本地)'}`);
       if (CONFIG.host === 'localhost') {
         console.log('[提示] 仅监听本地连接（自动检测未发现公网 IP）');
       }
@@ -537,9 +699,6 @@ export class Bridge {
       this.signalRL = rl;
     }
   }
-  /** Auto-detect and configure LLM providers (optional) */
-  async autoConfigProviders(detectedTools) {}
-
   async handleWSMessage(ws, msg) {
     const { type, data, sessionId } = msg;
 
@@ -878,7 +1037,8 @@ export class Bridge {
     // 停止 P2P 网络（在调度器之前）
     if (this.p2p) await this.p2p.stop();
 
-    // 停止居民调度器（已禁用）
+    // 停止居民调度器
+    residentScheduler.stop();
 
     console.log('[Bridge] 已退出，再见!');
     process.exit(0);

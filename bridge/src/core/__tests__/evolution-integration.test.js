@@ -3,22 +3,16 @@ import assert from 'node:assert';
 import { EvolutionEngine } from '../evolution/evolution-engine.js';
 import fs from 'fs';
 import path from 'path';
-import os from 'os';
-
-function tmpEngine() {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'evo-test-'));
-  return new EvolutionEngine(tmpDir);
-}
 
 describe('EvolutionEngine Integration', () => {
   test('constructor initializes correctly', () => {
-    const engine = tmpEngine();
+    const engine = new EvolutionEngine();
     assert.ok(engine.skillManager, 'skillManager exists');
     assert.ok(engine.experiences !== undefined, 'experiences exists');
   });
 
   test('add and save skill to disk', async () => {
-    const engine = tmpEngine();
+    const engine = new EvolutionEngine();
     engine.skillManager.addSkill('test-skill-1', {
       name: 'test skill',
       description: 'test',
@@ -30,12 +24,12 @@ describe('EvolutionEngine Integration', () => {
     assert.ok(fs.existsSync(skillPath), 'skill file created on disk');
 
     // cleanup
-    try { fs.rmSync(path.dirname(skillPath), { recursive: true }); } catch { /* noop */ }
+    try { fs.unlinkSync(skillPath); } catch {}
   });
 
   test('load saved skill', async () => {
     const uid = 'ts-' + Date.now();
-    const engine = tmpEngine();
+    const engine = new EvolutionEngine();
     engine.skillManager.addSkill(uid, {
       name: 'test skill ' + uid,
       description: 'test',
@@ -43,28 +37,20 @@ describe('EvolutionEngine Integration', () => {
     });
     await engine.skillManager.saveSkills();
 
-    const engine2 = tmpEngine();
+    const engine2 = new EvolutionEngine();
     await engine2.skillManager.loadSkills();
 
-    // engine2 can't see engine's skill because they use different temp dirs.
-    // That's expected — we just verify loadSkills doesn't crash and returns empty.
     const skill = engine2.skillManager.getSkill(uid);
-    assert.strictEqual(skill, null, 'different storage dir: not visible');
-
-    // Verify engine's own skill is loadable from its own dir
-    const engineReload = new EvolutionEngine(path.dirname(engine.skillManager.getStoragePath()));
-    await engineReload.skillManager.loadSkills();
-    const loaded = engineReload.skillManager.getSkill(uid);
-    assert.ok(loaded, 'loaded skill exists from same dir');
-    assert.strictEqual(loaded.name, 'test skill ' + uid);
+    assert.ok(skill, 'loaded skill exists');
+    assert.strictEqual(skill.name, 'test skill ' + uid);
 
     // cleanup
     const skillPath = engine.skillManager.getStoragePath();
-    try { fs.rmSync(path.dirname(skillPath), { recursive: true }); } catch { /* noop */ }
+    try { fs.unlinkSync(skillPath); } catch {}
   });
 
   test('skill manager tracks skills', () => {
-    const engine = tmpEngine();
+    const engine = new EvolutionEngine();
     engine.skillManager.addSkill('track-test', {
       name: 'track',
       description: 'test',
@@ -76,13 +62,13 @@ describe('EvolutionEngine Integration', () => {
   });
 
   test('analyze experience', async () => {
-    const engine = tmpEngine();
+    const engine = new EvolutionEngine();
     await engine.analyzeExperience('test task', 'test result');
     assert.ok(engine.experiences.length >= 1);
   });
 
   test('empty skill manager returns null', () => {
-    const engine = tmpEngine();
+    const engine = new EvolutionEngine();
     const skill = engine.skillManager.getSkill('nonexistent');
     assert.strictEqual(skill, null);
   });

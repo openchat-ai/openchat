@@ -6,11 +6,11 @@
 
 import express from 'express';
 import { persistentConfig } from '../../core/persistent-config.js';
-import { providerManager } from '../../providers/provider-manager.js';
-import { providerRegistry } from '../../providers/provider-registry.js';
+import { providerManager } from 'provider-kit';
+import { providerRegistry } from 'provider-kit';
 import { sessionManager } from '../../session/session-manager.js';
 import { memoryManager } from '../../memory/memory-manager.js';
-import { residentManager } from '../../core/agent/resident-manager.js';
+import { residentManager } from '../../core/resident-manager.js';
 
 const router = express.Router();
 
@@ -20,7 +20,20 @@ export function setBridgeContext(bridge) {
   bridgeRef = bridge;
 }
 
-// 1. 状态检查（已禁用）
+// 1. 状态检查 (扩展版)
+router.get('/status', async (req, res, next) => {
+  try {
+    const memStats = await memoryManager.getStats();
+    res.json({
+      status: 'running',
+      uptime: Math.floor(process.uptime()),
+      currentProvider: persistentConfig.getPreference('currentProvider'),
+      currentModel: persistentConfig.getPreference('currentModel'),
+      wsClients: bridgeRef?.clients?.size || 0,
+      memory: memStats
+    });
+  } catch (e) { next(e); }
+});
 
 // 2. Provider 列表
 router.get('/providers', (req, res) => {
@@ -189,7 +202,14 @@ router.get('/learning', (req, res) => {
   }
 });
 
-// 11. 心跳（已禁用）
+// 11. 心跳
+router.post('/heartbeat', (req, res) => {
+  const { port } = req.body || {};
+  if (bridgeRef?.learningCore?.guardian && port) {
+    bridgeRef.learningCore.guardian.receiveHeartbeat(port);
+  }
+  res.json({ status: 'ok' });
+});
 
 // 12. Dashboard 数据
 router.get('/dashboard', async (req, res, next) => {
