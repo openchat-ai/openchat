@@ -14,6 +14,7 @@ import { createAzureOpenAIProvider } from './azure-adapter.js';
 import { createCohereProvider } from './cohere-adapter.js';
 import { createBedrockProxyProvider } from './bedrock-adapter.js';
 import { persistentConfig } from '../core/persistent-config.js';
+import { hasKeyResolver, resolveApiKey } from '../core/key-resolver.js';
 
 class ProviderRegistry {
   constructor() {
@@ -281,7 +282,11 @@ class ProviderRegistry {
 
     // 确保已连接
     if (!provider.connected && !provider.skipAuth) {
-      const apiKey = persistentConfig.getApiKey(pid);
+      let apiKey = persistentConfig.getApiKey(pid);
+      if (!apiKey && hasKeyResolver()) {
+        const r = await Promise.resolve(resolveApiKey(pid));
+        if (r?.key) apiKey = r.key;
+      }
       if (!apiKey) {
         throw new Error(`No API key for ${pid}. Run: connect ${pid}`);
       }
