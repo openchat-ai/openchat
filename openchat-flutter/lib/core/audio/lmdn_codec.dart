@@ -42,9 +42,11 @@ class LmdnCodec {
 
     if (_bits == null) {
       final scanned = _scanBitAllocation(samples, totalSamples);
-      // 仅当至少有一个带分配到 bit 时才锁定分配，否则下次重扫
       if (scanned.any((b) => b > 0)) {
         _bits = scanned;
+      } else {
+        // 全零输入时仍用默认分配，防止 _bits 为 null 导致 NPE
+        _bits = Uint8List.fromList([4, 3, 2, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
       }
     }
 

@@ -114,10 +114,11 @@ class VoiceRoomAudio {
             if (processed != null) {
               if (localMode) {
                 localQueue.add(processed);
-                _writeCp('C4', 'local enc size=${processed.length}');
+                _writeCp('C4', 'local enc size=${processed.length} q=${localQueue.length}');
               } else {
-                await client?.sendEncodedAudio(targetId, processed, audioSeq++);
-                _writeCp('C4', 'sent seq=$audioSeq size=${processed.length}');
+                final seq = audioSeq++;
+                await client?.sendEncodedAudio(targetId, processed, seq);
+                _writeCp('C4', 'sent seq=$seq size=${processed.length}');
               }
               callFrames.add(processed);
             } else {
@@ -236,7 +237,7 @@ class VoiceRoomAudio {
     }
     playing = true;
     try {
-      const targetBytes = 3 * 48000 * 2;
+      final targetBytes = 3 * audioCfg.sampleRate * 2;
       int total = 0;
       final batch = <Uint8List>[];
       while (playQueue.isNotEmpty && total < targetBytes) {
@@ -281,6 +282,15 @@ class VoiceRoomAudio {
       playing = false;
     }
   }
+
+// === invariants ===
+// - recordSub 在 dispose() 中 cancel，不可漏
+// - audioTimer 在 dispose() 中 cancel
+// - playQueue/localQueue/callFrames dispose() 时清空
+// - _writeCp 有节流（1s 内不重复写 S3），不影响音频路径
+// - playNext 按 batch (3s) 消费 playQueue，不可重入（playing guard）
+// - 所有 catch 均已记录日志，不再静默吞错误
+// - callFrames append-only，_saveEpc 后由调用方清空
 
   void dispose() {
     recordSub?.cancel();

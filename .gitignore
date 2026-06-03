@@ -60,6 +60,8 @@ UPDATE_SUMMARY_*.md
 
 # === Bridge Auto-generated ===
 bridge/src/core/research-*
+bridge/src/ecosystem.config.cjs
+*.err
 bridge/src/core/analysis-*
 bridge/src/core/backups/
 bridge/src/core/age_increment*.js
