@@ -3,7 +3,7 @@
 // 基于实验一已验证的算法
 import logger from '../monitoring/logger.js';
 
-const SR = 48000, N = 96, ORDER = 20, BANDS = 16;
+const SR = 48000, N = 96, BANDS = 16;
 
 // MDCT 预计算表
 const WIN = new Float64Array(2 * N);
@@ -22,11 +22,11 @@ function mdct(x) { const X = new Float64Array(N); for (let k = 0; k < N; k++) { 
 function imdct(X) { const y = new Float64Array(2 * N); for (let n = 0; n < 2 * N; n++) { let s = 0; const r = n * N; for (let k = 0; k < N; k++) s += X[k] * ITAB[r + k]; y[n] = s * (2 / N) * WIN[n]; } return y; }
 
 // LPC
-function lpc(sig) {
-  const r = new Float64Array(ORDER + 1);
-  for (let i = 0; i <= ORDER; i++) { let s = 0; for (let j = 0; j < sig.length - i; j++) s += sig[j] * sig[j + i]; r[i] = s; }
-  r[0] *= 1.01; const a = new Float64Array(ORDER + 1); a[0] = 1; const e = new Float64Array(ORDER + 1); e[0] = r[0];
-  for (let i = 1; i <= ORDER; i++) {
+function lpc(sig, order) {
+  const r = new Float64Array(order + 1);
+  for (let i = 0; i <= order; i++) { let s = 0; for (let j = 0; j < sig.length - i; j++) s += sig[j] * sig[j + i]; r[i] = s; }
+  r[0] *= 1.01; const a = new Float64Array(order + 1); a[0] = 1; const e = new Float64Array(order + 1); e[0] = r[0];
+  for (let i = 1; i <= order; i++) {
     let k = r[i]; for (let j = 1; j < i; j++) k -= a[j] * r[i - j];
     if (Math.abs(e[i - 1]) < 1e-20) { a.fill(0); a[0] = 1; return a; }
     k /= e[i - 1]; if (Math.abs(k) >= 1) k = 0.99 * Math.sign(k);
@@ -118,9 +118,19 @@ class LpcMdctCodec {
 
     for (let b = 0; b < BANDS; b++) bw.w(this._bits[b], 3);
 
+    const LPC_UPDATE = 4, LPC_ORDER = 2;
     for (let fi = 0; fi < nf; fi++) {
       const st = fi * stride; const fr = new Float64Array(2 * N);
       for (let i = 0; i < 2 * N; i++) fr[i] = (st + i) < totalSamples ? samples[st + i] : 0;
+
+      // LPC 分析（每 LPC_UPDATE 帧写入系数）
+      if (fi % LPC_UPDATE === 0) {
+        const a = lpc(fr, LPC_ORDER);
+        for (let i = 1; i <= LPC_ORDER; i++) {
+          const v = Math.round(a[i] * 1000);
+          bw.w(Math.max(0, Math.min(65535, v < 0 ? v + 65536 : v)), 16);
+        }
+      }
 
       let X = mdct(fr);
       for (let b = 0; b < BANDS; b++) {
@@ -178,6 +188,16 @@ class LpcMdctCodec {
     const score = [];
 
     while (readPos < payload.length) {
+      // LPC 系数（与编码端同步读取）
+      const LPC_UPDATE = 4, LPC_ORDER = 2;
+      if (frameIdx % LPC_UPDATE === 0) {
+        for (let i = 1; i <= LPC_ORDER; i++) {
+          let val = read(16);
+          if (val >= 32768) val -= 65536;
+          // val/1000 = a[i]（预留后处理）
+        }
+      }
+
       const Xq = new Float64Array(N);
       for (let b = 0; b < BANDS; b++) {
         const bi = bits[b]; if (bi === 0) continue;
