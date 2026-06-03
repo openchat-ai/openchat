@@ -136,7 +136,7 @@ class LmdnCodec {
 
     final outChunks = <Uint8List>[];
     final notes = <ScoreNote>[];
-    final frameSec = _n / 24000;
+    final frameSec = _n / sampleRate;
     int offset = 0;
     int globalFrameIdx = 0;
 

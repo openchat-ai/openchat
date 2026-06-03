@@ -20,7 +20,7 @@ class AudioPipeline {
   int _rnnoiseProcessingTime = 0;
 
   AudioPipeline({
-    this.sampleRate = 24000,
+    this.sampleRate = 48000,
     this.channels = 1,
     this.frameSize = 480,
   });

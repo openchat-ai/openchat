@@ -25,7 +25,7 @@ class NeuralAudioCodec extends EventEmitter {
     // 编码配置
     this.config = {
       // 采样率
-      sampleRate: options.sampleRate || 24000,
+      sampleRate: options.sampleRate || 48000,
       // 帧大小 (ms) - 必须是 20ms 的倍数
       frameSize: options.frameSize || 20,
       // 目标码率 (kbps) - 可调

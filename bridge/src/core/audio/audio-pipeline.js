@@ -15,7 +15,7 @@ import logger from '../monitoring/logger.js';
 class AudioPipeline {
   constructor(options = {}) {
     // 音频配置
-    this.sampleRate = options.sampleRate || 24000; // RNNOISE 需要 24kHz
+    this.sampleRate = options.sampleRate || 48000; // 48kHz 默认，RNNOISE 内部会重采样
     this.channels = options.channels || 1;
     this.frameSize = options.frameSize || 480; // 20ms @ 24kHz
 

@@ -52,7 +52,7 @@ class ChatVoicePlayer {
         log('[C14] decoded ${decoded.pcm.length} B');
         final cfg = await LmdnConfig.load();
         final durationMs = (decoded.pcm.length / (cfg.sampleRate * 2) * 1000).round();
-        final wav = QiniuDirectClient.wavFromPcm(decoded.pcm);
+        final wav = QiniuDirectClient.wavFromPcm(decoded.pcm, sampleRate: cfg.sampleRate);
         _currentKey = key;
         onStateChange?.call(key, durationMs);
         await _currentPlayer!.play(BytesSource(wav));

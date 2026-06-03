@@ -1,6 +1,6 @@
 {
   "mode": "lmdn",
-  "sampleRate": 24000,
+  "sampleRate": 48000,
   "bufferMs": 1000,
   "pollMs": 1500,
   "fadeBytes": 240,

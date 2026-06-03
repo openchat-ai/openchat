@@ -1,5 +1,5 @@
 {
-  "sampleRate": 24000,
+  "sampleRate": 48000,
   "bufferMs": 1000,
   "pollMs": 800,
   "fadeBytes": 240,

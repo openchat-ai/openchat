@@ -18,7 +18,7 @@ class LmdnProcessor {
   final bool enableCodec;
 
   LmdnProcessor({
-    this.sampleRate = 24000,
+    this.sampleRate = 48000,
     this.enableDenoise = true,
     this.enableCodec = true,
   });

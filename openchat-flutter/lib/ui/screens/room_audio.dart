@@ -143,7 +143,7 @@ class RoomAudio {
     if (_playQueue.isEmpty) { _playing = false; return; }
     _playing = true;
     try {
-      const targetBytes = 3 * 24000 * 2;
+      const targetBytes = 3 * 48000 * 2;
       int total = 0;
       final batch = <Uint8List>[];
       while (_playQueue.isNotEmpty && total < targetBytes) {
@@ -157,7 +157,8 @@ class RoomAudio {
         pcm.setRange(offset, offset + chunk.length, chunk);
         offset += chunk.length;
       }
-      final wav = QiniuDirectClient.wavFromPcm(pcm);
+      final sr = _processor?.sampleRate ?? 48000;
+      final wav = QiniuDirectClient.wavFromPcm(pcm, sampleRate: sr);
       final player = _player;
       if (player != null) {
         player.onPlayerComplete.first.then((_) => _playNext());
