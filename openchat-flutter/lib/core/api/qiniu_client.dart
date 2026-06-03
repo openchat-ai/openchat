@@ -94,10 +94,14 @@ class QiniuDirectClient {
           final action = msg?['action'] as String?;
           final from = msg?['fromPeerId'] as String? ?? key.split('/').last.replaceAll('.json', '');
           signals.add({'action': action, 'fromPeerId': from});
-        } catch (_) {}
+        } catch (e) {
+          log('error', 'pollIncoming get $key: $e');
+        }
         await deleteFile(key);
       }
-    } catch (_) {}
+    } catch (e) {
+      log('error', 'pollIncoming list: $e');
+    }
     return signals;
   }
 
@@ -114,7 +118,9 @@ class QiniuDirectClient {
         results.add(await getBinary(key));
         await deleteFile(key);
       }
-    } catch (_) {}
+    } catch (e) {
+      log('error', 'pollEncodedAudio: $e');
+    }
     return results;
   }
 
@@ -142,7 +148,10 @@ class QiniuDirectClient {
         markC8('put', '$key ok');
         return;
       }
-    } catch (e) {}
+      log('warn', 'putBinary form upload status=${resp.statusCode}');
+    } catch (e) {
+      log('warn', 'putBinary form upload error: $e');
+    }
     // S3 PUT 回退
     final config = QiniuConfigRegistry.snapshot();
     final url = QiniuSigner.presignedUrl(config, key, method: 'PUT');
@@ -226,6 +235,15 @@ class QiniuDirectClient {
       return true;
     } catch (_) { return false; }
   }
+
+// === invariants ===
+// - 表单上传失败自动回退 S3 PUT，两者都失败则向上抛
+// - pollEncodedAudio 是 至少一次（GET 后 DELETE），去重由 seq 保证
+// - pollIncoming 是 至少一次（GET 后 DELETE）
+// - QiniuConfigRegistry.snapshot() 返回当前配置快照，不保证实时性
+// - 空 catch 已全部替换为带日志的 catch（C8 检查点）
+// - putBinary 的 S3 PUT 回退路径可能重试，注意幂等性
+// - _udp 在 dispose() 中 close，不可复用
 
   Future<void> spawnDemoPeer() async {
     final demoId = 'demo_user';

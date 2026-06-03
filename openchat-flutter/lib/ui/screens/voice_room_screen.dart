@@ -60,6 +60,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen>
     });
 
     if (_targetPeerId != null && _client != null) {
+      log('[C1] target=$_targetPeerId');
       _signalTimer = Timer.periodic(const Duration(seconds: 2), (_) => _pollResponse());
     }
 
@@ -255,6 +256,13 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen>
 
     return _buildDefaultUI(theme, stateText, statusLabel);
   }
+
+// === invariants ===
+// - _state 单向流转: calling → connected/voiceMessage → ended
+// - _ended 单调 false→true，避免重复 _endCall
+// - _audio.dispose() 在 dispose() 中调用，释放录音/播放/定时器
+// - _signalTimer 在 dispose() 中 cancel
+// - [C1] 在 initState（非 selfTest 路径）和 _initSelfTest 中均打印
 
   Widget _buildDefaultUI(AppTheme theme, String stateText, String statusLabel) {
     return Scaffold(
