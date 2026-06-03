@@ -52,7 +52,7 @@ gt.sort((a, b) => a.time - b.time);
 console.log(`MIDI ground truth: ${gt.length} notes (${gt.filter(n => n.instr === 'guitar').length} guitar, ${gt.filter(n => n.instr === 'bass').length} bass, ${gt.filter(n => n.instr === 'other').length} other)`);
 
 // 2. Detect notes (same algorithm as exp3)
-import LpcMdctCodec from '../bridge/src/core/audio/lpc-mdct-codec.js';
+import LpcMdctCodec from '../bridge/src/core/audio/lmdn-codec.mjs';
 // functions from exp3
 function readWav(path, startSec, durSec) {
   const buf = fs.readFileSync(path); let off = 12, dataOff, frames, sr;

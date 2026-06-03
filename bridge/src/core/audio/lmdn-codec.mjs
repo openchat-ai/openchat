@@ -46,11 +46,11 @@ class BW {
   f() { if (this.n > 0) this.b.push((this.a << (8 - this.n)) & 0xFF); return Buffer.from(this.b); }
 }
 
-// ===== LpcMdctCodec =====
-class LpcMdctCodec {
+// ===== LmdnCodec =====
+class LmdnCodec {
   constructor(options = {}) {
     this.sampleRate = options.sampleRate || SR;
-    if (this.sampleRate !== SR) throw new Error(`LpcMdctCodec only supports ${SR}Hz`);
+    if (this.sampleRate !== SR) throw new Error(`LmdnCodec only supports ${SR}Hz`);
     this.isReady = false;
     this.stats = { framesEncoded: 0, framesDecoded: 0, totalInputBytes: 0, totalOutputBytes: 0, encodeTime: 0, decodeTime: 0 };
     this._bits = null;
@@ -60,7 +60,7 @@ class LpcMdctCodec {
   async initialize() {
     initTables();
     this.isReady = true;
-    logger.info('[LpcMdctCodec] Ready (48kHz N=96)');
+    logger.info('[LmdnCodec] Ready (48kHz N=96)');
   }
 
   async encode(pcmData) {
@@ -276,4 +276,4 @@ function _fusionF0(samples) {
   return y.conf >= pt.conf ? y : pt;
 }
 
-export default LpcMdctCodec;
+export default LmdnCodec;

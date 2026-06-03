@@ -2,7 +2,7 @@
 // 用法: node run_experiment3.mjs [wav] [start] [dur]
 // 默认: jzlg.wav 200s 10s
 import fs from 'fs';
-import LpcMdctCodec from '../bridge/src/core/audio/lpc-mdct-codec.js';
+import LmdnCodec from '../bridge/src/core/audio/lmdn-codec.mjs';
 
 const SR = 48000, HOP = 1024, FS = 2048, HALF = FS >> 1;
 const NM = { min: 21, max: 108, cnt: 88 };

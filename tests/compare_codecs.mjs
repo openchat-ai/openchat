@@ -1,6 +1,6 @@
 // Compare 48kHz (LpcMdct) vs 24kHz (Skeleton) codecs on same audio
 import fs from 'fs';
-import LpcMdctCodec from '../bridge/src/core/audio/lpc-mdct-codec.js';
+import LpcMdctCodec from '../bridge/src/core/audio/lmdn-codec.mjs';
 import { SkeletonCodec } from '../apps/bridge/skeleton-codec.mjs';
 
 function readWav(path) {

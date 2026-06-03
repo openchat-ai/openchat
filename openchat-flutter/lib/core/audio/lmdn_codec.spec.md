@@ -87,6 +87,7 @@ class LmdnProcessor {
 | 任意 sr 构造 | 构造函数接受任意 sr（默认 48000），MDCT N=96 不变 |
 | 并发 encode/decode | 不锁，调用方保证串行 |
 | init 前调用 encode | throw Exception('Codec not initialized') |
+| 首次编码遇全静音 | _bits 不锁定，下次 encode 重扫 |
 
 ## 文件清单
 
@@ -113,7 +114,7 @@ class LmdnProcessor {
 ```
 // === invariants ===
 // - MDCT 表在第一次 initMdctTables() 时计算，之后恒为常量
-// - LmdnCodec 内部 _bits 在首次 encode 时按信号自适应分配，之后冻结
+// - LmdnCodec 内部 _bits 首次扫描：若全带为 0 则不锁定，下次 encode 重扫；否则冻结
 // - _prevY 跨 decode 调用持久，确保 TDAC 连续性；独立流前需 reset()
 // - F0 提取为纯函数，不修改全局状态；sr 参数控制频率计算精度
 // - 仅 N=96 受支持（MDCT 表大小）；sampleRate 可任意

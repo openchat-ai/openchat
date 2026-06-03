@@ -1,6 +1,6 @@
 // 实验三全曲版：加州旅馆完整流水线
 import fs from 'fs';
-import LpcMdctCodec from '../bridge/src/core/audio/lpc-mdct-codec.js';
+import LmdnCodec from '../bridge/src/core/audio/lmdn-codec.mjs';
 
 const SR = 48000, HOP = 1024, FFT_SIZE = 2048, HALF = FFT_SIZE >> 1;
 
