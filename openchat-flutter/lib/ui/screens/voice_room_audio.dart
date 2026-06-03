@@ -24,7 +24,7 @@ class VoiceRoomAudio {
   List notes = [];
   bool playing = false;
   bool muted = false;
-  bool localMode = true;
+  bool localMode = false;
   int audioSeq = 0;
   LmdnConfig audioCfg = const LmdnConfig();
 
@@ -209,6 +209,7 @@ class VoiceRoomAudio {
     final pcm = Uint8List.fromList(vmBuffer);
     vmBuffer.clear();
     try {
+      processor?.resetCodec();
       final encoded = await processor?.processMicrophoneInput(pcm);
       if (encoded == null) {
         log('vm encode failed');
@@ -235,7 +236,7 @@ class VoiceRoomAudio {
     }
     playing = true;
     try {
-      const targetBytes = 3 * 24000 * 2;
+      const targetBytes = 3 * 48000 * 2;
       int total = 0;
       final batch = <Uint8List>[];
       while (playQueue.isNotEmpty && total < targetBytes) {

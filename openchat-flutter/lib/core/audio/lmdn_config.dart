@@ -10,7 +10,7 @@ class LmdnConfig {
   bool getBool(String key, bool def) => raw[key] is bool ? raw[key] as bool : def;
   String getString(String key, String def) => raw[key] is String ? raw[key] as String : def;
 
-  int get sampleRate => getInt('sampleRate', 24000);
+  int get sampleRate => getInt('sampleRate', 48000);
   int get bufferMs => getInt('bufferMs', 1000);
   int get pollMs => getInt('pollMs', 800);
   bool get denoise => getBool('denoise', true);

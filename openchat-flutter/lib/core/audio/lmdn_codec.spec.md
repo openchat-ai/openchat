@@ -34,10 +34,10 @@ Float64List mdct(Float64List x);               // 前向 MDCT (2N→N)
 Float64List imdct(Float64List X);              // 反向 MDCT (N→2N)
 void fft(Float64List re, Float64List im);       // 原地基-2 FFT
 
-// lmdn_f0.dart — 纯函数，无状态
-Map<String, dynamic>? yinF0(Float64List samples);
-Map<String, dynamic>? peakTrackF0(Float64List samples);
-Map<String, dynamic>? fusionF0(Float64List samples);
+// lmdn_f0.dart — 纯函数，无状态；sr 参数替代全局常量
+Map<String, dynamic>? yinF0(Float64List samples, {int sr = 48000});
+Map<String, dynamic>? peakTrackF0(Float64List samples, {int sr = 48000});
+Map<String, dynamic>? fusionF0(Float64List samples, {int sr = 48000});
 
 // lmdn_bitio.dart — 纯 IO 类
 class BitWriter { void write(int v, int bits); Uint8List finish(); }
@@ -45,12 +45,13 @@ class BitReader { int read(int bits); }
 
 // lmdn_codec.dart — LmdnCodec 类，编码/解码核心
 class LmdnCodec {
-  final int sampleRate;                         // 固定 24000
-  LmdnCodec({this.sampleRate = 24000});
+  final int sampleRate;                         // 48kHz 默认，支持任意 sr
+  LmdnCodec({this.sampleRate = 48000});
   int get samplesPerFrame;
   Future<void> initialize();
   Future<LmdnEncoded> encode(Uint8List pcmData);
-  Future<LmdnDecoded> decode(Uint8List data);
+  Future<LmdnDecoded> decode(Uint8List data);   // _prevY 跨调用持久（不再重置）
+  void reset();                                  // 清空 _prevY + _bits（新流）
   Map<String, dynamic> getStats();
   void destroy();
 }
@@ -69,6 +70,7 @@ class LmdnProcessor {
   Future<void> initialize();
   Future<Uint8List?> processMicrophoneInput(Uint8List pcmData);
   Future<ProcessedAudioResult?> processReceivedAudio(Uint8List data);
+  void resetCodec();                            // 转发到 LmdnCodec.reset()
   Map<String, dynamic> getStats();
   void dispose();
 }
@@ -82,7 +84,7 @@ class LmdnProcessor {
 | 短 PCM (<1 frame) | encode 返回最小帧，无 F0 |
 | 非 LMDN 数据 | decode 抛出异常 'No decodable LMDN frames found' |
 | 多段 concat LMDN (EPC) | decode 逐段处理并拼接 PCM |
-| 非 24000Hz 构造 | 构造函数抛出 ArgumentError |
+| 任意 sr 构造 | 构造函数接受任意 sr（默认 48000），MDCT N=96 不变 |
 | 并发 encode/decode | 不锁，调用方保证串行 |
 | init 前调用 encode | throw Exception('Codec not initialized') |
 
@@ -112,6 +114,7 @@ class LmdnProcessor {
 // === invariants ===
 // - MDCT 表在第一次 initMdctTables() 时计算，之后恒为常量
 // - LmdnCodec 内部 _bits 在首次 encode 时按信号自适应分配，之后冻结
-// - decode 的 overlap-add 依赖 _prevY，单线程无锁
-// - F0 提取为纯函数，不修改全局状态
+// - _prevY 跨 decode 调用持久，确保 TDAC 连续性；独立流前需 reset()
+// - F0 提取为纯函数，不修改全局状态；sr 参数控制频率计算精度
+// - 仅 N=96 受支持（MDCT 表大小）；sampleRate 可任意
 ```

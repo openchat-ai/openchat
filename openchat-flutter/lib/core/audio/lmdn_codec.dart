@@ -16,9 +16,7 @@ class LmdnCodec {
   Uint8List? _bits;
   Float64List? _prevY;
 
-  LmdnCodec({this.sampleRate = 24000}) {
-    if (sampleRate != 24000) throw ArgumentError('LmdnCodec only supports 24000 Hz');
-  }
+  LmdnCodec({this.sampleRate = 48000});
 
   int get samplesPerFrame => (sampleRate * frameSize) ~/ 1000;
   bool get isReady => _isReady;
@@ -54,7 +52,7 @@ class LmdnCodec {
       final st = fi * hopF0;
       final fr = Float64List(_fftSize);
       for (int i = 0; i < _fftSize && st + i < totalSamples; i++) fr[i] = samples[st + i];
-      final r = fusionF0(fr);
+      final r = fusionF0(fr, sr: sampleRate);
       if (r != null) {
         f0buf[fi] = r['freq'] as double;
         f0conf[fi] = r['conf'] as double;
@@ -114,7 +112,7 @@ class LmdnCodec {
     final payload = bw.finish();
     final frame = Uint8List(7 + payload.length + 2);
     int off = 0;
-    frame[off++] = 0xBB; frame[off++] = 0x00; frame[off++] = 0xCC;
+    frame[off++] = 0xBB; frame[off++] = 0x01; frame[off++] = 0xCC;
     final pl = payload.length;
     frame[off++] = (pl >> 16) & 0xFF;
     frame[off++] = (pl >> 8) & 0xFF;
@@ -134,7 +132,6 @@ class LmdnCodec {
 
   Future<LmdnDecoded> decode(Uint8List data) async {
     if (!_isReady) throw Exception('Codec not initialized');
-    _prevY = null;
     final sw = Stopwatch()..start();
 
     final outChunks = <Uint8List>[];
@@ -270,6 +267,8 @@ class LmdnCodec {
     }
     return bits;
   }
+
+  void reset() { _prevY = null; _bits = null; }
 
   Map<String, dynamic> getStats() {
     double cr = _totalInputBytes > 0 ? _totalInputBytes / _totalOutputBytes : 0;

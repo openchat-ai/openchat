@@ -1,6 +1,6 @@
-// Skeleton codec: fork of lpc-mdct-codec.js with SR=24000
+// Skeleton codec: fork of lpc-mdct-codec.js with SR=48000
 // 用于 Bridge 端解码手机 App 上传的 .enc 文件
-const SR = 24000, N = 96, ORDER = 20, BANDS = 16;
+const SR = 48000, N = 96, ORDER = 20, BANDS = 16;
 
 const WIN = new Float64Array(2 * N);
 const TAB = new Float64Array(N * 2 * N);
@@ -34,7 +34,7 @@ class BW {
   constructor() { this.b = []; this.a = 0; this.n = 0; }
   w(v, bits) {
     this.a = (this.a << bits) | (v & ((1 << bits) - 1)); this.n += bits;
-    while (this.n >= 8) { this.n -= 8; this.b.push((this.a >> this.n) & 0xFF); this.a &= (1 << this.n) - 1; }
+    while (this.n >= 8) { this.n -= 8; this.b.push((this.a >> this.n) & 0xFF); this.a = this.a & ((1 << this.n) - 1); }
   }
   f() { if (this.n > 0) this.b.push((this.a << (8 - this.n)) & 0xFF); return Buffer.from(this.b); }
 }
@@ -42,16 +42,16 @@ class BW {
 class SkeletonCodec {
   constructor(options = {}) {
     this.sampleRate = options.sampleRate || SR;
-    if (this.sampleRate !== SR) throw new Error(`SkeletonCodec only supports ${SR}Hz`);
     this.isReady = false;
     this.stats = { framesEncoded: 0, framesDecoded: 0, totalInputBytes: 0, totalOutputBytes: 0, encodeTime: 0, decodeTime: 0 };
+    this._prevY = null;
     this._bits = null;
   }
 
   async initialize() {
     initTables();
     this.isReady = true;
-    console.log('[SkeletonCodec] Ready (24kHz N=96)');
+    console.log(`[SkeletonCodec] Ready (${SR}Hz N=96)`);
   }
 
   async encode(pcmData) {
@@ -147,7 +147,7 @@ class SkeletonCodec {
     let readPos = 0, readAcc = 0, readBits = 0;
     const read = (bits) => {
       while (readBits < bits) { readAcc = (readAcc << 8) | (payload[readPos++] || 0); readBits += 8; }
-      readBits -= bits; const v = (readAcc >> readBits) & ((1 << bits) - 1); readAcc &= (1 << readBits) - 1;
+      readBits -= bits; const v = (readAcc >> readBits) & ((1 << bits) - 1); readAcc = readAcc & ((1 << readBits) - 1);
       return v;
     };
 
@@ -155,7 +155,6 @@ class SkeletonCodec {
     for (let b = 0; b < BANDS; b++) bits.push(read(3));
 
     const stride = N;
-    let prevY = null;
     const outputChunks = [];
     let frameIdx = 0;
     const score = [];
@@ -188,11 +187,11 @@ class SkeletonCodec {
 
       const y = imdct(Xq);
       const out = new Float64Array(N);
-      for (let i = 0; i < N; i++) out[i] = (prevY ? prevY[N + i] : 0) + y[i];
+      for (let i = 0; i < N; i++) out[i] = (this._prevY ? this._prevY[N + i] : 0) + y[i];
       const buf = Buffer.alloc(N * 2);
       for (let i = 0; i < N; i++) buf.writeInt16LE(Math.max(-32768, Math.min(32767, Math.round(out[i] * 32768))), i * 2);
       outputChunks.push(buf);
-      prevY = y;
+      this._prevY = y;
       frameIdx++;
     }
 
