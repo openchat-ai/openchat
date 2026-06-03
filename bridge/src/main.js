@@ -14,6 +14,7 @@ let apiServer = null;
 import { executeCommand, commands } from './cli/commands.js';
 import { MessageBuilder, MessageType } from './protocol/message.js';
 import { router } from './core/router.js';
+import { createHandlers } from './infra/route-handlers.js';
 import { initCore } from './core/handlers.js';
 import { CLIGateway, WSGateway } from './gateway/base.js';
 import { persistentConfig } from './core/persistent-config.js';
@@ -227,7 +228,15 @@ export class Bridge {
     this._initCoreSystems();
     if (CONFIG.isSandbox) { this._enterSandboxMode(); return; }
 
-    await this.autoConfigProviders(detectedTools);
+    const handlers = createHandlers(this, CONFIG, crypto);
+    await handlers.autoConfigProviders(detectedTools);
+
+    // Chat poller：轮询 oc/chat/ 处理文字和语音消息
+    if (isMain) {
+      import('./core/chat-poller.mjs').then(async (m) => {
+        await m.startChatPoll();
+      }).catch(e => console.error('[chat-poller] fail:', e.message));
+    }
 
     initCore();
 

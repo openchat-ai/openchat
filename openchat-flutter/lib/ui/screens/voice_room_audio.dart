@@ -221,7 +221,7 @@ class VoiceRoomAudio {
         log('vm decode failed');
         return;
       }
-      final wav = QiniuDirectClient.wavFromPcm(result.pcm);
+      final wav = QiniuDirectClient.wavFromPcm(result.pcm, sampleRate: processor!.sampleRate);
       await _vmPlayer?.stop();
       await _vmPlayer?.play(BytesSource(wav));
     } catch (e) {
@@ -269,7 +269,7 @@ class VoiceRoomAudio {
         pcm[idx] = b & 0xFF;
         pcm[idx + 1] = (b >> 8) & 0xFF;
       }
-      final wav = QiniuDirectClient.wavFromPcm(pcm);
+      final wav = QiniuDirectClient.wavFromPcm(pcm, sampleRate: audioCfg.sampleRate);
       log('[C7] play ${pcm.length} B');
       final p = player;
       if (p != null) {

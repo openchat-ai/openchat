@@ -1,7 +1,7 @@
-// A1.1 self-check: encode a 24kHz sine wave → decode → verify PCM length
+// A1.1 self-check: encode a 48kHz sine wave → decode → verify PCM length
 import { SkeletonCodec } from './skeleton-codec.mjs';
 
-const SR = 24000;
+const SR = 48000;
 const N = 96;
 const codec = new SkeletonCodec();
 await codec.initialize();

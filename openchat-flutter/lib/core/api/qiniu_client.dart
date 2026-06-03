@@ -192,7 +192,7 @@ class QiniuDirectClient {
   static Future<void> initFromBridge(String bridgeUrl) =>
       QiniuConfigRegistry.initFromBridge(bridgeUrl);
 
-  static Uint8List wavFromPcm(Uint8List pcm) => QiniuWav.wrapPcm(pcm);
+  static Uint8List wavFromPcm(Uint8List pcm, {int sampleRate = 48000}) => QiniuWav.wrapPcm(pcm, sampleRate: sampleRate);
 
   static Map<String, dynamic> get globalStyle => QiniuConfigRegistry.globalStyle;
   static double spacing(String key, [double fallback = 12]) =>
