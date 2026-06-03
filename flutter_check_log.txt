@@ -1,0 +1,450 @@
+﻿2026-06-02T09:59:09.1836411Z Current runner version: '2.334.0'
+2026-06-02T09:59:09.1862007Z ##[group]Runner Image Provisioner
+2026-06-02T09:59:09.1862801Z Hosted Compute Agent
+2026-06-02T09:59:09.1863605Z Version: 20260520.533
+2026-06-02T09:59:09.1864230Z Commit: 189110e25284a9812c124fd27b339e2fb4f2f9db
+2026-06-02T09:59:09.1864906Z Build Date: 2026-05-20T17:44:04Z
+2026-06-02T09:59:09.1865562Z Worker ID: {a85bf3a2-e404-4c7e-956f-42ea0bb1a0c3}
+2026-06-02T09:59:09.1866235Z Azure Region: southcentralus
+2026-06-02T09:59:09.1866808Z ##[endgroup]
+2026-06-02T09:59:09.1868217Z ##[group]Operating System
+2026-06-02T09:59:09.1868784Z Ubuntu
+2026-06-02T09:59:09.1869337Z 24.04.4
+2026-06-02T09:59:09.1869806Z LTS
+2026-06-02T09:59:09.1870294Z ##[endgroup]
+2026-06-02T09:59:09.1870806Z ##[group]Runner Image
+2026-06-02T09:59:09.1871430Z Image: ubuntu-24.04
+2026-06-02T09:59:09.1871991Z Version: 20260525.161.1
+2026-06-02T09:59:09.1873298Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260525.161/images/ubuntu/Ubuntu2404-Readme.md
+2026-06-02T09:59:09.1874684Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260525.161
+2026-06-02T09:59:09.1875553Z ##[endgroup]
+2026-06-02T09:59:09.1876703Z ##[group]GITHUB_TOKEN Permissions
+2026-06-02T09:59:09.1878646Z Contents: read
+2026-06-02T09:59:09.1879306Z Metadata: read
+2026-06-02T09:59:09.1879844Z Packages: read
+2026-06-02T09:59:09.1880431Z ##[endgroup]
+2026-06-02T09:59:09.1882596Z Secret source: Actions
+2026-06-02T09:59:09.1883662Z Prepare workflow directory
+2026-06-02T09:59:09.2327635Z Prepare all required actions
+2026-06-02T09:59:09.2365216Z Getting action download info
+2026-06-02T09:59:09.6270464Z Download action repository 'actions/checkout@v4' (SHA:34e114876b0b11c390a56381ad16ebd13914f8d5)
+2026-06-02T09:59:09.7351632Z Download action repository 'subosito/flutter-action@v2' (SHA:1a449444c387b1966244ae4d4f8c696479add0b2)
+2026-06-02T09:59:10.1243144Z Getting action download info
+2026-06-02T09:59:10.3202001Z Download action repository 'actions/cache@v5' (SHA:27d5ce7f107fe9357f9df03efb73ab90386fccae)
+2026-06-02T09:59:10.4730539Z Complete job name: flutter-check
+2026-06-02T09:59:10.5604423Z ##[group]Run actions/checkout@v4
+2026-06-02T09:59:10.5605761Z with:
+2026-06-02T09:59:10.5606586Z   repository: openchat-ai/openchat
+2026-06-02T09:59:10.5615883Z   token: ***
+2026-06-02T09:59:10.5616674Z   ssh-strict: true
+2026-06-02T09:59:10.5617483Z   ssh-user: git
+2026-06-02T09:59:10.5618321Z   persist-credentials: true
+2026-06-02T09:59:10.5619237Z   clean: true
+2026-06-02T09:59:10.5620067Z   sparse-checkout-cone-mode: true
+2026-06-02T09:59:10.5621042Z   fetch-depth: 1
+2026-06-02T09:59:10.5621847Z   fetch-tags: false
+2026-06-02T09:59:10.5622687Z   show-progress: true
+2026-06-02T09:59:10.5623582Z   lfs: false
+2026-06-02T09:59:10.5624350Z   submodules: false
+2026-06-02T09:59:10.5625191Z   set-safe-directory: true
+2026-06-02T09:59:10.5626320Z env:
+2026-06-02T09:59:10.5627134Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+2026-06-02T09:59:10.5628165Z ##[endgroup]
+2026-06-02T09:59:10.6587670Z Syncing repository: openchat-ai/openchat
+2026-06-02T09:59:10.6590630Z ##[group]Getting Git version info
+2026-06-02T09:59:10.6591912Z Working directory is '/home/runner/work/openchat/openchat'
+2026-06-02T09:59:10.6594011Z [command]/usr/bin/git version
+2026-06-02T09:59:10.6631467Z git version 2.54.0
+2026-06-02T09:59:10.6651895Z ##[endgroup]
+2026-06-02T09:59:10.6664968Z Temporarily overriding HOME='/home/runner/work/_temp/dc0d2c48-4537-447c-b2c7-c16fce9e318b' before making global git config changes
+2026-06-02T09:59:10.6667963Z Adding repository directory to the temporary git global config as a safe directory
+2026-06-02T09:59:10.6671233Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/openchat/openchat
+2026-06-02T09:59:10.6711096Z Deleting the contents of '/home/runner/work/openchat/openchat'
+2026-06-02T09:59:10.6714833Z ##[group]Initializing the repository
+2026-06-02T09:59:10.6718801Z [command]/usr/bin/git init /home/runner/work/openchat/openchat
+2026-06-02T09:59:10.6795408Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-06-02T09:59:10.6798574Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-06-02T09:59:10.6802189Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-06-02T09:59:10.6804619Z hint: call:
+2026-06-02T09:59:10.6805538Z hint:
+2026-06-02T09:59:10.6806659Z hint: 	git config --global init.defaultBranch <name>
+2026-06-02T09:59:10.6807947Z hint:
+2026-06-02T09:59:10.6809336Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-06-02T09:59:10.6811346Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-06-02T09:59:10.6812877Z hint:
+2026-06-02T09:59:10.6814091Z hint: 	git branch -m <name>
+2026-06-02T09:59:10.6815011Z hint:
+2026-06-02T09:59:10.6816660Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-06-02T09:59:10.6819089Z Initialized empty Git repository in /home/runner/work/openchat/openchat/.git/
+2026-06-02T09:59:10.6822920Z [command]/usr/bin/git remote add origin https://github.com/openchat-ai/openchat
+2026-06-02T09:59:10.6849641Z ##[endgroup]
+2026-06-02T09:59:10.6851893Z ##[group]Disabling automatic garbage collection
+2026-06-02T09:59:10.6854216Z [command]/usr/bin/git config --local gc.auto 0
+2026-06-02T09:59:10.6878069Z ##[endgroup]
+2026-06-02T09:59:10.6880352Z ##[group]Setting up auth
+2026-06-02T09:59:10.6885304Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-06-02T09:59:10.6912870Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-06-02T09:59:10.7197095Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-06-02T09:59:10.7221420Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-06-02T09:59:10.7390599Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-06-02T09:59:10.7418195Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-06-02T09:59:10.7587512Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-06-02T09:59:10.7615092Z ##[endgroup]
+2026-06-02T09:59:10.7617432Z ##[group]Fetching the repository
+2026-06-02T09:59:10.7626541Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +a80ebc99cd37ff1b6602064804fc46056ce77419:refs/remotes/origin/main
+2026-06-02T09:59:11.6933817Z From https://github.com/openchat-ai/openchat
+2026-06-02T09:59:11.6937201Z  * [new ref]         a80ebc99cd37ff1b6602064804fc46056ce77419 -> origin/main
+2026-06-02T09:59:11.6962564Z ##[endgroup]
+2026-06-02T09:59:11.6964424Z ##[group]Determining the checkout info
+2026-06-02T09:59:11.6965963Z ##[endgroup]
+2026-06-02T09:59:11.6968933Z [command]/usr/bin/git sparse-checkout disable
+2026-06-02T09:59:11.7005655Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-06-02T09:59:11.7028283Z ##[group]Checking out the ref
+2026-06-02T09:59:11.7031488Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+2026-06-02T09:59:11.7489274Z Switched to a new branch 'main'
+2026-06-02T09:59:11.7491114Z branch 'main' set up to track 'origin/main'.
+2026-06-02T09:59:11.7497335Z ##[endgroup]
+2026-06-02T09:59:11.7532787Z [command]/usr/bin/git log -1 --format=%H
+2026-06-02T09:59:11.7551692Z a80ebc99cd37ff1b6602064804fc46056ce77419
+2026-06-02T09:59:11.8045771Z ##[group]Run subosito/flutter-action@v2
+2026-06-02T09:59:11.8046762Z with:
+2026-06-02T09:59:11.8047475Z   flutter-version: 3.41
+2026-06-02T09:59:11.8048266Z   channel: stable
+2026-06-02T09:59:11.8049026Z   architecture: X64
+2026-06-02T09:59:11.8049956Z   cache: false
+2026-06-02T09:59:11.8050708Z   pub-cache-path: default
+2026-06-02T09:59:11.8051531Z   dry-run: false
+2026-06-02T09:59:11.8052426Z   git-source: https://github.com/flutter/flutter.git
+2026-06-02T09:59:11.8053591Z env:
+2026-06-02T09:59:11.8054342Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+2026-06-02T09:59:11.8055284Z ##[endgroup]
+2026-06-02T09:59:11.8201402Z ##[group]Run chmod +x "$GITHUB_ACTION_PATH/setup.sh"
+2026-06-02T09:59:11.8202775Z [36;1mchmod +x "$GITHUB_ACTION_PATH/setup.sh"[0m
+2026-06-02T09:59:11.8226991Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-06-02T09:59:11.8228122Z env:
+2026-06-02T09:59:11.8228900Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+2026-06-02T09:59:11.8229907Z ##[endgroup]
+2026-06-02T09:59:11.8377984Z ##[group]Run $GITHUB_ACTION_PATH/setup.sh -p \
+2026-06-02T09:59:11.8379217Z [36;1m$GITHUB_ACTION_PATH/setup.sh -p \[0m
+2026-06-02T09:59:11.8380259Z [36;1m  -n '3.41' \[0m
+2026-06-02T09:59:11.8381079Z [36;1m  -f '' \[0m
+2026-06-02T09:59:11.8381903Z [36;1m  -a 'X64' \[0m
+2026-06-02T09:59:11.8382710Z [36;1m  -k '' \[0m
+2026-06-02T09:59:11.8383630Z [36;1m  -c '' \[0m
+2026-06-02T09:59:11.8384410Z [36;1m  -l '' \[0m
+2026-06-02T09:59:11.8385216Z [36;1m  -d 'default' \[0m
+2026-06-02T09:59:11.8386271Z [36;1m  -g 'https://github.com/flutter/flutter.git' \[0m
+2026-06-02T09:59:11.8387388Z [36;1m  stable[0m
+2026-06-02T09:59:11.8406449Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-06-02T09:59:11.8407590Z env:
+2026-06-02T09:59:11.8408386Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+2026-06-02T09:59:11.8409374Z ##[endgroup]
+2026-06-02T09:59:12.0597793Z ##[group]Run $GITHUB_ACTION_PATH/setup.sh \
+2026-06-02T09:59:12.0598936Z [36;1m$GITHUB_ACTION_PATH/setup.sh \[0m
+2026-06-02T09:59:12.0599920Z [36;1m  -n '3.41.9' \[0m
+2026-06-02T09:59:12.0600783Z [36;1m  -a 'x64' \[0m
+2026-06-02T09:59:12.0601834Z [36;1m  -c '/opt/hostedtoolcache/flutter/stable-3.41.9-x64' \[0m
+2026-06-02T09:59:12.0603213Z [36;1m  -d '/home/runner/.pub-cache' \[0m
+2026-06-02T09:59:12.0604209Z [36;1m  stable[0m
+2026-06-02T09:59:12.0623792Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-06-02T09:59:12.0624951Z env:
+2026-06-02T09:59:12.0625741Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+2026-06-02T09:59:12.0626721Z ##[endgroup]
+2026-06-02T09:59:12.2509817Z   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+2026-06-02T09:59:12.2513431Z                                  Dload  Upload   Total   Spent    Left  Speed
+2026-06-02T09:59:12.2515295Z 
+2026-06-02T09:59:12.5797434Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+2026-06-02T09:59:13.5798123Z   2 1448M    2 36.0M    0     0   109M      0  0:00:13 --:--:--  0:00:13  109M
+2026-06-02T09:59:14.5821315Z  30 1448M   30  446M    0     0   335M      0  0:00:04  0:00:01  0:00:03  335M
+2026-06-02T09:59:15.5793548Z  61 1448M   61  890M    0     0   381M      0  0:00:03  0:00:02  0:00:01  381M
+2026-06-02T09:59:15.8220032Z  92 1448M   92 1339M    0     0   402M      0  0:00:03  0:00:03 --:--:--  402M
+2026-06-02T10:00:08.4198060Z 100 1448M  100 1448M    0     0   405M      0  0:00:03  0:00:03 --:--:--  405M
+2026-06-02T10:00:08.4260228Z ##[group]Run flutter pub get
+2026-06-02T10:00:08.4260535Z [36;1mflutter pub get[0m
+2026-06-02T10:00:08.4278342Z shell: /usr/bin/bash -e {0}
+2026-06-02T10:00:08.4278736Z env:
+2026-06-02T10:00:08.4278975Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+2026-06-02T10:00:08.4279366Z   FLUTTER_ROOT: /opt/hostedtoolcache/flutter/stable-3.41.9-x64/flutter
+2026-06-02T10:00:08.4279747Z   PUB_CACHE: /home/runner/.pub-cache
+2026-06-02T10:00:08.4280007Z ##[endgroup]
+2026-06-02T10:00:13.1295766Z Resolving dependencies...
+2026-06-02T10:00:13.7919200Z Downloading packages...
+2026-06-02T10:00:18.0580554Z + _fe_analyzer_shared 85.0.0 (100.0.0 available)
+2026-06-02T10:00:18.0581193Z + analyzer 7.7.1 (13.0.0 available)
+2026-06-02T10:00:18.0581712Z + args 2.7.0
+2026-06-02T10:00:18.0582323Z + async 2.13.1
+2026-06-02T10:00:18.0583263Z + audioplayers 6.7.0
+2026-06-02T10:00:18.0583631Z + audioplayers_android 5.2.1
+2026-06-02T10:00:18.0584033Z + audioplayers_darwin 6.4.0
+2026-06-02T10:00:18.0584478Z + audioplayers_linux 4.2.1
+2026-06-02T10:00:18.0584863Z + audioplayers_platform_interface 7.1.1
+2026-06-02T10:00:18.0585305Z + audioplayers_web 5.2.1
+2026-06-02T10:00:18.0585646Z + audioplayers_windows 4.3.1
+2026-06-02T10:00:18.0586045Z + battery_plus 6.2.3 (7.0.0 available)
+2026-06-02T10:00:18.0586454Z + battery_plus_platform_interface 2.0.1
+2026-06-02T10:00:18.0587199Z + boolean_selector 2.1.2
+2026-06-02T10:00:18.0587897Z + build 2.5.4 (4.0.6 available)
+2026-06-02T10:00:18.0588618Z + build_config 1.1.2 (1.3.0 available)
+2026-06-02T10:00:18.0589032Z + build_daemon 4.1.1
+2026-06-02T10:00:18.0589391Z + build_resolvers 2.5.4 (3.0.4 available)
+2026-06-02T10:00:18.0589846Z + build_runner 2.5.4 (2.15.0 available)
+2026-06-02T10:00:18.0590310Z + build_runner_core 9.1.2 (9.3.2 available)
+2026-06-02T10:00:18.0590758Z + built_collection 5.1.1
+2026-06-02T10:00:18.0591171Z + built_value 8.12.6
+2026-06-02T10:00:18.0591585Z + characters 1.4.1
+2026-06-02T10:00:18.0591991Z + checked_yaml 2.0.4
+2026-06-02T10:00:18.0592365Z + clock 1.1.2
+2026-06-02T10:00:18.0592665Z + code_assets 1.2.1
+2026-06-02T10:00:18.0593128Z + code_builder 4.11.1
+2026-06-02T10:00:18.0593450Z + collection 1.19.1
+2026-06-02T10:00:18.0593855Z + connectivity_plus 6.1.5 (7.1.1 available)
+2026-06-02T10:00:18.0594399Z + connectivity_plus_platform_interface 2.1.0
+2026-06-02T10:00:18.0594887Z + convert 3.1.2
+2026-06-02T10:00:18.0595227Z + crypto 3.0.7
+2026-06-02T10:00:18.0595595Z + dart_style 3.1.1 (3.1.9 available)
+2026-06-02T10:00:18.0596009Z + dbus 0.7.13
+2026-06-02T10:00:18.0596334Z + device_info_plus 10.1.2 (13.1.0 available)
+2026-06-02T10:00:18.0596981Z + device_info_plus_platform_interface 7.0.3 (8.1.0 available)
+2026-06-02T10:00:18.0597567Z + dio 5.9.2
+2026-06-02T10:00:18.0597942Z + dio_web_adapter 2.1.2
+2026-06-02T10:00:18.0598355Z + equatable 2.0.8
+2026-06-02T10:00:18.0598766Z + fake_async 1.3.3
+2026-06-02T10:00:18.0599147Z + ffi 2.2.0
+2026-06-02T10:00:18.0599500Z + file 7.0.1
+2026-06-02T10:00:18.0599866Z + fixnum 1.1.1
+2026-06-02T10:00:18.0600277Z + flutter 0.0.0 from sdk flutter
+2026-06-02T10:00:18.0600761Z + flutter_lints 6.0.0
+2026-06-02T10:00:18.0601218Z + flutter_riverpod 2.6.1 (3.3.1 available)
+2026-06-02T10:00:18.0601767Z + flutter_test 0.0.0 from sdk flutter
+2026-06-02T10:00:18.0602341Z + flutter_web_plugins 0.0.0 from sdk flutter
+2026-06-02T10:00:18.0602885Z + freezed 2.5.8 (3.2.5 available)
+2026-06-02T10:00:18.0603548Z + freezed_annotation 2.4.4 (3.1.0 available)
+2026-06-02T10:00:18.0604100Z + frontend_server_client 4.0.0
+2026-06-02T10:00:18.0604551Z + glob 2.1.3
+2026-06-02T10:00:18.0604963Z + graphs 2.3.2
+2026-06-02T10:00:18.0605343Z + hooks 2.0.1
+2026-06-02T10:00:18.0605705Z + http 1.6.0
+2026-06-02T10:00:18.0606089Z + http_multi_server 3.2.2
+2026-06-02T10:00:18.0606526Z + http_parser 4.1.2
+2026-06-02T10:00:18.0606910Z + io 1.0.5
+2026-06-02T10:00:18.0607257Z + jni 1.0.0
+2026-06-02T10:00:18.0607629Z + jni_flutter 1.0.1
+2026-06-02T10:00:18.0608012Z + js 0.7.2
+2026-06-02T10:00:18.0608417Z + json_annotation 4.9.0 (4.12.0 available)
+2026-06-02T10:00:18.0609340Z + json_serializable 6.9.5 (6.14.0 available)
+2026-06-02T10:00:18.0609892Z + leak_tracker 11.0.2
+2026-06-02T10:00:18.0610354Z + leak_tracker_flutter_testing 3.0.10
+2026-06-02T10:00:18.0610896Z + leak_tracker_testing 3.0.2
+2026-06-02T10:00:18.0611411Z + lints 6.1.0
+2026-06-02T10:00:18.0611784Z + logging 1.3.0
+2026-06-02T10:00:18.0612197Z + matcher 0.12.19 (0.12.20 available)
+2026-06-02T10:00:18.0612681Z + material_color_utilities 0.13.0
+2026-06-02T10:00:18.0613309Z + meta 1.17.0 (1.18.2 available)
+2026-06-02T10:00:18.0613661Z + mime 2.0.0
+2026-06-02T10:00:18.0613999Z + nm 0.5.0
+2026-06-02T10:00:18.0614361Z + objective_c 9.4.1
+2026-06-02T10:00:18.0614775Z + package_config 2.2.0
+2026-06-02T10:00:18.0615189Z + path 1.9.1
+2026-06-02T10:00:18.0615591Z + path_provider 2.1.5
+2026-06-02T10:00:18.0616057Z + path_provider_android 2.3.1
+2026-06-02T10:00:18.0616734Z + path_provider_foundation 2.6.0
+2026-06-02T10:00:18.0617284Z + path_provider_linux 2.2.1
+2026-06-02T10:00:18.0617835Z + path_provider_platform_interface 2.1.2
+2026-06-02T10:00:18.0618282Z + path_provider_windows 2.3.0
+2026-06-02T10:00:18.0618667Z + petitparser 7.0.2
+2026-06-02T10:00:18.0618983Z + platform 3.1.6
+2026-06-02T10:00:18.0619366Z + plugin_platform_interface 2.1.8
+2026-06-02T10:00:18.0619888Z + pool 1.5.2
+2026-06-02T10:00:18.0620236Z + pub_semver 2.2.0
+2026-06-02T10:00:18.0620616Z + pubspec_parse 1.5.0
+2026-06-02T10:00:18.0621024Z + record 6.2.1 (7.0.0 available)
+2026-06-02T10:00:18.0621484Z + record_android 1.5.2 (2.0.1 available)
+2026-06-02T10:00:18.0621985Z + record_ios 1.2.1 (2.0.0 available)
+2026-06-02T10:00:18.0622477Z + record_linux 1.3.1 (2.0.0 available)
+2026-06-02T10:00:18.0623115Z + record_macos 1.2.2 (2.0.0 available)
+2026-06-02T10:00:18.0623650Z + record_platform_interface 1.6.0 (2.0.0 available)
+2026-06-02T10:00:18.0624196Z + record_use 0.6.0
+2026-06-02T10:00:18.0624601Z + record_web 1.3.0 (2.0.0 available)
+2026-06-02T10:00:18.0625083Z + record_windows 1.0.7 (2.0.0 available)
+2026-06-02T10:00:18.0625586Z + riverpod 2.6.1 (3.2.1 available)
+2026-06-02T10:00:18.0626144Z + sdui_engine 1.0.0 from path ../packages/sdui_engine
+2026-06-02T10:00:18.0626702Z + shared_preferences 2.5.5
+2026-06-02T10:00:18.0627112Z + shared_preferences_android 2.4.23
+2026-06-02T10:00:18.0627559Z + shared_preferences_foundation 2.5.6
+2026-06-02T10:00:18.0628070Z + shared_preferences_linux 2.4.1
+2026-06-02T10:00:18.0628559Z + shared_preferences_platform_interface 2.4.2
+2026-06-02T10:00:18.0629078Z + shared_preferences_web 2.4.3
+2026-06-02T10:00:18.0629551Z + shared_preferences_windows 2.4.1
+2026-06-02T10:00:18.0630016Z + shelf 1.4.2
+2026-06-02T10:00:18.0630379Z + shelf_web_socket 3.0.0
+2026-06-02T10:00:18.0630820Z + sky_engine 0.0.0 from sdk flutter
+2026-06-02T10:00:18.0631299Z + source_gen 2.0.0 (4.2.3 available)
+2026-06-02T10:00:18.0631784Z + source_helper 1.3.7 (1.3.12 available)
+2026-06-02T10:00:18.0632265Z + source_span 1.10.2
+2026-06-02T10:00:18.0632646Z + stack_trace 1.12.1
+2026-06-02T10:00:18.0633174Z + state_notifier 1.0.0
+2026-06-02T10:00:18.0633593Z + stream_channel 2.1.4
+2026-06-02T10:00:18.0633990Z + stream_transform 2.1.1
+2026-06-02T10:00:18.0634409Z + string_scanner 1.4.1
+2026-06-02T10:00:18.0634822Z + synchronized 3.4.0+1 (3.4.1 available)
+2026-06-02T10:00:18.0635287Z + term_glyph 1.2.2
+2026-06-02T10:00:18.0635676Z + test_api 0.7.10 (0.7.12 available)
+2026-06-02T10:00:18.0636112Z + timing 1.0.2
+2026-06-02T10:00:18.0636468Z + typed_data 1.4.0
+2026-06-02T10:00:18.0636835Z + upower 0.7.0
+2026-06-02T10:00:18.0637158Z + uuid 4.5.3
+2026-06-02T10:00:18.0637517Z + vector_math 2.2.0 (2.3.0 available)
+2026-06-02T10:00:18.0637968Z + vm_service 15.2.0
+2026-06-02T10:00:18.0638349Z + watcher 1.2.1
+2026-06-02T10:00:18.0638706Z + web 1.1.1
+2026-06-02T10:00:18.0639046Z + web_socket 1.0.1
+2026-06-02T10:00:18.0639421Z + web_socket_channel 3.0.3
+2026-06-02T10:00:18.0639854Z + win32 5.15.0 (6.3.0 available)
+2026-06-02T10:00:18.0640318Z + win32_registry 1.1.5 (3.0.3 available)
+2026-06-02T10:00:18.0640809Z + xdg_directories 1.1.0
+2026-06-02T10:00:18.0641207Z + xml 7.0.1
+2026-06-02T10:00:18.0641752Z + yaml 3.1.3
+2026-06-02T10:00:18.0642219Z Changed 135 dependencies!
+2026-06-02T10:00:18.0642866Z 35 packages have newer versions incompatible with dependency constraints.
+2026-06-02T10:00:18.0643815Z Try `flutter pub outdated` for more information.
+2026-06-02T10:00:18.4787713Z ##[group]Run flutter analyze --no-fatal-infos --no-fatal-warnings
+2026-06-02T10:00:18.4788187Z [36;1mflutter analyze --no-fatal-infos --no-fatal-warnings[0m
+2026-06-02T10:00:18.4803992Z shell: /usr/bin/bash -e {0}
+2026-06-02T10:00:18.4804254Z env:
+2026-06-02T10:00:18.4804479Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+2026-06-02T10:00:18.4804858Z   FLUTTER_ROOT: /opt/hostedtoolcache/flutter/stable-3.41.9-x64/flutter
+2026-06-02T10:00:18.4805229Z   PUB_CACHE: /home/runner/.pub-cache
+2026-06-02T10:00:18.4805491Z ##[endgroup]
+2026-06-02T10:00:33.2896025Z Analyzing openchat-flutter...                                   
+2026-06-02T10:00:33.2901018Z 
+2026-06-02T10:00:33.2932371Z    info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/agent_client.dart:24:9 • use_null_aware_elements
+2026-06-02T10:00:33.2936514Z warning • Unused import: 'qiniu_models.dart' • lib/core/api/qiniu_client.dart:8:8 • unused_import
+2026-06-02T10:00:33.2938117Z    info • Empty catch block • lib/core/api/qiniu_client.dart:145:17 • empty_catches
+2026-06-02T10:00:33.2939478Z warning • Unused import: 'qiniu_http.dart' • lib/core/api/qiniu_config.dart:6:8 • unused_import
+2026-06-02T10:00:33.2940896Z warning • Unused import: 'qiniu_config.dart' • lib/core/api/qiniu_debug.dart:4:8 • unused_import
+2026-06-02T10:00:33.2942432Z warning • Unused import: 'qiniu_models.dart' • lib/core/api/qiniu_debug.dart:5:8 • unused_import
+2026-06-02T10:00:33.2944049Z warning • Unused import: 'qiniu_s3_sign.dart' • lib/core/api/qiniu_debug.dart:6:8 • unused_import
+2026-06-02T10:00:33.2945565Z    info • Don't invoke 'print' in production code • lib/core/api/qiniu_debug.dart:121:3 • avoid_print
+2026-06-02T10:00:33.2947014Z    info • Don't invoke 'print' in production code • lib/core/api/qiniu_debug.dart:126:3 • avoid_print
+2026-06-02T10:00:33.2948494Z warning • Unused import: 'dart:typed_data' • lib/core/api/qiniu_http.dart:2:8 • unused_import
+2026-06-02T10:00:33.2949999Z warning • Unused import: 'dart:typed_data' • lib/core/api/qiniu_models.dart:1:8 • unused_import
+2026-06-02T10:00:33.2951395Z warning • Unused import: 'dart:typed_data' • lib/core/api/qiniu_s3_sign.dart:2:8 • unused_import
+2026-06-02T10:00:33.2952836Z warning • Unused import: 'dart:convert' • lib/core/api/qiniu_xml_parser.dart:1:8 • unused_import
+2026-06-02T10:00:33.2954717Z    info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/resident_client.dart:15:9 • use_null_aware_elements
+2026-06-02T10:00:33.2956683Z    info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/resident_client.dart:16:9 • use_null_aware_elements
+2026-06-02T10:00:33.2958629Z    info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/resources_client.dart:13:7 • use_null_aware_elements
+2026-06-02T10:00:33.2985027Z    info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/resources_client.dart:14:7 • use_null_aware_elements
+2026-06-02T10:00:33.2987016Z    info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/resources_client.dart:15:7 • use_null_aware_elements
+2026-06-02T10:00:33.3014317Z    info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/resources_client.dart:16:7 • use_null_aware_elements
+2026-06-02T10:00:33.3019447Z    info • The private field _enabledRNNOISE could be 'final' • lib/core/audio/audio_pipeline.dart:11:8 • prefer_final_fields
+2026-06-02T10:00:33.3021304Z    info • The private field _enabledVAD could be 'final' • lib/core/audio/audio_pipeline.dart:12:8 • prefer_final_fields
+2026-06-02T10:00:33.3023156Z    info • The private field _enabledAGC could be 'final' • lib/core/audio/audio_pipeline.dart:13:8 • prefer_final_fields
+2026-06-02T10:00:33.3024818Z    info • The private field _enabledHighPass could be 'final' • lib/core/audio/audio_pipeline.dart:14:8 • prefer_final_fields
+2026-06-02T10:00:33.3027058Z    info • The private field _rnnoiseProcessingTime could be 'final' • lib/core/audio/audio_pipeline.dart:20:7 • prefer_final_fields
+2026-06-02T10:00:33.3028990Z    info • Use interpolation to compose strings and values • lib/core/audio/audio_pipeline.dart:233:20 • prefer_interpolation_to_compose_strings
+2026-06-02T10:00:33.3031030Z    info • Use interpolation to compose strings and values • lib/core/audio/audio_pipeline.dart:234:24 • prefer_interpolation_to_compose_strings
+2026-06-02T10:00:33.3033130Z    info • Use interpolation to compose strings and values • lib/core/audio/audio_pipeline.dart:239:13 • prefer_interpolation_to_compose_strings
+2026-06-02T10:00:33.3035049Z    info • Unnecessary 'late' modifier • lib/core/audio/harmonic_codebook.dart:17:10 • unnecessary_late
+2026-06-02T10:00:33.3036541Z warning • The value of the local variable 'sf' isn't used • lib/core/audio/lmdn_codec.dart:38:11 • unused_local_variable
+2026-06-02T10:00:33.3038248Z    info • The 'if' statement could be replaced by a null-aware assignment • lib/core/audio/lmdn_codec.dart:45:5 • prefer_conditional_assignment
+2026-06-02T10:00:33.3040087Z    info • Statements in a for should be enclosed in a block • lib/core/audio/lmdn_codec.dart:56:67 • curly_braces_in_flow_control_structures
+2026-06-02T10:00:33.3042158Z    info • Statements in a for should be enclosed in a block • lib/core/audio/lmdn_codec.dart:68:38 • curly_braces_in_flow_control_structures
+2026-06-02T10:00:33.3044078Z    info • Statements in a for should be enclosed in a block • lib/core/audio/lmdn_codec.dart:73:65 • curly_braces_in_flow_control_structures
+2026-06-02T10:00:33.3045973Z    info • Statements in a for should be enclosed in a block • lib/core/audio/lmdn_codec.dart:83:41 • curly_braces_in_flow_control_structures
+2026-06-02T10:00:33.3047958Z    info • Statements in a for should be enclosed in a block • lib/core/audio/lmdn_codec.dart:87:43 • curly_braces_in_flow_control_structures
+2026-06-02T10:00:33.3049988Z    info • Statements in a for should be enclosed in a block • lib/core/audio/lmdn_codec.dart:124:35 • curly_braces_in_flow_control_structures
+2026-06-02T10:00:33.3051919Z    info • Statements in a for should be enclosed in a block • lib/core/audio/lmdn_codec.dart:157:40 • curly_braces_in_flow_control_structures
+2026-06-02T10:00:33.3053895Z    info • The variable name 'Xq' isn't a lowerCamelCase identifier • lib/core/audio/lmdn_codec.dart:161:15 • non_constant_identifier_names
+2026-06-02T10:00:33.3055709Z warning • The value of the local variable 'cent' isn't used • lib/core/audio/lmdn_codec.dart:177:17 • unused_local_variable
+2026-06-02T10:00:33.3057367Z warning • The value of the local variable 'conf' isn't used • lib/core/audio/lmdn_codec.dart:178:17 • unused_local_variable
+2026-06-02T10:00:33.3059219Z    info • Statements in a for should be enclosed in a block • lib/core/audio/lmdn_codec.dart:242:65 • curly_braces_in_flow_control_structures
+2026-06-02T10:00:33.3061070Z    info • Statements in a for should be enclosed in a block • lib/core/audio/lmdn_codec.dart:248:41 • curly_braces_in_flow_control_structures
+2026-06-02T10:00:33.3062885Z    info • Statements in a for should be enclosed in a block • lib/core/audio/lmdn_codec.dart:252:38 • curly_braces_in_flow_control_structures
+2026-06-02T10:00:33.3064945Z    info • Use interpolation to compose strings and values • lib/core/audio/lmdn_codec.dart:279:27 • prefer_interpolation_to_compose_strings
+2026-06-02T10:00:33.3066861Z    info • The variable name 'ML' isn't a lowerCamelCase identifier • lib/core/audio/lmdn_f0.dart:10:9 • non_constant_identifier_names
+2026-06-02T10:00:33.3068736Z    info • Statements in a for should be enclosed in a block • lib/core/audio/lmdn_f0.dart:44:38 • curly_braces_in_flow_control_structures
+2026-06-02T10:00:33.3070669Z    info • Statements in a for should be enclosed in a block • lib/core/audio/lmdn_f0.dart:48:34 • curly_braces_in_flow_control_structures
+2026-06-02T10:00:33.3072346Z warning • The declaration '_sr' isn't referenced • lib/core/audio/lmdn_mdct.dart:4:11 • unused_element
+2026-06-02T10:00:33.3074368Z warning • The declaration '_bands' isn't referenced • lib/core/audio/lmdn_mdct.dart:6:11 • unused_element
+2026-06-02T10:00:33.3075898Z warning • The declaration '_fftSize' isn't referenced • lib/core/audio/lmdn_mdct.dart:7:11 • unused_element
+2026-06-02T10:00:33.3077623Z    info • Statements in a for should be enclosed in a block • lib/core/audio/lmdn_mdct.dart:65:39 • curly_braces_in_flow_control_structures
+2026-06-02T10:00:33.3079483Z    info • Statements in a for should be enclosed in a block • lib/core/sdui_config.dart:102:27 • curly_braces_in_flow_control_structures
+2026-06-02T10:00:33.3082119Z    info • The import of 'package:sdui_engine/sdui_engine.dart' is unnecessary because all of the used elements are also provided by the import of 'core/sdui_config.dart' • lib/main.dart:4:8 • unnecessary_import
+2026-06-02T10:00:33.3085030Z    info • The type of the right operand ('String') isn't a subtype or a supertype of the left operand ('AgentStatus') • lib/ui/components/resident/resident_agents.dart:13:49 • unrelated_type_equality_checks
+2026-06-02T10:00:33.3087830Z    info • The type of the right operand ('String') isn't a subtype or a supertype of the left operand ('AgentStatus') • lib/ui/components/resident/resident_agents.dart:28:36 • unrelated_type_equality_checks
+2026-06-02T10:00:33.3090166Z    info • Statements in an if should be enclosed in a block • lib/ui/screens/agent_hub_screen.dart:66:38 • curly_braces_in_flow_control_structures
+2026-06-02T10:00:33.3092170Z    info • Statements in an if should be enclosed in a block • lib/ui/screens/agent_hub_screen.dart:67:55 • curly_braces_in_flow_control_structures
+2026-06-02T10:00:33.3094243Z warning • Unused import: 'package:flutter_riverpod/flutter_riverpod.dart' • lib/ui/screens/agent_hub_widgets.dart:2:8 • unused_import
+2026-06-02T10:00:33.3096036Z warning • Unused import: '../../core/theme/app_theme.dart' • lib/ui/screens/chat_list_screen.dart:4:8 • unused_import
+2026-06-02T10:00:33.3098474Z warning • The library 'package:openchat_flutter/ui/screens/chat_screen.dart' doesn't export a member with the hidden name 'bridgeWsProvider' • lib/ui/screens/chat_list_screen.dart:10:32 • undefined_hidden_name
+2026-06-02T10:00:33.3100800Z    info • Unnecessary use of multiple underscores • lib/ui/screens/chat_list_screen.dart:54:18 • unnecessary_underscores
+2026-06-02T10:00:33.3102636Z   error • The method 'Uint8List' isn't defined for the type '_ChatScreenState' • lib/ui/screens/chat_screen.dart:138:21 • undefined_method
+2026-06-02T10:00:33.3104658Z    info • Statements in a for should be enclosed in a block • lib/ui/screens/chat_screen.dart:146:37 • curly_braces_in_flow_control_structures
+2026-06-02T10:00:33.3106619Z    info • Statements in an if should be enclosed in a block • lib/ui/screens/chat_screen.dart:164:20 • curly_braces_in_flow_control_structures
+2026-06-02T10:00:33.3108313Z warning • Unused import: 'dart:typed_data' • lib/ui/screens/chat_voice_player.dart:4:8 • unused_import
+2026-06-02T10:00:33.3110134Z    info • The 'if' statement could be replaced by a null-aware assignment • lib/ui/screens/chat_voice_player.dart:28:5 • prefer_conditional_assignment
+2026-06-02T10:00:33.3112241Z warning • The operand can't be 'null', so the condition is always 'false' • lib/ui/screens/chat_voice_player.dart:34:15 • unnecessary_null_comparison
+2026-06-02T10:00:33.3114183Z warning • Unused import: '../../core/ui_voice_config.dart' • lib/ui/screens/chat_voice_recorder.dart:9:8 • unused_import
+2026-06-02T10:00:33.3116144Z    info • The 'if' statement could be replaced by a null-aware assignment • lib/ui/screens/chat_voice_recorder.dart:41:7 • prefer_conditional_assignment
+2026-06-02T10:00:33.3118247Z warning • The operand can't be 'null', so the condition is always 'false' • lib/ui/screens/chat_voice_recorder.dart:57:18 • unnecessary_null_comparison
+2026-06-02T10:00:33.3119817Z warning • Dead code • lib/ui/screens/chat_voice_recorder.dart:57:27 • dead_code
+2026-06-02T10:00:33.3121116Z warning • Unused import: 'dart:convert' • lib/ui/screens/dev_ide_screen.dart:3:8 • unused_import
+2026-06-02T10:00:33.3123145Z    info • Statements in an if should be enclosed in a block • lib/ui/screens/dev_ide_screen.dart:114:34 • curly_braces_in_flow_control_structures
+2026-06-02T10:00:33.3125161Z    info • Statements in an if should be enclosed in a block • lib/ui/screens/dev_ide_screen.dart:115:37 • curly_braces_in_flow_control_structures
+2026-06-02T10:00:33.3127212Z    info • Statements in an if should be enclosed in a block • lib/ui/screens/dev_ide_screen.dart:116:45 • curly_braces_in_flow_control_structures
+2026-06-02T10:00:33.3129150Z    info • Statements in an if should be enclosed in a block • lib/ui/screens/dev_ide_screen.dart:117:14 • curly_braces_in_flow_control_structures
+2026-06-02T10:00:33.3130918Z warning • Unused import: 'dart:async' • lib/ui/screens/home_screen.dart:2:8 • unused_import
+2026-06-02T10:00:33.3132198Z warning • Unused import: 'dart:async' • lib/ui/screens/main_screen.dart:2:8 • unused_import
+2026-06-02T10:00:33.3133694Z warning • Unused import: 'voice_room_screen.dart' • lib/ui/screens/main_screen.dart:10:8 • unused_import
+2026-06-02T10:00:33.3135408Z    info • Statements in an if should be enclosed in a block • lib/ui/screens/main_screen.dart:95:37 • curly_braces_in_flow_control_structures
+2026-06-02T10:00:33.3137317Z    info • Statements in an if should be enclosed in a block • lib/ui/screens/main_screen.dart:96:55 • curly_braces_in_flow_control_structures
+2026-06-02T10:00:33.3139125Z warning • Unused import: '../../core/theme/app_theme.dart' • lib/ui/screens/people_screen.dart:7:8 • unused_import
+2026-06-02T10:00:33.3140850Z warning • The value of the field '_refreshing' isn't used • lib/ui/screens/people_screen.dart:28:8 • unused_field
+2026-06-02T10:00:33.3142708Z warning • The operand can't be 'null', so the condition is always 'true' • lib/ui/screens/people_screen.dart:90:23 • unnecessary_null_comparison
+2026-06-02T10:00:33.3144626Z warning • Unused import: '../../core/theme/app_theme.dart' • lib/ui/screens/resident_detail_screen.dart:4:8 • unused_import
+2026-06-02T10:00:33.3146473Z warning • The operand can't be 'null', so the condition is always 'false' • lib/ui/screens/room_audio.dart:71:18 • unnecessary_null_comparison
+2026-06-02T10:00:33.3147972Z warning • Dead code • lib/ui/screens/room_audio.dart:71:27 • dead_code
+2026-06-02T10:00:33.3149604Z    info • The local variable '_buffer' starts with an underscore • lib/ui/screens/room_audio.dart:75:17 • no_leading_underscores_for_local_identifiers
+2026-06-02T10:00:33.3151494Z warning • Unused import: '../../core/theme/app_theme.dart' • lib/ui/screens/room_screen.dart:3:8 • unused_import
+2026-06-02T10:00:33.3153369Z    info • Statements in an if should be enclosed in a block • lib/ui/screens/room_screen.dart:87:37 • curly_braces_in_flow_control_structures
+2026-06-02T10:00:33.3155349Z    info • Statements in an if should be enclosed in a block • lib/ui/screens/room_screen.dart:88:30 • curly_braces_in_flow_control_structures
+2026-06-02T10:00:33.3157108Z warning • Unused import: '../../core/theme/app_theme.dart' • lib/ui/screens/settings_screen.dart:3:8 • unused_import
+2026-06-02T10:00:33.3158790Z warning • Unused import: '../../core/theme/app_theme.dart' • lib/ui/screens/task_detail_screen.dart:3:8 • unused_import
+2026-06-02T10:00:33.3160297Z warning • Unused import: 'dart:async' • lib/ui/screens/theme_selector_screen.dart:2:8 • unused_import
+2026-06-02T10:00:33.3162517Z    info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion • lib/ui/screens/theme_selector_screen.dart:27:84 • deprecated_member_use
+2026-06-02T10:00:33.3164743Z warning • Unused import: '../../core/ui_voice_config.dart' • lib/ui/screens/voice_room_audio.dart:8:8 • unused_import
+2026-06-02T10:00:33.3166610Z warning • The operand can't be 'null', so the condition is always 'false' • lib/ui/screens/voice_room_audio.dart:84:18 • unnecessary_null_comparison
+2026-06-02T10:00:33.3168120Z warning • Dead code • lib/ui/screens/voice_room_audio.dart:84:27 • dead_code
+2026-06-02T10:00:33.3169954Z    info • The 'if' statement could be replaced by a null-aware assignment • lib/ui/screens/voice_room_audio.dart:184:7 • prefer_conditional_assignment
+2026-06-02T10:00:33.3171847Z    info • The 'if' statement could be replaced by a null-aware assignment • lib/ui/screens/voice_room_audio.dart:190:7 • prefer_conditional_assignment
+2026-06-02T10:00:33.3173969Z warning • The operand can't be 'null', so the condition is always 'false' • lib/ui/screens/voice_room_audio.dart:197:18 • unnecessary_null_comparison
+2026-06-02T10:00:33.3175489Z warning • Dead code • lib/ui/screens/voice_room_audio.dart:197:27 • dead_code
+2026-06-02T10:00:33.3177211Z    info • Statements in an if should be enclosed in a block • lib/ui/screens/voice_room_screen.dart:183:22 • curly_braces_in_flow_control_structures
+2026-06-02T10:00:33.3179015Z warning • Unused import: '../../core/theme/app_theme.dart' • lib/ui/widgets/action_card.dart:3:8 • unused_import
+2026-06-02T10:00:33.3180672Z    info • Unnecessary use of multiple underscores • lib/ui/widgets/connection_banner.dart:87:18 • unnecessary_underscores
+2026-06-02T10:00:33.3182363Z warning • Unused import: '../../core/theme/app_theme.dart' • lib/ui/widgets/image_card.dart:3:8 • unused_import
+2026-06-02T10:00:33.3183974Z warning • Unused import: '../../core/theme/app_theme.dart' • lib/ui/widgets/list_card.dart:3:8 • unused_import
+2026-06-02T10:00:33.3185457Z warning • Unused import: 'dart:convert' • lib/ui/widgets/people_file_actions.dart:1:8 • unused_import
+2026-06-02T10:00:33.3187173Z    info • Don't use 'BuildContext's across async gaps • lib/ui/widgets/people_file_actions.dart:86:28 • use_build_context_synchronously
+2026-06-02T10:00:33.3189075Z    info • Don't use 'BuildContext's across async gaps • lib/ui/widgets/people_file_actions.dart:110:80 • use_build_context_synchronously
+2026-06-02T10:00:33.3190774Z warning • Unused import: '../../core/theme/app_theme.dart' • lib/ui/widgets/stat_card.dart:3:8 • unused_import
+2026-06-02T10:00:33.3191612Z 
+2026-06-02T10:00:33.3249170Z 111 issues found. (ran in 14.1s)
+2026-06-02T10:00:33.3303556Z ##[error]Process completed with exit code 1.
+2026-06-02T10:00:33.3513468Z Post job cleanup.
+2026-06-02T10:00:33.3591754Z Post job cleanup.
+2026-06-02T10:00:33.4363325Z [command]/usr/bin/git version
+2026-06-02T10:00:33.4395312Z git version 2.54.0
+2026-06-02T10:00:33.4428616Z Temporarily overriding HOME='/home/runner/work/_temp/9bb522d3-2b0a-4cd9-83e2-87b4f0c6d391' before making global git config changes
+2026-06-02T10:00:33.4429898Z Adding repository directory to the temporary git global config as a safe directory
+2026-06-02T10:00:33.4433706Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/openchat/openchat
+2026-06-02T10:00:33.4463999Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-06-02T10:00:33.4490445Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-06-02T10:00:33.4663780Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-06-02T10:00:33.4685965Z http.https://github.com/.extraheader
+2026-06-02T10:00:33.4695088Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-06-02T10:00:33.4720450Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-06-02T10:00:33.4886311Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-06-02T10:00:33.4911008Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-06-02T10:00:33.5185747Z Cleaning up orphan processes
+2026-06-02T10:00:33.5417238Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
