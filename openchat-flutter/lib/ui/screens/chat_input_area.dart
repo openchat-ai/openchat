@@ -6,9 +6,11 @@ class ChatInputArea extends StatelessWidget {
   final TextEditingController controller;
   final Map<String, dynamic> layout;
   final bool recording;
+  final bool hasText;
   final VoidCallback onSend;
   final VoidCallback onStartRecord;
   final VoidCallback onEndRecord;
+  final ValueChanged<String> onTextChanged;
 
   const ChatInputArea({
     super.key,
@@ -16,6 +18,8 @@ class ChatInputArea extends StatelessWidget {
     required this.controller,
     required this.layout,
     required this.recording,
+    required this.hasText,
+    required this.onTextChanged,
     required this.onSend,
     required this.onStartRecord,
     required this.onEndRecord,
@@ -35,19 +39,23 @@ class ChatInputArea extends StatelessWidget {
         Expanded(child: TextField(
           controller: controller,
           style: TextStyle(color: theme.textPrimary),
+          maxLines: 4,
+          minLines: 1,
+          textInputAction: TextInputAction.newline,
+          keyboardType: TextInputType.multiline,
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(color: theme.textTertiary),
             filled: true, fillColor: theme.background,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
-          onSubmitted: (_) => onSend(),
+          onChanged: onTextChanged,
         )),
-        IconButton(icon: Icon(Icons.emoji_emotions_outlined, color: theme.textSecondary), onPressed: () {}),
-        Listener(
-          onPointerDown: (_) => onStartRecord(),
-          onPointerUp: (_) => onEndRecord(),
-          onPointerCancel: (event) => onEndRecord(),
+        const SizedBox(width: 4),
+        GestureDetector(
+          onLongPressStart: (_) => onStartRecord(),
+          onLongPressEnd: (_) => onEndRecord(),
+          onLongPressCancel: () => onEndRecord(),
           child: Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
@@ -55,6 +63,11 @@ class ChatInputArea extends StatelessWidget {
               gradient: recording ? null : LinearGradient(colors: theme.gradientPrimary),
               borderRadius: BorderRadius.circular(20)),
             child: Icon(recording ? Icons.mic : Icons.keyboard_voice, color: Colors.white, size: 20)),
+        ),
+        const SizedBox(width: 4),
+        IconButton(
+          icon: Icon(Icons.send_rounded, color: hasText ? theme.primary : theme.textTertiary),
+          onPressed: hasText ? onSend : null,
         ),
       ])),
     );

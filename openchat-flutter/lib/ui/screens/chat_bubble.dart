@@ -6,6 +6,8 @@ class ChatBubble extends StatelessWidget {
   final AppTheme theme;
   final Map<String, dynamic> layout;
   final VoidCallback onPlayVoice;
+  final bool isPlaying;
+  final int? durationMs;
 
   const ChatBubble({
     super.key,
@@ -13,6 +15,8 @@ class ChatBubble extends StatelessWidget {
     required this.theme,
     required this.layout,
     required this.onPlayVoice,
+    this.isPlaying = false,
+    this.durationMs,
   });
 
   @override
@@ -25,6 +29,7 @@ class ChatBubble extends StatelessWidget {
     final radius = (bc['radius'] as num?)?.toDouble() ?? 20;
     final selfBg = selfColor != null ? Color(int.parse(selfColor.replaceAll('#', '0xFF'))) : null;
     final otherBg = otherColor != null ? Color(int.parse(otherColor.replaceAll('#', '0xFF'))) : null;
+    final fg = isMe ? Colors.white : theme.textPrimary;
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -40,14 +45,18 @@ class ChatBubble extends StatelessWidget {
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           if (!isVoice)
-            Text(message['text'] ?? '', style: TextStyle(color: isMe ? Colors.white : theme.textPrimary, fontSize: 14))
+            Text(message['text'] ?? '', style: TextStyle(color: fg, fontSize: 14))
           else
             GestureDetector(
               onTap: onPlayVoice,
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.play_arrow, color: isMe ? Colors.white : theme.primary, size: 20),
+                Icon(isPlaying ? Icons.pause : Icons.play_arrow, color: isMe ? Colors.white : theme.primary, size: 20),
                 const SizedBox(width: 6),
-                Text('语音', style: TextStyle(color: isMe ? Colors.white : theme.textPrimary, fontSize: 14)),
+                Text('语音', style: TextStyle(color: fg, fontSize: 14)),
+                if (durationMs != null) ...[
+                  const Spacer(),
+                  Text('${(durationMs! / 1000).toStringAsFixed(1)}″', style: TextStyle(color: isMe ? Colors.white.withValues(alpha: 0.85) : theme.textTertiary, fontSize: 12)),
+                ],
               ]),
             ),
           const SizedBox(height: 4),

@@ -46,8 +46,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
   int _startupTs = 0;
   int _pollIntervalMs = 2000;
   int _replyPollStartTs = 0;
+  bool _hasText = false;
 
   @override
+  String? _playingKey;
+  final Map<String, int> _voiceDurationMs = {};
+
   String get sduiPage => 'chat';
 
   @override
@@ -56,6 +60,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
     WidgetsBinding.instance.addObserver(this);
     _startupTs = DateTime.now().millisecondsSinceEpoch;
     _messages.add({'sender': 'ai', 'type': 'text', 'text': 'Hello! How can I help you?', 'time': '10:00'});
+    _player.onStateChange = (key, durMs) {
+      if (!mounted) return;
+      setState(() {
+        _playingKey = key;
+        if (key != null && durMs > 0) _voiceDurationMs[key] = durMs;
+      });
+    };
     _initQiniuPoll();
   }
 
@@ -271,9 +282,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
             controller: _controller,
             layout: sduiLayout,
             recording: _vmRecording,
+            hasText: _hasText,
             onSend: _sendText,
             onStartRecord: _startVmRecord,
             onEndRecord: _endVmRecord,
+            onTextChanged: (v) {
+              if (!mounted) return;
+              setState(() => _hasText = v.isNotEmpty);
+            },
           ),
         ],
       ),
@@ -306,11 +322,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
         controller: _scrollController,
         padding: const EdgeInsets.all(16),
         itemCount: _messages.length,
-        itemBuilder: (context, index) => ChatBubble(
-          message: _messages[index],
-          theme: theme,
-          layout: sduiLayout,
-          onPlayVoice: () => _playVoiceMsg(_messages[index]['key'] as String),
-        ));
+        itemBuilder: (context, index) {
+          final m = _messages[index];
+          final key = m['key'] as String?;
+          return ChatBubble(
+            message: m,
+            theme: theme,
+            layout: sduiLayout,
+            isPlaying: key != null && _playingKey == key,
+            durationMs: key != null ? _voiceDurationMs[key] : null,
+            onPlayVoice: () => _playVoiceMsg(key ?? ''),
+          );
+        });
   }
 }
