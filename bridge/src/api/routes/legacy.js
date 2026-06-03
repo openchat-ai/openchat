@@ -6,8 +6,7 @@
 
 import express from 'express';
 import { persistentConfig } from '../../core/persistent-config.js';
-import { providerManager } from 'provider-kit';
-import { providerRegistry } from 'provider-kit';
+import * as providerService from '../../core/provider-service.js';
 import { sessionManager } from '../../session/session-manager.js';
 import { memoryManager } from '../../memory/memory-manager.js';
 import { residentManager } from '../../core/resident-manager.js';
@@ -37,7 +36,7 @@ router.get('/status', async (req, res, next) => {
 
 // 2. Provider 列表
 router.get('/providers', (req, res) => {
-  const providers = providerRegistry.listAll();
+  const providers = providerService.listAll();
   const current = persistentConfig.getPreference('currentProvider');
   res.json({ current, providers });
 });
@@ -134,9 +133,9 @@ router.post('/provider/connect', async (req, res, next) => {
   try {
     const { providerId, apiKey, baseUrl } = req.body;
     if (!providerId) return res.status(400).json({ error: 'providerId required' });
-    const result = await providerRegistry.configure(providerId, { apiKey, baseUrl });
+    const result = await providerService.configure(providerId, { apiKey, baseUrl });
     if (result.success) {
-      const models = providerRegistry.getModels(providerId);
+      const models = providerService.getModels(providerId);
       res.json({ success: true, providerId, modelCount: models.length, models: models.slice(0, 20) });
     } else {
       res.status(400).json({ error: result.error });
@@ -148,7 +147,7 @@ router.get('/provider/models', async (req, res, next) => {
   try {
     const { providerId } = req.query;
     if (!providerId) return res.status(400).json({ error: 'providerId required' });
-    const models = providerRegistry.getModels(providerId) || [];
+    const models = providerService.getModels(providerId) || [];
     res.json({ providerId, models: models.slice(0, 50) });
   } catch (e) { next(e); }
 });

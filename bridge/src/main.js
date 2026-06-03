@@ -18,8 +18,7 @@ import { initCore } from './core/handlers.js';
 import { CLIGateway, WSGateway } from './gateway/base.js';
 import { persistentConfig } from './core/persistent-config.js';
 import { forge } from './core/evolution/forge.js';
-import { providerManager } from 'provider-kit';
-import { providerRegistry } from 'provider-kit';
+import * as providerService from './core/provider-service.js';
 import { memoryManager } from './memory/memory-manager.js';
 import { agentMonitor } from './core/agent/agent-monitor.js';
 import { AIPerson, aiPersonRegistry, createFounder } from './core/agent/ai-personhood.js';
@@ -209,7 +208,7 @@ export class Bridge {
     const model = persistentConfig.getPreference('currentModel');
     if (provider) {
       // 只显示服务商简称，不显示具体模型名，避免界面混乱
-      const p = providerManager.getProvider(provider);
+      const p = providerService.getProvider(provider);
       const pname = p?.nameCn || provider;
       // 简化显示，避免显示冗余信息
       return pname;  // 不再显示 /模型名 部分

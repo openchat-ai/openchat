@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { executeCommand } from './commands.js';
 import { persistentConfig } from '../core/persistent-config.js';
-import { providerManager } from 'provider-kit';
+import * as providerService from '../core/provider-service.js';
 
 /**
  * 创建 CLI 交互界面，返回方法集合供 Bridge 调用
@@ -13,7 +13,7 @@ export function setupCLI(bridge) {
   function getPrompt() {
     const provider = persistentConfig.getPreference('currentProvider');
     if (provider) {
-      const p = providerManager.getProvider(provider);
+      const p = providerService.getProvider(provider);
       return p?.nameCn || provider;
     }
     return null;

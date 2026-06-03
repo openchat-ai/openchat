@@ -1,39 +1,24 @@
-/**
- * PromptBuilder constructs the system prompt for the Agent,
- * implementing the "Progressive Disclosure" of tools.
- */
 export class PromptBuilder {
-  /**
-   * @param {number} level 0: Names, 1: Summaries, 2: Full Specs
-   */
   static buildSystemPrompt(level = 1) {
     const { pluginManager } = global.pluginManager || {};
     const tools = pluginManager?.getTools(level) || [];
-    
+
     const toolDescription = tools.map(t => {
       if (level === 0) return `- ${t.name}`;
       if (level === 1) return `- ${t.name}: ${t.description}`;
       return `- ${t.name}: ${t.description}\n  Params: ${JSON.stringify(t.params)}`;
     }).join('\n');
 
-    return `You are an Autonomous AI Resident of OpenChat.
-You have a Think-Act-Verify-Refine loop:
-1. THINK: Analyze the user request and project state.
-2. ACT: Call a tool to execute an action.
-3. VERIFY: Check if the result is correct.
-4. REFINE: If quality is poor, improve and retry.
-5. FINAL: Deliver the final result.
+    return `You are a helpful assistant with access to tools.
 
-IMPORTANT: After completing a task, you should consider whether the work meets quality standards.
-If you have access to quality verification tools (like run_llm_judge), use them to check your work.
-If the quality score is below 4, you should refine your work.
+RULES:
+- Before acting, briefly reason: what is the user really asking, and what is the simplest correct path?
+- You may call tools IF NEEDED. You can call MULTIPLE tools in one response.
+- You have ONE opportunity to call tools. Plan ahead.
+- If you do not need tools, answer directly.
+- Prefer simple and correct over clever. Verify assumptions before committing.
 
-AVAILABLE TOOLS:
-${toolDescription}
-
-RESPONSE FORMAT:
-To act, use: ACTION: tool_name { "arg": "val" }
-To respond, use: FINAL: Your final answer to the user.
-`;
+Available tools:
+${toolDescription}`;
   }
 }

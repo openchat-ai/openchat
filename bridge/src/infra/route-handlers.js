@@ -1,5 +1,5 @@
 import { persistentConfig } from '../core/persistent-config.js';
-import { providerRegistry } from 'provider-kit';
+import * as providerService from '../core/provider-service.js';
 import { memoryManager } from '../memory/memory-manager.js';
 import { sessionManager } from '../session/session-manager.js';
 import { agentMonitor } from '../core/agent/agent-monitor.js';
@@ -39,7 +39,7 @@ export function createHandlers(bridge, CONFIG, crypto) {
   }
 
   async function handleProviders(req, res) {
-    const providers = providerRegistry.listAll();
+    const providers = providerService.listAll();
     const current = persistentConfig.getPreference('currentProvider');
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -269,10 +269,10 @@ export function createHandlers(bridge, CONFIG, crypto) {
           return;
         }
 
-        const result = await providerRegistry.configure(providerId, { apiKey, baseUrl });
+        const result = await providerService.configure(providerId, { apiKey, baseUrl });
 
         if (result.success) {
-          const models = providerRegistry.getModels(providerId);
+          const models = providerService.getModels(providerId);
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({
             success: true,
@@ -302,11 +302,11 @@ export function createHandlers(bridge, CONFIG, crypto) {
     }
 
     try {
-      const models = await providerRegistry.refreshModels(providerId);
+      const models = await providerService.refreshModels(providerId);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ providerId, models, count: models.length }));
     } catch (e) {
-      const models = providerRegistry.getModels(providerId);
+      const models = providerService.getModels(providerId);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ providerId, models, count: models.length, cached: true }));
     }

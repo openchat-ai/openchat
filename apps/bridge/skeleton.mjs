@@ -10,7 +10,7 @@
 
 import { SkeletonCodec } from './skeleton-codec.mjs';
 import { qiniuList, qiniuGet, qiniuPut } from './skeleton-qiniu.mjs';
-import { processText } from './skeleton-agent.mjs';
+import { processText, initProvider } from './skeleton-agent.mjs';
 
 // === invariants ===
 // - All cross-device data flows through Qiniu, never direct connection
@@ -180,5 +180,6 @@ async function pollLoop() {
   }
 }
 
+await initProvider();
 await primeSeenKeys();
 pollLoop().catch(console.error);
