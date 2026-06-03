@@ -2,12 +2,11 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'lmdn_mdct.dart';
 
-const int _sr = 24000;
 const int _fftSize = 2048;
 
-Map<String, dynamic>? yinF0(Float64List samples) {
-  final mL = (_sr / 2000).round();
-  final ML = (_sr / 40).round();
+Map<String, dynamic>? yinF0(Float64List samples, {int sr = 48000}) {
+  final mL = (sr / 2000).round();
+  final ML = (sr / 40).round();
   if (samples.length < _fftSize) return null;
   final d = Float64List(ML + 1);
   for (int t = 0; t <= ML; t++) {
@@ -28,13 +27,13 @@ Map<String, dynamic>? yinF0(Float64List samples) {
       final a = c[t - 1], b = c[t], cc = c[t + 1];
       final de = a - 2 * b + cc;
       final ft = de.abs() > 1e-12 ? t + (a - cc) / (2 * de) : t.toDouble();
-      return {'freq': _sr / ft, 'conf': math.max(0.0, 1.0 - c[t])};
+      return {'freq': sr / ft, 'conf': math.max(0.0, 1.0 - c[t])};
     }
   }
   return null;
 }
 
-Map<String, dynamic>? peakTrackF0(Float64List samples) {
+Map<String, dynamic>? peakTrackF0(Float64List samples, {int sr = 48000}) {
   if (samples.length < _fftSize) return null;
   final win = Float64List(_fftSize);
   for (int i = 0; i < _fftSize; i++) {
@@ -54,7 +53,7 @@ Map<String, dynamic>? peakTrackF0(Float64List samples) {
       final a = mag[i - 1], b = mag[i], g = mag[i + 1], de = a - 2 * b + g;
       double fi = i.toDouble();
       if (de.abs() > 1e-12) fi = i + (a - g) / (2 * de);
-      final f = fi * _sr / _fftSize;
+      final f = fi * sr / _fftSize;
       if (f > 30 && f < 8000) pk.add({'freq': f, 'amp': mag[i]});
     }
   }
@@ -89,9 +88,9 @@ Map<String, dynamic>? peakTrackF0(Float64List samples) {
   return ca.isNotEmpty ? Map<String, dynamic>.from(ca[0]) : null;
 }
 
-Map<String, dynamic>? fusionF0(Float64List samples) {
-  final y = yinF0(samples);
-  final pt = peakTrackF0(samples);
+Map<String, dynamic>? fusionF0(Float64List samples, {int sr = 48000}) {
+  final y = yinF0(samples, sr: sr);
+  final pt = peakTrackF0(samples, sr: sr);
   if (y == null) return pt;
   if (pt == null) return y;
   if ((y['conf'] as double) > 0.5) return y;

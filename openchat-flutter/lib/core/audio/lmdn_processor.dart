@@ -94,6 +94,8 @@ class LmdnProcessor {
     return count > 0 ? (sum / count / 32768) : 0;
   }
 
+  void resetCodec() { _codec?.reset(); }
+
   void dispose() {
     _isProcessing = false;
     _codec?.destroy();

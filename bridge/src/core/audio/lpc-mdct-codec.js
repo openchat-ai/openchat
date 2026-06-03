@@ -41,7 +41,7 @@ class BW {
   constructor() { this.b = []; this.a = 0; this.n = 0; }
   w(v, bits) {
     this.a = (this.a << bits) | (v & ((1 << bits) - 1)); this.n += bits;
-    while (this.n >= 8) { this.n -= 8; this.b.push((this.a >> this.n) & 0xFF); this.a &= (1 << this.n) - 1; }
+    while (this.n >= 8) { this.n -= 8; this.b.push((this.a >> this.n) & 0xFF); this.a = this.a & ((1 << this.n) - 1); }
   }
   f() { if (this.n > 0) this.b.push((this.a << (8 - this.n)) & 0xFF); return Buffer.from(this.b); }
 }
@@ -164,7 +164,7 @@ class LpcMdctCodec {
     let readPos = 0, readAcc = 0, readBits = 0;
     const read = (bits) => {
       while (readBits < bits) { readAcc = (readAcc << 8) | (payload[readPos++] || 0); readBits += 8; }
-      readBits -= bits; const v = (readAcc >> readBits) & ((1 << bits) - 1); readAcc &= (1 << readBits) - 1;
+      readBits -= bits; const v = (readAcc >> readBits) & ((1 << bits) - 1); readAcc = readAcc & ((1 << readBits) - 1);
       return v;
     };
 

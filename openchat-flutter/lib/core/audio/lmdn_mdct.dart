@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-const int _sr = 24000;
 const int _n = 96;
 const int _bands = 16;
 const int _fftSize = 2048;
