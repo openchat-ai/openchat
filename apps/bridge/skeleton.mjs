@@ -47,81 +47,16 @@ async function processEnc(key) {
     console.warn(`[C13] empty enc, skip ${key}`);
     return;
   }
-
-  let text = '';
-  if (key.endsWith('.msg')) {
-    // Text message: EPC header BB 00 DD, payload is JSON
-    if (encData[0] !== 0xBB || encData[2] !== 0xDD) {
-      console.error(`[C13] invalid text EPC header in ${key}`);
-      return;
-    }
-    const pl = (encData[3] << 16) | (encData[4] << 8) | encData[5];
-    const payload = Buffer.from(encData.slice(6, 6 + pl));
-    try {
-      const obj = JSON.parse(payload.toString('utf8'));
-      text = obj.text || '';
-    } catch (e) {
-      console.error(`[C13] text payload parse fail: ${e.message}`);
-      return;
-    }
-    console.log(`[C13c] text="${text.substring(0, 80)}"`);
-  } else {
-    // Voice message: EPC header BB 01 CC, payload is lmdn
-    if (encData[0] !== 0xBB || encData[1] !== 0x01 || encData[2] !== 0xCC) {
-      console.error(`[C13] invalid EPC header in ${key}`);
-      return;
-    }
-    const decoded = await codec.decode(Buffer.from(encData));
-    console.log(`[C13b] decoded pcm=${decoded.pcm.length}B score=${decoded.score.length}`);
-    text = '你好'; // v0: hard-code STT
-    console.log(`[C13c] text=${text} (STT hard-coded)`);
-  }
-
-  let response = '';
-  let toolCalls = [];
-  let errMsg = null;
-  try {
-    const r = await processText(text);
-    response = r.response || '';
-    toolCalls = r.toolCalls || [];
-    console.log(`[C13d] toolCalls=${toolCalls.length}`);
-  } catch (e) {
-    errMsg = e.message;
-    console.error(`[C13d] agent error: ${errMsg}`);
-  }
-
-  const reply = response || '(agent returned empty)';
-  console.log(`[C13e] reply="${reply.substring(0, 80)}"`);
-
-  // Derive chatId from key: oc/chat/<chatId>/<ts>.enc
-  const parts = key.split('/');
-  const chatId = parts.length >= 3 ? parts[2] : 'default';
-  const ts = Date.now();
-  const replyKey = `oc/chat/${chatId}/${ts}-reply.json`;
-
-  const payload = {
-    text: reply,
-    toolCalls,
-    sourceKey: key,
-    ts,
-    ...(errMsg && { error: errMsg }),
-  };
-  await qiniuPut(replyKey, Buffer.from(JSON.stringify(payload), 'utf8'));
-  console.log(`[C13f] uploaded ${replyKey}`);
-}
-  if (encData[0] !== 0xBB) {
-    console.error(`[C13] invalid EPC header in ${key}: got 0x${encData[0].toString(16)}, expected 0xBB`);
+  if (encData[0] !== 0xBB || encData[1] !== 0x01 || encData[2] !== 0xCC) {
+    console.error(`[C13] invalid EPC header in ${key}`);
     return;
   }
-  const epcVersion = encData[1];
-  const epcType = encData[2];
-  console.log(`[C13] EPC v=${epcVersion} type=${epcType} size=${encData.length}B`);
 
   const decoded = await codec.decode(Buffer.from(encData));
   console.log(`[C13b] decoded pcm=${decoded.pcm.length}B score=${decoded.score.length}`);
 
   const text = '你好'; // v0: hard-code STT
-  console.log(`[C13c] text=${text}`);
+  console.log(`[C13c] text=${text} (STT hard-coded)`);
 
   let response = '';
   let toolCalls = [];
@@ -227,7 +162,6 @@ async function pollLoop() {
         // Accept .enc (voice, lmdn) and .msg (text, EPC BB 00 DD)
         if (!key.endsWith('.enc') && !key.endsWith('.msg')) continue;
         if (key.includes('-reply')) continue;
-        if (!key.endsWith('.enc') && !key.endsWith('.msg')) continue;
 
         try {
           if (key.endsWith('.enc')) {
