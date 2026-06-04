@@ -11,10 +11,16 @@ export class AiProvider {
 
   async connect(apiKey, endpoint = null) {
     this.apiKey = apiKey;
-    this.endpoint = endpoint || this.getDefaultEndpoint();
-    await this.verifyConnection();
+    this.endpoint = endpoint || this.guessEndpoint() || this.getDefaultEndpoint();
+    // 不等待 verifyConnection（OpenRouter /models 可能很慢），后台执行
+    this.verifyConnection().then(v => { this.connected = v; }).catch(() => { this.connected = true; });
     this.connected = true;
     return true;
+  }
+
+  guessEndpoint() {
+    if (this.apiKey?.startsWith('sk-or-v1-')) return 'https://openrouter.ai/api/v1';
+    return null;
   }
 
   async disconnect() {
@@ -56,6 +62,9 @@ function isOpenAICompatibleProvider(type) {
   if (lowerType.includes('openai')) {
     return true;
   }
+
+  // OpenRouter 直接兼容 OpenAI API
+  if (lowerType === 'openrouter') return true;
 
   // 动态检查：从 provider-manager 获取 transport 配置
   // 如果 transport 是 'openai_chat'，则使用 OpenAI 兼容接口
@@ -250,33 +259,47 @@ class OpenAiProvider extends AiProvider {
     }
   }
 
-  async chat(model, messages) {
+  supportsTools() {
+    const id = this.providerType || this.id;
+    return id !== 'minimax';
+  }
+
+  async chat(model, messages, tools, opts = {}) {
     const apiKey = this.apiKey || getRuntimeApiKey('openai');
-    const response = await fetch(`${this.endpoint}/chat/completions`, {
+    const body = { model, messages, stream: false };
+    if (tools && this.supportsTools()) body.tools = tools;
+    const timeout = opts.timeout || 60000;
+    const makeReq = fetch(`${this.endpoint}/chat/completions`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        model: model,
-        messages: messages,
-        stream: false
-      })
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.error?.message || `OpenAI API error: ${response.status}`);
-    }
+      body: JSON.stringify(body),
+    }).catch(() => {}); // 忽略后台超时的 fetch
+    const response = await Promise.race([
+      (async () => {
+        const res = await makeReq;
+        if (!res) throw new Error('LLM fetch failed');
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error?.message || `OpenAI API error: ${res.status}`);
+        }
+        return res;
+      })(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error(`LLM_TIMEOUT: ${timeout / 1000}s`)), timeout)),
+    ]);
 
     const data = await response.json();
+    const msg = data.choices[0]?.message || {};
+    const content = msg.content || msg.reasoning || '';
     return {
       id: data.id,
       model: data.model,
-      content: data.choices[0]?.message?.content || '',
+      content,
+      toolCalls: msg.tool_calls || [],
       usage: data.usage,
-      created: data.created
+      created: data.created,
     };
   }
 

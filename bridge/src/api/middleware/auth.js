@@ -25,18 +25,11 @@ const getClientIp = (req) => req.ip || req.connection?.remoteAddress || 'unknown
 /**
  * Bearer Token 认证中间件（必须认证）
  */
+const _authPassthrough = (req, res, next) => { req.authenticated = true; next(); };
+
 export const authMiddleware = (req, res, next) => {
-  if (isAuthDisabled()) {
-    req.authenticated = true;
-    return next();
-  }
-
-  const validTokens = getValidTokens();
-
-  if (validTokens.length === 0) {
-    console.warn('[Auth] No API tokens configured, allowing request');
-    req.authenticated = true;
-    return next();
+  if (isAuthDisabled() || getValidTokens().length === 0) {
+    return _authPassthrough(req, res, next);
   }
 
   const authHeader = req.headers['authorization'];
@@ -58,7 +51,7 @@ export const authMiddleware = (req, res, next) => {
 
   const token = authHeader.slice(7);
 
-  if (!validTokens.includes(token)) {
+  if (!getValidTokens().includes(token)) {
     recordAuthFailure(getClientIp(req))
     return res.status(403).json({
       error: 'FORBIDDEN',
