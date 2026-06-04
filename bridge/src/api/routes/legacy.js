@@ -9,7 +9,7 @@ import { persistentConfig } from '../../core/persistent-config.js';
 import * as providerService from '../../core/provider-service.js';
 import { sessionManager } from '../../session/session-manager.js';
 import { memoryManager } from '../../memory/memory-manager.js';
-import { residentManager } from '../../core/resident-manager.js';
+import { residentManager } from '../../core/agent/resident-manager.js';
 
 const router = express.Router();
 

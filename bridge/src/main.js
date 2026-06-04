@@ -375,13 +375,10 @@ export class Bridge {
 
         // P2R: 居民治家初始化（try 块防止 HouseOrchestrator 报错阻止后续初始化）
         try {
-        const { SafeEvolution } = await import('./core/safe-evolution.js');
         const { BridgeSpawn } = await import('./core/bridge-spawn.js');
         const { detectBestStrategy } = await import('./core/launch-strategies.js');
         const { House } = await import('./core/house.js');
         const { LLMProxyAgent } = await import('./core/llm-proxy-agent.js');
-
-        const safeEvo = new SafeEvolution(this.p2p, this.p2p.peerId || 'bridge-1');
 
         // 初始化默认 House（主 Bridge / 子 Bridge 各自创建）
         if (!this.house) {
@@ -403,9 +400,8 @@ export class Bridge {
         }
 
         const { HouseOrchestrator } = await import('./core/house-orchestrator.js');
-        this.houseOrchestrator = new HouseOrchestrator(this.p2p, this.p2p.peerId || 'bridge-1', safeEvo, this.house, bridgeSpawn);
+        this.houseOrchestrator = new HouseOrchestrator(this.p2p, this.p2p.peerId || 'bridge-1', null, this.house, bridgeSpawn);
         residentScheduler.houseOrchestrator = this.houseOrchestrator;
-        this.safeEvolution = safeEvo;
         this.bridgeSpawn = bridgeSpawn;
 
         // LLM 代理：接收子桥的 LLM 调用请求
@@ -422,32 +418,6 @@ export class Bridge {
         }
         } catch (e) { console.log(`[启动] P2R 初始化失败: ${e.message}`); }
 
-        // P2R-K: 收敛引擎 — 问题分解→竞标→求解→择优
-        try {
-          const { ProblemDecomposer } = await import('./core/problem-decomposer.js');
-          const { ConvergenceEngine } = await import('./core/convergence-engine.js');
-          const { SolutionEngine } = await import('./core/solution-engine.js');
-          const { SolutionOptimizer } = await import('./core/solution-optimizer.js');
-          this.problemDecomposer = new ProblemDecomposer();
-          this.convergenceEngine = new ConvergenceEngine();
-          this.solutionEngine = new SolutionEngine();
-          this.solutionOptimizer = new SolutionOptimizer();
-
-          // 注入收敛系统到居民调度器
-          const { residentScheduler } = await import('./core/resident-scheduler.js');
-          residentScheduler.setConvergenceSystem(
-            this.knowledgeBase,
-            this.problemDecomposer,
-            this.convergenceEngine,
-            this.solutionEngine,
-            this.solutionOptimizer
-          );
-
-          console.log('[P2R-K] 收敛引擎已启动 (分解+竞标+求解+优化)');
-        } catch (e) {
-          console.log(`[P2R-K] 收敛引擎启动失败: ${e.message}`);
-        }
-
         // 启动学习核心
         this.learningCore = new LearningCore(this.knowledgeBase, this.p2p, port, residentScheduler);
         if (isMain) {
@@ -458,47 +428,6 @@ export class Bridge {
           this._startFairyMonitor();
           this._startHeartbeat();
         }
-
-        // P2R-K: 响应邻居的问题求解请求
-        this.p2p.on(P2PMessageType.PROBLEM_SOLVE, async (data) => {
-          const p = data.payload || {};
-          try {
-            const domain = p.domain || 'general';
-
-            // 1. 先查知识库
-            let kbHit = false;
-            if (this.knowledgeBase && p.question) {
-              const kbAns = this.knowledgeBase.answer(domain, p.question);
-              if (kbAns && kbAns.verified) {
-                kbHit = true;
-              }
-            }
-
-            // 2. 加入调度器队列（让居民按 traits 分角色求解）
-            try {
-              const { residentScheduler } = await import('./core/resident-scheduler.js');
-              residentScheduler.addProblem({
-                problemId: p.problemId,
-                domain,
-                question: p.question,
-                subQuestions: p.subQuestions || [],
-                from: data.from,
-              });
-            } catch (e) { logger.warn({ err: e }, 'P2R-K 问题处理失败'); }
-
-            // 3. 回复（先返回 KB 能回答的部分）
-            const result = {
-              problemId: p.problemId,
-              ok: true,
-              answer: kbHit ? 'solved' : 'pending',
-              fromBridge: this.p2p?.peerId || '?',
-              note: kbHit ? '知识库命中' : '已分发居民求解',
-            };
-            this.p2p.sendTo(data.from, { type: P2PMessageType.PROBLEM_RESULT, payload: result });
-          } catch (e) {
-            console.log(`[P2R-K] 求解失败: ${e.message}`);
-          }
-        });
 
         // P2R: 窟验证回复
         this.p2p.on('safe-house-verify', (data) => {
@@ -625,16 +554,6 @@ export class Bridge {
         });
 
         // P2R-S: 安全自治事件
-        this.p2p.on('propose_change', (data) => {
-          if (this.safeEvolution) {
-            this.safeEvolution.verifyProposal(data.from, data.payload || {});
-          }
-        });
-        this.p2p.on('verify_result', (data) => {
-          if (this.safeEvolution && data.payload) {
-            this.safeEvolution.handleVerification(data.from, data.payload);
-          }
-        });
         this.p2p.on('change_applied', (data) => {
           const p = data.payload || {};
           console.log(`[P2R-S] 变更应用: ${p.file} by ${p.appliedBy?.slice(0, 8)}`);

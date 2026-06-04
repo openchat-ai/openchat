@@ -151,6 +151,13 @@ class ResidentScheduler {
     }
   }
 
+  _getHealthScore() {
+    const houses = residentManager.list(null).map(r => r.safeHouses || []).flat();
+    const valid = houses.filter(h => Date.now() - (h.lastVerified || 0) < 3600000).length;
+    const total = houses.length || 1;
+    return (valid / total) * 100;
+  }
+
   start() {
     if (this._started) return;
     this._started = true;
