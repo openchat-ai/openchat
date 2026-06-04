@@ -6,7 +6,7 @@
  */
 
 import express from 'express'
-import { residentManager } from '../../core/resident-manager.js'
+import { residentManager } from '../../core/agent/resident-manager.js'
 
 const router = express.Router()
 

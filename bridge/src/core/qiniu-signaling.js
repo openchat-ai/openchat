@@ -15,15 +15,21 @@ import qiniu from 'qiniu';
 import { createHmac, createHash } from 'crypto';
 
 // 七牛云配置（优先 .env，没有则用默认演示账号）
+const _ak = process.env.QINIU_ACCESS_KEY || 'jvjMR8ZC57VzT0Dh7aVzheLwKrZvHWMsqQ5HVzpG';
+const _sk = process.env.QINIU_SECRET_KEY || 'tfmS12VTFM_fs0NJaMRHUw09TVkWHAuZx6wb-fIq';
 const config = {
-  accessKey: process.env.QINIU_ACCESS_KEY || 'jvjMR8ZC57VzT0Dh7aVzheLwKrZvHWMsqQ5HVzpG',
-  secretKey: process.env.QINIU_SECRET_KEY || 'tfmS12VTFM_fs0NJaMRHUw09TVkWHAuZx6wb-fIq',
+  accessKey: _ak,
+  secretKey: _sk,
+  bucket: process.env.QINIU_BUCKET || 'dapin-xp',
+  region: process.env.QINIU_REGION || 'cn-east-1',
+  domain: process.env.QINIU_DOMAIN || 'dapin-xp.s3.cn-east-1.qiniucs.com',
   bucketPrefix: process.env.QINIU_BUCKET_PREFIX || 'openchat',
 };
 
-const credentials = new qiniu.Credentials(config.accessKey, config.secretKey);
+const credentials = new qiniu.auth.digest.Mac(config.accessKey, config.secretKey);
 const configQiniu = new qiniu.conf.Config();
 configQiniu.zone = qiniu.zone.Zone_z0;
+configQiniu.useCdnDomain = false;
 
 const SIGNALS_DIR = 'signaling';
 const COORDINATOR_DIR = `${SIGNALS_DIR}/coordinator`;
@@ -60,7 +66,7 @@ class QiniuSignaling {
    * 生成预签名 URL (用于手机直接读取)
    */
   getSignedUrl(key, expires = 300) {
-    const host = 'dapin-xp.s3.cn-east-1.qiniucs.com';
+    const host = config.domain;
     const amzDate = new Date().toISOString().replace(/[:-]|\.\d{3}/g, '');
     const dateStamp = amzDate.slice(0, 8);
     const credential = `${config.accessKey}/${dateStamp}/${config.region}/s3/aws4_request`;
@@ -452,6 +458,56 @@ class QiniuSignaling {
         if (err) reject(err);
         else resolve(ret);
       });
+    });
+  }
+
+  /**
+   * 上传/覆盖文件
+   */
+  async putObject(key, data) {
+    const uploadToken = new qiniu.rs.PutPolicy({ scope: `${config.bucket}:${key}` }).uploadToken(credentials);
+    return new Promise((resolve, reject) => {
+      this.formUploader.put(uploadToken, key, data, this.putExtra, (err, ret) => {
+        if (err) reject(err); else resolve(ret);
+      });
+    });
+  }
+
+  /**
+   * 删除文件
+   */
+  async deleteObject(key) {
+    return new Promise((resolve, reject) => {
+      this.bucketManager.delete(config.bucket, key, (err, ret) => {
+        if (err) reject(err); else resolve(ret);
+      });
+    });
+  }
+
+  /**
+   * 按前缀列出文件
+   */
+  async listObjects(prefix) {
+    if (!this.bucketManager) throw new Error('bucketManager not initialized');
+    return new Promise((resolve, reject) => {
+      try {
+        this.bucketManager.listPrefix(config.bucket, { prefix, limit: 200 }, (err, respBody, respInfo) => {
+          if (err) {
+            console.log(`[qiniu-list] err=`, err);
+            reject(err);
+          } else {
+            const items = (respBody?.items || []).map(it => ({
+              key: it.key,
+              size: it.fsize || 0,
+              lastModified: it.putTime ? it.putTime / 10000 : 0,
+            }));
+            resolve(items);
+          }
+        });
+      } catch (e) {
+        console.log(`[qiniu-list] exception=`, e);
+        reject(e);
+      }
     });
   }
 

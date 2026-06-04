@@ -152,6 +152,259 @@ class APIServer {
       }));
     }
 
+    // Qiniu 对象存储浏览器（诊断工具）
+    this.app.get('/qiniu-browser', (req, res) => {
+      res.set('Content-Security-Policy', "default-src 'self';script-src 'self' 'unsafe-inline';style-src 'self' 'unsafe-inline';connect-src 'self';img-src 'self' data:");
+      res.send(`<!DOCTYPE html>
+<html lang="zh">
+<head><meta charset="utf-8"><title>Qiniu Browser</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#e0e0e0;font:13px/1.5 monospace;padding:20px}
+h1{color:#7c8aff;font-size:18px;margin-bottom:16px}
+.bar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.bar input{flex:1;min-width:200px;background:#1a1a2e;border:1px solid #333;color:#e0e0e0;padding:8px 12px;border-radius:4px}
+.bar button{background:#7c8aff;color:#fff;border:none;padding:8px 16px;border-radius:4px;cursor:pointer}
+.bar button.danger{background:#e04848}
+.bar button:hover{opacity:.85}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;color:#888;border-bottom:1px solid #333;padding:6px 8px;font-size:11px}
+td{padding:6px 8px;border-bottom:1px solid #1a1a2e}
+tr:hover{background:#1a1a2e}
+tr.selected{background:#2a2a4e!important}
+td.name{color:#7c8aff;cursor:pointer}
+td.name.dir{color:#ffa502}
+td.name.dir::before{content:"\\1F4C1 ";font-size:11px}
+td.name.file::before{content:"\\1F4C4 ";font-size:11px}
+td.size{color:#888;text-align:right}
+td.time{color:#666}
+td.cb{width:24px;text-align:center}
+td.cb input{cursor:pointer}
+.loading{color:#666;padding:20px;text-align:center}
+#content{background:#1a1a2e;border:1px solid #333;border-radius:4px;padding:16px;margin-top:16px;white-space:pre-wrap;display:none;max-height:60vh;overflow:auto;font-size:12px}
+#content.show{display:block}
+#content textarea{width:100%;min-height:200px;background:#0a0a1a;color:#e0e0e0;border:1px solid #333;border-radius:4px;padding:8px;font:12px/1.5 monospace;resize:vertical}
+#content .btn-row{margin-top:8px;display:flex;gap:8px}
+.breadcrumb{color:#888;margin-bottom:12px;font-size:12px}
+.breadcrumb a{color:#7c8aff;cursor:pointer;text-decoration:none;margin:0 2px}
+.toast{position:fixed;bottom:20px;right:20px;background:#333;color:#e0e0e0;padding:8px 16px;border-radius:4px;font-size:12px;opacity:0;transition:opacity .3s}
+.toast.show{opacity:1}
+</style></head>
+<body>
+<h1>Qiniu Browser</h1>
+<div class="bar">
+  <input id="path" value="oc/" placeholder="prefix" spellcheck="false">
+  <button id="browseBtn">Browse</button>
+  <button id="delBtn" class="danger" style="display:none">Delete Selected</button>
+</div>
+<div class="breadcrumb" id="bc"></div>
+<table id="tbl"><thead><tr><th class="cb"><input type="checkbox" id="selectAll"></th><th>Name</th><th>Size</th><th>Modified</th></tr></thead><tbody id="body"><tr><td class="loading" colspan="4">Enter a prefix and click Browse</td></tr></tbody></table>
+<div id="content"></div>
+<div id="toast" class="toast"></div>
+<script>
+let _prefix = '';
+
+document.getElementById('browseBtn').addEventListener('click', () => browse());
+document.getElementById('path').addEventListener('keydown', e => { if(e.key==='Enter') browse(); });
+document.getElementById('delBtn').addEventListener('click', deleteSelected);
+document.getElementById('selectAll').addEventListener('change', e => {
+  document.querySelectorAll('#body input[type=checkbox]').forEach(cb => {cb.checked=e.target.checked});
+  updateDelBtn();
+});
+document.getElementById('tbl').addEventListener('click', e => {
+  if(e.target.type==='checkbox'){
+    updateDelBtn();
+    return;
+  }
+  const td = e.target.closest('td.name');
+  if(!td) return;
+  const key = td.dataset.key;
+  if(!key) return;
+  if(td.classList.contains('dir')) browse(key);
+  else viewFile(key);
+});
+document.getElementById('bc').addEventListener('click', e => {
+  const a = e.target.closest('a');
+  if(a) browse(a.dataset.prefix);
+});
+function updateDelBtn(){
+  const n = document.querySelectorAll('#body input[type=checkbox]:checked').length;
+  document.getElementById('delBtn').style.display = n ? '' : 'none';
+  document.getElementById('delBtn').textContent = 'Delete ('+n+')';
+}
+
+let _selectedKeys = new Set();
+
+function browse(pfx){
+  const prefix = pfx ?? document.getElementById('path').value.trim();
+  if(!prefix) return;
+  _prefix = prefix;
+  _selectedKeys.clear();
+  document.getElementById('delBtn').style.display='none';
+  const c=document.getElementById('content');c.classList.remove('show');c.textContent='';
+  document.getElementById('body').innerHTML = '<tr><td class="loading" colspan="4">Loading...</td></tr>';
+  document.getElementById('selectAll').checked=false;
+  fetch('/api/v1/qiniu/list?prefix='+encodeURIComponent(prefix))
+    .then(r=>r.json()).then(d=>{
+      if(!d.success){document.getElementById('body').innerHTML='<tr><td colspan="4" style="color:#ff6b6b">Error: '+escHtml(d.error)+'</td></tr>';return}
+      render(prefix,d.items||[]);
+    }).catch(e=>{document.getElementById('body').innerHTML='<tr><td colspan="4" style="color:#ff6b6b">'+escHtml(e)+'</td></tr>'});
+}
+
+function render(prefix, items){
+  const parts = prefix.split('/').filter(Boolean);
+  let bc = '<a data-prefix="">root</a>';
+  let acc = '';
+  for(const p of parts){
+    acc += p+'/';
+    bc += ' / <a data-prefix="'+escAttr(acc)+'">'+escHtml(p)+'</a>';
+  }
+  document.getElementById('bc').innerHTML = bc;
+  if(!items.length){
+    document.getElementById('body').innerHTML='<tr><td colspan="4" style="color:#666;padding:20px">(empty)</td></tr>';
+    return;
+  }
+  let html = '';
+  for(const it of items){
+    const isDir = it.key.endsWith('/') || it.size===0;
+    const name = it.key.replace(prefix, '') || '(this folder)';
+    const sz = isDir ? '-' : fmtSize(it.size);
+    const tm = it.lastModified ? new Date(it.lastModified).toLocaleString() : '-';
+    const cls = isDir ? 'name dir' : 'name file';
+    html += '<tr><td class="cb"><input type="checkbox" data-key="'+escAttr(it.key)+'" '+(it.size===0?'disabled':'')+'></td>';
+    html += '<td class="'+cls+'" data-key="'+escAttr(it.key)+'">'+escHtml(name)+'</td><td class="size">'+sz+'</td><td class="time">'+tm+'</td></tr>';
+  }
+  document.getElementById('body').innerHTML = html;
+}
+
+let _editingKey = null;
+
+function viewFile(key){
+  _editingKey = key;
+  document.querySelectorAll('#body tr').forEach(r=>r.style.background='');
+  const c=document.getElementById('content');c.classList.add('show');c.textContent='Loading...';
+  fetch('/api/v1/qiniu/get?key='+encodeURIComponent(key))
+    .then(r=>r.json()).then(d=>{
+      if(!d.success){c.textContent='Error: '+d.error;return}
+      fetch(d.url).then(r=>r.text()).then(t=>{
+        let pretty;
+        try{pretty=JSON.stringify(JSON.parse(t),null,2)}catch(e){pretty=t}
+        c.innerHTML = '<textarea id="editor">'+escHtml(pretty)+'</textarea>'
+          +'<div class="btn-row">'
+          +'<button onclick="saveFile()">Save</button>'
+          +'<button class="danger" onclick="deleteFile(\''+escAttr(key)+'\')">Delete</button>'
+          +'</div>';
+      }).catch(e=>c.textContent='Fetch error: '+e.message);
+    }).catch(e=>c.textContent='Error: '+e.message);
+}
+
+function saveFile(){
+  const content = document.getElementById('editor').value;
+  if(!_editingKey) return;
+  const c=document.getElementById('content');
+  c.innerHTML = 'Saving...';
+  fetch('/api/v1/qiniu/put?key='+encodeURIComponent(_editingKey), {method:'PUT', body:content})
+    .then(r=>r.json()).then(d=>{
+      if(d.success){toast('Saved');c.classList.remove('show')}
+      else toast('Error: '+d.error);
+    }).catch(e=>toast('Error: '+e.message));
+}
+
+function deleteFile(key){
+  if(!confirm('Delete '+key+'?')) return;
+  fetch('/api/v1/qiniu/delete?key='+encodeURIComponent(key), {method:'DELETE'})
+    .then(r=>r.json()).then(d=>{
+      if(d.success){toast('Deleted');document.getElementById('content').classList.remove('show');browse(_prefix)}
+      else toast('Error: '+d.error);
+    }).catch(e=>toast('Error: '+e.message));
+}
+
+function deleteSelected(){
+  const keys = [...document.querySelectorAll('#body input[type=checkbox]:checked')].map(cb=>cb.dataset.key).filter(Boolean);
+  if(!keys.length) return;
+  if(!confirm('Delete '+keys.length+' files?')) return;
+  fetch('/api/v1/qiniu/batch-delete', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({keys})})
+    .then(r=>r.json()).then(d=>{
+      if(d.success){toast('Deleted '+d.results.filter(r=>r.ok).length+' files');browse(_prefix)}
+      else toast('Error: '+d.error);
+    }).catch(e=>toast('Error: '+e.message));
+}
+
+function toast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+function fmtSize(b){if(b<1024)return b+'B';if(b<1048576)return(b/1024).toFixed(1)+'KB';return(b/1048576).toFixed(1)+'MB'}
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+</script></body></html>`);
+    });
+
+    // Qiniu API: list objects
+    this.app.get('/api/v1/qiniu/list', async (req, res) => {
+      try {
+        const prefix = req.query.prefix || '';
+        const items = await qiniuSignaling.listObjects(prefix);
+        res.json({ success: true, items });
+      } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+      }
+    });
+
+    // Qiniu API: get presigned URL
+    this.app.get('/api/v1/qiniu/get', async (req, res) => {
+      try {
+        const key = req.query.key;
+        if (!key) return res.status(400).json({ success: false, error: 'Missing key' });
+        const url = qiniuSignaling.getSignedUrl(key, 3600);
+        res.json({ success: true, url, key });
+      } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+      }
+    });
+
+    // Qiniu API: put (create/update) file
+    this.app.put('/api/v1/qiniu/put', express.text({limit:'10mb'}), async (req, res) => {
+      try {
+        const key = req.query.key;
+        if (!key) return res.status(400).json({ success: false, error: 'Missing key' });
+        const data = Buffer.from(req.body || '', 'utf8');
+        await qiniuSignaling.putObject(key, data);
+        res.json({ success: true });
+      } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+      }
+    });
+
+    // Qiniu API: delete file
+    this.app.delete('/api/v1/qiniu/delete', async (req, res) => {
+      try {
+        const key = req.query.key;
+        if (!key) return res.status(400).json({ success: false, error: 'Missing key' });
+        await qiniuSignaling.deleteObject(key);
+        res.json({ success: true });
+      } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+      }
+    });
+
+    // Qiniu API: batch delete
+    this.app.post('/api/v1/qiniu/batch-delete', express.json({limit:'1mb'}), async (req, res) => {
+      try {
+        const { keys } = req.body;
+        if (!Array.isArray(keys) || keys.length === 0) return res.status(400).json({ success: false, error: 'Missing keys array' });
+        const results = [];
+        for (const key of keys) {
+          try { await qiniuSignaling.deleteObject(key); results.push({ key, ok: true }); }
+          catch (e) { results.push({ key, ok: false, error: e.message }); }
+        }
+        res.json({ success: true, results });
+      } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+      }
+    });
+
     // 根路径 HTML Dashboard
     this.app.get('/', (req, res) => {
       res.send(`<html lang="zh"><head><meta charset="utf-8"><title>OpenChat</title></head>
