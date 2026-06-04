@@ -78,3 +78,5 @@ eslint-report.json
 # Test artifacts
 bridge/replay-results/
 bridge/test-traces/
+
+bridge/workspaces/
