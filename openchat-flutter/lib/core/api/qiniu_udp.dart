@@ -67,7 +67,7 @@ class QiniuUdpTransport {
   /// Send NAT punch packets to target.
   void startPunch(String targetIp, int targetPort) {
     _punchAttempts = 0;
-    final punch = Uint8List.fromList([0xBB, 0x00, 0x06, 0x00, 0x00, 0x06, 0x7E]);
+    final punch = Uint8List.fromList([0xBB, 0xFF, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x7E]);
     _punchTimer = Timer.periodic(const Duration(milliseconds: 200), (_) {
       if (_punched || _punchAttempts > 25) {
         _punchTimer?.cancel();

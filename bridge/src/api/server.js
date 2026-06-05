@@ -17,29 +17,24 @@ import swaggerUi from 'swagger-ui-express';
 
 import { errorHandler } from './middleware/error-handler.js';
 import requestValidator from './middleware/request-validator.js';
-import { securityMiddleware, recordAuthFailure } from './middleware/security.js';
-import { authMiddleware } from './middleware/auth.js';
+import { securityMiddleware } from './middleware/security.js';
 import { DEFAULT_PORT } from '../constants.js';
 import { qiniuSignaling } from '../core/qiniu-signaling.js';
 import { SignalRelay } from '../core/signal-relay.js';
 
 // 路由
-import agentsRouter from './routes/agents.js';
 import feedbackRouter from './routes/feedback.js';
-import decisionsRouter from './routes/decisions.js';
 import { createP2PRouter } from './routes/p2p.js';
 import updatesRouter from './routes/updates.js';
 import skillsRouter from './routes/skills.js';
 import versionsRouter from './routes/versions.js';
 import resourcesRouter from './routes/resources.js';
-import legacyRouter from './routes/legacy.js';
+    import legacyRouter from './routes/legacy.js';
+    import devRouter from './routes/dev/index.js';
 import metricsRouter from './routes/metrics.js';
 import healthRouter from './routes/health.js';
 import voiceRouter from './routes/voice.js';
 import signalingRouter from './routes/signaling.js';
-import residentsRouter from './routes/residents.js';
-import sageRouter from './routes/sage.js';
-import { residentManager } from '../core/agent/resident-manager.js';
 
 class APIServer {
   constructor(options = {}) {
@@ -69,7 +64,7 @@ class APIServer {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'"],
           styleSrc: ["'self'", "'unsafe-inline'"],
           imgSrc: ["'self'", 'data:'],
           connectSrc: ["'self'"],
@@ -110,8 +105,8 @@ class APIServer {
       maxAge: 86400 // 24 hours
     }));
 
-    // 请求日志
-    this.app.use(morgan('combined'));
+    // 请求日志（开发环境精简输出）
+    if (process.env.NODE_ENV === 'production') this.app.use(morgan('combined'));
 
     // 请求体解析 - 限制大小
     this.app.use(express.json({ limit: '1mb' }));
@@ -127,6 +122,10 @@ class APIServer {
   setupRoutes() {
     // 健康检查 + 公开端点（无需认证）
     this.app.use('/health', healthRouter);
+    this.app.get('/favicon.ico', (req, res) => {
+      res.setHeader('Content-Type', 'image/gif');
+      res.send(Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64'));
+    });
     this.app.get('/peers', (req, res) => {
       const p2p = this.swarm;
       const connected = p2p ? p2p.getConnectedPeers() : [];
@@ -410,68 +409,56 @@ function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'
       res.send(`<html lang="zh"><head><meta charset="utf-8"><title>OpenChat</title></head>
 <body style="background:#0a0a1a;color:#e0e0e0;font-family:monospace;padding:20px">
 <h1 style="color:#7c8aff">OpenChat Bridge</h1>
-<pre id="out" style="font-size:13px;line-height:1.6">Loading...</pre>
-<script>
-async function R(){
-  try{const d=await(await fetch('/api/dashboard')).json();
-  let h='IQ: <b style=color:#7c8aff>'+d.iq+'</b>  Age: <b style=color:#ffa502>'+d.age+'</b>  Solved: <b style=color:#2ed573>'+d.solved+'</b>  Pool: <b style=color:#4fc3f7>'+d.poolSize+'</b> (Pending: '+d.pending+')';
-  document.getElementById('out').innerHTML=h;
-  }catch(e){document.getElementById('out').textContent='Waiting...';}
-}R();setInterval(R,3000);
-</script></body></html>`);
+<p style="color:#888">运行中. <a href="/qiniu-browser" style="color:#7c8aff">Qiniu Browser</a></p>
+</body></html>`);
     });
 
-    // API 信息（无需认证）
+    // API 信息
     this.app.get('/api/v1', (req, res) => {
       res.json({
         version: '1.0',
-        endpoints: '/api/v1/agents, /api/v1/p2p, /api/v1/updates, /api/v1/skills, /api/v1/versions, /api/v1/resources, /api/v1/voice, /api/v1/residents, /api/v1/sage'
+        endpoints: '/api/v1/p2p, /api/v1/updates, /api/v1/skills, /api/v1/versions, /api/v1/resources, /api/v1/voice, /api/v1/signaling, /api/v1/feedback'
       });
     });
 
-    // 以下路由使用 Bearer Token 强制认证
     // Legacy Compatibility Layer
-    this.app.use('/api', authMiddleware, legacyRouter);
+    this.app.use('/api', legacyRouter);
+    this.app.use('/dev', devRouter);
 
-    // P0-02: 多代理协作 API
-    this.app.use('/api/v1/agents', authMiddleware, agentsRouter);
-    this.app.use('/api/v1/feedback', authMiddleware, feedbackRouter);
-    this.app.use('/api/v1/decisions', authMiddleware, decisionsRouter);
+    // Feedback
+    this.app.use('/api/v1/feedback', feedbackRouter);
 
-    // P0-03: P2P 通信 API（createP2PRouter 内部有 null-swarm guard）
-    this.app.use('/api/v1/p2p', authMiddleware, createP2PRouter(this.swarm));
+    // P2P 通信 API
+    this.app.use('/api/v1/p2p', createP2PRouter(this.swarm));
 
-    // P0-01: 热更新 API
-    this.app.use('/api/v1/updates', authMiddleware, updatesRouter);
+    // 热更新 API
+    this.app.use('/api/v1/updates', updatesRouter);
 
-    // P0-04: 版本管理和 Skill 市场 API
-    this.app.use('/api/v1/skills', authMiddleware, skillsRouter);
-    this.app.use('/api/v1/versions', authMiddleware, versionsRouter);
+    // 版本管理和 Skill 市场 API
+    this.app.use('/api/v1/skills', skillsRouter);
+    this.app.use('/api/v1/versions', versionsRouter);
 
-    // P0-05: 资源优化 API
-    this.app.use('/api/v1/resources', authMiddleware, resourcesRouter);
+    // 资源优化 API
+    this.app.use('/api/v1/resources', resourcesRouter);
 
     // Voice API (语音房间管理)
-    this.app.use('/api/v1/voice', authMiddleware, voiceRouter);
-    this.app.use('/api/v1/signaling', authMiddleware, signalingRouter);
+    this.app.use('/api/v1/voice', voiceRouter);
+    this.app.use('/api/v1/signaling', signalingRouter);
 
-    // Residents API (AI 居民管理)
-    this.app.use('/api/v1/residents', authMiddleware, residentsRouter);
-
-    // Sage API (智者 — 天人点拨)
-    this.app.use('/api/v1/sage', authMiddleware, sageRouter);
-
-    // Community feed — 社区动态流（聚合所有居民最新活动）
-    this.app.get('/api/v1/community/feed', authMiddleware, (req, res, next) => {
+    // Chat Session API
+    this.app.delete('/api/v1/chat/:chatId', async (req, res) => {
       try {
-        const limit = parseInt(req.query.limit, 10) || 20;
-        const feed = residentManager.getCommunityFeed(limit);
-        res.json({ feed, total: feed.length });
-      } catch (e) { next(e); }
+        const { chatId } = req.params;
+        const { deleteSession } = await import('../core/session-tree.mjs');
+        const result = await deleteSession(chatId);
+        res.json({ success: true, deleted: result.length, details: result });
+      } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+      }
     });
 
     // Metrics API
-    this.app.use('/api/v1/metrics', authMiddleware, metricsRouter);
+    this.app.use('/api/v1/metrics', metricsRouter);
 
     // Deploy 站点（Bridge 自带 — 可配 bridge.deployServerEnabled=false 关闭）
     if (this.deployEnabled) {
@@ -518,7 +505,7 @@ async function R(){
         this.clients.delete(ws);
         console.log('[WS] client disconnected');
       });
-      ws.send(JSON.stringify({ type: 'bridge_handshake', data: { version: 2 } }));
+      ws.send(JSON.stringify({ type: 'bridge_handshake', data: { version: 2, peerId: ws._peerId } }));
     });
 
     // WebRTC 信令 WebSocket
@@ -720,6 +707,7 @@ async function R(){
       try {
         this.server = this.app.listen(this.port, () => {
           console.log(`[API] Server running on port ${this.port}`);
+          console.log(`[API] Dev UI:    http://localhost:${this.port}/dev`);
           resolve(this.server);
         });
       } catch (error) {

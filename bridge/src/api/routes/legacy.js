@@ -10,77 +10,19 @@ import * as providerService from '../../core/provider-service.js';
 import { sessionManager } from '../../core/session-manager.js';
 import { memoryManager } from '../../memory/memory-manager.js';
 import { pluginManager } from '../../plugins/plugin-manager.js';
+import { getActiveProvider, callLLM } from './lib/llm.js';
+import { extractFiles, extractHashlines, applyHashlineEdit } from './lib/file-format.js';
+import { PROMPTS, buildMessages } from './lib/prompts.js';
+import { ensureProject, writeWithGit, describeProject, scanProjectFiles, getProjectPath } from './lib/workspace.js';
+import { sessionEvents } from '../../core/session-events.js';
 
 const router = express.Router();
 
 let bridgeRef = null;
 
-// === Workspace + Patch 工具 ===
-
 import fs from 'fs/promises';
 import path from 'path';
-
-async function ensureWorkspace(workspace) {
-  const workspacePath = path.resolve('workspaces', workspace);
-  try {
-    await fs.mkdir(workspacePath, { recursive: true });
-  } catch {}
-  return workspacePath;
-}
-
-async function writeWithGit(workspace, filePath, newContent) {
-  const workspacePath = await ensureWorkspace(workspace);
-  const fullPath = path.join(workspacePath, filePath);
-  const { execSync } = await import('child_process');
-
-  // 确保 git 仓库已初始化
-  const gitDir = path.join(workspacePath, '.git');
-  try {
-    await fs.access(gitDir);
-  } catch {
-    try {
-      execSync('git init', { cwd: workspacePath, stdio: 'pipe' });
-      execSync('git config user.email "agent@openchat" && git config user.name "OpenChat Agent"', { cwd: workspacePath, stdio: 'pipe' });
-    } catch {}
-  }
-
-  let result = { action: 'created', path: filePath, size: newContent.length, commit: null };
-
-  try {
-    const existing = await fs.readFile(fullPath, 'utf8');
-    if (existing !== newContent) {
-      await fs.writeFile(fullPath, newContent, 'utf8');
-      try {
-        execSync('git add .', { cwd: workspacePath, stdio: 'pipe' });
-        const msg = `${new Date().toISOString()} update ${filePath}`;
-        const hash = execSync(`git commit -m "${msg}"`, { cwd: workspacePath, stdio: 'pipe' }).toString().trim();
-        result = { action: 'committed', path: filePath, size: newContent.length, commit: hash.slice(0, 8) };
-      } catch {
-        result = { action: 'written', path: filePath, size: newContent.length, commit: null };
-      }
-    } else {
-      result = { action: 'unchanged', path: filePath, size: newContent.length };
-    }
-  } catch (e) {
-    if (e.code === 'ENOENT') {
-      const dir = path.dirname(fullPath);
-      await fs.mkdir(dir, { recursive: true });
-      await fs.writeFile(fullPath, newContent, 'utf8');
-      try {
-        execSync('git add .', { cwd: workspacePath, stdio: 'pipe' });
-        const msg = `${new Date().toISOString()} create ${filePath}`;
-        const hash = execSync(`git commit -m "${msg}"`, { cwd: workspacePath, stdio: 'pipe' }).toString().trim();
-        result = { action: 'committed', path: filePath, size: newContent.length, commit: hash.slice(0, 8) };
-      } catch {
-        result = { action: 'created', path: filePath, size: newContent.length, commit: null };
-      }
-    } else {
-      throw e;
-    }
-  }
-
-  return result;
-}
+import crypto from 'crypto';
 
 export function setBridgeContext(bridge) {
   bridgeRef = bridge;
@@ -110,8 +52,81 @@ router.get('/providers', (req, res) => {
 
 // 3. 会话列表
 router.get('/sessions', (req, res) => {
-  const sessions = sessionManager.listSessions();
-  res.json({ sessions });
+  const smSessions = sessionManager.listSessions().map(s => ({
+    sessionId: s.id,
+    model: s.model,
+    provider: s.providerType,
+    created: s.created,
+    source: 'sessionManager'
+  }));
+  const evSessions = sessionEvents.list().map(s => ({
+    ...s,
+    source: 'eventBus'
+  }));
+  // 合并去重
+  const merged = new Map();
+  for (const s of [...evSessions, ...smSessions]) {
+    if (!merged.has(s.sessionId)) merged.set(s.sessionId, s);
+  }
+  res.json({ sessions: [...merged.values()].sort((a, b) => (b.lastEventAt || b.created || 0) - (a.lastEventAt || a.created || 0)) });
+});
+
+// SSE 订阅某 session 事件（实时 + 历史回放）
+router.get('/sessions/:id/stream', (req, res) => {
+  const { id } = req.params;
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.write(`data: ${JSON.stringify({ type: 'subscribed', sessionId: id, ts: Date.now() })}\n\n`);
+
+  const unsubscribe = sessionEvents.subscribe(id, (event) => {
+    try { res.write(`data: ${JSON.stringify(event)}\n\n`); } catch {}
+  });
+  req.on('close', unsubscribe);
+});
+
+// SSE 全 session 事件流（流全部模式）
+router.get('/sessions/stream', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.write(`data: ${JSON.stringify({ type: 'subscribed', ts: Date.now() })}\n\n`);
+
+  // 收集已缓存的历史
+  const allHistory = sessionEvents.list().flatMap(s => sessionEvents.getHistory(s.sessionId));
+  for (const ev of allHistory.slice(-50)) {
+    try { res.write(`data: ${JSON.stringify(ev)}\n\n`); } catch {}
+  }
+
+  // 订阅所有 session
+  const cbs = new Map();
+  const onNewSession = (sessionId, event) => {
+    if (cbs.has(sessionId)) return;
+    const cb = (ev) => {
+      try { res.write(`data: ${JSON.stringify(ev)}\n\n`); } catch {}
+    };
+    cbs.set(sessionId, cb);
+    const unsub = sessionEvents.subscribe(sessionId, cb);
+    req.on('close', unsub);
+  };
+
+  // 拦截即将 publish 的 session — 简易做法：定期扫描
+  const interval = setInterval(() => {
+    const sessions = sessionEvents.list();
+    for (const s of sessions) {
+      if (!cbs.has(s.sessionId)) {
+        onNewSession(s.sessionId, null);
+      }
+    }
+  }, 2000);
+
+  req.on('close', () => {
+    clearInterval(interval);
+    for (const [sid, cb] of cbs) {
+      sessionEvents.unsubscribe(sid, cb);
+    }
+    cbs.clear();
+  });
 });
 
 // 3.5 直通 LLM 端点 — 不走 agent loop，直接调 LLM 返回原始结果
@@ -265,7 +280,7 @@ function helperName(input: Type): ReturnType
     const result = await provider.chat(model, [
       { role: 'system', content: '你是一个专业的需求分析师，擅长将用户需求转化为详细的 SPEC.md 文档。' },
       { role: 'user', content: prompt }
-    ]);
+    ], null, { timeout: 120000 });
 
     const spec = result.content?.replace(/^<think>[\s\S]*?<\/think>\s*/, '').trim() || '';
 
@@ -316,9 +331,9 @@ ${spec}
 只输出代码，不要加其他说明。`;
 
     const result = await provider.chat(model, [
-      { role: 'system', content: '你是一个专业的代码架构师，擅长生成骨架代码。' },
+      { role: 'system', content: '你是一个专业的需求分析师，擅长将用户需求转化为详细的 SPEC.md 文档。' },
       { role: 'user', content: prompt }
-    ]);
+    ], null, { timeout: 120000 });
 
     const output = result.content?.replace(/^<think>[\s\S]*?<\/think>\s*/gi, '').trim() || '';
 
@@ -414,9 +429,9 @@ ${existingContent ? `现有文件内容（请在次基础上修改，不要简�
         const result = await provider.chat(model, [
           { role: 'system', content: '你是一个专业的代码实现助手。严格按要求输出代码。' },
           { role: 'user', content: prompt }
-        ], null, { timeout: 180000 });
+        ], null, { timeout: 300000 });
 
-        const output = result.content?.replace(/^<think>[\s\S]*?<\/think>\s*/gi, '').trim() || '';
+        const output = implResult.content?.replace(/^<think>[\s\S]*?<\/think>\s*/gi, '').trim() || '';
         const code = extractCode(output, filePath);
 
         if (code && code.length > 10) {
@@ -579,7 +594,109 @@ ${f.content}
   }
 });
 
-// 5.6 一键生成：用户说需求 → 自动 spec → skeleton → implement → 最终文件
+// === 新版统一端点 ===
+// plan: 只做计划（spec），不做代码
+// code: 生成代码 + 项目管理（用 lib 模块）
+router.post('/code', async (req, res, next) => {
+  try {
+    const { spec, description, project, session, model: customModel } = req.body;
+    const projectName = project || req.body.workspace;
+    if (!spec && !description) return res.status(400).json({ error: 'SPEC_OR_DESCRIPTION_REQUIRED' });
+    if (!projectName) return res.status(400).json({ error: 'PROJECT_REQUIRED' });
+
+    const { provider, model: cfgModel, type: providerName } = await getActiveProvider();
+    const model = customModel || cfgModel;
+    const sessionId = session || `s_${Date.now()}`;
+    const projectPath = await ensureProject(projectName);
+    sessionEvents.publish(sessionId, { type: 'task_start', task: 'code', project: projectName });
+
+    // 1. 若无 spec，先生成 spec
+    let finalSpec = spec;
+    if (!finalSpec && description) {
+      sessionEvents.publish(sessionId, { type: 'thinking', content: '生成 SPEC.md...' });
+      const prompt = PROMPTS.generateSpecShort({ description });
+      const r = await callLLM(provider, model, buildMessages(prompt), { timeout: 300000 });
+      finalSpec = r.content;
+      if (!finalSpec) throw new Error('PLAN_FAILED');
+      sessionEvents.publish(sessionId, { type: 'spec_ready', length: finalSpec.length });
+    }
+
+    // 2. 保存 spec
+    await fs.writeFile(path.join(projectPath, `${projectName}.spec.md`), finalSpec, 'utf8');
+
+    // 3. 扫描现有文件（用于多轮编辑）
+    const existingFiles = await scanProjectFiles(projectName);
+
+    // 4. 生成 / 修改代码 prompt
+    const isEdit = existingFiles.length > 0;
+    const prompt = isEdit
+      ? PROMPTS.editCodeFromSpec({ spec: finalSpec, description, files: existingFiles })
+      : PROMPTS.generateCodeFromSpec({ spec: finalSpec });
+    sessionEvents.publish(sessionId, { type: 'thinking', content: isEdit ? `编辑 ${existingFiles.length} 个文件...` : '生成代码...' });
+    const r = await callLLM(provider, model, buildMessages(prompt), { timeout: 300000 });
+    const output = r.rawContent;
+
+    // 5. 解析文件：===FILE=== + HASHLINE
+    const fileInfos = extractFiles(output);
+    const hashlines = extractHashlines(output);
+    for (const hl of hashlines) {
+      const existing = existingFiles.find(f => f.path === hl.path);
+      if (!existing) continue;
+      const edited = applyHashlineEdit(existing.content, hl.hash, hl.newContent);
+      if (edited) fileInfos.push({ path: hl.path, content: edited.newContent });
+    }
+    sessionEvents.publish(sessionId, { type: 'files_parsed', count: fileInfos.length });
+
+    // 6. 写入所有文件 + git commit
+    const writeResults = [];
+    for (const f of fileInfos) {
+      const wr = await writeWithGit(projectName, f.path, f.content);
+      writeResults.push(wr);
+      sessionEvents.publish(sessionId, { type: 'file_written', path: f.path, action: wr.action, commit: wr.commit });
+    }
+
+    // 7. 返回项目状态
+    const desc = await describeProject(projectName);
+    sessionEvents.publish(sessionId, { type: 'complete', project: projectName, files: fileInfos.length });
+    res.json({
+      project: projectName,
+      session: sessionId,
+      provider: providerName,
+      model,
+      spec: finalSpec.substring(0, 200),
+      files: writeResults,
+      fileList: desc.files.map(f => ({ path: f.path, type: f.path.startsWith('.git') ? 'git' : 'source' })),
+      gitLog: desc.gitLog,
+      isCLI: process.argv.includes('--cli') || process.env.OPENCHAT_CLI === 'true',
+      source: 'code'
+    });
+  } catch (e) {
+    console.error('[code] error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/code/:project — 列出项目信息
+router.get('/code/:project', async (req, res, next) => {
+  try {
+    const { project } = req.params;
+    const isCLI = process.argv.includes('--cli') || process.env.OPENCHAT_CLI === 'true';
+    const workspaceRoot = isCLI ? process.cwd() : path.resolve('workspaces');
+    const projectPath = path.resolve(workspaceRoot, project);
+
+    // 当前 spec
+    let currentSpec = '';
+    try {
+      currentSpec = await fs.readFile(path.join(projectPath, `${project}.spec.md`), 'utf8');
+    } catch {}
+
+    res.json({ project, path: projectPath, isCLI, currentSpec: currentSpec?.substring(0, 300) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// 5.6 一键生成：用户说需求 → 自动 spec → skeleton → implement → 最终文件（旧版，建议用 /plan + /code）
 router.post('/generate', async (req, res, next) => {
   try {
     const { description, workspace, model: customModel } = req.body;
@@ -610,7 +727,7 @@ ${description}
     const specResult = await provider.chat(model, [
       { role: 'system', content: '你是一个专业的需求分析师，擅长将用户需求转化为详细的 SPEC.md 文档。' },
       { role: 'user', content: specPrompt }
-    ]);
+    ], null, { timeout: 120000 });
 
     const spec = specResult.content?.replace(/^<think>[\s\S]*?<\/think>\s*/gi, '').trim() || '';
     if (!spec) throw new Error('SPEC_GENERATION_FAILED');
@@ -725,6 +842,44 @@ ${f.content}
 });
 
 // 6. 聊天接口 (走 agent-engine 工具循环)
+// 内存中的树结构存储（每个 chatId 一棵树）
+const chatTrees = new Map();
+
+function initChatTree(chatId) {
+  if (!chatTrees.has(chatId)) {
+    chatTrees.set(chatId, { version: 1, nodes: [] });
+  }
+  return chatTrees.get(chatId);
+}
+
+function getChatTreePath(tree) {
+  if (!tree.nodes.length) return [];
+  const nodeMap = {};
+  for (const n of tree.nodes) nodeMap[n.id] = n;
+  const out = [];
+  let id = tree.nodes[0].id;
+  while (id && nodeMap[id]) {
+    out.push({ id: nodeMap[id].id, role: nodeMap[id].role, content: nodeMap[id].content?.substring(0, 100), ts: nodeMap[id].ts });
+    const children = tree.nodes.filter(c => c.parent === id);
+    if (!children.length) break;
+    const preferred = nodeMap[id].currentChild;
+    const next = preferred ? children.find(c => c.id === preferred) : null;
+    id = (next || children[children.length - 1]).id;
+  }
+  return out;
+}
+
+function addChatNode(tree, content, role, parentId) {
+  const id = `n_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+  const node = { id, role, content, parent: parentId || null, ts: Date.now() };
+  tree.nodes.push(node);
+  if (parentId) {
+    const p = tree.nodes.find(n => n.id === parentId);
+    if (p) p.currentChild = id;
+  }
+  return node;
+}
+
 router.post('/chat', async (req, res, next) => {
   try {
     const { message, sessionId } = req.body;
@@ -745,9 +900,29 @@ router.post('/chat', async (req, res, next) => {
       sid = created.id;
     }
 
+    // 树结构存储：获取当前 chat 的树，追加用户消息
+    const tree = initChatTree(sid);
+    const path = getChatTreePath(tree);
+    const parentId = path.length > 0 ? path[path.length - 1].id : null;
+    const userNode = addChatNode(tree, message, 'user', parentId);
+
     const { agentEngine } = await import('../../core/agent/agent-engine.js');
-    const result = await agentEngine.process(sid, 'mobile-user', message);
-    res.json({ response: result, sessionId: sid, source: 'agent' });
+    // 用 processStream 自动发布到 sessionEvents 总线（其他端可以观察）
+    let result = '';
+    await agentEngine.processStream(sid, 'mobile-user', message, (event) => {
+      if (event.type === 'complete' && event.response) result = event.response;
+    });
+
+    // 追加 assistant 响应
+    const assistNode = addChatNode(tree, result, 'assistant', userNode.id);
+    const newPath = getChatTreePath(tree);
+
+    res.json({
+      response: result,
+      sessionId: sid,
+      tree: newPath,
+      source: 'chat'
+    });
   } catch (e) {
     console.error('[chat] error:', e.message);
     next(e);
@@ -776,6 +951,46 @@ router.post('/chat/stream', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// 5.5 Agent 内部 debug 流（SSE，带 think/tool_call 事件）
+router.post('/chat/debug', async (req, res, next) => {
+  try {
+    const { message, sessionId } = req.body;
+    if (!message) return res.status(400).json({ error: 'MESSAGE_REQUIRED' });
+
+    let providerName = persistentConfig.getCurrentProvider();
+    const apiKey = persistentConfig.getApiKey(providerName);
+    const model = persistentConfig.getPreference('currentModel');
+    if (!providerName || !apiKey) return res.status(400).json({ error: 'NO_API_KEY' });
+    if (!sessionManager.getProvider(providerName)) await sessionManager.addProvider(providerName, apiKey);
+
+    let sid = sessionId;
+    if (!sid || !sessionManager.getSession(sid)) {
+      const created = await sessionManager.createSession(providerName, model);
+      sid = created.id;
+    }
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.write(`data: ${JSON.stringify({ type: 'session', sessionId: sid })}\n\n`);
+
+    const { agentEngine, AgentEvents } = await import('../../core/agent/agent-engine.js');
+
+    await agentEngine.processStream(sid, 'mobile-user', message, (event) => {
+      try {
+        const payload = { ...event, ts: Date.now() };
+        res.write(`data: ${JSON.stringify(payload)}\n\n`);
+      } catch {}
+    });
+
+    res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+    res.end();
+  } catch (e) {
+    try { res.write(`data: ${JSON.stringify({ type: 'error', error: e.message })}\n\n`); res.end(); } catch {}
+  }
+});
+
+// 5.6 网页版 dev UI 已迁移到 ./dev/ 模块
 // 6. 配置管理
 router.get('/config', (req, res) => {
   res.json({

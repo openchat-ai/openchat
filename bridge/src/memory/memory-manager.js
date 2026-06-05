@@ -238,8 +238,9 @@ export class MemoryManager {
   async indexMessage(message, sessionId, userId) {
     if (!this.useRAG || !this.initialized) return;
 
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('embed timeout')), 5000));
     try {
-      const embedding = await embeddingService.embed(message.content);
+      const embedding = await Promise.race([embeddingService.embed(message.content), timeout]);
       await vectorStore.addVector({
         id: message.id,
         type: 'message',
@@ -263,8 +264,9 @@ export class MemoryManager {
   async archiveMessage(message, sessionId, userId) {
     if (!this.useRAG || !this.initialized) return;
 
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('embed timeout')), 5000));
     try {
-      const embedding = await embeddingService.embed(message.content);
+      const embedding = await Promise.race([embeddingService.embed(message.content), timeout]);
       await vectorStore.addVector({
         id: `archived_${message.id}`,
         type: 'message',

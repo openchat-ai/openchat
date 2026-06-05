@@ -3,9 +3,9 @@
  * 离线消息队列 - 节点离线时缓存消息
  */
 
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
 
 class OfflineQueue {
   constructor(options = {}) {
@@ -235,4 +235,5 @@ class OfflineQueue {
   }
 }
 
-module.exports = OfflineQueue;
+export default OfflineQueue;
+export { OfflineQueue };

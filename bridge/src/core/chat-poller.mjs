@@ -4,21 +4,36 @@
 
 import LmdnCodec from '../core/audio/lmdn-codec.mjs';
 import { qiniuList, qiniuGet, qiniuPut } from '../../../apps/bridge/skeleton-qiniu.mjs';
-import { processText, initProvider } from '../../../apps/bridge/skeleton-agent.mjs';
+import { processText, initProvider, generateSessionName } from '../../../apps/bridge/skeleton-agent.mjs';
+import { autoNameIfNeeded, invalidateCache } from './session-namer.mjs';
 
 // === invariants ===
 // - Polls oc/chat/ every POLL_INTERVAL_MS
 // - Processes .enc (lmdn voice) and .msg (text, EPC BB 00 DD) files
 // - Skips files with "-reply" suffix
-// - Reply is JSON text uploaded to oc/chat/$chatId/$ts-reply.json
 // - seenKeys persists in memory only (process restart re-scans)
+// - _msgCount[chatId] tracks processed messages for auto-name trigger
+// - Messages older than MAX_AGE_MS are skipped to avoid reprocessing dead sessions
+// - Concurrent processing is limited to MAX_CONCURRENT to avoid blocking the poll loop
+// - _inFlight set prevents re-processing the same key before it finishes
 
 const POLL_INTERVAL_MS = 2000;
+const MAX_AGE_MS = 15 * 60 * 1000; // skip messages older than 15 minutes
+const MAX_CONCURRENT = 3;
 const CHAT_PREFIX = 'oc/chat/';
 const seenKeys = new Set();
+const _inFlight = new Set();
+const _msgCount = {}; // chatId → processed message count
 
 let _codec = null;
 let _started = false;
+
+/** Parse timestamp from key like oc/chat/chatId/1234567890.msg */
+function _tsFromKey(key) {
+  const name = key.split('/').pop() || '';
+  const num = parseInt(name.split('.')[0], 10);
+  return isNaN(num) ? 0 : num;
+}
 
 function _processMsg(key, payload, chatId, ts) {
   let msg;
@@ -49,7 +64,7 @@ async function _handleMsg(key, raw) {
 
   let response = '', toolCalls = [], errMsg = null;
   try {
-    const r = await processText(parsed.text);
+    const r = await processText(parsed.text, chatId);
     response = r.response || '';
     toolCalls = r.toolCalls || [];
   } catch (e) {
@@ -62,6 +77,11 @@ async function _handleMsg(key, raw) {
     text: reply, toolCalls, sourceKey: key, ts: Date.now(), ...(errMsg && { error: errMsg }),
   }), 'utf8'));
   console.log(`[chat-poller] reply="${reply.substring(0, 60)}" -> ${replyKey}`);
+
+  // auto-name session after reply
+  _msgCount[chatId] = (_msgCount[chatId] || 0) + 1;
+  const nameGen = () => generateSessionName(chatId);
+  autoNameIfNeeded(chatId, _msgCount[chatId], nameGen).catch(() => {});
 }
 
 async function _handleEnc(key, raw) {
@@ -80,7 +100,7 @@ async function _handleEnc(key, raw) {
 
   let response = '', toolCalls = [], errMsg = null;
   try {
-    const r = await processText(text);
+    const r = await processText(text, chatId);
     response = r.response || '';
     toolCalls = r.toolCalls || [];
   } catch (e) {
@@ -93,6 +113,29 @@ async function _handleEnc(key, raw) {
     text: reply, toolCalls, sourceKey: key, ts: Date.now(), ...(errMsg && { error: errMsg }),
   }), 'utf8'));
   console.log(`[chat-poller] voice reply="${reply.substring(0, 60)}" -> ${replyKey}`);
+
+  // auto-name session after reply
+  _msgCount[chatId] = (_msgCount[chatId] || 0) + 1;
+  const nameGen = () => generateSessionName(chatId);
+  autoNameIfNeeded(chatId, _msgCount[chatId], nameGen).catch(() => {});
+}
+
+async function _processOne(key) {
+  if (_inFlight.has(key)) return;
+  _inFlight.add(key);
+  try {
+    const raw = await qiniuGet(key);
+    if (!raw || raw.length === 0) return;
+    if (key.endsWith('.enc')) {
+      await _handleEnc(key, raw);
+    } else {
+      await _handleMsg(key, raw);
+    }
+  } catch (err) {
+    console.error(`[chat-poller] process error for ${key}:`, err.message);
+  } finally {
+    _inFlight.delete(key);
+  }
 }
 
 async function _pollLoop() {
@@ -100,22 +143,22 @@ async function _pollLoop() {
   while (true) {
     try {
       const keys = await qiniuList(CHAT_PREFIX);
+      const now = Date.now();
+      const pending = [];
       for (const key of keys) {
         if (seenKeys.has(key)) continue;
         seenKeys.add(key);
         if (!key.endsWith('.enc') && !key.endsWith('.msg')) continue;
         if (key.includes('-reply')) continue;
-        try {
-          const raw = await qiniuGet(key);
-          if (!raw || raw.length === 0) continue;
-          if (key.endsWith('.enc')) {
-            await _handleEnc(key, raw);
-            continue;
-          }
-          await _handleMsg(key, raw);
-        } catch (err) {
-          console.error(`[chat-poller] process error for ${key}:`, err.message);
-        }
+        // Skip messages older than MAX_AGE_MS to avoid reprocessing dead sessions
+        const age = now - _tsFromKey(key);
+        if (age > MAX_AGE_MS) continue;
+        pending.push(key);
+      }
+      // Fire-and-forget up to MAX_CONCURRENT at a time
+      for (let i = 0; i < pending.length; i += MAX_CONCURRENT) {
+        const batch = pending.slice(i, i + MAX_CONCURRENT);
+        await Promise.allSettled(batch.map(_processOne));
       }
     } catch (err) {
       console.error('[chat-poller] poll error:', err.message);

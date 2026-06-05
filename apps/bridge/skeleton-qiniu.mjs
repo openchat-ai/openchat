@@ -88,6 +88,62 @@ async function qiniuPut(key, data) {
   if (!resp.ok) throw new Error(`qiniuPut HTTP ${resp.status} for ${key}`);
 }
 
+async function qiniuDelete(key) {
+  const url = signV4Delete(key);
+  const resp = await fetch(url, { method: 'DELETE' });
+  if (!resp.ok && resp.status !== 204) throw new Error(`qiniuDelete HTTP ${resp.status} for ${key}`);
+}
+
+async function qiniuDeletePrefix(prefix) {
+  const keys = await qiniuList(prefix);
+  const results = [];
+  for (const key of keys) {
+    try {
+      await qiniuDelete(key);
+      results.push({ key, ok: true });
+    } catch (e) {
+      results.push({ key, ok: false, error: e.message });
+    }
+  }
+  return results;
+}
+
+function signV4Delete(key) {
+  const host = config.domain.replace('https://', '');
+  const amzDate = new Date().toISOString().replace(/[:-]|\.\d{3}/g, '');
+  const dateStamp = amzDate.slice(0, 8);
+  const credential = `${config.accessKey}/${dateStamp}/${config.region}/s3/aws4_request`;
+  const canonicalUri = `/${key}`;
+
+  const params = {
+    'X-Amz-Algorithm': 'AWS4-HMAC-SHA256',
+    'X-Amz-Credential': credential,
+    'X-Amz-Date': amzDate,
+    'X-Amz-Expires': '3600',
+    'X-Amz-SignedHeaders': 'host',
+  };
+
+  const sortedKeys = Object.keys(params).sort();
+  const canonicalQueryString = sortedKeys
+    .map(k => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`)
+    .join('&');
+
+  const canonicalHeaders = `host:${host}\n`;
+  const signedHeaders = 'host';
+
+  const canonicalRequest = ['DELETE', canonicalUri, canonicalQueryString, canonicalHeaders, signedHeaders, 'UNSIGNED-PAYLOAD'].join('\n');
+  const hashedRequest = createHash('sha256').update(canonicalRequest).digest('hex');
+  const stringToSign = ['AWS4-HMAC-SHA256', amzDate, `${dateStamp}/${config.region}/s3/aws4_request`, hashedRequest].join('\n');
+
+  const kDate = createHmac('sha256', 'AWS4' + config.secretKey).update(dateStamp).digest();
+  const kRegion = createHmac('sha256', kDate).update(config.region).digest();
+  const kService = createHmac('sha256', kRegion).update('s3').digest();
+  const kSigning = createHmac('sha256', kService).update('aws4_request').digest();
+  const signature = createHmac('sha256', kSigning).update(stringToSign).digest('hex');
+
+  return `${config.domain}${canonicalUri}?${canonicalQueryString}&X-Amz-Signature=${signature}`;
+}
+
 function signV4Put(key) {
   const host = config.domain.replace('https://', '');
   const amzDate = new Date().toISOString().replace(/[:-]|\.\d{3}/g, '');
@@ -125,4 +181,4 @@ function signV4Put(key) {
   return `${config.domain}${canonicalUri}?${canonicalQueryString}&X-Amz-Signature=${signature}`;
 }
 
-export { qiniuList, qiniuGet, qiniuPut };
+export { qiniuList, qiniuGet, qiniuPut, qiniuDelete, qiniuDeletePrefix };

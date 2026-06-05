@@ -1,0 +1,138 @@
+// Coding tools for LLM software development agent.
+// === invariants ===
+// - readFile(path): returns file content as string
+// - writeFile(path, content): writes content to file
+// - editFile(path, edits): apply multiple search/replace edits with quality gate
+// - hashEdit(content, search, replace): hashline-style edit with anchor hash
+// - TOOLS: OpenAI function-calling schema array
+// - All file ops relative to project root (F:\openchat)
+// - editFile validates that search string exists uniquely before replacing
+// - editFile runs lint after edit by default, returns {pass, step?, ...editResult}
+// - use force=true on edit_file to skip quality gate
+
+import fs from 'fs/promises';
+import path from 'path';
+import crypto from 'crypto';
+import { applyWithGuard } from './quality-gate.mjs';
+
+const PROJECT_ROOT = process.cwd(); // F:\openchat (or bridge/)
+
+export async function readFile(filePath) {
+  const resolved = path.resolve(PROJECT_ROOT, filePath);
+  if (!resolved.startsWith(PROJECT_ROOT)) throw new Error('Path traversal denied');
+  const content = await fs.readFile(resolved, 'utf8');
+  return content;
+}
+
+export async function writeFile(filePath, content) {
+  const resolved = path.resolve(PROJECT_ROOT, filePath);
+  if (!resolved.startsWith(PROJECT_ROOT)) throw new Error('Path traversal denied');
+  await fs.mkdir(path.dirname(resolved), { recursive: true });
+  await fs.writeFile(resolved, content, 'utf8');
+  return { path: filePath, bytes: content.length };
+}
+
+// Internal raw edit (no quality gate)
+async function _editFileRaw(filePath, search, newStr) {
+  const resolved = path.resolve(PROJECT_ROOT, filePath);
+  if (!resolved.startsWith(PROJECT_ROOT)) throw new Error('Path traversal denied');
+  const content = await fs.readFile(resolved, 'utf8');
+  const idx = content.indexOf(search);
+  if (idx === -1) throw new Error(`Search string not found in ${filePath}`);
+  const nextIdx = content.indexOf(search, idx + 1);
+  if (nextIdx !== -1) throw new Error(`Search string appears ${(content.match(new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length} times — not unique`);
+  const result = content.substring(0, idx) + newStr + content.substring(idx + search.length);
+  await fs.writeFile(resolved, result, 'utf8');
+  return { path: filePath, oldBytes: content.length, newBytes: result.length };
+}
+
+// Public edit with quality gate by default. Use force=true to skip quality gate.
+export async function editFile(filePath, search, newStr, options = {}) {
+  const { force = false, lint = true, test = false } = options;
+  if (force) {
+    return _editFileRaw(filePath, search, newStr);
+  }
+  const result = await applyWithGuard(filePath,
+    () => _editFileRaw(filePath, search, newStr),
+    { lint, test },
+  );
+  if (!result.pass) throw new Error(`Edit failed at ${result.step}: ${result.output || result.error}`);
+  return result;
+}
+
+// Hashline-style edit: locate anchor by content hash
+export async function hashEdit(filePath, hash, newContent) {
+  const resolved = path.resolve(PROJECT_ROOT, filePath);
+  if (!resolved.startsWith(PROJECT_ROOT)) throw new Error('Path traversal denied');
+  const fullContent = await fs.readFile(resolved, 'utf8');
+  const lines = fullContent.split('\n');
+  const targetHash = hash.toLowerCase();
+
+  for (let i = 0; i < lines.length; i++) {
+    const lineHash = crypto.createHash('md5').update(lines[i]).digest('hex').substring(0, 8);
+    if (lineHash === targetHash) {
+      lines[i] = newContent;
+      const result = lines.join('\n');
+      await fs.writeFile(resolved, result, 'utf8');
+      return { path: filePath, line: i, oldLine: lines.length, newLine: lines.length };
+    }
+  }
+  throw new Error(`Hash anchor ${hash} not found in ${filePath}`);
+}
+
+export const TOOLS = [
+  {
+    type: 'function',
+    function: {
+      name: 'read_file',
+      description: 'Read a file from the project. Path is relative to project root.',
+      parameters: {
+        type: 'object',
+        properties: { path: { type: 'string', description: 'Relative file path' } },
+        required: ['path'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'write_file',
+      description: 'Write content to a file. Creates directories if needed. Path is relative to project root.',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: 'Relative file path' },
+          content: { type: 'string', description: 'File content' },
+        },
+        required: ['path', 'content'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'edit_file',
+      description: 'Search and replace in a file. Runs lint (and optionally tests) after edit, rolls back on failure. The search string must be unique. No regex.',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string' },
+          search: { type: 'string', description: 'Exact text to find (must be unique)' },
+          newStr: { type: 'string', description: 'Replacement text' },
+          force: { type: 'boolean', description: 'Skip quality gate (lint/test check). Default false.' },
+          test: { type: 'boolean', description: 'Also run tests after edit (default false). Only valid when force=false.' },
+        },
+        required: ['path', 'search', 'newStr'],
+      },
+    },
+  },
+];
+
+export async function executeTool(name, args) {
+  switch (name) {
+    case 'read_file': return readFile(args.path);
+    case 'write_file': return writeFile(args.path, args.content);
+    case 'edit_file': return editFile(args.path, args.search, args.newStr, { force: args.force === true, test: !!args.test });
+    default: throw new Error(`Unknown coding tool: ${name}`);
+  }
+}

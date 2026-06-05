@@ -1,6 +1,7 @@
-import { createProvider } from '../providers/ai-provider.js';
+import crypto from 'crypto';
+import { createProvider } from 'provider-kit';
 import { persistentStore } from './persistent-store.js';
-import { persistentConfig } from '../core/persistent-config.js';
+import { persistentConfig } from './persistent-config.js';
 import logger from './monitoring/logger.js';
 
 export class SessionManager {
@@ -24,8 +25,8 @@ export class SessionManager {
       throw new Error(`No API key for ${type}. Set with: config set ${type} <api_key>`);
     }
 
-    const provider = createProvider(type);
-    await provider.connect(effectiveKey, endpoint);
+    const provider = createProvider(type, effectiveKey);
+    await provider.connect(effectiveKey);
     this.providers.set(type, provider);
 
     logger.info(`✓ Connected to ${provider.name}`);
