@@ -80,7 +80,7 @@ const ROUTE_LIMITS = {
 }
 
 const DEFAULT_AUTH_LIMIT = 500
-const UNAUTH_LIMIT = 50
+const UNAUTH_LIMIT = 300
 
 // 获取客户端 ID
 const getClientId = (req) => req.ip || req.connection?.remoteAddress || 'unknown'

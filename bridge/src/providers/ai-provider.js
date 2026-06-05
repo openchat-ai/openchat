@@ -28,7 +28,14 @@ export class AiProvider {
     this.connected = false;
   }
 
-  async chat(model, messages) {
+  /**
+   * @param {string} model
+   * @param {Array} messages
+   * @param {Array} [tools]
+   * @param {object} [opts]
+   * @returns {Promise<{id:string, model:string, content:string, reasoningContent?:string, toolCalls?:Array, usage?:object, created?:number}>}
+   */
+  async chat(model, messages, tools, opts = {}) {
     throw new Error('chat() must be implemented by subclass');
   }
 
@@ -86,6 +93,7 @@ export function createProvider(type) {
       return new GeminiProvider();
     case 'deepseek':
       return new DeepSeekProvider();
+    case 'minimax':
     case 'minimax-coding-plan':
       return new MiniMaxCodingPlanProvider();
     case 'baidu-qianfan-coding-plan':
@@ -261,7 +269,7 @@ class OpenAiProvider extends AiProvider {
 
   supportsTools() {
     const id = this.providerType || this.id;
-    return id !== 'minimax';
+    return id !== 'minimax' && id !== 'minimax-coding-plan';
   }
 
   async chat(model, messages, tools, opts = {}) {
@@ -292,11 +300,11 @@ class OpenAiProvider extends AiProvider {
 
     const data = await response.json();
     const msg = data.choices[0]?.message || {};
-    const content = msg.content || msg.reasoning || '';
     return {
       id: data.id,
       model: data.model,
-      content,
+      content: msg.content || '',
+      reasoningContent: msg.reasoning_content || '',
       toolCalls: msg.tool_calls || [],
       usage: data.usage,
       created: data.created,
@@ -525,10 +533,18 @@ class DeepSeekProvider extends AiProvider {
     }
 
     const data = await response.json();
+    const msg = data.choices[0]?.message || {};
+    let content = msg.content || '';
+    const reasoningContent = msg.reasoning_content || '';
+    // reasoningContent 已从 API 提取，从 content 中移除内嵌的标签
+    if (reasoningContent && content.includes('<think>')) {
+      content = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+    }
     return {
       id: data.id,
       model: data.model,
-      content: data.choices[0]?.message?.content || '',
+      content,
+      reasoningContent,
       usage: data.usage,
       created: data.created
     };

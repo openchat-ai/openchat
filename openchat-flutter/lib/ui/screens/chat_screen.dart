@@ -201,10 +201,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
       final msg = utf8.encode(jsonEncode({
         'type': 'text', 'sender': 'user', 'text': text, 'ts': ts,
       }));
-      // EPC header: magic=0xBB, dir=sent=0x00, type=text=0xDD
+      // EPC header: magic=0xBB, type=LLM=0x10, sub=CONTENT=0x10
       final frame = Uint8List(7 + msg.length + 2);
       int off = 0;
-      frame[off++] = 0xBB; frame[off++] = 0x00; frame[off++] = 0xDD;
+      frame[off++] = 0xBB; frame[off++] = 0x10; frame[off++] = 0x10;
       frame[off++] = (msg.length >> 16) & 0xFF;
       frame[off++] = (msg.length >> 8) & 0xFF;
       frame[off++] = msg.length & 0xFF;

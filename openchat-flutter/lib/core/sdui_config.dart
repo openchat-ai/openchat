@@ -20,11 +20,12 @@ class SduiQiniuSource extends SduiConfigSource {
   static const Map<String, Map<String, dynamic>> defaults = {
     'voice': {'callingText': 'Calling {peer}...', 'connectedText': 'Connected to {peer}', 'endedText': 'Call ended', 'mutedLabel': 'MUTED', 'relayLabel': 'Qiniu relay'},
     'audio': {'sampleRate': 48000, 'bufferMs': 1000, 'pollMs': 800, 'fadeBytes': 240, 'fadeSamples': 48, 'demoDelayMs': 3000},
-    'main': {'tabs': [{'icon': 'home', 'label': 'Home', 'screen': 'home'}, {'icon': 'agent', 'label': 'Agent', 'screen': 'agent'}, {'icon': 'people', 'label': 'People', 'screen': 'people'}, {'icon': 'chat', 'label': 'Chat', 'screen': 'chat'}, {'icon': 'dev', 'label': 'Dev', 'screen': 'dev'}, {'icon': 'settings', 'label': 'Settings', 'screen': 'settings'}], 'fab': {'icon': 'palette', 'action': 'theme', 'hidden': false}},
+    'main': {'tabs': [{'icon': 'home', 'label': 'Home', 'screen': 'home'}, {'icon': 'plan', 'label': 'Plan', 'screen': 'plan'}, {'icon': 'agent', 'label': 'Agent', 'screen': 'agent'}, {'icon': 'chat', 'label': 'Chat', 'screen': 'chat'}, {'icon': 'dev', 'label': 'Dev', 'screen': 'dev'}, {'icon': 'settings', 'label': 'Settings', 'screen': 'settings'}], 'fab': {'icon': 'palette', 'action': 'theme', 'hidden': false}, 'navBarHeight': 80},
     'settings': {'title': 'SETTINGS', 'sections': []},
     'home': {'title': '社区动态'},
     'chat': {'title': 'Chat'},
     'agent': {'title': 'AI 居民'},
+    'plan': {'title': 'Plan'},
     'chat_list': {'title': 'Messages'},
     'task_detail': {'title': '任务详情'},
     'dev_ide': {'title': 'Dev Console', 'tabs': [

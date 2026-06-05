@@ -5,6 +5,7 @@ import { pluginManager } from '../plugins/plugin-manager.js';
 import { ShellPlugin, FilePlugin } from '../plugins/system-plugins.js';
 import { GitPlugin, DevToolsPlugin } from '../plugins/eng-plugins.js';
 import SelfTestPlugin from '../plugins/self-test-plugin.js';
+import { DevWorkflowPlugin } from '../plugins/dev-workflow-plugin.mjs';
 import {
   CodeAnalysisPlugin,
   ProjectManagementPlugin,
@@ -89,4 +90,7 @@ export function initCore() {
 
   // Initialize Self-Verification Plugins (The "Conscience")
   pluginManager.registerPlugin(SelfTestPlugin);
+
+  // Dev Workflow Plugin — replaces legacy tools with quality-gated implementations
+  pluginManager.registerPlugin(DevWorkflowPlugin);
 }

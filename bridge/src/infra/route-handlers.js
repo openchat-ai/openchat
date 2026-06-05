@@ -61,61 +61,14 @@ export function createHandlers(bridge, CONFIG, crypto) {
     req.on('end', async () => {
       try {
         const { message, sessionId } = JSON.parse(body);
+        if (!message) throw new Error('message required');
 
-        const kb = residentScheduler?._convergenceSystem?.kb;
-        let cachedAnswer = null;
-        if (kb) {
-          cachedAnswer = kb.answer('general', message);
-        }
+        const { agentEngine } = await import('../core/agent/agent-engine.js');
+        const sid = sessionId || crypto.randomUUID();
+        const result = await agentEngine.process(sid, 'api-user', message);
 
-        if (cachedAnswer) {
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            response: cachedAnswer,
-            source: 'knowledge_base'
-          }));
-          return;
-        }
-
-        const problemId = `chat_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-
-        if (residentScheduler) {
-          residentScheduler.addProblem({
-            problemId,
-            domain: 'general',
-            question: message,
-            subQuestions: [],
-            from: 'api_chat',
-          });
-
-          const maxWait = 10000;
-          const checkInterval = 500;
-          let waited = 0;
-
-          while (waited < maxWait) {
-            await new Promise(r => setTimeout(r, checkInterval));
-            waited += checkInterval;
-
-            const pending = residentScheduler._pendingProblems?.find(p => p.problemId === problemId);
-            if (pending?.status === 'done' && pending.answer) {
-              res.writeHead(200, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({
-                response: pending.answer,
-                source: 'residents_convergence'
-              }));
-              return;
-            }
-          }
-
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            response: '问题已提交，正在求解?..',
-            source: 'residents_processing',
-            problemId
-          }));
-        } else {
-          throw new Error('Resident scheduler not available');
-        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ response: result, sessionId: sid, source: 'agent' }));
       } catch (e) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: e.message }));

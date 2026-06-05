@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>openchat dev</title>
+<link rel="stylesheet" href="/dev/page.css">
+</head>
+<body>
+<div id="sidebar">
+  <div class="pane-title">📡 Sessions</div>
+  <div id="session-list"></div>
+  <button id="new-session">+ 新建</button>
+</div>
+<div id="main">
+  <div id="toolbar">
+    <span id="current-session">未选择 session</span>
+    <span id="toolbar-right">
+      <button id="stream-all-btn" title="查看全部 session 事件流">全部</button>
+      <span id="status">●</span>
+    </span>
+  </div>
+  <div id="streams">
+    <div id="think-pane">
+      <div class="pane-title">🧠 思考流</div>
+      <div id="think-log"></div>
+    </div>
+    <div id="final-pane">
+      <div class="pane-title">💬 回复流</div>
+      <div id="final-log"></div>
+    </div>
+  </div>
+  <div id="input-row">
+    <textarea id="input" placeholder="输入消息，按 Enter 发送" rows="2"></textarea>
+    <button id="send">发送</button>
+  </div>
+</div>
+<script src="/dev/page.js"></script>
+</body>
+</html>

@@ -223,54 +223,57 @@ export class EmbeddingService {
   /**
    * 获取 API 配置
    */
-  getApiConfig(provider) {
-    const providerInstance = sessionManager.getProvider(provider);
-    if (!providerInstance) {
-      return null;
+  _embeddingConfig() {
+    // 优先用 openrouter 或 openai（支持 embedding），其次 fallback 当前 provider
+    for (const p of ['openrouter', 'openai', this.getEmbeddingProvider()]) {
+      const apiKey = persistentConfig.getApiKey(p);
+      if (!apiKey) continue;
+      const baseUrl = p === 'openrouter' ? 'https://openrouter.ai/api/v1' : 'https://api.openai.com/v1';
+      return { apiKey, baseUrl, provider: p, model: this.getEmbeddingModel(p) };
     }
-    return {
-      apiKey: providerInstance.apiKey,
-      baseUrl: providerInstance.endpoint,
-      model: this.getEmbeddingModel(provider)
-    };
+    return null;
   }
 
   /**
-   * 调用 Embedding API
+   * 直接通过 HTTP 调用 Embedding API（不依赖 provider instance）
    */
   async callEmbeddingAPI(text, model) {
-    const provider = this.getEmbeddingProvider();
-    const config = this.getApiConfig(provider);
-    if (!config) {
-      throw new Error(`No API key configured for embedding. Run: connect ${provider}`);
+    const config = this._embeddingConfig();
+    if (!config) throw new Error('No API key for embedding. Set one via: connect openrouter');
+    const url = `${config.baseUrl}/embeddings`;
+    const body = { input: text, model: model || config.model };
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${config.apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || `Embedding API error: ${res.status}`);
     }
-    const providerInstance = sessionManager.getProvider(provider);
-    if (!providerInstance) {
-      throw new Error(`Provider ${provider} not connected. Run: skeleton init first`);
-    }
-    return providerInstance.embed(text, model || config.model);
+    const data = await res.json();
+    return data.data?.[0]?.embedding || data.embedding?.[0] || data.data;
   }
 
   /**
    * 批量调用 Embedding API
    */
   async callEmbeddingAPIBatch(texts, model) {
-    const provider = this.getEmbeddingProvider();
-    const config = this.getApiConfig(provider);
-    if (!config) {
-      throw new Error(`No API key configured for embedding. Run: connect ${provider}`);
+    const config = this._embeddingConfig();
+    if (!config) throw new Error('No API key for embedding. Set one via: connect openrouter');
+    const url = `${config.baseUrl}/embeddings`;
+    const body = { input: texts, model: model || config.model };
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${config.apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || `Embedding API error: ${res.status}`);
     }
-    const providerInstance = sessionManager.getProvider(provider);
-    if (!providerInstance) {
-      throw new Error(`Provider ${provider} not connected. Run: skeleton init first`);
-    }
-    const allResults = [];
-    for (let i = 0; i < texts.length; i += this.batchSize) {
-      const batch = texts.slice(i, i + this.batchSize);
-      const embeddings = await providerInstance.embed(batch, model || config.model);
-      allResults.push(...embeddings);
-    }
-    return allResults;
+    const data = await res.json();
+    return (data.data || []).map(d => d.embedding);
   }
 
   /**

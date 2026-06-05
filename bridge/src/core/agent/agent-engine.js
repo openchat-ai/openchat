@@ -3,9 +3,31 @@ import { memoryManager } from '../../memory/memory-manager.js';
 import { sessionManager } from '../session-manager.js';
 import { PromptBuilder } from '../convergence/prompt-builder.js';
 import { agentMonitor } from './agent-monitor.js';
+import { sessionEvents } from '../session-events.js';
 import { QualityChecker, Corrector } from '../quality/quality-check-system.js';
 import * as responseCache from '../response-cache.js';
 import logger from '../monitoring/logger.js';
+
+// Map model-invented tool names to exec_command
+function mapActionToCommand(name, args) {
+  const platform = process.platform === 'win32' ? 'win32' : 'posix';
+  const lsCmd = platform === 'win32' ? 'dir' : 'ls';
+  const catCmd = platform === 'win32' ? 'type' : 'cat';
+  const pwdCmd = platform === 'win32' ? 'cd' : 'pwd';
+  const path = args.path || args.file || args.directory || args.target || '.';
+  switch (name) {
+    case 'list_files': case 'list_dir': case 'ls': case 'dir':
+      return `${lsCmd} ${path}`;
+    case 'read_file': case 'cat': case 'view':
+      return `${catCmd} ${path}`;
+    case 'current_dir': case 'pwd': case 'getcwd':
+      return pwdCmd;
+    case 'search': case 'grep': case 'find':
+      return `find ${path} -name "${args.pattern || '*'}"`;
+    default:
+      return `${lsCmd} ${path}`;
+  }
+}
 
 /**
  * Agent 事件类型
@@ -62,6 +84,7 @@ export class AgentEngine {
    * @returns {Promise<string>} 最终响应
    */
   async processStream(sessionId, userId, userMessage, onEvent = () => {}) {
+    const broadcast = (event) => { onEvent(event); sessionEvents.publish(sessionId, event); };
     // 初始化
     if (this.useRAG && !memoryManager.initialized) {
       await memoryManager.initialize();
@@ -98,8 +121,8 @@ export class AgentEngine {
 
     const cached = responseCache.get(userMessage, session.model);
     if (cached) {
-      onEvent({ type: AgentEvents.CONTENT, content: cached, iteration: 0 });
-      onEvent({ type: AgentEvents.COMPLETE, response: cached, iterations: 0, fromCache: true });
+      broadcast({ type: AgentEvents.CONTENT, content: cached, iteration: 0 });
+      broadcast({ type: AgentEvents.COMPLETE, response: cached, iterations: 0, fromCache: true });
       await memoryManager.addMessage(sessionId, 'assistant', cached);
       return cached;
     }
@@ -107,16 +130,22 @@ export class AgentEngine {
     const tools = this.useFunctionCalling ? pluginManager.getToolsForFunctionCalling() : null;
     const agentId = `agent-${sessionId}`;
     const systemPrompt = await PromptBuilder.buildSystemPrompt(1);
+    // Strip text-based tool format hints when FC tools are available (they confuse some models)
+    const finalPrompt = tools?.length ? systemPrompt.replace(/\n需要调工具时，.*?(?:\n\n|$)/s, '').trim() : systemPrompt;
     let messages = [
-      { role: 'system', content: systemPrompt },
+      { role: 'system', content: finalPrompt },
       ...currentContext
     ];
+
+    // 把当前 userMessage 显式加入消息数组（避免 getContext 不含最新消息）
+    messages.push({ role: 'user', content: userMessage });
 
     agentMonitor.recordExecutionStart(agentId, userMessage, { sessionId, userId });
 
     // 【两轮制】Pass 1: 工具可以调，Pass 2: 只收最终答案
     let finalizedResponse = null;
 
+    let _textFallbackUsed = false;
     for (let pass = 1; pass <= 2; pass++) {
       const chatOptions = {};
       if (pass === 1 && tools && tools.length > 0) {
@@ -124,7 +153,7 @@ export class AgentEngine {
         chatOptions.tool_choice = 'auto';
       }
 
-      onEvent({ type: AgentEvents.THINKING, iteration: pass });
+      broadcast({ type: AgentEvents.THINKING, iteration: pass });
       let content = '';
       let toolCalls = null;
 
@@ -133,7 +162,9 @@ export class AgentEngine {
         for await (const chunk of stream) {
           if (chunk.type === 'content') {
             content += chunk.content;
-            onEvent({ type: AgentEvents.CONTENT, content: chunk.content, iteration: pass });
+            broadcast({ type: AgentEvents.CONTENT, content: chunk.content, iteration: pass });
+          } else if (chunk.type === 'thinking') {
+            broadcast({ type: AgentEvents.THINKING, content: chunk.content, iteration: pass });
           } else if (chunk.type === 'tool_calls') {
             toolCalls = chunk.toolCalls;
           }
@@ -144,30 +175,69 @@ export class AgentEngine {
         toolCalls = response.toolCalls;
       }
 
+      // Stream produced empty/no toolCalls but tools expected → fallback to non-streaming FC
+      if (pass === 1 && chatOptions.tools && !toolCalls?.length && (!content || content.trim().length < 3)) {
+        const fb = await provider.chat(session.model, messages, chatOptions);
+        content = fb.content;
+        toolCalls = fb.toolCalls;
+      }
+
+      let lastToolResult = null;
       if (pass === 1 && toolCalls && toolCalls.length > 0) {
         for (const tc of toolCalls) {
-          const toolName = tc.name;
-          const args = typeof tc.arguments === 'string' ? JSON.parse(tc.arguments) : tc.arguments;
-          onEvent({ type: AgentEvents.TOOL_CALL, tool: toolName, args, iteration: pass });
-
+          let toolName = tc.name;
+          let args = typeof tc.arguments === 'string' ? JSON.parse(tc.arguments) : tc.arguments;
+          broadcast({ type: AgentEvents.TOOL_CALL, tool: toolName, args, iteration: pass });
+          // Detect text-fallback origin (id starts with textfb_ from provider-kit)
+          if (tc.id && tc.id.startsWith('textfb_')) _textFallbackUsed = true;
           try {
             const toolResult = await pluginManager.executeTool(toolName, args, { sessionId, userId });
+            lastToolResult = toolResult;
             agentMonitor.recordToolCall(agentId, toolName, args, toolResult);
-            onEvent({ type: AgentEvents.TOOL_RESULT, tool: toolName, result: toolResult, iteration: pass });
-
-            const formattedResult = pluginManager.formatToolResult(toolName, toolResult);
-            await memoryManager.addMessage(sessionId, 'assistant', `[Tool Call] ${toolName}`);
-            await memoryManager.addMessage(sessionId, 'system', formattedResult);
+            broadcast({ type: AgentEvents.TOOL_RESULT, tool: toolName, result: toolResult, iteration: pass });
+            await memoryManager.addMessage(sessionId, 'system', `[Tool Result] ${toolName}: ${JSON.stringify(toolResult).slice(0, 2000)}`);
           } catch (error) {
-            onEvent({ type: AgentEvents.ERROR, tool: toolName, error: error.message, iteration: pass });
-            await memoryManager.addMessage(sessionId, 'system', `[Tool Error] ${toolName}: ${error.message}`);
+            // Map unknown tool names (model-invented) to exec_command
+            const knownTools = pluginManager.getToolsForFunctionCalling?.() || [];
+            const knownNames = new Set(knownTools.map(t => (t.function || t).name));
+            if (!knownNames.has(toolName)) {
+              const cmd = mapActionToCommand(toolName, args);
+              const mappedArgs = { command: cmd };
+              try {
+                const mappedResult = await pluginManager.executeTool('exec_command', mappedArgs, { sessionId, userId });
+                lastToolResult = mappedResult;
+                toolName = 'exec_command';
+                args = mappedArgs;
+                _textFallbackUsed = true;
+                agentMonitor.recordToolCall(agentId, toolName, args, mappedResult);
+                broadcast({ type: AgentEvents.TOOL_RESULT, tool: toolName, result: mappedResult, iteration: pass });
+                await memoryManager.addMessage(sessionId, 'system', `[Tool Result] ${toolName}: ${JSON.stringify(mappedResult).slice(0, 2000)}`);
+              } catch (mappedError) {
+                agentMonitor.recordToolCall(agentId, toolName, args, { error: mappedError.message });
+                broadcast({ type: AgentEvents.ERROR, tool: toolName, error: mappedError.message, iteration: pass });
+                await memoryManager.addMessage(sessionId, 'system', `[Tool Error] ${toolName}: ${mappedError.message}`);
+              }
+            } else {
+              agentMonitor.recordToolCall(agentId, toolName, args, { error: error.message });
+              broadcast({ type: AgentEvents.ERROR, tool: toolName, error: error.message, iteration: pass });
+              await memoryManager.addMessage(sessionId, 'system', `[Tool Error] ${toolName}: ${error.message}`);
+            }
           }
         }
+        // For text-fallback (non-FC models), use tool result directly, skip pass 2
+        if (_textFallbackUsed) {
+          if (lastToolResult) {
+            const stdout = (lastToolResult.stdout || '').trim();
+            finalizedResponse = stdout || JSON.stringify(lastToolResult).slice(0, 3000);
+          }
+          break;
+        }
         // Pass 2: different system prompt — verify then answer
+        const context = await memoryManager.getContext(sessionId);
         messages = [
-          { role: 'system', content: 'Tool results received. Check whether they answer the user question, then respond concisely. Do not call tools again.' },
+          { role: 'system', content: 'You called a tool and got results above. Answer the user based on those results. Do not call tools again.' },
           { role: 'user', content: userMessage },
-          ...(await memoryManager.getContext(sessionId)).slice(-3)
+          ...context.slice(-4)
         ];
       } else {
         finalizedResponse = content || '';

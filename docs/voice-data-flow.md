@@ -55,7 +55,7 @@ MIC → PCM(16bit) → buffer 48KB → NeuralAudioCodec.encode → LMDN binary �
 
 ### LMDN 编码格式（`.enc` 文件）
 ```
-偏移 0:  0xBB 0x01 0xCC        # Magic header (3 bytes)
+偏移 0:  0xBB 0x12 0x30        # Type=MEDIA, Sub=LMDN (3 bytes)
 偏移 3:  PLEN[2:0]              # Payload length (3 bytes, big-endian)
 偏移 6:  payload                # 位分配(6B) + 帧数据 + F0元数据
 末尾-2:  CKSUM                  # 校验和 (1 byte, TYPE+CMD+PL+PARAM 求和 & 0xFF)
@@ -110,10 +110,10 @@ MIC → PCM(16bit) → buffer 48KB → NeuralAudioCodec.encode → LMDN binary �
 | 编码函数 | `lmdn_codec.dart` | `NeuralAudioCodec.encode()` |
 | MDCT 帧大小 | 96 样本 (= 2 × _n, _n=48) | 48 点 MDCT → 48 个频域系数 |
 | 位分配 | 16 个频带，每带 3 bits | 扫描前 250 帧的能量分布 |
-| 输出格式 | LMDN binary | 首字节 `0xBB 0x01 0xCC` |
+| 输出格式 | LMDN binary | 首字节 `0xBB 0x12 0x30` |
 
 **调试检查点 C3**：确认 encode 输出正确
-- 正常：返回的 `encoded.data` 首 3 字节 = `0xBB 0x01 0xCC`
+- 正常：返回的 `encoded.data` 首 3 字节 = `0xBB 0x12 0x30`
 - 大小：1秒正常语音 ~4000-6000 bytes，静音 ~35-50 bytes
 - 故障：返回 null → `_isProcessing = false` 或 `_codec = null`
 
@@ -334,12 +334,12 @@ t=4s    Poll 运行 → 找到 seq 1 → 下载 → 解码 → 入播放队列
 [LMDN frame 0][LMDN frame 1]...[LMDN frame N]
 ```
 
-每帧格式（同 `.enc`）：
+每帧格式：
 ```
-0xBB 0x01 0xCC | PL(3B) | payload(PL bytes) | CKSUM(1B) | 0x7E
+0xBB 0x12 0x30 | PL(3B) | payload(PL bytes) | CKSUM(1B) | 0x7E
 ```
 
-解码器 `decode()` 通过扫描 `0xBB 0x01 0xCC` 头自动解析多帧。
+解码器 `decode()` 通过扫描 `0xBB 0x12 0x30` 头自动解析多帧。
 
 ### 存储位置
 

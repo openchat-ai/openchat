@@ -5,12 +5,14 @@ import '../../core/theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
 import '../../core/sdui_config.dart';
 import 'home_screen.dart';
+import 'plan_screen.dart';
 import 'agent_hub_screen.dart';
 import 'people_screen.dart';
 import 'voice_room_screen.dart';
 import 'chat_list_screen.dart';
 import 'dev_ide_screen.dart';
 import 'settings_screen.dart';
+import 'plan_screen.dart';
 
 final bottomNavIndexProvider = StateProvider<int>((ref) => 0);
 
@@ -32,6 +34,7 @@ class _MainScreenState extends ConsumerState<MainScreen> with SduiPageState {
   Widget _buildScreen(String name) {
     switch (name) {
       case 'home': return const HomeScreen();
+      case 'plan': return const PlanScreen();
       case 'agent': return const AgentHubScreen();
       case 'people': return const PeopleScreen();
       case 'chat': return const ChatListScreen();
@@ -44,6 +47,7 @@ class _MainScreenState extends ConsumerState<MainScreen> with SduiPageState {
   ({IconData inactive, IconData active}) _resolveIcon(String name) {
     switch (name) {
       case 'home': return (inactive: Icons.home_outlined, active: Icons.home_rounded);
+      case 'plan': return (inactive: Icons.description_outlined, active: Icons.description_rounded);
       case 'agent': return (inactive: Icons.psychology_outlined, active: Icons.psychology_rounded);
       case 'people': return (inactive: Icons.people_outline, active: Icons.people_rounded);
       case 'chat': return (inactive: Icons.chat_bubble_outline, active: Icons.chat_bubble_rounded);
@@ -55,8 +59,8 @@ class _MainScreenState extends ConsumerState<MainScreen> with SduiPageState {
 
   static const _fallbackTabs = [
     {'icon': 'home', 'label': 'Home', 'screen': 'home'},
+    {'icon': 'plan', 'label': 'Plan', 'screen': 'plan'},
     {'icon': 'agent', 'label': 'Agent', 'screen': 'agent'},
-    {'icon': 'people', 'label': 'Friends', 'screen': 'people'},
     {'icon': 'chat', 'label': 'Chat', 'screen': 'chat'},
     {'icon': 'dev', 'label': 'Dev', 'screen': 'dev'},
     {'icon': 'settings', 'label': 'Settings', 'screen': 'settings'},
@@ -77,20 +81,24 @@ class _MainScreenState extends ConsumerState<MainScreen> with SduiPageState {
     _visitedTabs.add(clampedIndex);
     final fab = sduiLayout['fab'] as Map? ?? {};
     final fabIcon = fab['icon'] as String? ?? 'palette';
-    final fabAction = fab['action'] as String? ?? 'theme';
+final fabAction = fab['action'] as String? ?? 'theme';
+final navBarHeight = (sduiLayout['navBarHeight'] as num?)?.toDouble() ?? 80.0;
 
-    return Scaffold(
-      extendBody: true,
-      extendBodyBehindAppBar: true,
-      backgroundColor: theme.background,
-      body: IndexedStack(
-        index: clampedIndex,
-        children: tabs.asMap().entries.map((e) => _visitedTabs.contains(e.key)
-            ? _buildScreen(e.value['screen'] as String? ?? 'home')
-            : const SizedBox.shrink()).toList(),
-      ),
-      bottomNavigationBar: _buildBottomNav(context, clampedIndex, theme, tabs),
-      floatingActionButton: fab['hidden'] == true ? null : FloatingActionButton(
+return Scaffold(
+  extendBody: false,
+  extendBodyBehindAppBar: false,
+  backgroundColor: theme.background,
+  body: Padding(
+    padding: EdgeInsets.only(bottom: navBarHeight),
+    child: IndexedStack(
+      index: clampedIndex,
+      children: tabs.asMap().entries.map((e) => _visitedTabs.contains(e.key)
+          ? _buildScreen(e.value['screen'] as String? ?? 'home')
+          : const SizedBox.shrink()).toList(),
+    ),
+  ),
+  bottomNavigationBar: _buildBottomNav(context, clampedIndex, theme, tabs),
+  floatingActionButton: fab['hidden'] == true ? null : FloatingActionButton(
         onPressed: () {
           if (fabAction == 'theme') Navigator.pushNamed(context, '/theme');
           else if (fabAction.startsWith('navigate:')) Navigator.pushNamed(context, fabAction.substring(9));

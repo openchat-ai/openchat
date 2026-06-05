@@ -151,10 +151,10 @@ class BridgeWsClient {
     _setState(WsConnectionState.reconnecting);
   }
 
-  void sendMessage(String text, {String? sessionId}) {
+  void sendMessage(String text, {String? sessionId, bool debugMode = false}) {
     if (_channel == null || !isConnected) return;
     _channel!.sink.add(jsonEncode({
-      'type': 'chat',
+      'type': debugMode ? 'chat_debug' : 'chat',
       'data': {'message': text, 'sessionId': sessionId},
       'sessionId': sessionId,
     }));
