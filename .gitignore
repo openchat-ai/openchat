@@ -80,3 +80,5 @@ bridge/replay-results/
 bridge/test-traces/
 
 bridge/workspaces/
+
+tests/~$*.xlsx
