@@ -1,6 +1,6 @@
 // Walking-skeleton agent: direct provider chat, no agent/tool prompts.
-import { persistentConfig } from '../../bridge/src/core/persistent-config.js';
-import { sessionManager } from '../../bridge/src/core/session-manager.js';
+import { persistentConfig } from '../src/core/persistent-config.js';
+import { sessionManager } from '../src/core/session-manager.js';
 import { createProvider, PRESET_PROVIDERS } from 'provider-kit';
 
 const SYSTEM_PROMPT = `You are OpenChat, a friendly Chinese-speaking AI assistant.
@@ -50,7 +50,7 @@ function _getOrCreateSession(chatId) {
 }
 
 const MAX_TOOL_LOOP = 5;
-import { TOOLS, executeTool } from '../../bridge/src/tools/system-exec.mjs';
+import { TOOLS, executeTool } from '../src/tools/system-exec.mjs';
 
 async function processText(text, chatId = 'default') {
   if (!_provider) throw new Error('call initProvider() first');

@@ -1,7 +1,7 @@
 // A1.2: Pull real .enc from Qiniu and test skeleton-codec decode
-// Usage: node apps/bridge/test-real-enc.mjs
-import { SkeletonCodec } from './skeleton-codec.mjs';
-import { qiniuList, qiniuGet } from './skeleton-qiniu.mjs';
+// Usage: node tests/codec-real-enc.mjs
+import SkeletonCodec from '../src/core/audio/lmdn-codec.mjs';
+import { qiniuList, qiniuGet } from '../scripts/qiniu-s3.mjs';
 
 const CHAT_PREFIX = 'oc/chat/';
 
