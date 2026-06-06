@@ -30,4 +30,13 @@ export default [
     },
     ignores: ['__tests__/**'],
   },
+  {
+    // dev/page.js 是浏览器端 dev 页面 JS，启用 browser globals
+    files: ['src/api/routes/dev/page.js'],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+      },
+    },
+  },
 ];

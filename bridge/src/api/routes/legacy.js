@@ -431,7 +431,7 @@ ${existingContent ? `现有文件内容（请在次基础上修改，不要简�
           { role: 'user', content: prompt }
         ], null, { timeout: 300000 });
 
-        const output = implResult.content?.replace(/^<think>[\s\S]*?<\/think>\s*/gi, '').trim() || '';
+        const output = result.content?.replace(/^<think>[\s\S]*?<\/think>\s*/gi, '').trim() || '';
         const code = extractCode(output, filePath);
 
         if (code && code.length > 10) {
