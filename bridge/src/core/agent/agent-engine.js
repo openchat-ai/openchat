@@ -7,6 +7,7 @@ import { sessionEvents } from '../session-events.js';
 import { QualityChecker, Corrector } from '../quality/quality-check-system.js';
 import * as responseCache from '../response-cache.js';
 import logger from '../monitoring/logger.js';
+import { runPipeline, getEditProtocolGuidance } from '../../../scripts/epc-pipeline.mjs';
 
 // Map model-invented tool names to exec_command
 function mapActionToCommand(name, args) {
@@ -132,8 +133,9 @@ export class AgentEngine {
     const systemPrompt = await PromptBuilder.buildSystemPrompt(1);
     // Strip text-based tool format hints when FC tools are available (they confuse some models)
     const finalPrompt = tools?.length ? systemPrompt.replace(/\n需要调工具时，.*?(?:\n\n|$)/s, '').trim() : systemPrompt;
+    const finalSystemPrompt = tools?.length ? `${finalPrompt}\n\n${getEditProtocolGuidance()}` : finalPrompt;
     let messages = [
-      { role: 'system', content: finalPrompt },
+      { role: 'system', content: finalSystemPrompt },
       ...currentContext
     ];
 
@@ -171,15 +173,17 @@ export class AgentEngine {
         }
       } catch (e) {
         const response = await provider.chat(session.model, messages, chatOptions);
-        content = response.content;
-        toolCalls = response.toolCalls;
+        const p = runPipeline(response);
+        content = p.content;
+        toolCalls = p.toolCalls;
       }
 
       // Stream produced empty/no toolCalls but tools expected → fallback to non-streaming FC
       if (pass === 1 && chatOptions.tools && !toolCalls?.length && (!content || content.trim().length < 3)) {
         const fb = await provider.chat(session.model, messages, chatOptions);
-        content = fb.content;
-        toolCalls = fb.toolCalls;
+        const p = runPipeline(fb);
+        content = p.content;
+        toolCalls = p.toolCalls;
       }
 
       let lastToolResult = null;
@@ -332,6 +336,8 @@ export class AgentEngine {
 
     // [优化] 预构建系统提示
     const systemPrompt = await PromptBuilder.buildSystemPrompt(1);
+    const finalPrompt = tools?.length ? systemPrompt.replace(/\n需要调工具时，.*?(?:\n\n|$)/s, '').trim() : systemPrompt;
+    const finalSystemPrompt = tools?.length ? `${finalPrompt}\n\n${getEditProtocolGuidance()}` : finalPrompt;
 
     // [优化] 预构建请求选项
     const chatOptions = {};
@@ -345,14 +351,15 @@ export class AgentEngine {
 
       // [SENSE] Build current state for LLM
       const messages = [
-        { role: 'system', content: systemPrompt },
+        { role: 'system', content: finalSystemPrompt },
         ...currentContext
       ];
 
       // [THINK] Call actual Provider with tools
       const llmResponse = await provider.chat(session.model, messages, chatOptions);
-      const content = llmResponse.content;
-      const toolCalls = llmResponse.toolCalls;
+      const p = runPipeline(llmResponse);
+      const content = p.content;
+      const toolCalls = p.toolCalls;
       const args = toolCalls?.[0]?.function?.arguments || {};
 
       // 检查是否完成任务
@@ -523,12 +530,12 @@ export class AgentEngine {
 
     try {
       const messages = [
-        { role: 'system', content: await PromptBuilder.buildSystemPrompt(1) },
+        { role: 'system', content: `${await PromptBuilder.buildSystemPrompt(1)}\n\n${getEditProtocolGuidance()}` },
         { role: 'user', content: optimizePrompt }
       ];
       
       const llmResponse = await provider.chat(session.model, messages);
-      const optimizedResponse = llmResponse.content.replace('FINAL:', '').trim();
+      const optimizedResponse = (llmResponse.content || '').replace('FINAL:', '').trim();
       
       logger.info('[Agent] 自我优化完成');
       return optimizedResponse;
@@ -574,7 +581,7 @@ export class AgentEngine {
 
       // 第 3 步: 让大模型重新生成
       const messages = [
-        { role: 'system', content: await PromptBuilder.buildSystemPrompt(1) },
+        { role: 'system', content: `${await PromptBuilder.buildSystemPrompt(1)}\n\n${getEditProtocolGuidance()}` },
         { role: 'user', content: feedback }
       ];
 
