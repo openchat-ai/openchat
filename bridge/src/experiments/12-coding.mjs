@@ -244,7 +244,7 @@ async function testCoding() {
 
   // 16. 验证 skeleton-agent 的 SYSTEM_PROMPT 实际包含 guidance — 这是 hash_edit 路径生效的前提
   try {
-    const { getEditProtocolGuidance } = await import('../../scripts/epc-pipeline.mjs');
+    const { getEditProtocolGuidance } = await import('../core/epc-pipeline.mjs');
     const guidance = getEditProtocolGuidance();
     if (guidance.includes('hash_edit') && guidance.includes('edit_file') && guidance.includes('write_file')) {
       r.ok(`getEditProtocolGuidance: 含 3 工具名 (${guidance.length} 字符), LLM 可见`);

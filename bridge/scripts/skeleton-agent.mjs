@@ -4,7 +4,7 @@
 
 import { persistentConfig } from '../src/core/persistent-config.js';
 import { createProvider } from 'provider-kit';
-import { runPipeline, getEditProtocolGuidance } from './epc-pipeline.mjs';
+import { runPipeline, getEditProtocolGuidance } from '../src/core/epc-pipeline.mjs';
 
 const SYSTEM_PROMPT = `You are OpenChat, a friendly Chinese-speaking AI assistant.
 Rules:
