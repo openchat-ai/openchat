@@ -1,5 +1,5 @@
 // A1.1 self-check: encode a 48kHz sine wave → decode → verify PCM length
-import { SkeletonCodec } from './skeleton-codec.mjs';
+import SkeletonCodec from '../src/core/audio/lmdn-codec.mjs';
 
 const SR = 48000;
 const N = 96;

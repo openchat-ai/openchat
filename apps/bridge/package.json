@@ -1,7 +1,0 @@
-{
-  "name": "openchat-apps-bridge",
-  "type": "module",
-  "dependencies": {
-    "provider-kit": "file:../../modules/provider-kit"
-  }
-}
