@@ -1,4 +1,4 @@
-import { createProvider } from '../providers/ai-provider.js';
+import { providerRegistry } from 'provider-kit';
 import { persistentStore } from '../storage/persistent-store.js';
 import { persistentConfig } from '../core/persistent-config.js';
 
@@ -23,8 +23,13 @@ export class SessionManager {
       throw new Error(`No API key for ${type}. Set with: config set ${type} <api_key>`);
     }
 
-    const provider = createProvider(type);
-    await provider.connect(effectiveKey, endpoint);
+    // providerRegistry.getProvider() 支持 adapter 路由
+    const provider = providerRegistry.getProvider(type);
+    if (!provider) {
+      throw new Error(`Unknown provider type: ${type}`);
+    }
+
+    await provider.connect(effectiveKey);
     this.providers.set(type, provider);
 
     console.log(`✓ Connected to ${provider.name}`);

@@ -31,7 +31,7 @@
     "test:all": "node --experimental-test-module-mocks --test src/core/__tests__/*.test.mjs src/core/__tests__/*.test.js src/p2p/__tests__/*.test.js tests/benchmarks/*.js tests/contract/*.js",
     "lint": "eslint src/",
     "demo": "node scripts/demo.mjs",
-    "prepare": "husky"
+    "prepare": ""
   },
   "keywords": [
     "p2p",
@@ -43,14 +43,13 @@
   "license": "MIT",
   "dependencies": {
     "@jitsi/rnnoise-wasm": "^0.2.1",
-    "@openchat/provider-kit": "file:../modules/provider-kit",
     "@shiguredo/rnnoise-wasm": "^2025.1.5",
     "axios": "^1.15.0",
     "chalk": "^5.6.2",
     "cors": "^2.8.6",
     "dotenv": "^17.4.1",
     "express": "^4.22.1",
-    "fairy-guardian": "file:../modules/fairy-guardian",
+    "fairy-guardian": "^1.1.2",
     "helmet": "^7.2.0",
     "hyperswarm": "^4.17.0",
     "joi": "^17.13.3",
@@ -58,8 +57,8 @@
     "morgan": "^1.10.1",
     "onnxruntime-node": "^1.24.3",
     "opusscript": "^0.1.1",
-    "provider-kit": "file:../modules/provider-kit",
     "pino": "^10.3.1",
+    "provider-kit": "^1.4.0",
     "qiniu": "^7.15.2",
     "swagger-ui-express": "^5.0.1",
     "uuid": "^9.0.0",

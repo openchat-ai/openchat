@@ -669,9 +669,9 @@ export const PRESET_PROVIDERS = {
   minimax: {
     name: 'MiniMax',
     nameCn: 'MiniMax',
-    baseUrl: 'https://api.minimax.chat/v1',
-    defaultModel: 'abab6.5s-chat',
-    description: '海螺AI'
+    baseUrl: 'https://api.minimaxi.com/v1',
+    defaultModel: 'MiniMax-M3',
+    description: 'MiniMax token plan'
   },
   siliconflow: {
     name: 'SiliconFlow',
