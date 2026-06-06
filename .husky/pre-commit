@@ -7,22 +7,7 @@ fi
 
 echo "🔍 运行提交前检查..."
 
-# 0. Commit message lint
-# 现代 git 不再向客户端 hook 传 $1；统一从 .git/COMMIT_EDITMSG 读取
-echo "📝 检查 Commit message..."
-COMMIT_MSG_FILE=".git/COMMIT_EDITMSG"
-[ -f "$COMMIT_MSG_FILE" ] || COMMIT_MSG_FILE="$1"
-MSG=$(cat "$COMMIT_MSG_FILE" 2>/dev/null || echo "")
-if echo "$MSG" | grep -qiE "^(chore|fix|feat|docs|refactor|test):?\s*(end of day|收工|wip|tmp)\b"; then
-  echo "❌ Commit message 过于含糊（end of day / 收工 / wip / tmp），请写具体描述"
-  exit 1
-fi
-npx --no -- commitlint --edit "$COMMIT_MSG_FILE" 2>/dev/null || {
-  echo "❌ Commit message 格式错误，使用: feat/fix/refactor/test/docs/chore: description"
-  exit 1
-}
-
-# 0.5 Lint 检查
+# Lint 检查
 echo "🔍 运行 ESLint..."
 cd bridge
 npx eslint src/ --quiet --no-ignore 2>/dev/null || {

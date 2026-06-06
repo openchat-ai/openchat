@@ -1,0 +1,7 @@
+#!/bin/sh
+# OpenChat commit message validation
+
+npx --no -- commitlint --edit "$1" 2>/dev/null || {
+  echo "❌ Commit message 格式错误，使用: feat/fix/refactor/test/docs/chore: description"
+  exit 1
+}
