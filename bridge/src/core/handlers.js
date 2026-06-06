@@ -3,7 +3,6 @@ import { sessionManager } from '../session/session-manager.js';
 import { MessageType } from '../protocol/message.js';
 import { pluginManager } from '../plugins/plugin-manager.js';
 import { ShellPlugin, FilePlugin } from '../plugins/system-plugins.js';
-import { CodingToolsPlugin } from '../plugins/coding-tools-plugin.mjs';
 import { GitPlugin, DevToolsPlugin } from '../plugins/eng-plugins.js';
 import SelfTestPlugin from '../plugins/self-test-plugin.js';
 import { DevWorkflowPlugin } from '../plugins/dev-workflow-plugin.mjs';
@@ -77,7 +76,7 @@ export function initCore() {
   
   // Initialize System Plugins (The "Hands")
   pluginManager.registerPlugin(ShellPlugin);
-  pluginManager.registerPlugin(CodingToolsPlugin);
+  pluginManager.registerPlugin(FilePlugin);
 
   // Initialize Engineering Plugins (The "Expertise")
   pluginManager.registerPlugin(GitPlugin);

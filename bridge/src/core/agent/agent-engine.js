@@ -8,6 +8,27 @@ import { QualityChecker, Corrector } from '../quality/quality-check-system.js';
 import * as responseCache from '../response-cache.js';
 import logger from '../monitoring/logger.js';
 import { runPipeline, getEditProtocolGuidance } from '../epc-pipeline.mjs';
+import { TOOLS as CODING_TOOLS, executeTool as codingExec } from '../../tools/coding-tools.mjs';
+
+const _CODING_NAMES = new Set(CODING_TOOLS.map(t => t.function.name));
+
+function _getFC() {
+  const pm = pluginManager.getToolsForFunctionCalling() || [];
+  return [...pm, ...CODING_TOOLS];
+}
+
+async function _exec(name, args, ctx) {
+  if (_CODING_NAMES.has(name)) {
+    const r = await codingExec(name, args);
+    return { success: true, content: typeof r === 'string' ? r : JSON.stringify(r), ...(typeof r === 'object' ? r : {}) };
+  }
+  return pluginManager.executeTool(name, args, ctx);
+}
+
+function _knownNames() {
+  const pm = pluginManager.getToolsForFunctionCalling?.() || [];
+  return new Set([...pm.map(t => (t.function || t).name), ..._CODING_NAMES]);
+}
 
 // Map model-invented tool names to exec_command
 function mapActionToCommand(name, args) {
@@ -128,7 +149,7 @@ export class AgentEngine {
       return cached;
     }
 
-    const tools = this.useFunctionCalling ? pluginManager.getToolsForFunctionCalling() : null;
+    const tools = this.useFunctionCalling ? _getFC() : null;
     const agentId = `agent-${sessionId}`;
     const systemPrompt = await PromptBuilder.buildSystemPrompt(1);
     // Strip text-based tool format hints when FC tools are available (they confuse some models)
@@ -195,20 +216,19 @@ export class AgentEngine {
           // Detect text-fallback origin (id starts with textfb_ from provider-kit)
           if (tc.id && tc.id.startsWith('textfb_')) _textFallbackUsed = true;
           try {
-            const toolResult = await pluginManager.executeTool(toolName, args, { sessionId, userId });
+            const toolResult = await _exec(toolName, args, { sessionId, userId });
             lastToolResult = toolResult;
             agentMonitor.recordToolCall(agentId, toolName, args, toolResult);
             broadcast({ type: AgentEvents.TOOL_RESULT, tool: toolName, result: toolResult, iteration: pass });
             await memoryManager.addMessage(sessionId, 'system', `[Tool Result] ${toolName}: ${JSON.stringify(toolResult).slice(0, 2000)}`);
           } catch (error) {
             // Map unknown tool names (model-invented) to exec_command
-            const knownTools = pluginManager.getToolsForFunctionCalling?.() || [];
-            const knownNames = new Set(knownTools.map(t => (t.function || t).name));
+            const knownNames = _knownNames();
             if (!knownNames.has(toolName)) {
               const cmd = mapActionToCommand(toolName, args);
               const mappedArgs = { command: cmd };
               try {
-                const mappedResult = await pluginManager.executeTool('exec_command', mappedArgs, { sessionId, userId });
+                const mappedResult = await _exec('exec_command', mappedArgs, { sessionId, userId });
                 lastToolResult = mappedResult;
                 toolName = 'exec_command';
                 args = mappedArgs;
@@ -332,7 +352,7 @@ export class AgentEngine {
     let isTaskComplete = false;
 
     // 获取 Function Calling 工具定义（一次性）
-    const tools = this.useFunctionCalling ? pluginManager.getToolsForFunctionCalling() : null;
+    const tools = this.useFunctionCalling ? _getFC() : null;
 
     // [优化] 预构建系统提示
     const systemPrompt = await PromptBuilder.buildSystemPrompt(1);
@@ -378,7 +398,7 @@ export class AgentEngine {
 
           try {
             logger.info(`[Agent] Function Calling: ${toolName}(${JSON.stringify(args)})`);
-            const toolResult = await pluginManager.executeTool(toolName, args, { sessionId, userId });
+            const toolResult = await _exec(toolName, args, { sessionId, userId });
 
             executionTrace.actions.push({ tool: toolName, args, result: toolResult, mode: 'fc' });
 
@@ -406,7 +426,7 @@ export class AgentEngine {
           try {
             const args = JSON.parse(argsJson);
             logger.info(`[Agent] Text Parse: ${toolName}(${JSON.stringify(args)})`);
-            const toolResult = await pluginManager.executeTool(toolName, args, { sessionId, userId });
+            const toolResult = await _exec(toolName, args, { sessionId, userId });
 
             executionTrace.actions.push({ tool: toolName, args, result: toolResult, mode: 'text' });
 
