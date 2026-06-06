@@ -1,4 +1,4 @@
-import { qiniuGet, qiniuPut, qiniuList, qiniuDeletePrefix } from '../../../apps/bridge/skeleton-qiniu.mjs';
+import { qiniuGet, qiniuPut, qiniuList, qiniuDeletePrefix } from '../../scripts/qiniu-s3.mjs';
 
 // === invariants ===
 // - _tree.json is the source of truth; .msg / -reply.json files are legacy compat

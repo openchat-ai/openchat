@@ -1,4 +1,4 @@
-import { qiniuGet, qiniuPut } from '../../../apps/bridge/skeleton-qiniu.mjs';
+import { qiniuGet, qiniuPut } from '../../scripts/qiniu-s3.mjs';
 
 // === invariants ===
 // - _metaCache[chatId] = { name, userSet, autoNamed, createdAt, updatedAt } | null

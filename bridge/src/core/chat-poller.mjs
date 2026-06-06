@@ -1,10 +1,9 @@
 // Chat poller: polls oc/chat/ for .enc/.msg files, generates AI replies.
 // Runs in-process as part of the main Bridge (no child process).
-// See apps/bridge/skeleton.mjs for the original standalone version.
 
 import LmdnCodec from '../core/audio/lmdn-codec.mjs';
-import { qiniuList, qiniuGet, qiniuPut } from '../../../apps/bridge/skeleton-qiniu.mjs';
-import { processText, initProvider, generateSessionName } from '../../../apps/bridge/skeleton-agent.mjs';
+import { qiniuList, qiniuGet, qiniuPut } from '../../scripts/qiniu-s3.mjs';
+import { processText, initProvider, generateSessionName } from '../../scripts/skeleton-agent.mjs';
 import { autoNameIfNeeded, invalidateCache } from './session-namer.mjs';
 
 // === invariants ===

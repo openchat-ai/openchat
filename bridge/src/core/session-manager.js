@@ -35,3 +35,5 @@ export class SessionManager {
     return provider;
   }
 }
+
+export const sessionManager = new SessionManager();
