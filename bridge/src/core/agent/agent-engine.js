@@ -7,7 +7,7 @@ import { sessionEvents } from '../session-events.js';
 import { QualityChecker, Corrector } from '../quality/quality-check-system.js';
 import * as responseCache from '../response-cache.js';
 import logger from '../monitoring/logger.js';
-import { runPipeline, getEditProtocolGuidance } from '../../../scripts/epc-pipeline.mjs';
+import { runPipeline, getEditProtocolGuidance } from '../epc-pipeline.mjs';
 
 // Map model-invented tool names to exec_command
 function mapActionToCommand(name, args) {
