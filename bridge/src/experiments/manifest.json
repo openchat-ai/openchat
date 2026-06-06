@@ -1,0 +1,357 @@
+{
+  "version": 1,
+  "name": "openchat-experiments",
+  "description": "可组合实验：每个实验 = 一个有 I/O 契约的可复用构件。用 compose.mjs 按依赖图拼装。",
+  "ioSchema": {
+    "Buffer":  "Node.js Buffer",
+    "string":  "UTF-8 字符串",
+    "number":  "整数",
+    "boolean": "true / false",
+    "object":  "结构化对象",
+    "array":   "数组",
+    "function":"async (args) => result",
+    "any":     "运行时决定"
+  },
+  "experiments": [
+    {
+      "id": "config",
+      "file": "1-sdui.mjs",
+      "name": "持久化配置",
+      "category": "config",
+      "pure": true,
+      "needsEnv": [],
+      "description": "读取 ~/.openchat/config.json，含 providers / current / paths。",
+      "inputs": [],
+      "outputs": [
+        { "name": "config",   "type": "object", "description": "完整 config 对象" },
+        { "name": "provider", "type": "string", "description": "当前 provider 名" },
+        { "name": "model",    "type": "string", "description": "当前 model" }
+      ],
+      "deps": [],
+      "tags": ["config", "provider", "paths"]
+    },
+    {
+      "id": "agent",
+      "file": "2-agent.mjs",
+      "name": "LLM 代理 (provider-kit)",
+      "category": "llm",
+      "pure": false,
+      "needsEnv": [],
+      "description": "skeleton-agent：经 provider-kit 调 LLM，per-chat session。",
+      "inputs": [
+        { "name": "text",   "type": "string",  "required": true,  "description": "用户消息" },
+        { "name": "chatId", "type": "string",  "required": false, "default": "default", "description": "会话 id（隔离历史）" }
+      ],
+      "outputs": [
+        { "name": "response",  "type": "string", "description": "LLM 回复" },
+        { "name": "toolCalls", "type": "array",  "description": "工具调用（若有）" }
+      ],
+      "deps": ["config"],
+      "tags": ["llm", "agent", "chat"]
+    },
+    {
+      "id": "p2p",
+      "file": "3-p2p.mjs",
+      "name": "P2P 直连 + Qiniu 信令",
+      "category": "p2p",
+      "pure": false,
+      "needsEnv": ["QINIU_ACCESS_KEY", "QINIU_SECRET_KEY"],
+      "description": "p2p-net (TCP 直连) + qiniu-signaling (peer endpoint 交换)。",
+      "inputs": [],
+      "outputs": [
+        { "name": "swarm",  "type": "object", "description": "P2PSwarm 实例" },
+        { "name": "signaling", "type": "object", "description": "QiniuSignaling 单例" }
+      ],
+      "deps": ["qiniu"],
+      "tags": ["p2p", "signaling"]
+    },
+    {
+      "id": "codec",
+      "file": "4-codec.mjs",
+      "name": "LMDN 音频编解码 (48kHz)",
+      "category": "pure",
+      "pure": true,
+      "needsEnv": [],
+      "description": "LmdnCodec：48kHz, N=96, EPC 头 BB 01 CC (enc) / BB 00 DD (msg)。",
+      "inputs": [
+        { "name": "pcm",     "type": "Buffer", "required": false, "description": "48kHz int16 PCM (encode 输入)" },
+        { "name": "encoded", "type": "Buffer", "required": false, "description": "EPC 编码字节 (decode 输入)" },
+        { "name": "op",      "type": "string", "required": false, "default": "encode", "description": "encode | decode" }
+      ],
+      "outputs": [
+        { "name": "encoded", "type": "Buffer", "description": "EPC 编码字节 (encode 输出)" },
+        { "name": "pcm",     "type": "Buffer", "description": "48kHz int16 PCM (decode 输出)" }
+      ],
+      "deps": [],
+      "tags": ["audio", "codec", "epc", "48khz"]
+    },
+    {
+      "id": "qiniu",
+      "file": "5-qiniu.mjs",
+      "name": "Qiniu S3 兼容封装",
+      "category": "qiniu",
+      "pure": false,
+      "needsEnv": ["QINIU_ACCESS_KEY", "QINIU_SECRET_KEY"],
+      "description": "scripts/qiniu-s3.mjs：list / get / put / delete / deletePrefix。S3 V4 签名。",
+      "inputs": [
+        { "name": "op",   "type": "string", "required": true,  "description": "list | get | put | delete | deletePrefix" },
+        { "name": "key",  "type": "string", "required": false, "description": "对象 key" },
+        { "name": "data", "type": "Buffer", "required": false, "description": "put 内容" },
+        { "name": "prefix", "type": "string", "required": false, "description": "deletePrefix 前缀" }
+      ],
+      "outputs": [
+        { "name": "result", "type": "any", "description": "操作结果" }
+      ],
+      "deps": [],
+      "tags": ["qiniu", "storage", "s3"]
+    },
+    {
+      "id": "chat-poller",
+      "file": "6-app.mjs",
+      "name": "Chat-Poller (walking-skeleton)",
+      "category": "chat",
+      "pure": false,
+      "needsEnv": ["QINIU_ACCESS_KEY", "QINIU_SECRET_KEY"],
+      "description": "轮询 oc/chat/{chatId}/ → 调 agent → 写 *-reply.json。EPC 头 + seenKeys 双层去重。",
+      "inputs": [],
+      "outputs": [
+        { "name": "running", "type": "boolean", "description": "是否成功启动" }
+      ],
+      "deps": ["qiniu", "agent", "codec"],
+      "tags": ["chat", "poller", "walking-skeleton", "epc"]
+    },
+    {
+      "id": "isolation",
+      "file": "7-isolation.mjs",
+      "name": "chatId 路径隔离",
+      "category": "pure",
+      "pure": true,
+      "needsEnv": [],
+      "description": "从 oc/chat/{chatId}/{file} 路径解析 chatId，验证回复路径隔离。",
+      "inputs": [
+        { "name": "key", "type": "string", "required": true, "description": "Qiniu 对象 key" }
+      ],
+      "outputs": [
+        { "name": "chatId", "type": "string", "description": "解析出的 chatId" }
+      ],
+      "deps": [],
+      "tags": ["path", "isolation", "pure"]
+    },
+    {
+      "id": "naming",
+      "file": "8-naming.mjs",
+      "name": "会话自动命名",
+      "category": "chat",
+      "pure": false,
+      "needsEnv": ["QINIU_ACCESS_KEY", "QINIU_SECRET_KEY"],
+      "description": "session-namer：消息数 3/8/16/32/64 触发自动命名；userSet 后不再触发。",
+      "inputs": [
+        { "name": "chatId",       "type": "string",  "required": true,  "description": "会话 id" },
+        { "name": "messageCount", "type": "number",  "required": true,  "description": "当前消息数" },
+        { "name": "generator",    "type": "function","required": true,  "description": "生成名字的 async () => string" }
+      ],
+      "outputs": [
+        { "name": "meta", "type": "object", "description": "{ name, userSet, autoNamed, createdAt, updatedAt }" }
+      ],
+      "deps": ["qiniu"],
+      "tags": ["naming", "chat", "auto-name"]
+    },
+    {
+      "id": "session-tree",
+      "file": "9-session.mjs",
+      "name": "会话树 CRUD",
+      "category": "chat",
+      "pure": false,
+      "needsEnv": ["QINIU_ACCESS_KEY", "QINIU_SECRET_KEY"],
+      "description": "session-tree：_tree.json 持久化，节点 + variant + edit + signal。",
+      "inputs": [
+        { "name": "op",      "type": "string", "required": true,  "description": "addNode | addVariant | editMessage | handleSignal | getCurrentPath | getParentForNewUser" },
+        { "name": "chatId",  "type": "string", "required": true },
+        { "name": "data",    "type": "any",    "required": false, "description": "op-specific payload" }
+      ],
+      "outputs": [
+        { "name": "result", "type": "any", "description": "op-specific result" }
+      ],
+      "deps": ["qiniu"],
+      "tags": ["session", "tree", "chat"]
+    },
+    {
+      "id": "system-exec",
+      "file": "10-system-exec.mjs",
+      "name": "宿主机命令安全执行",
+      "category": "exec",
+      "pure": true,
+      "needsEnv": [],
+      "description": "system-exec：白名单 + 黑名单；executeTool 路由；输出经 compressor 压缩。",
+      "inputs": [
+        { "name": "command", "type": "string", "required": true, "description": "shell 命令" }
+      ],
+      "outputs": [
+        { "name": "stdout",   "type": "string", "description": "标准输出" },
+        { "name": "stderr",   "type": "string", "description": "标准错误" },
+        { "name": "exitCode", "type": "number", "description": "退出码" }
+      ],
+      "deps": ["compressor"],
+      "tags": ["exec", "shell", "safety", "sandbox"]
+    },
+    {
+      "id": "compressor",
+      "file": "11-token-saving.mjs",
+      "name": "CLI 输出压缩 (rtk 风格)",
+      "category": "pure",
+      "pure": true,
+      "needsEnv": [],
+      "description": "output-compressor：git_status / git_diff / dedup / truncate。保留 FAIL 过滤 PASS。",
+      "inputs": [
+        { "name": "command", "type": "string", "required": true,  "description": "产生该输出的命令" },
+        { "name": "stdout",  "type": "string", "required": false, "default": "" },
+        { "name": "stderr",  "type": "string", "required": false, "default": "" }
+      ],
+      "outputs": [
+        { "name": "stdout", "type": "string", "description": "压缩后输出" },
+        { "name": "meta",   "type": "object", "description": "{ strategy, origBytes, compressedBytes, ratio }" }
+      ],
+      "deps": [],
+      "tags": ["compression", "rtk", "pure"]
+    },
+    {
+      "id": "coding",
+      "file": "12-coding.mjs",
+      "name": "编程工具核心 (coding-tools + quality-gate)",
+      "category": "coder",
+      "pure": true,
+      "needsEnv": [],
+      "description": "read_file / write_file / edit_file / hashEdit + snapshot/restore/applyWithGuard。",
+      "inputs": [
+        { "name": "op",     "type": "string", "required": true,  "description": "read_file | write_file | edit_file | hashEdit | snapshot | restore | applyWithGuard" },
+        { "name": "path",   "type": "string", "required": true },
+        { "name": "content","type": "string", "required": false },
+        { "name": "search", "type": "string", "required": false },
+        { "name": "replace","type": "string", "required": false },
+        { "name": "options","type": "object", "required": false }
+      ],
+      "outputs": [
+        { "name": "result", "type": "any", "description": "op-specific result" }
+      ],
+      "deps": [],
+      "tags": ["coding", "edit", "quality-gate"]
+    },
+    {
+      "id": "edit-advanced",
+      "file": "12a-edit-advanced.mjs",
+      "name": "高级编辑 (multi-edit / ast-edit / diff-review)",
+      "category": "coder",
+      "pure": true,
+      "needsEnv": [],
+      "description": "multiEdit (批量) + astEdit (AST 重命名/replace_body) + diff-review (git diff + revert)。",
+      "inputs": [
+        { "name": "op",   "type": "string", "required": true,  "description": "multiEdit | astEdit | diff | revert" },
+        { "name": "path", "type": "string", "required": false },
+        { "name": "data", "type": "any",    "required": false }
+      ],
+      "outputs": [
+        { "name": "result", "type": "any" }
+      ],
+      "deps": ["coding"],
+      "tags": ["coding", "ast", "multi-edit", "diff-review"]
+    },
+    {
+      "id": "dev-aux",
+      "file": "12b-dev-aux.mjs",
+      "name": "开发辅助 (auto-commit / project-context / dev-repl)",
+      "category": "dev",
+      "pure": false,
+      "needsEnv": [],
+      "description": "auto-commit (类型识别 commit msg) + project-context (依赖图) + dev-repl (CLI 入口) + bin/openchat.js。",
+      "inputs": [
+        { "name": "op",   "type": "string", "required": true,  "description": "commitMsg | deps | repl" }
+      ],
+      "outputs": [
+        { "name": "result", "type": "any" }
+      ],
+      "deps": [],
+      "tags": ["dev", "commit", "context", "repl"]
+    },
+    {
+      "id": "relay",
+      "file": "13-relay.mjs",
+      "name": "中继 / 消息总线",
+      "category": "relay",
+      "pure": false,
+      "needsEnv": [],
+      "description": "bucket-relay (跨区域选最近 bucket) + signal-relay (单 bucket 信令) + message-bus (agent 间 pub/sub + sendTo/reply/broadcast/delegate)。",
+      "inputs": [
+        { "name": "op", "type": "string", "required": true, "description": "bestWrite | bestRead | subscribe | publish | sendTo | reply | broadcast | delegate" },
+        { "name": "data", "type": "any",  "required": false }
+      ],
+      "outputs": [
+        { "name": "result", "type": "any" }
+      ],
+      "deps": ["qiniu"],
+      "tags": ["relay", "bucket", "message-bus", "agent"]
+    },
+    {
+      "id": "storage",
+      "file": "14-storage-provider.mjs",
+      "name": "存储 / Provider 接线",
+      "category": "storage",
+      "pure": false,
+      "needsEnv": [],
+      "description": "persistent-store (sessions.json + providers.json) + provider-service (provider-kit 唯一入口) + tool-registry (read_memory / web_fetch 私网拦截 / calculate / finish)。",
+      "inputs": [
+        { "name": "op", "type": "string", "required": true, "description": "session.{get,set,delete,all} | provider.{get,set,delete,all} | tool.{list,call} | getModels" }
+      ],
+      "outputs": [
+        { "name": "result", "type": "any" }
+      ],
+      "deps": ["config"],
+      "tags": ["storage", "provider", "tool-registry"]
+    },
+    {
+      "id": "poll-one",
+      "file": "15-poll-one.mjs",
+      "name": "Poll-One — 复合实验 (单条消息处理)",
+      "category": "chat",
+      "pure": false,
+      "needsEnv": ["QINIU_ACCESS_KEY", "QINIU_SECRET_KEY"],
+      "description": "复合实验: qiniu + isolation + agent 拼出 .msg → reply.json。chat-poller.mjs 的 _generateAndUpload 实验化版本。",
+      "inputs": [
+        { "name": "msgKey", "type": "string", "required": true, "description": "oc/chat/{chatId}/{ts}.msg" }
+      ],
+      "outputs": [
+        { "name": "reply",    "type": "string", "description": "LLM 回复文本" },
+        { "name": "replyKey", "type": "string", "description": "写回的 reply.json key" },
+        { "name": "chatId",   "type": "string", "description": "解析出的 chatId" },
+        { "name": "error",    "type": "string", "description": "错误信息（若有）" }
+      ],
+      "deps": ["qiniu", "isolation", "agent"],
+      "tags": ["composite", "chat", "poll", "walking-skeleton"]
+    },
+    {
+      "id": "provider-kit",
+      "file": "17-provider-kit.mjs",
+      "name": "provider-kit — 适配器总测 (normalize + adapter + 错误分类 + 重试 + EPC 往返)",
+      "category": "llm",
+      "pure": true,
+      "needsEnv": [],
+      "description": "provider-kit 独立 node 项目的'门户实验'。测 openchat 用得上的所有 provider-kit API: 4 个 normalize 纯函数 (idempotent, 双 schema 兼容) + createProvider/listPresetProviders + OpenAICompatibleProvider.chat() 端到端 (mock fetch, 验证 4 步处理走通) + classifyError / ProviderError / withRetry / withTimeout 错误处理栈 + EPC encode→parse 往返。",
+      "inputs": [
+        { "name": "op", "type": "string", "required": false, "default": "normalize", "description": "normalize | createProvider | classify" }
+      ],
+      "outputs": [
+        { "name": "content",        "type": "string", "description": "剥 think 后的 content — normalize 出参" },
+        { "name": "reasoning",      "type": "string", "description": "extractReasoning 结果 (空时为 '', 真值在 epc SUB_THINKING 帧)" },
+        { "name": "toolCalls",      "type": "array",  "description": "扁平化 toolCalls (含 ACTION: 降级) — normalize 出参" },
+        { "name": "id",             "type": "string", "description": "provider id — createProvider 出参" },
+        { "name": "name",           "type": "string", "description": "provider 展示名" },
+        { "name": "baseUrl",        "type": "string", "description": "provider API baseUrl" },
+        { "name": "skipAuth",       "type": "boolean","description": "是否跳过 auth (本地服务)" },
+        { "name": "type",           "type": "string", "description": "错误分类 (auth/rate_limit/server_error/...) — classify 出参" },
+        { "name": "retryable",      "type": "boolean","description": "是否可重试" },
+        { "name": "friendly",       "type": "string", "description": "用户友好的错误消息" }
+      ],
+      "deps": [],
+      "tags": ["provider-kit", "llm", "adapter", "normalize", "error-classification", "retry", "epc", "idempotent", "standalone-package"]
+    }
+  ]
+}

@@ -1,8 +1,32 @@
-import { ok, ng, skip, report } from './lib/report.mjs';
+// Experiment 11: CLI 输出压缩 (rtk 风格) — 纯函数
+//
+// I/O (compose 契约): { command, stdout, stderr } → { outputs: { stdout, stderr, meta } }
+
+import { create } from './lib/report.mjs';
+
+export const META = { id: 'compressor' };
 
 const NAME = 'Token Saving — CLI 输出压缩 (rtk 风格)';
 
+let _compressorPromise = null;
+async function _getCompressor() {
+  if (_compressorPromise) return _compressorPromise;
+  _compressorPromise = import('../../src/tools/output-compressor.mjs');
+  return _compressorPromise;
+}
+
+export async function run({ inputs = {} } = {}) {
+  const { command = '', stdout = '', stderr = '' } = inputs;
+  const m = await _getCompressor();
+  if (typeof m.compressOutput !== 'function') throw new Error('compressOutput missing');
+  const out = m.compressOutput(command, stdout, stderr);
+  return { outputs: { stdout: out.stdout, stderr: out.stderr || stderr, meta: out.meta } };
+}
+
 async function testTokenSaving() {
+  const r = create();
+  const { ok, ng, skip, report } = r;
+
   let compressor;
   try {
     compressor = await import('../../src/tools/output-compressor.mjs');
@@ -12,8 +36,12 @@ async function testTokenSaving() {
     report(NAME); return;
   }
 
-  if (typeof compressor.compressOutput === 'function') ok('compressOutput 函数存在');
-  else { ng('compressOutput 缺失'); report(NAME); return; }
+  // 0. run() 契约
+  try {
+    const res = await run({ inputs: { command: 'echo hi', stdout: 'hi', stderr: '' } });
+    if (res.outputs.stdout === 'hi' && res.outputs.meta.strategy === 'none') ok('run() 工作');
+    else ng(`run() 异常: ${JSON.stringify(res.outputs)}`);
+  } catch (e) { ng('run() 失败', e); }
 
   // 1. 短输出不压缩
   const short = compressor.compressOutput('echo hi', 'hi', '');
@@ -41,7 +69,7 @@ async function testTokenSaving() {
   if (gs.meta.strategy === 'git_status') ok(`git status 识别为 git_status`);
   else ok(`git status strategy=${gs.meta.strategy}`);
 
-  // 6. git diff 压缩 (去 index 行)
+  // 6. git diff 压缩
   const gitDiff = `diff --git a/src/a.js b/src/a.js\nindex abc123..def456 100644\n--- a/src/a.js\n+++ b/src/a.js\n@@ -1,3 +1,4 @@\n line1\n+new line\n line2`;
   const gd = compressor.compressOutput('git', gitDiff, '');
   if (gd.meta.strategy === 'git_diff') ok(`git diff 识别为 git_diff`);
@@ -53,13 +81,13 @@ async function testTokenSaving() {
   if (ls.stdout.includes('file1.js') && ls.stdout.includes('file2.js')) ok(`ls 保留文件名`);
   else ng(`ls 输出异常: ${ls.stdout.substring(0, 60)}`);
 
-  // 8. 测试输出 — 保持 FAIL，过滤 PASS
-  const testOut = `PASS tests/test1.js\nFAIL tests/test2.js\n  AssertionError: expected 1 to be 2\nPASS tests/test3.js\nTests: 1 failed, 2 passed`;
+  // 8. 测试输出
+  const testOut = `PASS tests/test1.js\nFAIL tests/test2.js\n  AssertionError: expected 1 to 2\nPASS tests/test3.js\nTests: 1 failed, 2 passed`;
   const to = compressor.compressOutput('jest', testOut, '');
   if (to.stdout.includes('FAIL') && !to.stdout.includes('PASS tests/test1')) ok(`测试输出过滤 PASS 保留 FAIL`);
   else ok(`测试输出: ${to.stdout.substring(0, 60)}`);
 
-  // 9. 去重 (连续重复行)
+  // 9. 去重
   const dupOut = 'a\na\na\nb\nb\nc';
   const deduped = compressor.compressOutput('cat', dupOut, '');
   if (deduped.stdout === 'a\nb\nc') ok(`连续重复行去重: "${deduped.stdout}"`);
@@ -75,7 +103,6 @@ async function testTokenSaving() {
   try {
     const sysExec = await import('../../src/tools/system-exec.mjs');
     ok('system-exec.mjs 可加载');
-    // 验证 executeTool 中包含 compress=true
     const src = await import('fs/promises').then(fs => fs.readFile('src/tools/system-exec.mjs', 'utf8'));
     if (src.includes('compress') && src.includes('output-compressor')) ok('system-exec 已集成压缩');
     else ok('system-exec 集成压缩检查跳过');
@@ -92,4 +119,4 @@ async function testTokenSaving() {
   report(NAME);
 }
 
-testTokenSaving().catch(e => { ng('Token 节约实验异常', e); report(NAME); });
+export { testTokenSaving };

@@ -17,6 +17,11 @@ import { applyWithGuard } from './quality-gate.mjs';
 
 const PROJECT_ROOT = process.cwd(); // F:\openchat (or bridge/)
 
+/** 单行 8 字符 md5 hash (lowercase) — hashline 编辑的锚点 */
+function hashlineHash(line) {
+  return crypto.createHash('md5').update(line).digest('hex').substring(0, 8);
+}
+
 export async function readFile(filePath) {
   const resolved = path.resolve(PROJECT_ROOT, filePath);
   if (!resolved.startsWith(PROJECT_ROOT)) throw new Error('Path traversal denied');
@@ -69,8 +74,7 @@ export async function hashEdit(filePath, hash, newContent) {
   const targetHash = hash.toLowerCase();
 
   for (let i = 0; i < lines.length; i++) {
-    const lineHash = crypto.createHash('md5').update(lines[i]).digest('hex').substring(0, 8);
-    if (lineHash === targetHash) {
+    if (hashlineHash(lines[i]) === targetHash) {
       lines[i] = newContent;
       const result = lines.join('\n');
       await fs.writeFile(resolved, result, 'utf8');
@@ -126,13 +130,38 @@ export const TOOLS = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'hash_edit',
+      description: 'Edit a single line by 8-char md5 hash anchor (saves tokens vs search/replace when the file is large). Use when the LLM has read the file and has the hash for the target line. Hash = md5(line) first 8 hex chars.',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string' },
+          hash: { type: 'string', description: '8-char hex md5 of the target line' },
+          newContent: { type: 'string', description: 'Replacement line content' },
+        },
+        required: ['path', 'hash', 'newContent'],
+      },
+    },
+  },
 ];
 
 export async function executeTool(name, args) {
   switch (name) {
     case 'read_file': return readFile(args.path);
     case 'write_file': return writeFile(args.path, args.content);
-    case 'edit_file': return editFile(args.path, args.search, args.newStr, { force: args.force === true, test: !!args.test });
+    case 'edit_file': {
+      // 协议选用交给 LLM (system prompt 含 getEditProtocolGuidance 引导):
+      //   LLM 看 prompt → 大文件单行编辑时主动选 hash_edit
+      //   LLM 不看 prompt → 走原 edit_file (浪费 token 但能跑)
+      // 不在 runtime 拦截 — 拦截会破坏 FC 协议,又难以观测
+      const force = args.force === true;
+      const test = !!args.test;
+      return editFile(args.path, args.search, args.newStr, { force, test });
+    }
+    case 'hash_edit': return hashEdit(args.path, args.hash, args.newContent);
     default: throw new Error(`Unknown coding tool: ${name}`);
   }
 }

@@ -86,9 +86,9 @@ async function testTree() {
   const parsed = JSON.parse(serialized);
   if (parsed.version === 1 && parsed.nodes.length === 2) ok('_tree.json 序列化/反序列化一致');
 
-  // 验证删除 — S3 V4 DELETE 签名生成
+  // 验证删除 — qiniu-s3.mjs (S3 兼容 DELETE 签名)
   try {
-    const qiniu = await import('../../../apps/bridge/skeleton-qiniu.mjs');
+    const qiniu = await import('../../scripts/qiniu-s3.mjs');
     if (typeof qiniu.qiniuDelete === 'function') ok('qiniuDelete 函数存在');
     if (typeof qiniu.qiniuDeletePrefix === 'function') ok('qiniuDeletePrefix 函数存在');
     // 验证 deleteSession 使用了 qiniuDeletePrefix
@@ -101,4 +101,4 @@ async function testTree() {
   report(NAME);
 }
 
-testTree().catch(e => { ng('树实验异常', e); report(NAME); });
+export { testTree };
