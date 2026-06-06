@@ -34,3 +34,4 @@ export class SessionManager {
     logger.info(`✓ Connected to ${provider.name}`);
     return provider;
   }
+}
