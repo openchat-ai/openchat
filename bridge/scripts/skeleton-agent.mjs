@@ -4,12 +4,15 @@
 
 import { persistentConfig } from '../src/core/persistent-config.js';
 import { createProvider } from 'provider-kit';
+import { runPipeline, getEditProtocolGuidance } from './epc-pipeline.mjs';
 
 const SYSTEM_PROMPT = `You are OpenChat, a friendly Chinese-speaking AI assistant.
 Rules:
 - Reply in the same language as the user (Chinese → Chinese).
 - Be concise: 1-3 sentences unless asked for detail.
-- For voice messages, respond conversationally as if the user just spoke.`;
+- For voice messages, respond conversationally as if the user just spoke.
+
+${getEditProtocolGuidance()}`;
 
 let _provider = null;
 let _model = null;
@@ -49,8 +52,10 @@ export async function processText(text, chatId = 'default') {
   const entry = _getOrCreateSession(chatId);
   entry.history.push({ role: 'user', content: text });
 
-  const response = await _provider.chat(_model, entry.history);
-  const reply = response?.content || '';
+  const rawResponse = await _provider.chat(_model, entry.history, { includeRaw: false });
+  // 显式走 pipeline: raw → stripThink + extractReasoning + normalizeToolCalls + parseActionFallback → EPC
+  const p = runPipeline(rawResponse);
+  const reply = p.content || '';
 
   entry.history.push({ role: 'assistant', content: reply });
 
@@ -58,8 +63,7 @@ export async function processText(text, chatId = 'default') {
   const trimmed = [entry.history[0], ...entry.history.slice(-18)];
   entry.history = trimmed;
 
-  const toolCalls = response?.toolCalls || [];
-  return { response: reply, toolCalls, sessionId: entry.sessionId };
+  return { response: reply, toolCalls: p.toolCalls, sessionId: entry.sessionId };
 }
 
 export function getHistory(chatId) {
@@ -78,6 +82,7 @@ export async function generateSessionName(chatId) {
     { role: 'system', content: 'Generate a 1-4 character Chinese session title. Return ONLY the title, no quotes, no punctuation.' },
     { role: 'user', content: `Conversation:\n${context}\n\nSession title:` },
   ];
-  const resp = await _provider.chat(_model, messages);
-  return (resp?.content || '').replace(/["'「」]/g, '').trim().substring(0, 20) || null;
+  const resp = await _provider.chat(_model, messages, { includeRaw: false });
+  const p = runPipeline(resp);
+  return (p.content || '').replace(/["'「」]/g, '').trim().substring(0, 20) || null;
 }

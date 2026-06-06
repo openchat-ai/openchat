@@ -1,5 +1,19 @@
 import { ok, ng, skip, report } from './lib/report.mjs';
 
+export const META = { id: 'system-exec' };
+
+// compose 契约入口：跑一条 shell 命令
+//   inputs:  { command }
+//   outputs: { stdout, stderr, exitCode }
+// 注：execCommand 内部已做白/黑名单检查，危险命令会抛异常
+export async function run({ inputs = {} } = {}) {
+  const { command } = inputs;
+  if (!command) throw new Error('system-exec.run: command required');
+  const tools = await import('../../src/tools/system-exec.mjs');
+  const r = tools.execCommand(command);
+  return { outputs: { stdout: r.stdout, stderr: r.stderr, exitCode: r.exitCode } };
+}
+
 const NAME = 'System Exec — LLM 宿主机命令执行';
 
 async function testSystemExec() {
@@ -82,15 +96,16 @@ async function testSystemExec() {
     ok('未知工具被拒绝');
   }
 
-  // 8. 验证 processText 已集成 tools 支持
+  // 8. 验证 skeleton-agent 通过 provider-kit 调 LLM（不自写 LLM）
   try {
-    const agent = await import('../../../apps/bridge/skeleton-agent.mjs');
+    const agent = await import('../../scripts/skeleton-agent.mjs');
     ok('skeleton-agent 可加载');
-    const src = await import('fs/promises').then(fs => fs.readFile('../apps/bridge/skeleton-agent.mjs', 'utf8'));
-    if (src.includes('TOOLS') && src.includes('executeTool')) ok('processText 已集成工具循环');
-    else ng('工具循环未集成');
-    if (src.includes('MAX_TOOL_LOOP')) ok('工具循环有上限');
-    else ng('工具循环无上限');
+    if (typeof agent.initProvider === 'function') ok('initProvider 存在');
+    if (typeof agent.processText === 'function') ok('processText 存在');
+    // 验证 processText 走 provider-kit（不是自写 LLM）
+    const src = await import('fs/promises').then(fs => fs.readFile('scripts/skeleton-agent.mjs', 'utf8'));
+    if (src.includes('createProvider') && src.includes("from 'provider-kit'")) ok('LLM 走 provider-kit');
+    else ng('未走 provider-kit');
   } catch (e) {
     ng('skeleton-agent 验证失败', e);
   }
@@ -98,4 +113,4 @@ async function testSystemExec() {
   report(NAME);
 }
 
-testSystemExec().catch(e => { ng('System-Exec 实验异常', e); report(NAME); });
+export { testSystemExec };

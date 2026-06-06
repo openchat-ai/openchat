@@ -19,4 +19,4 @@ async function testP2P() {
   report(NAME);
 }
 
-testP2P().catch(e => { ng('P2P 实验异常', e); report(NAME); });
+export { testP2P };

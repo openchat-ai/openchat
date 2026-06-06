@@ -35,4 +35,4 @@ async function testNaming() {
   report(NAME);
 }
 
-testNaming().catch(e => { ng('实验异常', e); report(NAME); });
+export { testNaming };
