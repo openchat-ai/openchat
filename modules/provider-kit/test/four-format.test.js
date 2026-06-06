@@ -103,7 +103,7 @@ const p7 = new OpenAICompatibleProvider({ skipAuth: true, baseUrl: 'http://0.0.0
 await p7.connect();
 const res7 = await p7.chat('m', [{ role: 'user', content: 'hi' }]);
 const keys = Object.keys(res7).sort();
-eq(keys.join(','), 'content,epc,raw', 'keys');
+eq(keys.join(','), 'content,epc,raw,toolCalls', 'keys');
 r7();
 
 console.log(`\n${passed} passed, ${failed} failed`);

@@ -23,6 +23,18 @@ import { DEFAULT_PORT } from '../constants.js';
 const USER_DIR = process.env.OPENCHAT_HOME || path.join(os.homedir(), '.openchat');
 const CONFIG_FILE = process.env.OPENCHAT_CONFIG || path.join(USER_DIR, 'config.json');
 
+// 新配置位置（provider-kit 主配置）
+const NEW_CONFIG_FILE = path.join(os.homedir(), '.config', 'openchat', 'config.json');
+
+function loadNewConfig() {
+  try {
+    if (fs.existsSync(NEW_CONFIG_FILE)) {
+      return JSON.parse(fs.readFileSync(NEW_CONFIG_FILE, 'utf8'));
+    }
+  } catch {}
+  return null;
+}
+
 // 项目目录
 const PROJECT_ROOT = path.resolve(process.cwd(), '..');
 const PROJECT_DIR = path.join(PROJECT_ROOT, '.openchat');
@@ -127,7 +139,11 @@ class PersistentConfig {
 
   getApiKey(provider) {
     const p = this.config.providers?.[provider];
-    return p?.apiKey || p?.options?.apiKey || null;
+    if (p?.apiKey || p?.options?.apiKey) return p.apiKey || p.options.apiKey;
+    // 回退到新配置 ~/.config/openchat/config.json
+    const nc = loadNewConfig();
+    const np = nc?.providers?.[provider];
+    return np?.apiKey || np?.options?.apiKey || null;
   }
 
   setApiKey(provider, key) {
@@ -140,17 +156,21 @@ class PersistentConfig {
   // ================== 当前选择 ==================
 
   getCurrentProvider() {
-    return this.config.current?.provider || null;
+    if (this.config.current?.provider) return this.config.current.provider;
+    const nc = loadNewConfig();
+    return nc?.current?.provider || null;
+  }
+
+  getCurrentModel() {
+    if (this.config.current?.model) return this.config.current.model;
+    const nc = loadNewConfig();
+    return nc?.current?.model || null;
   }
 
   setCurrentProvider(name) {
     if (!this.config.current) this.config.current = {};
     this.config.current.provider = name;
     this.save();
-  }
-
-  getCurrentModel() {
-    return this.config.current?.model || null;
   }
 
   setCurrentModel(model) {
