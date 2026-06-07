@@ -491,8 +491,8 @@ export class Bridge {
 
     ws.send(JSON.stringify({ type: 'session', data: { sessionId: sid }, sessionId }));
 
-    const { agentEngine, AgentEvents } = await import('./core/agent/agent-engine.js');
-    await agentEngine.processStream(sid, 'mobile-user', message, (event) => {
+    const { orchestrator, AgentEvents } = await import('./core/agent/orchestrator.mjs');
+    await orchestrator.processStream(sid, 'mobile-user', message, (event) => {
       try {
         ws.send(JSON.stringify({ type: 'agent_event', data: { ...event, ts: Date.now() }, sessionId }));
       } catch (e) {

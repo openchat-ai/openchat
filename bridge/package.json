@@ -1,6 +1,6 @@
 {
   "name": "openchat",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Decentralized social network + AI residents platform - Bridge CLI",
   "type": "module",
   "main": "src/core/bridge-lifecycle.js",

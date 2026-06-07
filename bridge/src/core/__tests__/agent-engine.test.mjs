@@ -36,11 +36,11 @@ class MockEvolutionMemory {
   remember = () => true;
 }
 
-const { AgentEngine, AgentEvents } = await import('../agent/agent-engine.js');
+const { Orchestrator, OrchestratorEvents, AgentEvents } = await import('../agent/orchestrator.mjs');
 
-describe('AgentEngine', () => {
+describe('Orchestrator', () => {
   function makeEngine(opts = {}) {
-    return new AgentEngine({
+    return new Orchestrator({
       memoryManager: new MockMemoryManager(),
       pluginManager: new MockPluginManager(),
       sessionManager: new MockSessionManager(),
@@ -52,8 +52,12 @@ describe('AgentEngine', () => {
   }
 
   describe('exports', () => {
-    test('AgentEvents contains 7 types', () => {
-      assert.strictEqual(Object.keys(AgentEvents).length, 7);
+    test('OrchestratorEvents contains 7 types', () => {
+      assert.strictEqual(Object.keys(OrchestratorEvents).length, 7);
+    });
+
+    test('AgentEvents alias matches OrchestratorEvents', () => {
+      assert.strictEqual(AgentEvents, OrchestratorEvents);
     });
   });
 
@@ -126,17 +130,13 @@ describe('AgentEngine', () => {
     });
   });
 
-  describe('performSelfVerification', () => {
-    test('returns null when judge tool unavailable', async () => {
-      const e = makeEngine();
-      const r = await e.performSelfVerification({ success: true, actions: [] });
-      assert.strictEqual(r, null);
-    });
-  });
-
   describe('edge cases', () => {
     test('process with null sessionId throws', async () => {
-      const e = makeEngine({ useRAG: false, useFunctionCalling: false });
+      const e = makeEngine({
+        useRAG: false,
+        useFunctionCalling: false,
+        sessionManager: { getSession: () => null, getProvider: () => null },
+      });
       try { await e.process(null, 'u1', 'hi'); assert.fail(); }
       catch { /* expected */ }
     });

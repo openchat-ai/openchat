@@ -63,9 +63,9 @@ export function createHandlers(bridge, CONFIG, crypto) {
         const { message, sessionId } = JSON.parse(body);
         if (!message) throw new Error('message required');
 
-        const { agentEngine } = await import('../core/agent/agent-engine.js');
+        const { orchestrator } = await import('../core/agent/orchestrator.mjs');
         const sid = sessionId || crypto.randomUUID();
-        const result = await agentEngine.process(sid, 'api-user', message);
+        const result = await orchestrator.process(sid, 'api-user', message);
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ response: result, sessionId: sid, source: 'agent' }));
@@ -104,10 +104,10 @@ export function createHandlers(bridge, CONFIG, crypto) {
 
         sendEvent('session', { sessionId: sid });
 
-        const { agentEngine } = await import('../core/agent-engine.js');
+        const { orchestrator } = await import('../core/agent/orchestrator.mjs');
 
         let fullContent = '';
-        await agentEngine.processStream(sid, 'default-user', message, (event) => {
+        await orchestrator.processStream(sid, 'default-user', message, (event) => {
           switch (event.type) {
             case 'thinking':
               sendEvent('thinking', { iteration: event.iteration });
@@ -458,13 +458,13 @@ export function createHandlers(bridge, CONFIG, crypto) {
         ws.send(JSON.stringify({ type: 'error', data: { message: '消息不能为空' }, sessionId }));
         return;
       }
-      const { agentEngine } = await import('../core/agent-engine.js');
+      const { orchestrator } = await import('../core/agent/orchestrator.mjs');
       const session = sessionId || crypto.randomUUID();
       ws.send(JSON.stringify({ type: 'chat_ack', data: { sessionId: session }, sessionId }));
 
       try {
         let fullContent = '';
-        await agentEngine.processStream(session, 'ws-user', message, (event) => {
+        await orchestrator.processStream(session, 'ws-user', message, (event) => {
           switch (event.type) {
             case 'content':
               fullContent += event.content;
