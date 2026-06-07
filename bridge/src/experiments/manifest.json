@@ -427,6 +427,39 @@
       ],
       "deps": ["config"],
       "tags": ["dev", "tools", "git", "docker", "lint", "ci", "security"]
+    },
+    {
+      "id": "ast-search",
+      "file": "22-ast-search/test.mjs",
+      "name": "AST 代码搜索 — symbol index + find refs + rename",
+      "category": "coder",
+      "pure": true,
+      "needsEnv": [],
+      "description": "ast-search.mjs: acorn-based AST parse, symbol index, findReferences, renameSymbol. 4 tools registered.",
+      "deps": [],
+      "tags": ["ast", "search", "refactor"]
+    },
+    {
+      "id": "tools-deep",
+      "file": "23-tools-deep/test.mjs",
+      "name": "V2 深度工具 — Git/Test/多语言 AST",
+      "category": "dev",
+      "pure": true,
+      "needsEnv": [],
+      "description": "tools-deep.mjs: gitBranch/gitMerge/gitRebase/gitApplyPatch + testParallel/testFlaky + langASTParse(js/py/rs/go). 7 tools registered.",
+      "deps": [],
+      "tags": ["git", "test", "ast", "multi-lang"]
+    },
+    {
+      "id": "ast-adapters",
+      "file": "24-ast-adapters/test.mjs",
+      "name": "多语言 AST 适配器 — Dart/JS/Python/Rust/Go",
+      "category": "coder",
+      "pure": true,
+      "needsEnv": [],
+      "description": "ast-adapters.mjs: Dart (Flutter) focus + JS acorn + Py/Rs/Go regex. 2 tools (lang_parse, lang_parse_file).",
+      "deps": [],
+      "tags": ["ast", "dart", "flutter", "multi-lang"]
     }
   ]
 }

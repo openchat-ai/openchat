@@ -125,7 +125,7 @@ export class GoalManager {
       nextStep.error = error.message;
       goal.status = 'failed';
       onEvent({ type: 'step_failed', goalId, step: { id: nextStep.id, action: nextStep.action }, error: error.message });
-      logger.error(`[GoalManager] Step ${nextStep.id} failed:`, error.message);
+      logger.warn(`[GoalManager] Step ${nextStep.id} failed:`, error.message);
     }
 
     goal.updatedAt = Date.now();
