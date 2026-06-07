@@ -460,6 +460,61 @@
       "description": "ast-adapters.mjs: Dart (Flutter) focus + JS acorn + Py/Rs/Go regex. 2 tools (lang_parse, lang_parse_file).",
       "deps": [],
       "tags": ["ast", "dart", "flutter", "multi-lang"]
+    },
+    {
+      "id": "request-tracing",
+      "file": "26-request-tracing/test.mjs",
+      "name": "requestId 全链路追踪",
+      "category": "dev",
+      "pure": true,
+      "needsEnv": [],
+      "description": "request-id.mjs: generate/createSpan/endSpan/getTrace/formatLog. chat-poller reqId threading.",
+      "deps": [],
+      "tags": ["observability", "tracing", "request-id"]
+    },
+    {
+      "id": "provider-failover",
+      "file": "27-provider-failover/test.mjs",
+      "name": "Provider 降级 — 主 provider 超时切备选",
+      "category": "llm",
+      "pure": true,
+      "needsEnv": [],
+      "description": "验证 provider-kit failover 策略：primary 超时 → fallback 接管 → 用户无感",
+      "deps": [],
+      "tags": ["llm", "failover", "resilience"]
+    },
+    {
+      "id": "backpressure",
+      "file": "28-backpressure/test.mjs",
+      "name": "背压保护 — Qiniu 慢时请求限流",
+      "category": "dev",
+      "pure": true,
+      "needsEnv": [],
+      "description": "MAX_IN_FLIGHT=20 限制并发请求，超限返回 skipped=backpressure",
+      "deps": ["chat-poller"],
+      "tags": ["backpressure", "resilience"]
+    },
+    {
+      "id": "multi-session",
+      "file": "29-multi-session/test.mjs",
+      "name": "多会话隔离 — 10 个并发会话互不干扰",
+      "category": "dev",
+      "pure": true,
+      "needsEnv": [],
+      "description": "10 个 chatId 并发收发，验证 history 隔离 + 时序不乱",
+      "deps": [],
+      "tags": ["session", "isolation", "concurrent"]
+    },
+    {
+      "id": "process-recovery",
+      "file": "30-process-recovery/test.mjs",
+      "name": "进程恢复 — Bridge 重启后会话不丢",
+      "category": "dev",
+      "pure": true,
+      "needsEnv": [],
+      "description": "验证 persistent-store session 持久化 + seenKeys prime 恢复逻辑",
+      "deps": ["chat-poller"],
+      "tags": ["recovery", "persistence", "resilience"]
     }
   ]
 }

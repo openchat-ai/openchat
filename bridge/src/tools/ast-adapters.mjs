@@ -126,11 +126,11 @@ export function parsePython(code) {
 // ─── Rust adapter (regex) ────────────────────────────────
 export function parseRust(code) {
   const symbols = [];
-  for (const m of code.matchAll(/^(?:pub\s+)?(?:unsafe\s+)?(?:async\s+)?fn\s+(\w+)\s*<([^>]*)>?\s*\(([^)]*)\)\s*(?:->\s*([^{]+?))?\s*\{/gm)) {
+  for (const m of code.matchAll(/^(?:pub\s+)?(?:unsafe\s+)?(?:async\s+)?fn\s+(\w+)(?:<([^>]*)>)?\s*\(([^)]*)\)\s*(?:->\s*([^{]+?))?\s*\{/gm)) {
     symbols.push({ kind: 'function', name: m[1], generics: m[2] || null, params: m[3], returnType: m[4]?.trim() || null });
   }
-  for (const m of code.matchAll(/^(?:pub\s+)?(?:struct|enum|trait|union)\s+(\w+)\s*(?:<([^>]*)>)?\s*(?:\{|;|\s*where)/gm)) {
-    symbols.push({ kind: m[1] ? 'type' : 'unknown', name: m[1], typeKind: RegExp.lastMatch?.includes('struct') ? 'struct' : RegExp.lastMatch?.includes('enum') ? 'enum' : 'trait' });
+  for (const m of code.matchAll(/^(?:pub\s+)?(struct|enum|trait|union)\s+(\w+)\s*(?:<([^>]*)>)?\s*(?:\{|;|\s*where)/gm)) {
+    symbols.push({ kind: 'type', name: m[2], typeKind: m[1] });
   }
   for (const m of code.matchAll(/^use\s+(\S+)\s*(?:as\s+(\w+))?;/gm)) {
     symbols.push({ kind: 'use', path: m[1], alias: m[2] || null });

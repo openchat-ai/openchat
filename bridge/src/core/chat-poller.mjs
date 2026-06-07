@@ -6,6 +6,7 @@ import { qiniuList, qiniuGet, qiniuPut } from '../../scripts/qiniu-s3.mjs';
 import { processText, initProvider, generateSessionName } from '../../scripts/skeleton-agent.mjs';
 import { autoNameIfNeeded } from './session-namer.mjs';
 import { run as composeRun } from '../experiments/compose.mjs';
+import { generate as genId, createSpan, endSpan, formatLog } from '../tools/request-id.mjs';
 
 // === invariants ===
 // - Polls oc/chat/ every POLL_INTERVAL_MS
@@ -20,6 +21,7 @@ import { run as composeRun } from '../experiments/compose.mjs';
 const POLL_INTERVAL_MS = 2000;
 const MAX_AGE_MS = 15 * 60 * 1000; // skip messages older than 15 minutes
 const MAX_CONCURRENT = 3;
+const MAX_IN_FLIGHT = 20; // backpressure: reject if more than this many in-flight
 const CHAT_PREFIX = 'oc/chat/';
 const seenKeys = new Set();
 const _inFlight = new Set();
@@ -90,23 +92,28 @@ export function parseMsgPayload(key, raw) {
 }
 
 /** Handle a .msg file: parse → call agent → upload reply. */
-export async function handleMessage(key, raw) {
+export async function handleMessage(key, raw, reqId) {
+  reqId = reqId || genId();
   const parsed = parseMsgPayload(key, raw);
   if (!parsed) return;
-  console.log(`[chat-poller] text=${parsed.text.substring(0, 80)}`);
+  console.log(formatLog(reqId, `text=${parsed.text.substring(0, 80)}`));
 
-  // 业务下沉到 poll-one 复合实验 (qiniu + isolation + agent)
-  const r = await _deps.composeRun('poll-one', { msgKey: key, text: parsed.text, chatId: parsed.chatId });
-  const reply = { reply: r.outputs.reply, replyKey: r.outputs.replyKey, error: r.outputs.error, sourceKey: key, chatId: parsed.chatId };
-  _afterReply(parsed.chatId, reply);
-  return reply;
+  const span = createSpan(reqId, 'composeRun');
+  try {
+    const r = await _deps.composeRun('poll-one', { msgKey: key, text: parsed.text, chatId: parsed.chatId });
+    const reply = { reply: r.outputs.reply, replyKey: r.outputs.replyKey, error: r.outputs.error, sourceKey: key, chatId: parsed.chatId };
+    _afterReply(parsed.chatId, reply);
+    console.log(formatLog(reqId, `reply=${(r.outputs.reply || '').slice(0, 40)}`));
+    return reply;
+  } finally { endSpan(span); }
 }
 
 /** Handle a .enc file: validate EPC header → decode → call agent → upload reply. */
-export async function handleVoice(key, raw) {
+export async function handleVoice(key, raw, reqId) {
+  reqId = reqId || genId();
   if (!_codec) return null;
   if (raw[0] !== 0xBB || raw[2] !== 0xCC) {
-    console.error(`[chat-poller] invalid EPC header in ${key}`);
+    console.error(formatLog(reqId, `invalid EPC header in ${key}`));
     return null;
   }
   const decoded = await _codec.decode(Buffer.from(raw));
@@ -114,48 +121,57 @@ export async function handleVoice(key, raw) {
   const parts = key.split('/');
   const chatId = parts.length >= 3 ? parts[2] : 'default';
   const text = '[用户发来一段语音消息]';
-  console.log(`[chat-poller] voice decoded ${decoded.pcm.length}B -> text placeholder`);
+  console.log(formatLog(reqId, `voice decoded ${decoded.pcm.length}B -> text placeholder`));
 
-  const reply = await _agentAndUpload(text, chatId, key);
+  const reply = await _agentAndUpload(text, chatId, key, reqId);
   _afterReply(chatId, reply);
   return reply;
 }
 
 /** Process one key: download → dispatch to handleMessage or handleVoice. Dedup via _inFlight. */
 export async function processOne(key) {
+  const reqId = genId();
+  if (_inFlight.size >= MAX_IN_FLIGHT) return { skipped: 'backpressure' };
   if (_inFlight.has(key)) return { skipped: 'in-flight' };
   _inFlight.add(key);
+  console.log(formatLog(reqId, `start ${key}`));
+  const span = createSpan(reqId, 'processOne');
   try {
     const raw = await _deps.qiniuGet(key);
     if (!raw || raw.length === 0) return { skipped: 'empty' };
-    if (key.endsWith('.enc')) {
-      return await handleVoice(key, raw);
-    }
-    return await handleMessage(key, raw);
+    const r = key.endsWith('.enc') ? await handleVoice(key, raw, reqId) : await handleMessage(key, raw, reqId);
+    console.log(formatLog(reqId, `done ${key}`));
+    return r;
   } catch (err) {
-    console.error(`[chat-poller] process error for ${key}:`, err.message);
+    console.error(formatLog(reqId, `error ${key}: ${err.message}`));
     return { error: err.message };
   } finally {
     _inFlight.delete(key);
+    endSpan(span);
   }
 }
 
 // === internal helpers ===
 
 // voice 路径的 agent + upload (不经过 poll-one，因为 .enc 的 replyKey 派生不同)
-async function _agentAndUpload(text, chatId, key) {
+async function _agentAndUpload(text, chatId, key, reqId) {
+  reqId = reqId || genId();
   let reply = '';
   let agentError = null;
+  const span = createSpan(reqId, 'agentAndUpload');
   try {
     const r = await _deps.processText(text, chatId);
     reply = r?.response || '';
+    console.log(formatLog(reqId, `agent reply: ${reply.slice(0, 40)}`));
   } catch (e) {
     agentError = e.message;
-  }
+    console.error(formatLog(reqId, `agent error: ${e.message}`));
+  } finally { endSpan(span); }
   const replyKey = key.replace(/\.enc$/, '-reply.json');
   const replyText = reply || (agentError ? `[agent error] ${agentError}` : '(empty)');
   const payload = { text: replyText, sourceKey: key, ts: Date.now(), ...(agentError && { error: agentError }) };
   await _deps.qiniuPut(replyKey, Buffer.from(JSON.stringify(payload), 'utf8'));
+  console.log(formatLog(reqId, `uploaded ${replyKey}`));
   return { reply: replyText, replyKey, error: agentError, sourceKey: key, chatId };
 }
 
