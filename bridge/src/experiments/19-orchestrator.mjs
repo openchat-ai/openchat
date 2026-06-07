@@ -127,6 +127,4 @@ export async function test() {
   R.report(NAME);
 }
 
-if (import.meta.url.endsWith('19-orchestrator.mjs')) {
-  test().catch(e => { console.error(e); process.exit(1); });
-}
+

@@ -125,6 +125,4 @@ export async function test() {
   R.report(NAME);
 }
 
-if (import.meta.url.endsWith('21-dev-tools.mjs')) {
-  test().catch(e => { console.error(e); process.exit(1); });
-}
+

@@ -16,6 +16,9 @@ import crypto from 'crypto';
 import { applyWithGuard } from './quality-gate.mjs';
 import { TOOLS as SEARCH_TOOLS, executeTool as searchExec } from './code-search.mjs';
 import { TOOLS as DEV_TOOLS, executeTool as devExec } from './dev-tools.mjs';
+import { TOOLS as AST_TOOLS, executeTool as astExec } from './ast-search.mjs';
+import { TOOLS as DEEP_TOOLS, executeTool as deepExec } from './tools-deep.mjs';
+import { TOOLS as ADAPTER_TOOLS, executeTool as adapterExec } from './ast-adapters.mjs';
 
 const PROJECT_ROOT = process.cwd(); // F:\openchat (or bridge/)
 
@@ -86,7 +89,7 @@ export async function hashEdit(filePath, hash, newContent) {
   throw new Error(`Hash anchor ${hash} not found in ${filePath}`);
 }
 
-export const TOOLS = [...SEARCH_TOOLS, ...DEV_TOOLS,
+export const TOOLS = [...SEARCH_TOOLS, ...DEV_TOOLS, ...AST_TOOLS, ...DEEP_TOOLS, ...ADAPTER_TOOLS,
   {
     type: 'function',
     function: {
@@ -170,6 +173,14 @@ export async function executeTool(name, args) {
     case 'ts_typecheck': case 'lang_run': case 'docker_build': case 'sql_parse': case 'curl_run':
     case 'sec_audit': case 'docs_suggest': case 'ci_detect': case 'env_diff':
       return devExec(name, args);
+    case 'ast_index': case 'ast_find_refs': case 'ast_rename':
+      return astExec(name, args);
+    case 'git_branch': case 'git_merge_dry': case 'git_apply_patch':
+    case 'test_parallel': case 'test_flaky':
+    case 'lang_ast_parse':
+      return deepExec(name, args);
+    case 'lang_parse': case 'lang_parse_file':
+      return adapterExec(name, args);
     default: throw new Error(`Unknown coding tool: ${name}`);
   }
 }
