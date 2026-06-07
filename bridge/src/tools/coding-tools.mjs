@@ -14,6 +14,8 @@ import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
 import { applyWithGuard } from './quality-gate.mjs';
+import { TOOLS as SEARCH_TOOLS, executeTool as searchExec } from './code-search.mjs';
+import { TOOLS as DEV_TOOLS, executeTool as devExec } from './dev-tools.mjs';
 
 const PROJECT_ROOT = process.cwd(); // F:\openchat (or bridge/)
 
@@ -84,7 +86,7 @@ export async function hashEdit(filePath, hash, newContent) {
   throw new Error(`Hash anchor ${hash} not found in ${filePath}`);
 }
 
-export const TOOLS = [
+export const TOOLS = [...SEARCH_TOOLS, ...DEV_TOOLS,
   {
     type: 'function',
     function: {
@@ -162,6 +164,12 @@ export async function executeTool(name, args) {
       return editFile(args.path, args.search, args.newStr, { force, test });
     }
     case 'hash_edit': return hashEdit(args.path, args.hash, args.newContent);
+    case 'grep': case 'find_refs': return searchExec(name, args);
+    case 'dep_graph': case 'detect_cycles': case 'to_mermaid': case 'git_commit': case 'git_log':
+    case 'test_run': case 'test_discover': case 'lint_run': case 'lint_fix': case 'build_run':
+    case 'ts_typecheck': case 'lang_run': case 'docker_build': case 'sql_parse': case 'curl_run':
+    case 'sec_audit': case 'docs_suggest': case 'ci_detect': case 'env_diff':
+      return devExec(name, args);
     default: throw new Error(`Unknown coding tool: ${name}`);
   }
 }

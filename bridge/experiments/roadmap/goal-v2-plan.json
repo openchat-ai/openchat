@@ -1,0 +1,157 @@
+{
+  "id": "goal_1780791305532_915b0d7d",
+  "sessionId": "roadmap-v2",
+  "userId": "system",
+  "description": "万金油开发平台 v2 — 深度补齐 + 多语言覆盖 + 原生集成",
+  "steps": [
+    {
+      "id": 18,
+      "action": "code-search 升级 AST 级 — 语义索引 + 跨文件 rename + 查找引用",
+      "expected": "esprima/typescript AST 解析，symbol 索引 persist 到 EvolutionMemory",
+      "status": "pending",
+      "result": null,
+      "error": null
+    },
+    {
+      "id": 19,
+      "action": "Git 深度集成 — PR review / rebase / merge conflict solver",
+      "expected": "git_apply / git_merge / git_rebase 工具，冲突标记解析",
+      "status": "pending",
+      "result": null,
+      "error": null
+    },
+    {
+      "id": 20,
+      "action": "测试深度 — 并行运行 + coverage 聚合 + flaky 检测",
+      "expected": "test_parallel / test_coverage / test_flaky_detect",
+      "status": "pending",
+      "result": null,
+      "error": null
+    },
+    {
+      "id": 21,
+      "action": "多语言 AST 适配器 (ts/py/rs/go) — 统一语法树接口",
+      "expected": "每个语言一个 ast-{lang}.mjs，统一 query/replace 接口",
+      "status": "pending",
+      "result": null,
+      "error": null
+    },
+    {
+      "id": 22,
+      "action": "TypeScript 深度 — codemod 引擎 + type inference + refactor",
+      "expected": "ts_codemod / ts_infer / ts_refactor 工具",
+      "status": "pending",
+      "result": null,
+      "error": null
+    },
+    {
+      "id": 23,
+      "action": "Python 适配器 — pyright 封装 + pip 管理 + pytest 集成",
+      "expected": "py_analyze / py_install / py_test 工具",
+      "status": "pending",
+      "result": null,
+      "error": null
+    },
+    {
+      "id": 24,
+      "action": "Rust 适配器 — cargo 封装 + clippy 集成 + test 运行",
+      "expected": "rs_build / rs_lint / rs_test 工具",
+      "status": "pending",
+      "result": null,
+      "error": null
+    },
+    {
+      "id": 25,
+      "action": "Go 适配器 — go build/test/lint 封装 + 模块分析",
+      "expected": "go_build / go_test / go_lint 工具",
+      "status": "pending",
+      "result": null,
+      "error": null
+    },
+    {
+      "id": 26,
+      "action": "Docker compose 生成 + 多阶段构建优化",
+      "expected": "docker_compose / docker_optimize 工具",
+      "status": "pending",
+      "result": null,
+      "error": null
+    },
+    {
+      "id": 27,
+      "action": "SQL Migration 生成 + EXPLAIN 分析 + ORM schema sync",
+      "expected": "sql_migrate / sql_explain / sql_orm_sync 工具",
+      "status": "pending",
+      "result": null,
+      "error": null
+    },
+    {
+      "id": 28,
+      "action": "OpenAPI 3.1 深度解析 + mock server + changelog diff",
+      "expected": "openapi_parse / openapi_mock / openapi_diff 工具",
+      "status": "pending",
+      "result": null,
+      "error": null
+    },
+    {
+      "id": 29,
+      "action": "SAST 扫描 + 依赖供应链审计 + IaC 安全检测",
+      "expected": "sast_scan / audit_chain / iac_check 工具",
+      "status": "pending",
+      "result": null,
+      "error": null
+    },
+    {
+      "id": 30,
+      "action": "性能火焰图解析 + 内存泄漏检测 + Bundle 分析",
+      "expected": "flamegraph_parse / mem_leak_detect / bundle_analyze 工具",
+      "status": "pending",
+      "result": null,
+      "error": null
+    },
+    {
+      "id": 31,
+      "action": "文档自动生成 — API doc / changelog / 架构图",
+      "expected": "doc_api / doc_changelog / doc_diagram 工具",
+      "status": "pending",
+      "result": null,
+      "error": null
+    },
+    {
+      "id": 32,
+      "action": "Lint 多语言统一接口 + auto-fix 链",
+      "expected": "lint_all / lint_chain / lint_rule_suggest 工具",
+      "status": "pending",
+      "result": null,
+      "error": null
+    },
+    {
+      "id": 33,
+      "action": "CI 多平台矩阵生成 + 缓存 key 优化",
+      "expected": "ci_matrix / ci_cache_key 工具",
+      "status": "pending",
+      "result": null,
+      "error": null
+    },
+    {
+      "id": 34,
+      "action": "环境迁移脚本生成 + secret 轮换 + 多环境 diff",
+      "expected": "env_migrate / env_secret_rotate 工具",
+      "status": "pending",
+      "result": null,
+      "error": null
+    },
+    {
+      "id": 35,
+      "action": "K8s manifest 分析 + Helm chart 生成",
+      "expected": "k8s_analyze / helm_generate 工具",
+      "status": "pending",
+      "result": null,
+      "error": null
+    }
+  ],
+  "status": "active",
+  "stepIndex": 0,
+  "context": {},
+  "createdAt": 1780791305533,
+  "updatedAt": 1780791305533
+}

@@ -12,7 +12,7 @@ import {
   WebToolsPlugin,
   MemoryToolsPlugin
 } from '../plugins/agent-tools.js';
-import { agentEngine } from './agent/agent-engine.js';
+import { orchestrator } from './agent/orchestrator.mjs';
 
 /**
  * CoreHandlers contains the actual logic for the Bridge's operations.
@@ -42,7 +42,7 @@ export const CoreHandlers = {
     const { message } = data;
     
     const userId = 'default-user'; 
-    const responseContent = await agentEngine.process(sessionId, userId, message);
+    const responseContent = await orchestrator.process(sessionId, userId, message);
     
     return {
       type: MessageType.CHAT_RESPONSE,

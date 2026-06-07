@@ -352,6 +352,81 @@
       ],
       "deps": [],
       "tags": ["provider-kit", "llm", "adapter", "normalize", "error-classification", "retry", "epc", "idempotent", "standalone-package"]
+    },
+    {
+      "id": "goal",
+      "file": "18-goal.mjs",
+      "name": "GoalManager — goal lifecycle + executeGoal",
+      "category": "agent",
+      "pure": true,
+      "needsEnv": [],
+      "description": "GoalManager: create/decompose/execute/resume goals via LLM. Orchestrator.executeGoal() 2-pass loop + step events + progress persistence via EvolutionMemory.",
+      "inputs": [
+        { "name": "description", "type": "string", "required": true, "description": "goal 描述" },
+        { "name": "sessionId",   "type": "string", "required": false, "default": "test-session", "description": "session id" }
+      ],
+      "outputs": [
+        { "name": "result", "type": "string", "description": "goal 执行结果" },
+        { "name": "events", "type": "array",  "description": "事件序列 (goal_created / goal_decompose / step_start / step_done / goal_complete)" }
+      ],
+      "deps": ["config"],
+      "tags": ["goal", "orchestrator", "lifecycle", "agent"]
+    },
+    {
+      "id": "orchestrator",
+      "file": "19-orchestrator.mjs",
+      "name": "编排器 — processStream / process / executeGoal",
+      "category": "agent",
+      "pure": true,
+      "needsEnv": [],
+      "description": "Orchestrator: 2-pass LLM loop with RAG + FC + tool dispatch + quality check. processStream(streaming), process(non-streaming), executeGoal(goal-driven).",
+      "inputs": [
+        { "name": "mode", "type": "string", "required": false, "default": "processStream", "description": "processStream | process | executeGoal" }
+      ],
+      "outputs": [
+        { "name": "response", "type": "string", "description": "LLM 回复" },
+        { "name": "events",   "type": "array",  "description": "事件序列" }
+      ],
+      "deps": ["config"],
+      "tags": ["orchestrator", "processStream", "executeGoal", "2-pass"]
+    },
+    {
+      "id": "code-search",
+      "file": "20-code-search.mjs",
+      "name": "语义搜索 — grep + 跨文件引用追踪",
+      "category": "coder",
+      "pure": true,
+      "needsEnv": [],
+      "description": "grepSearch (ripgrep/fallback) + findReferences (JS/TS import/export parsing). 跨文件 symbol 导航。",
+      "inputs": [
+        { "name": "op", "type": "string", "required": true, "description": "grep | find_refs" },
+        { "name": "query", "type": "string", "required": false },
+        { "name": "symbol", "type": "string", "required": false }
+      ],
+      "outputs": [
+        { "name": "results", "type": "array", "description": "搜索匹配行" },
+        { "name": "definitions", "type": "array", "description": "symbol 定义位置" },
+        { "name": "usages", "type": "array", "description": "symbol 使用位置" }
+      ],
+      "deps": ["config"],
+      "tags": ["search", "grep", "find-refs", "ast"]
+    },
+    {
+      "id": "dev-tools",
+      "file": "21-dev-tools.mjs",
+      "name": "Dev Tools — 16 个工程工具合集",
+      "category": "dev",
+      "pure": false,
+      "needsEnv": [],
+      "description": "依赖图/detect_cycles/Mermaid可视化/Git工作流/测试/Lint/构建/TS类型/多语言/Docker/SQL/API/安全/文档/CI/环境管理 — dev-tools.mjs",
+      "inputs": [
+        { "name": "op", "type": "string", "required": true, "description": "dep_graph | detect_cycles | git_commit | test_run | lint_run | ..." }
+      ],
+      "outputs": [
+        { "name": "result", "type": "any" }
+      ],
+      "deps": ["config"],
+      "tags": ["dev", "tools", "git", "docker", "lint", "ci", "security"]
     }
   ]
 }

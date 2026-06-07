@@ -906,10 +906,10 @@ router.post('/chat', async (req, res, next) => {
     const parentId = path.length > 0 ? path[path.length - 1].id : null;
     const userNode = addChatNode(tree, message, 'user', parentId);
 
-    const { agentEngine } = await import('../../core/agent/agent-engine.js');
+    const { orchestrator } = await import('../../core/agent/orchestrator.mjs');
     // 用 processStream 自动发布到 sessionEvents 总线（其他端可以观察）
     let result = '';
-    await agentEngine.processStream(sid, 'mobile-user', message, (event) => {
+    await orchestrator.processStream(sid, 'mobile-user', message, (event) => {
       if (event.type === 'complete' && event.response) result = event.response;
     });
 
@@ -974,9 +974,9 @@ router.post('/chat/debug', async (req, res, next) => {
     res.setHeader('Connection', 'keep-alive');
     res.write(`data: ${JSON.stringify({ type: 'session', sessionId: sid })}\n\n`);
 
-    const { agentEngine, AgentEvents } = await import('../../core/agent/agent-engine.js');
+    const { orchestrator, AgentEvents } = await import('../../core/agent/orchestrator.mjs');
 
-    await agentEngine.processStream(sid, 'mobile-user', message, (event) => {
+    await orchestrator.processStream(sid, 'mobile-user', message, (event) => {
       try {
         const payload = { ...event, ts: Date.now() };
         res.write(`data: ${JSON.stringify(payload)}\n\n`);
