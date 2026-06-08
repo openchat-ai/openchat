@@ -344,6 +344,7 @@ export function createHandlers(bridge, CONFIG, crypto) {
   }
 
   async function autoConfigProviders(detectedTools) {
+    if (!Array.isArray(detectedTools)) return;
     for (const tool of detectedTools) {
       try {
         const { createLocalProvider } = await import('provider-kit');

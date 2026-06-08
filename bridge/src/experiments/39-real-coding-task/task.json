@@ -1,0 +1,27 @@
+{
+  "_meta": {
+    "purpose": "E39 — 真实编码任务端到端验证。让 LLM 写完整 mqttSubscribe 函数, 内部用 renderConnect + renderSubscribe tools, 写完跑 mock socket 端到端。验证: 0/10 baseline 报告说的'弱模型不会做编码'是接口问题, 加 scaffold 后能做。",
+    "repeats": 3,
+    "note": "跟前 3 个 E 的区别: 不再是 'produce packet bytes' 单步任务, 而是 'write a function' 完整编码任务。E36 测单步 (写字节), E37 测单步 (填 JSON), E38 测单步 (调 tool), E39 测多步整合 (写代码 + 调 tool + 拼逻辑)。"
+  },
+  "task": {
+    "id": "mqtt-subscribe",
+    "prompt": "Write a Node.js async function `mqttSubscribe({host, port, topic, clientId})` using the global tools `renderConnect` and `renderSubscribe` (both async, return `{bytes: [...]}`). Output ONLY the complete function source in a ```js code block```.\n\nREQUIREMENTS:\n- Use `await` for BOTH `renderConnect(...)` and `renderSubscribe(...)` (they are async).\n- Use the global `net` object — do NOT write `require('net')`, `import` statements, or `module.exports`.\n- Use `net.connect({host, port}, onConnect)` to open the TCP connection.\n- Inside the `onConnect` callback, write `Buffer.from(connectPacket.bytes)` then `Buffer.from(subscribePacket.bytes)` to the socket.\n- Return a Promise that resolves when both writes complete.\n- Pass `clientId` (string) to `renderConnect`, and `topic` (string) to `renderSubscribe`.\n\nPARAMETERS to pass:\n- renderConnect: { protoName: 'MQTT', protoLevel: 4, connectFlags: { cleanSession: true }, keepAlive: 60, clientId }\n- renderSubscribe: { packetId: 1, subscriptions: [{ topic, qos: 1 }] }",
+    "expect": {
+      "renderConnectArgs": {
+        "type": "CONNECT",
+        "protoName": "MQTT",
+        "protoLevel": 4,
+        "connectFlags": { "cleanSession": true },
+        "keepAlive": 60,
+        "clientId": "<from arg>"
+      },
+      "renderSubscribeArgs": {
+        "type": "SUBSCRIBE",
+        "packetId": 1,
+        "subscriptions": [{ "topic": "<from arg>", "qos": 1 }]
+      },
+      "functionShape": "async function mqttSubscribe({host, port, topic, clientId})"
+    }
+  }
+}

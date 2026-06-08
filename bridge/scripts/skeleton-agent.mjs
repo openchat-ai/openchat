@@ -1,19 +1,25 @@
 // Walking-skeleton agent: LLM chat via provider-kit.
 // (Rule: any LLM call MUST go through provider-kit, not custom code.)
 // No sessionManager — _sessions Map handles per-chat history.
+// Multi-turn tool loop: after user message, agent can call tools repeatedly
+// until it produces a final text answer (like opencode goal).
 
 import { persistentConfig } from '../src/core/persistent-config.js';
 import { createProvider } from 'provider-kit';
 import { runPipeline, getEditProtocolGuidance } from '../src/core/epc-pipeline.mjs';
+import { TOOLS as CODING_TOOLS, executeTool as codingExec } from '../src/tools/coding-tools.mjs';
 
-const SYSTEM_PROMPT = `You are OpenChat, a friendly Chinese-speaking AI assistant.
+const SYSTEM_PROMPT = `You are OpenChat, a friendly Chinese-speaking AI software development assistant.
+You have tools to explore, read, edit, and search the codebase.
 Rules:
 - Reply in the same language as the user (Chinese → Chinese).
-- Be concise: 1-3 sentences unless asked for detail.
-- For voice messages, respond conversationally as if the user just spoke.
+- For software tasks, use tools proactively — read files, search patterns, then answer.
+- Never describe what you would do — execute tools and show results.
+- Call ONE tool at a time. After getting results, either call more or answer.
 
 ${getEditProtocolGuidance()}`;
 
+const MAX_ROUNDS = 12;
 let _provider = null;
 let _model = null;
 const _sessions = new Map(); // chatId → { history, sessionId }
@@ -52,18 +58,57 @@ export async function processText(text, chatId = 'default') {
   const entry = _getOrCreateSession(chatId);
   entry.history.push({ role: 'user', content: text });
 
-  const rawResponse = await _provider.chat(_model, entry.history, { includeRaw: false });
-  // 显式走 pipeline: raw → stripThink + extractReasoning + normalizeToolCalls + parseActionFallback → EPC
-  const p = runPipeline(rawResponse);
-  const reply = p.content || '';
+  let finalText = '';
 
-  entry.history.push({ role: 'assistant', content: reply });
+  for (let round = 0; round < MAX_ROUNDS; round++) {
+    const rawResponse = await _provider.chat(_model, entry.history, {
+      tools: CODING_TOOLS,
+    });
 
-  // Trim history: keep system + last 18 messages
+    const p = runPipeline(rawResponse);
+    const toolCalls = p.toolCalls;
+
+    if (toolCalls && toolCalls.length > 0) {
+      const asstMsg = {
+        role: 'assistant',
+        content: p.content || null,
+        tool_calls: toolCalls.map(tc => ({
+          id: tc.id,
+          type: 'function',
+          function: { name: tc.name, arguments: tc.arguments },
+        })),
+      };
+      entry.history.push(asstMsg);
+
+      for (const tc of toolCalls) {
+        const result = await _execTool(tc.name, tc.arguments);
+        entry.history.push({ role: 'tool', tool_call_id: tc.id, content: result });
+      }
+    } else {
+      finalText = p.content || '';
+      break;
+    }
+  }
+
+  if (!finalText) finalText = '[max rounds reached]';
+  entry.history.push({ role: 'assistant', content: finalText });
+
   const trimmed = [entry.history[0], ...entry.history.slice(-18)];
   entry.history = trimmed;
 
-  return { response: reply, toolCalls: p.toolCalls, sessionId: entry.sessionId };
+  return { response: finalText, toolCalls: [], sessionId: entry.sessionId };
+}
+
+async function _execTool(name, argsRaw) {
+  let args;
+  try { args = typeof argsRaw === 'string' ? JSON.parse(argsRaw) : argsRaw; } catch { return `[Error] Invalid JSON: ${String(argsRaw).slice(0, 80)}`; }
+  try {
+    const r = await codingExec(name, args);
+    const s = typeof r === 'string' ? r : JSON.stringify(r, null, 2);
+    return s.length > 8000 ? s.slice(0, 8000) + '\n... (truncated)' : s;
+  } catch (e) {
+    return `[Error] ${e.message}`;
+  }
 }
 
 export function getHistory(chatId) {

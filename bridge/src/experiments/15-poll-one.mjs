@@ -54,7 +54,7 @@ export async function run({ inputs = {} } = {}) {
   let agentError = null;
   try {
     const r = await composeRun('agent', { text, chatId });
-    reply = r?.response || '';
+    reply = r?.outputs?.response || '';
   } catch (e) {
     agentError = e.message;
   }

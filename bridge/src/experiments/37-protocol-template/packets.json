@@ -1,0 +1,67 @@
+{
+  "_meta": {
+    "purpose": "验证 protocol-template 路径: LLM 填 JSON, scaffold 渲染字节。跟 E36 (LLM 直接写字节) 对比。",
+    "repeats": 3,
+    "note": "prompt 给 LLM 完整字段, LLM 只负责组装 JSON。scaffold 负责 byte encoding (变长 length, UTF-8, flags, etc.)"
+  },
+  "packets": [
+    {
+      "id": "p1-connect",
+      "prompt": "用 JSON 表达一个 MQTT 3.1.1 CONNECT 包, 字段已经给好, 你只需要输出 JSON:\n```\n{\n  type: 'CONNECT',\n  protoName: 'MQTT',\n  protoLevel: 4,\n  connectFlags: { cleanSession: true },\n  keepAlive: 60,\n  clientId: 'test-123'\n}\n```\n输出 JSON 即可, 不要解释。",
+      "expectedJson": {
+        "type": "CONNECT",
+        "protoName": "MQTT",
+        "protoLevel": 4,
+        "connectFlags": { "cleanSession": true },
+        "keepAlive": 60,
+        "clientId": "test-123"
+      },
+      "expectedBytes": [16, 20, 0, 4, 77, 81, 84, 84, 4, 2, 0, 60, 0, 8, 116, 101, 115, 116, 45, 49, 50, 51],
+      "fieldLabels": ["packetType(0x10)", "remainingLen(0x14=20)", "protoNameLen", "protoName", "protoLevel", "connectFlags(0x02)", "keepAlive", "clientIdLen", "clientId"]
+    },
+    {
+      "id": "p2-connect-short",
+      "prompt": "用 JSON 表达一个 MQTT 3.1.1 CONNECT 包:\n```\n{\n  type: 'CONNECT',\n  protoName: 'MQTT',\n  protoLevel: 4,\n  connectFlags: { cleanSession: true },\n  keepAlive: 30,\n  clientId: 'abc'\n}\n```\n输出 JSON。",
+      "expectedJson": {
+        "type": "CONNECT",
+        "protoName": "MQTT",
+        "protoLevel": 4,
+        "connectFlags": { "cleanSession": true },
+        "keepAlive": 30,
+        "clientId": "abc"
+      },
+      "expectedBytes": [16, 15, 0, 4, 77, 81, 84, 84, 4, 2, 0, 30, 0, 3, 97, 98, 99],
+      "fieldLabels": ["packetType", "remainingLen(0x0F=15)", "protoNameLen", "protoName", "protoLevel", "connectFlags", "keepAlive(30)", "clientIdLen(3)", "clientId('abc')"]
+    },
+    {
+      "id": "p3-publish",
+      "prompt": "用 JSON 表达一个 MQTT 3.1.1 PUBLISH 包:\n```\n{\n  type: 'PUBLISH',\n  flags: { qos: 0, retain: false, dup: false },\n  topic: 'foo/bar',\n  payload: 'hello'\n}\n```\n输出 JSON。",
+      "expectedJson": {
+        "type": "PUBLISH",
+        "flags": { "qos": 0, "retain": false, "dup": false },
+        "topic": "foo/bar",
+        "payload": "hello"
+      },
+      "expectedBytes": [48, 14, 0, 7, 102, 111, 111, 47, 98, 97, 114, 104, 101, 108, 108, 111],
+      "fieldLabels": ["packetType(0x30)", "remainingLen(0x0E=14)", "topicLen", "topic('foo/bar')", "payload('hello')"]
+    },
+    {
+      "id": "p4-subscribe",
+      "prompt": "用 JSON 表达一个 MQTT 3.1.1 SUBSCRIBE 包 (固定头 0x82):\n```\n{\n  type: 'SUBSCRIBE',\n  packetId: 1,\n  subscriptions: [{ topic: 'foo/+', qos: 1 }]\n}\n```\n输出 JSON。",
+      "expectedJson": {
+        "type": "SUBSCRIBE",
+        "packetId": 1,
+        "subscriptions": [{ "topic": "foo/+", "qos": 1 }]
+      },
+      "expectedBytes": [130, 10, 0, 1, 0, 5, 102, 111, 111, 47, 43, 1],
+      "fieldLabels": ["packetType(0x82)", "remainingLen", "packetId(1)", "topicLen", "topic('foo/+')", "qos(0x01)"]
+    },
+    {
+      "id": "p5-pingreq",
+      "prompt": "用 JSON 表达一个 MQTT 3.1.1 PINGREQ 包 (固定 2 字节 0xC0 0x00, 无字段):\n```\n{ type: 'PINGREQ' }\n```\n输出 JSON。",
+      "expectedJson": { "type": "PINGREQ" },
+      "expectedBytes": [192, 0],
+      "fieldLabels": ["packetType(0xC0)", "remainingLen(0x00)"]
+    }
+  ]
+}

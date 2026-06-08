@@ -1,0 +1,59 @@
+{
+  "_meta": {
+    "purpose": "固定 10 个 prompt + 期望 tool call，用于 schema strictness 实验。prompt 是自然语言（不是规范调用），测的是模型从自然语言推断 tool + args 的能力。",
+    "repeats": 3,
+    "scoring": "toolPick + paramName + paramValue + extraFields + validCall + noToolCall"
+  },
+  "prompts": [
+    {
+      "id": "p1",
+      "text": "读 src/index.js 这个文件",
+      "expect": { "name": "read_file", "args": { "path": "src/index.js" } }
+    },
+    {
+      "id": "p2",
+      "text": "看一下 config.json 在哪",
+      "expect": { "name": "read_file", "args": { "path": "config.json" } }
+    },
+    {
+      "id": "p3",
+      "text": "搜索项目里所有 TODO 字符串",
+      "expect": { "name": "grep", "args": { "pattern": "TODO", "path": "." } }
+    },
+    {
+      "id": "p4",
+      "text": "找出所有用到 createProvider 的地方",
+      "expect": { "name": "find_refs", "args": { "symbol": "createProvider" } }
+    },
+    {
+      "id": "p5",
+      "text": "git 提交一下当前的修改",
+      "expect": { "name": "git_commit", "args": {} }
+    },
+    {
+      "id": "p6",
+      "text": "看看 package.json 里有哪些依赖",
+      "expect": { "name": "read_file", "args": { "path": "package.json" } }
+    },
+    {
+      "id": "p7",
+      "text": "把 src/foo.js 里 bar 全改成 baz",
+      "expect": { "name": "ast_rename", "args": { "oldName": "bar", "newName": "baz", "rootDir": "src/foo.js" } }
+    },
+    {
+      "id": "p8",
+      "text": "跑一下 lint 检查代码",
+      "expect": { "name": "lint_run", "args": {} }
+    },
+    {
+      "id": "p9",
+      "text": "找 createProvider 函数的定义",
+      "expect": { "name": "ast_find_refs", "args": { "symbol": "createProvider" } }
+    },
+    {
+      "id": "p10",
+      "text": "看一下 tests 目录结构",
+      "expect": { "name": "grep", "args": { "pattern": "*", "path": "tests" } }
+    }
+  ]
+}

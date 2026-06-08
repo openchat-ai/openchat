@@ -552,16 +552,150 @@
       "status": "closed-loop"
     },
     {
-      "id": "mqtt-adapter",
-      "file": "31-mqtt-adapter/test.mjs",
-      "name": "MQTT 设备协议适配器",
+      "id": "mqtt-auto",
+      "file": "33-mqtt-auto/index.mjs",
+      "name": "MQTT 3.1.1 Wire Protocol",
       "category": "protocol",
-      "pure": true,
+      "pure": false,
       "needsEnv": [],
-      "description": "mqtt-adapter.mjs: net 模块模拟 MQTT 3.1.1, 支持多连接/订阅/发布/断线重连",
+      "description": "MQTT 3.1.1 wire protocol using only Node.js net module: connect/subscribe/publish/pingreq/disconnect with mock broker test.",
+      "inputs": [
+        { "name": "op", "type": "string", "required": true, "description": "connect | subscribe | publish | disconnect | list" }
+      ],
+      "outputs": [
+        { "name": "result", "type": "any", "description": "op-specific result" }
+      ],
       "deps": [],
-      "tags": ["mqtt", "protocol", "adapter"],
-      "status": "reference-only"
+      "tags": ["mqtt", "protocol", "net"],
+      "status": "closed-loop"
+    },
+    {
+      "id": "34-schema-strictness",
+      "file": "34-schema-strictness/index.mjs",
+      "name": "Schema strictness 对弱模型工具调用质量的影响",
+      "category": "scaffold",
+      "pure": false,
+      "needsEnv": [],
+      "description": "用 10 个固定 prompt 测 baseline vs strict+example schema 的参数幻觉率、validCall 率。test() 默认 dryRun (验证 schema 结构 + scoring 函数); live 模式需 E34_LIVE=1.",
+      "inputs": [
+        { "name": "live", "type": "boolean", "required": false, "default": false, "description": "true = 跑真 LLM; false = dryRun" },
+        { "name": "repeats", "type": "number", "required": false, "default": 3, "description": "每 prompt 重复次数 (live)" }
+      ],
+      "outputs": [
+        { "name": "baseline", "type": "object", "description": "baseline 条件聚合分数" },
+        { "name": "strict", "type": "object", "description": "strict 条件聚合分数" },
+        { "name": "delta", "type": "object", "description": "strict - baseline 差值" },
+        { "name": "calls", "type": "number", "description": "总 LLM 调用次数" }
+      ],
+      "deps": [],
+      "tags": ["scaffold", "llm", "schema", "eval"],
+      "status": "closed-loop"
+    },
+    {
+      "id": "35-narrow-tools",
+      "file": "35-narrow-tools/index.mjs",
+      "name": "Narrow tools 对弱模型选对工具的影响",
+      "category": "scaffold",
+      "pure": false,
+      "needsEnv": [],
+      "description": "WIDE 40 tools vs NARROW 10 tools (10 个 prompt 各对应 1 个 tool)。test() 默认 dryRun, live 需 E35_LIVE=1.",
+      "inputs": [
+        { "name": "live", "type": "boolean", "required": false, "default": false, "description": "true = 跑真 LLM; false = dryRun" },
+        { "name": "repeats", "type": "number", "required": false, "default": 3, "description": "每 prompt 重复次数 (live)" }
+      ],
+      "outputs": [
+        { "name": "wide", "type": "object", "description": "WIDE 条件聚合分数" },
+        { "name": "narrow", "type": "object", "description": "NARROW 条件聚合分数" },
+        { "name": "delta", "type": "object", "description": "narrow - wide 差值" },
+        { "name": "calls", "type": "number", "description": "总 LLM 调用次数" }
+      ],
+      "deps": ["34-schema-strictness"],
+      "tags": ["scaffold", "llm", "tools", "eval"],
+      "status": "closed-loop"
+    },
+    {
+      "id": "36-code-ability-diagnostic",
+      "file": "36-code-ability-diagnostic/index.mjs",
+      "name": "Code ability 诊断 (不调工具, 写 MQTT 字节流)",
+      "category": "diagnostic",
+      "pure": false,
+      "needsEnv": [],
+      "description": "不调工具, 测 LLM 直接写 MQTT 字节流 (CONNECT / PUBLISH / SUBSCRIBE / PINGREQ) 的字节正确率。决定 C 计划方向: 改工具调用 vs 模型本身能力。test() 默认 dryRun, live 需 E36_LIVE=1.",
+      "inputs": [
+        { "name": "live", "type": "boolean", "required": false, "default": false, "description": "true = 跑真 LLM (不传 tools)" },
+        { "name": "repeats", "type": "number", "required": false, "default": 3, "description": "每 packet 重复次数" }
+      ],
+      "outputs": [
+        { "name": "aggregate", "type": "object", "description": "聚合分数 (exactMatch / firstByteMatch / byteAccuracy / extracted)" },
+        { "name": "perPacket", "type": "array", "description": "每个 packet 的详细分数" },
+        { "name": "calls", "type": "number", "description": "总 LLM 调用次数" }
+      ],
+      "deps": [],
+      "tags": ["diagnostic", "llm", "mqtt", "protocol"],
+      "status": "closed-loop"
+    },
+    {
+      "id": "37-protocol-template",
+      "file": "37-protocol-template/index.mjs",
+      "name": "Protocol-template 验证 (LLM 填 JSON, scaffold 渲染字节)",
+      "category": "scaffold",
+      "pure": false,
+      "needsEnv": [],
+      "description": "测 LLM 填 MQTT JSON 模板 (scaffold 负责字节编码) 跟 E36 (LLM 直接写字节) 对比。test() 默认 dryRun (验证 renderer 输出), live 需 E37_LIVE=1.",
+      "inputs": [
+        { "name": "live", "type": "boolean", "required": false, "default": false, "description": "true = 跑真 LLM" },
+        { "name": "repeats", "type": "number", "required": false, "default": 3, "description": "每 packet 重复次数" }
+      ],
+      "outputs": [
+        { "name": "aggregate", "type": "object", "description": "聚合分数 (exactMatch / firstByteMatch / byteAccuracy / extracted)" },
+        { "name": "perPacket", "type": "array", "description": "每个 packet 的详细分数" },
+        { "name": "calls", "type": "number", "description": "总 LLM 调用次数" }
+      ],
+      "deps": ["36-code-ability-diagnostic"],
+      "tags": ["scaffold", "llm", "mqtt", "template", "protocol"],
+      "status": "closed-loop"
+    },
+    {
+      "id": "38-combined-intervention",
+      "file": "38-combined-intervention/index.mjs",
+      "name": "Combined narrow+template (4 render* tools, LLM tool-call JSON)",
+      "category": "scaffold",
+      "pure": false,
+      "needsEnv": [],
+      "description": "E37 的下一步: LLM 改用 tool call 表达 packet (4 个 render* tool), argument 是结构化 JSON, 不再 chat 抽取。测 combined intervention (narrow 4 tools + template) 跟 E37 (chat extraction 73%) 对比。test() 默认 dryRun, live 需 E38_LIVE=1.",
+      "inputs": [
+        { "name": "live", "type": "boolean", "required": false, "default": false, "description": "true = 跑真 LLM" },
+        { "name": "repeats", "type": "number", "required": false, "default": 3, "description": "每 packet 重复次数" }
+      ],
+      "outputs": [
+        { "name": "aggregate", "type": "object", "description": "聚合分数 (exactMatch/extracted/toolPick/byteAccuracy)" },
+        { "name": "perPacket", "type": "array", "description": "每个 packet 详细" },
+        { "name": "calls", "type": "number", "description": "总 LLM 调用次数" }
+      ],
+      "deps": ["37-protocol-template", "35-narrow-tools"],
+      "tags": ["scaffold", "llm", "mqtt", "template", "tools", "function-calling", "combined"],
+      "status": "closed-loop"
+    },
+    {
+      "id": "39-real-coding-task",
+      "file": "39-real-coding-task/index.mjs",
+      "name": "Real coding task: LLM 写完整 mqttSubscribe 函数, sandbox 端到端验证",
+      "category": "scaffold",
+      "pure": false,
+      "needsEnv": [],
+      "description": "让 LLM 用 renderConnect + renderSubscribe tools 写完整 mqttSubscribe({host,port,topic,clientId}) 函数。8 维评分: 抽源码/函数签名/renderConnect调用/参数/renderSubscribe调用/参数/sandbox跑通/字节对。E38 的 1 步任务 → E39 完整编码任务。test() 默认 dryRun, live 需 E39_LIVE=1.",
+      "inputs": [
+        { "name": "live", "type": "boolean", "required": false, "default": false, "description": "true = 跑真 LLM" },
+        { "name": "repeats", "type": "number", "required": false, "default": 3, "description": "重复次数" }
+      ],
+      "outputs": [
+        { "name": "aggregate", "type": "object", "description": "8 维聚合分数" },
+        { "name": "runs", "type": "array", "description": "每次 run 详细" },
+        { "name": "calls", "type": "number", "description": "总 LLM 调用次数" }
+      ],
+      "deps": ["38-combined-intervention"],
+      "tags": ["scaffold", "llm", "mqtt", "real-task", "function-calling", "end-to-end", "sandbox"],
+      "status": "closed-loop"
     }
   ]
 }

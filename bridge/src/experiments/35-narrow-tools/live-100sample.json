@@ -1,0 +1,30 @@
+{
+  "wide": {
+    "n": 100,
+    "toolPick": 0.76,
+    "paramName": 0.81,
+    "paramValue": 0.81,
+    "extraFields": 0.36,
+    "validCall": 0.64,
+    "noToolCall": 0
+  },
+  "narrow": {
+    "n": 100,
+    "toolPick": 0.88,
+    "paramName": 0.83,
+    "paramValue": 0.83,
+    "extraFields": 1.38,
+    "validCall": 0.68,
+    "noToolCall": 0.01
+  },
+  "delta": {
+    "toolPick": 0.12,
+    "paramName": 0.019999999999999907,
+    "paramValue": 0.019999999999999907,
+    "validCall": 0.040000000000000036,
+    "noToolCall": 0.01,
+    "extraFields": -1.02
+  },
+  "calls": 200,
+  "model": "MiniMax-M3"
+}

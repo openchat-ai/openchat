@@ -1,27 +1,7 @@
-// Dev REPL — opencode-like development CLI mode for the bridge.
-// Invoked by: node src/main.js --cli
-// === invariants ===
-// - All file paths relative to process.cwd()
-// - Reads API key from openchat config (getRuntimeApiKey)
-// - Default model: gpt-4o (overridable via --model arg or OPENCHAT_DEV_MODEL env)
-// - REPL loop: user input → LLM(tools) → execute → feed back → final answer → repeat
-
 import { createInterface } from 'readline';
-import { createProvider } from '../providers/ai-provider.js';
-import { persistentConfig } from './persistent-config.js';
+import os from 'os';
 
-const MAX_TOOL_ROUNDS = 8;
-
-/** 从非 FC 模型的文本输出中解析 ACTION: toolName { ... } 调用 */
-function extractToolCall(text) {
-  const match = text.match(/ACTION:\s*(\w+)\s*({[\s\S]*?})/);
-  if (!match) return null;
-  try {
-    return { toolName: match[1], args: JSON.parse(match[2]) };
-  } catch {
-    return { toolName: match[1], args: {} };
-  }
-}
+const MAX_ROUNDS = 16;
 
 const toolModules = [
   { name: 'system_exec', import: () => import('../tools/system-exec.mjs'), toolsKey: 'TOOLS', execKey: 'executeTool' },
@@ -31,141 +11,159 @@ const toolModules = [
   { name: 'diff_review', import: () => import('../tools/diff-review.mjs'), toolsKey: null, execKey: 'getGitDiff' },
 ];
 
-export async function loadAllTools() {
+async function loadAllTools() {
   const tools = [];
   const dispatch = {};
   for (const mod of toolModules) {
     try {
       const m = await mod.import();
-      const modTools = m[mod.toolsKey];
-      if (Array.isArray(modTools)) tools.push(...modTools);
+      if (Array.isArray(m[mod.toolsKey])) tools.push(...m[mod.toolsKey]);
       dispatch[mod.name] = m[mod.execKey];
-    } catch (e) {
-      console.error(`[dev] Warning: ${mod.name} load failed:`, e.message);
-    }
+    } catch { /* skip failed */ }
   }
   return { tools, dispatch };
 }
 
-export async function executeToolCall(tc, dispatch) {
+async function execTool(tc, dispatch) {
   const name = tc.function?.name || tc.name;
   const rawArgs = tc.function?.arguments || tc.arguments || '{}';
   let args;
-  try {
-    args = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : rawArgs;
-  } catch {
-    return `[Error] Invalid JSON in tool arguments: ${rawArgs}`;
-  }
-  for (const execFn of Object.values(dispatch)) {
+  try { args = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : rawArgs; } catch { return `[Error] Invalid JSON: ${rawArgs.slice(0, 80)}`; }
+  for (const fn of Object.values(dispatch)) {
     try {
-      const result = await execFn(name, args);
-      const str = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
-      const lines = str.split('\n');
-      if (lines.length > 80) return lines.slice(0, 60).join('\n') + `\n... (${lines.length - 60} more lines truncated)`;
-      return str.length > 8000 ? str.substring(0, 8000) + '\n... (truncated)' : str;
+      const r = await fn(name, args);
+      const s = typeof r === 'string' ? r : JSON.stringify(r, null, 2);
+      const lines = s.split('\n');
+      if (lines.length > 80) return lines.slice(0, 60).join('\n') + `\n... (${lines.length - 60} more lines)`;
+      return s.length > 8000 ? s.slice(0, 8000) + '\n... (truncated)' : s;
     } catch { /* try next */ }
   }
   return `[Error] Tool "${name}" not found`;
 }
 
-export async function startDevRepl(modelOverride) {
-  const providerName = persistentConfig.getCurrentProvider() || 'openai';
-  const MODEL = modelOverride || process.env.OPENCHAT_DEV_MODEL || persistentConfig.getPreference('currentModel') || 'gpt-4o';
-  const provider = createProvider(providerName);
-
-  // 设置 API key + endpoint 无需 connect（不验证）
-  const apiKey = persistentConfig.getApiKey(providerName);
-  if (apiKey) {
-    provider.apiKey = apiKey;
-    provider.connected = true;
+function parseToolCalls(text) {
+  const calls = [];
+  const blocks = text?.match(/<tool_call>[\s\S]*?<\/tool_call>/g) || [];
+  for (const block of blocks) {
+    // Format: <invoke name="x"><param>val</param></invoke>
+    for (const inv of block.match(/<invoke[\s\S]*?<\/invoke>/g) || []) {
+      const m = inv.match(/<invoke\s+name="([^"]*)"/);
+      if (!m) continue;
+      const args = {};
+      for (const p of inv.matchAll(/<(\w+)>([\s\S]*?)<\/\1>/g)) {
+        if (p[1] !== 'invoke') args[p[1]] = p[2].trim();
+      }
+      calls.push({ name: m[1], args });
+    }
+    // Format: name(key="val", key2=val2)
+    for (const line of block.replace(/<\/?tool_call>/g, '').trim().split('\n')) {
+      const t = line.trim();
+      if (!t) continue;
+      const p = t.indexOf('(');
+      if (p <= 0) continue;
+      const name = t.slice(0, p).trim();
+      try {
+        const args = JSON.parse(t.slice(p + 1, t.lastIndexOf(')')));
+        calls.push({ name, args });
+      } catch { /* skip */ }
+    }
   }
-  const baseUrl = persistentConfig.getPreference('baseUrl');
-  if (baseUrl) provider.endpoint = baseUrl;
+  // Format: <tool_name>name</tool_name><tool_args>{...}</tool_args> (standalone)
+  for (const nm of text?.match(/<tool_name>([\s\S]*?)<\/tool_name>/g) || []) {
+    const name = nm.replace(/<\/?tool_name>/g, '').trim();
+    const argsBlock = text.match(/<tool_args>([\s\S]*?)<\/tool_args>/);
+    try { calls.push({ name, args: argsBlock ? JSON.parse(argsBlock[1]) : {} }); } catch { /* skip */ }
+  }
+  return calls.length ? calls : null;
+}
+
+export async function startDevRepl(modelOverride) {
+  const cfg = JSON.parse(await import('fs/promises').then(fs => fs.readFile(os.homedir() + '/.config/openchat/config.json', 'utf8')));
+  const providerName = cfg.current?.provider || 'minimax';
+  const MODEL = modelOverride || cfg.current?.model || 'MiniMax-M3';
+  const apiKey = cfg.providers?.[providerName]?.apiKey;
+  if (!apiKey) throw new Error(`No apiKey for "${providerName}"`);
+
+  const { createProvider } = await import('provider-kit');
+  const provider = createProvider(providerName, apiKey);
+  await provider.connect(apiKey);
   const { tools, dispatch } = await loadAllTools();
 
-  // Add FC schemas for tools without TOOLS array
   tools.push(
-    { type: 'function', function: { name: 'multi_edit', description: 'Apply search/replace across files matching glob.', parameters: { type: 'object', properties: { pattern: { type: 'string' }, search: { type: 'string' }, newStr: { type: 'string' }, force: { type: 'boolean' } }, required: ['pattern', 'search', 'newStr'] } } },
-    { type: 'function', function: { name: 'ast_edit', description: 'Syntax-aware edit using AST. Actions: rename, replace_body.', parameters: { type: 'object', properties: { path: { type: 'string' }, selector: { type: 'string' }, action: { type: 'string' }, newValue: { type: 'string' } }, required: ['path', 'selector', 'action', 'newValue'] } } },
-    { type: 'function', function: { name: 'diff_review', description: 'Show current git diff.', parameters: { type: 'object', properties: {}, required: [] } } },
+    { type: 'function', function: { name: 'multi_edit', description: 'Search/replace across files matching glob.', parameters: { type: 'object', properties: { pattern: { type: 'string' }, search: { type: 'string' }, newStr: { type: 'string' }, force: { type: 'boolean' } }, required: ['pattern', 'search', 'newStr'] } } },
+    { type: 'function', function: { name: 'ast_edit', description: 'AST rename/replace_body.', parameters: { type: 'object', properties: { path: { type: 'string' }, selector: { type: 'string' }, action: { type: 'string' }, newValue: { type: 'string' } }, required: ['path', 'selector', 'action', 'newValue'] } } },
+    { type: 'function', function: { name: 'diff_review', description: 'Show git diff.', parameters: { type: 'object', properties: {}, required: [] } } },
   );
 
-  console.log(`\n  openchat bridge — dev mode (${MODEL})`);
-  console.log(`  ${tools.length} tool(s) loaded`);
-  console.log('  Type your request, or "exit" to quit.\n');
-
-  const rl = createInterface({ input: process.stdin, output: process.stdout, prompt: '> ' });
-
-  const toolList = tools.map(t => {
-    const fn = t.function || t;
-    const params = fn.parameters?.properties ? Object.keys(fn.parameters.properties).join(', ') : '';
-    return `  ${fn.name}(${params}): ${fn.description || ''}`;
-  }).join('\n');
+  const toolList = tools.map(t => { const f = t.function || t; const p = f.parameters?.properties ? Object.keys(f.parameters.properties).join(', ') : ''; return `  ${f.name}(${p}): ${f.description || ''}`; }).join('\n');
 
   const systemMsg = {
     role: 'system',
-    content: `You are a software development AI running in a project directory.\n\nAvailable tools:\n${toolList}\n\nWhen the user asks about code, use tools. If just chatting, answer directly. You can call multiple tools across rounds.`,
+    content: `You are a software development AI assistant on Windows. You have ${tools.length} tools.
+
+Tools:\n${toolList}
+
+When the user asks to explore/analyze the project, call tools immediately. Never describe — execute.
+
+Notes:
+- This is Windows. For directory listing, use exec_command(command="cmd /c dir /b") not ls.
+- For reading files, use read_file(path="...").
+- For searching files, use glob(pattern="**/*.json").
+- If a tool fails, try a different approach.
+
+Call tools one at a time. After results, either call more tools or answer the user.`,
   };
 
+  console.log(`\n  openchat bridge — dev mode (${MODEL})`);
+  console.log(`  ${tools.length} tool(s) loaded\n`);
+
+  const rl = createInterface({ input: process.stdin, output: process.stdout, prompt: '> ', terminal: process.platform !== 'win32' });
   rl.prompt();
 
   for await (const line of rl) {
     const input = line.trim();
-    if (!input) { rl.prompt(); continue; }
-    if (input === 'exit' || input === 'quit') break;
+    if (!input || input === 'exit' || input === 'quit') { if (input === 'exit' || input === 'quit') break; rl.prompt(); continue; }
 
     const messages = [systemMsg, { role: 'user', content: input }];
     let finalAnswer = '';
 
-    for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-      let response;
+    for (let round = 0; round < MAX_ROUNDS; round++) {
       try {
-        const start = Date.now();
-        response = await provider.chat(MODEL, messages, tools);
-        const elapsed = ((Date.now() - start) / 1000).toFixed(1);
-        const content = response.content || '';
-        let toolCalls = response.toolCalls || [];
+        const t0 = Date.now();
+        const resp = await provider.chat(MODEL, messages, { tools });
+        const sec = ((Date.now() - t0) / 1000).toFixed(1);
+        let content = resp.content?.trim() || '';
+        let toolCalls = resp.toolCalls || [];
 
-        // 非 FC 模型：文本工具调用 fallback
-        let thinkText = content;
-        if (thinkText) {
-          // 剥离 <think> 标签用于显示
-          const thinkMatch = thinkText.match(/<think>([\s\S]*?)<\/think>/);
-          if (thinkMatch) {
-            process.stdout.write(`\x1b[90m[think] ${thinkMatch[1].trim().split('\n')[0]}\x1b[0m\n`);
-            thinkText = thinkText.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-          }
-          if (thinkText && thinkText.length > 0) {
-            process.stdout.write(`\x1b[90m[i] ${thinkText.substring(0, 120)}${thinkText.length > 120 ? '...' : ''}\x1b[0m\n`);
-          }
-        }
+        // Think stripping
+        const tm = content.match(/<think>([\s\S]*?)<\/think>/);
+        if (tm) { process.stdout.write(`\x1b[90m[think] ${tm[1].trim().split('\n')[0]}\x1b[0m\n`); content = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim(); }
 
-        // 非 FC 模型：文本工具调用 fallback
-        if (toolCalls.length === 0) {
-          const textTc = extractToolCall(response.content || '');
-          if (textTc) {
-            toolCalls = [{ function: { name: textTc.toolName, arguments: JSON.stringify(textTc.args) }, id: `tc_${Date.now()}_${Math.random().toString(36).slice(2, 6)}` }];
+        // XML fallback
+        if (!toolCalls.length) {
+          const parsed = parseToolCalls(content);
+          if (parsed) {
+            toolCalls = parsed.map(c => ({ function: { name: c.name, arguments: JSON.stringify(c.args) }, id: `tc_${Date.now()}_${Math.random().toString(36).slice(2, 6)}` }));
+            content = content.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '').replace(/<tool_name>[\s\S]*?<\/tool_name>/g, '').replace(/<tool_args>[\s\S]*?<\/tool_args>/g, '').trim();
           }
         }
 
-        if (toolCalls.length === 0) { finalAnswer = content; break; }
-
-        messages.push({ role: 'assistant', content: content || null, tool_calls: toolCalls });
-
-        for (const tc of toolCalls) {
-          const name = tc.function?.name || tc.name;
-          const rawArgs = tc.function?.arguments || tc.arguments || '{}';
-          let args = '{}';
-          try { const p = JSON.parse(rawArgs); args = Object.keys(p).map(k => `${k}=${String(p[k]).substring(0, 40)}`).join(', '); } catch {}
-          process.stdout.write(`  \x1b[33m→ ${name}(${args})\x1b[0m `);
-          const result = await executeToolCall(tc, dispatch);
-          const lines = result.split('\n');
-          const preview = lines.length > 3 ? lines.slice(0, 3).join('\n') + `\x1b[90m... (${lines.length - 3} more lines)\x1b[0m` : result;
-          console.log(`\x1b[32mdone\x1b[0m \x1b[90m(${result.length}B)\x1b[0m`);
-          if (result.length < 500) {
-            process.stdout.write(`${preview}\n`);
+        if (toolCalls.length) {
+          if (content) process.stdout.write(`\x1b[90m[i] ${content.slice(0, 120)}${content.length > 120 ? '...' : ''} (${sec}s)\x1b[0m\n`);
+          messages.push({ role: 'assistant', content: content || null, tool_calls: toolCalls });
+          for (const tc of toolCalls) {
+            const n = tc.function?.name || tc.name;
+            let a = '';
+            try { const p = JSON.parse(tc.function?.arguments || tc.arguments || '{}'); a = Object.keys(p).map(k => `${k}=${String(p[k]).slice(0, 40)}`).join(', '); } catch { a = (tc.function?.arguments || tc.arguments || '').slice(0, 40); }
+            process.stdout.write(`  \x1b[33m→ ${n}(${a})\x1b[0m `);
+            const result = await execTool(tc, dispatch);
+            process.stdout.write(`\x1b[32mdone\x1b[0m \x1b[90m(${result.length}B, ${sec}s)\x1b[0m\n`);
+            if (result.length < 1000) process.stdout.write(`${result}\n`);
+            messages.push({ role: 'tool', tool_call_id: tc.id, content: result });
           }
-          messages.push({ role: 'tool', tool_call_id: tc.id, content: result });
+        } else {
+          finalAnswer = content;
+          break;
         }
       } catch (e) {
         finalAnswer = `[Error] ${e.message}`;
@@ -173,8 +171,7 @@ export async function startDevRepl(modelOverride) {
       }
     }
 
-    if (!finalAnswer) finalAnswer = '[Max rounds reached]';
-    console.log(`\n${finalAnswer}\n`);
+    console.log(`\n${finalAnswer || '[max rounds]'}\n`);
     rl.prompt();
   }
 

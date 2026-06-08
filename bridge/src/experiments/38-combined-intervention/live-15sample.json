@@ -1,0 +1,412 @@
+{
+  "aggregate": {
+    "n": 15,
+    "exactMatch": 0.8666666666666667,
+    "lengthMatch": 0.8666666666666667,
+    "firstByteMatch": 0.9333333333333333,
+    "byteAccuracy": 0.9272727272727274,
+    "extracted": 0.9333333333333333,
+    "toolPick": 0.9333333333333333,
+    "jsonPresent": 0.9333333333333333,
+    "paramName": 0.9333333333333333,
+    "paramValue": 0.8666666666666667,
+    "noToolCall": 0.06666666666666667
+  },
+  "perPacket": [
+    {
+      "id": "p1-connect",
+      "expectedTool": "renderConnect",
+      "runs": [
+        {
+          "toolPick": 1,
+          "jsonPresent": 1,
+          "paramName": 1,
+          "paramValue": 1,
+          "noToolCall": 0,
+          "name": "renderConnect",
+          "json": {
+            "type": "CONNECT",
+            "protoName": "MQTT",
+            "protoLevel": 4,
+            "connectFlags": {
+              "cleanSession": true
+            },
+            "keepAlive": 60,
+            "clientId": "test-123"
+          },
+          "extracted": true,
+          "exactMatch": 1,
+          "lengthMatch": 1,
+          "firstByteMatch": 1,
+          "byteAccuracy": 1,
+          "actualLength": 22,
+          "expectedLength": 22,
+          "toolArgs": "{\"json\": {\"type\": \"CONNECT\", \"protoName\": \"MQTT\", \"protoLevel\": 4, \"connectFlags\": {\"cleanSession\": true}, \"keepAlive\": 60, \"clientId\": \"test-123\"}}"
+        },
+        {
+          "toolPick": 1,
+          "jsonPresent": 1,
+          "paramName": 1,
+          "paramValue": 1,
+          "noToolCall": 0,
+          "name": "renderConnect",
+          "json": {
+            "type": "CONNECT",
+            "protoName": "MQTT",
+            "protoLevel": 4,
+            "connectFlags": {
+              "cleanSession": true
+            },
+            "keepAlive": 60,
+            "clientId": "test-123"
+          },
+          "extracted": true,
+          "exactMatch": 1,
+          "lengthMatch": 1,
+          "firstByteMatch": 1,
+          "byteAccuracy": 1,
+          "actualLength": 22,
+          "expectedLength": 22,
+          "toolArgs": "{\"json\": {\"type\": \"CONNECT\", \"protoName\": \"MQTT\", \"protoLevel\": 4, \"connectFlags\": {\"cleanSession\": true}, \"keepAlive\": 60, \"clientId\": \"test-123\"}}"
+        },
+        {
+          "toolPick": 1,
+          "jsonPresent": 1,
+          "paramName": 1,
+          "paramValue": 0,
+          "noToolCall": 0,
+          "name": "renderConnect",
+          "json": {
+            "type": "CONNECT",
+            "protoName": "MQTT",
+            "protoLevel": 4,
+            "connectFlags": {
+              "cleanSession": true,
+              "willFlag": false,
+              "willQos": 0,
+              "willRetain": false,
+              "userName": "false",
+              "password": "false"
+            },
+            "keepAlive": 60,
+            "clientId": "test-123"
+          },
+          "extracted": true,
+          "exactMatch": 0,
+          "lengthMatch": 0,
+          "firstByteMatch": 1,
+          "byteAccuracy": 0.9090909090909091,
+          "actualLength": 36,
+          "expectedLength": 22,
+          "toolArgs": "{\"json\": {\"type\": \"CONNECT\", \"protoName\": \"MQTT\", \"protoLevel\": 4, \"connectFlags\": {\"cleanSession\": true, \"willFlag\": false, \"willQos\": 0, \"willRetain\": false, \"userName\": \"false\", \"password\": \"false\"}, \"keepAlive\": 60, \"clientId\": \"test-123\"}}"
+        }
+      ]
+    },
+    {
+      "id": "p2-connect-short",
+      "expectedTool": "renderConnect",
+      "runs": [
+        {
+          "toolPick": 1,
+          "jsonPresent": 1,
+          "paramName": 1,
+          "paramValue": 1,
+          "noToolCall": 0,
+          "name": "renderConnect",
+          "json": {
+            "type": "CONNECT",
+            "protoName": "MQTT",
+            "protoLevel": 4,
+            "connectFlags": {
+              "cleanSession": true
+            },
+            "keepAlive": 30,
+            "clientId": "abc"
+          },
+          "extracted": true,
+          "exactMatch": 1,
+          "lengthMatch": 1,
+          "firstByteMatch": 1,
+          "byteAccuracy": 1,
+          "actualLength": 17,
+          "expectedLength": 17,
+          "toolArgs": "{\"json\": {\"type\": \"CONNECT\", \"protoName\": \"MQTT\", \"protoLevel\": 4, \"connectFlags\": {\"cleanSession\": true}, \"keepAlive\": 30, \"clientId\": \"abc\"}}"
+        },
+        {
+          "extracted": false,
+          "exactMatch": 0,
+          "lengthMatch": 0,
+          "firstByteMatch": 0,
+          "byteAccuracy": 0,
+          "toolPick": 0,
+          "jsonPresent": 0,
+          "paramName": 0,
+          "paramValue": 0,
+          "noToolCall": 1,
+          "actualLength": 0,
+          "expectedLength": 17,
+          "_error": "fetch failed"
+        },
+        {
+          "toolPick": 1,
+          "jsonPresent": 1,
+          "paramName": 1,
+          "paramValue": 1,
+          "noToolCall": 0,
+          "name": "renderConnect",
+          "json": {
+            "type": "CONNECT",
+            "protoName": "MQTT",
+            "protoLevel": 4,
+            "connectFlags": {
+              "cleanSession": true
+            },
+            "keepAlive": 30,
+            "clientId": "abc"
+          },
+          "extracted": true,
+          "exactMatch": 1,
+          "lengthMatch": 1,
+          "firstByteMatch": 1,
+          "byteAccuracy": 1,
+          "actualLength": 17,
+          "expectedLength": 17,
+          "toolArgs": "{\"json\": {\"type\": \"CONNECT\", \"protoName\": \"MQTT\", \"protoLevel\": 4, \"connectFlags\": {\"cleanSession\": true}, \"keepAlive\": 30, \"clientId\": \"abc\"}}"
+        }
+      ]
+    },
+    {
+      "id": "p3-publish",
+      "expectedTool": "renderPublish",
+      "runs": [
+        {
+          "toolPick": 1,
+          "jsonPresent": 1,
+          "paramName": 1,
+          "paramValue": 1,
+          "noToolCall": 0,
+          "name": "renderPublish",
+          "json": {
+            "type": "PUBLISH",
+            "flags": {
+              "qos": 0,
+              "retain": false,
+              "dup": false
+            },
+            "topic": "foo/bar",
+            "payload": "hello"
+          },
+          "extracted": true,
+          "exactMatch": 1,
+          "lengthMatch": 1,
+          "firstByteMatch": 1,
+          "byteAccuracy": 1,
+          "actualLength": 16,
+          "expectedLength": 16,
+          "toolArgs": "{\"json\": {\"type\": \"PUBLISH\", \"flags\": {\"qos\": 0, \"retain\": false, \"dup\": false}, \"topic\": \"foo/bar\", \"payload\": \"hello\"}}"
+        },
+        {
+          "toolPick": 1,
+          "jsonPresent": 1,
+          "paramName": 1,
+          "paramValue": 1,
+          "noToolCall": 0,
+          "name": "renderPublish",
+          "json": {
+            "type": "PUBLISH",
+            "flags": {
+              "qos": 0,
+              "retain": false,
+              "dup": false
+            },
+            "topic": "foo/bar",
+            "payload": "hello"
+          },
+          "extracted": true,
+          "exactMatch": 1,
+          "lengthMatch": 1,
+          "firstByteMatch": 1,
+          "byteAccuracy": 1,
+          "actualLength": 16,
+          "expectedLength": 16,
+          "toolArgs": "{\"json\":{\"type\":\"PUBLISH\",\"flags\":{\"qos\":0,\"retain\":false,\"dup\":false},\"topic\":\"foo/bar\",\"payload\":\"hello\"}}"
+        },
+        {
+          "toolPick": 1,
+          "jsonPresent": 1,
+          "paramName": 1,
+          "paramValue": 1,
+          "noToolCall": 0,
+          "name": "renderPublish",
+          "json": {
+            "type": "PUBLISH",
+            "flags": {
+              "qos": 0,
+              "retain": false,
+              "dup": false
+            },
+            "topic": "foo/bar",
+            "payload": "hello"
+          },
+          "extracted": true,
+          "exactMatch": 1,
+          "lengthMatch": 1,
+          "firstByteMatch": 1,
+          "byteAccuracy": 1,
+          "actualLength": 16,
+          "expectedLength": 16,
+          "toolArgs": "{\"json\":{\"type\":\"PUBLISH\",\"flags\":{\"qos\":0,\"retain\":false,\"dup\":false},\"topic\":\"foo/bar\",\"payload\":\"hello\"}}"
+        }
+      ]
+    },
+    {
+      "id": "p4-subscribe",
+      "expectedTool": "renderSubscribe",
+      "runs": [
+        {
+          "toolPick": 1,
+          "jsonPresent": 1,
+          "paramName": 1,
+          "paramValue": 1,
+          "noToolCall": 0,
+          "name": "renderSubscribe",
+          "json": {
+            "type": "SUBSCRIBE",
+            "packetId": 1,
+            "subscriptions": [
+              {
+                "topic": "foo/+",
+                "qos": 1
+              }
+            ]
+          },
+          "extracted": true,
+          "exactMatch": 1,
+          "lengthMatch": 1,
+          "firstByteMatch": 1,
+          "byteAccuracy": 1,
+          "actualLength": 12,
+          "expectedLength": 12,
+          "toolArgs": "{\"json\": {\"type\": \"SUBSCRIBE\", \"packetId\": 1, \"subscriptions\": [{\"topic\": \"foo/+\", \"qos\": 1}]}}"
+        },
+        {
+          "toolPick": 1,
+          "jsonPresent": 1,
+          "paramName": 1,
+          "paramValue": 1,
+          "noToolCall": 0,
+          "name": "renderSubscribe",
+          "json": {
+            "type": "SUBSCRIBE",
+            "packetId": 1,
+            "subscriptions": [
+              {
+                "topic": "foo/+",
+                "qos": 1
+              }
+            ]
+          },
+          "extracted": true,
+          "exactMatch": 1,
+          "lengthMatch": 1,
+          "firstByteMatch": 1,
+          "byteAccuracy": 1,
+          "actualLength": 12,
+          "expectedLength": 12,
+          "toolArgs": "{\"json\": {\"type\": \"SUBSCRIBE\", \"packetId\": 1, \"subscriptions\": [{\"topic\": \"foo/+\", \"qos\": 1}]}}"
+        },
+        {
+          "toolPick": 1,
+          "jsonPresent": 1,
+          "paramName": 1,
+          "paramValue": 1,
+          "noToolCall": 0,
+          "name": "renderSubscribe",
+          "json": {
+            "type": "SUBSCRIBE",
+            "packetId": 1,
+            "subscriptions": [
+              {
+                "topic": "foo/+",
+                "qos": 1
+              }
+            ]
+          },
+          "extracted": true,
+          "exactMatch": 1,
+          "lengthMatch": 1,
+          "firstByteMatch": 1,
+          "byteAccuracy": 1,
+          "actualLength": 12,
+          "expectedLength": 12,
+          "toolArgs": "{\"json\": {\"type\": \"SUBSCRIBE\", \"packetId\": 1, \"subscriptions\": [{\"topic\": \"foo/+\", \"qos\": 1}]}}"
+        }
+      ]
+    },
+    {
+      "id": "p5-pingreq",
+      "expectedTool": "renderPingreq",
+      "runs": [
+        {
+          "toolPick": 1,
+          "jsonPresent": 1,
+          "paramName": 1,
+          "paramValue": 1,
+          "noToolCall": 0,
+          "name": "renderPingreq",
+          "json": {
+            "type": "PINGREQ"
+          },
+          "extracted": true,
+          "exactMatch": 1,
+          "lengthMatch": 1,
+          "firstByteMatch": 1,
+          "byteAccuracy": 1,
+          "actualLength": 2,
+          "expectedLength": 2,
+          "toolArgs": "{\"json\": {\"type\": \"PINGREQ\"}}"
+        },
+        {
+          "toolPick": 1,
+          "jsonPresent": 1,
+          "paramName": 1,
+          "paramValue": 1,
+          "noToolCall": 0,
+          "name": "renderPingreq",
+          "json": {
+            "type": "PINGREQ"
+          },
+          "extracted": true,
+          "exactMatch": 1,
+          "lengthMatch": 1,
+          "firstByteMatch": 1,
+          "byteAccuracy": 1,
+          "actualLength": 2,
+          "expectedLength": 2,
+          "toolArgs": "{\"json\": {\"type\": \"PINGREQ\"}}"
+        },
+        {
+          "toolPick": 1,
+          "jsonPresent": 1,
+          "paramName": 1,
+          "paramValue": 1,
+          "noToolCall": 0,
+          "name": "renderPingreq",
+          "json": {
+            "type": "PINGREQ"
+          },
+          "extracted": true,
+          "exactMatch": 1,
+          "lengthMatch": 1,
+          "firstByteMatch": 1,
+          "byteAccuracy": 1,
+          "actualLength": 2,
+          "expectedLength": 2,
+          "toolArgs": "{\"json\": {\"type\": \"PINGREQ\"}}"
+        }
+      ]
+    }
+  ],
+  "calls": 14,
+  "model": "MiniMax-M3"
+}

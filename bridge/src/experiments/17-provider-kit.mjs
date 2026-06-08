@@ -18,7 +18,7 @@
 
 import { create } from './lib/report.mjs';
 import {
-  stripThink, extractReasoning, normalizeToolCalls, parseActionFallback,
+  extractContent, extractReasoning, normalizeToolCalls, parseActionFallback,
   classifyError, ProviderError, withRetry, withTimeout,
   createProvider, listPresetProviders, parseFrames, epcFromResponse,
 } from 'provider-kit';
@@ -31,7 +31,7 @@ export async function run({ inputs = {} } = {}) {
     const { raw = '', reasoning = null, toolCalls = [] } = inputs;
     return {
       outputs: {
-        content: stripThink(raw),
+        content: extractContent(raw),
         reasoning: extractReasoning(reasoning ? { reasoning_content: reasoning, reasoningContent: reasoning } : null),
         toolCalls: parseActionFallback(raw, normalizeToolCalls(toolCalls)),
       },
@@ -55,21 +55,21 @@ async function test() {
 
   // === ① 4 个 normalize 纯函数 (provider-kit 暴露给 openchat 的纯函数层) ===
 
-  // 1a. stripThink — 基本 / 多块 / 嵌套换行 / null
+  // 1a. extractContent — XML 标签剥离 / JSON 提取 / 普通字符串
   {
     const cases = [
-      { in: '<think>hello</think>world',          out: 'world' },
-      { in: '<think>a</think><think>b</think>c',  out: 'c' },
+      { in: '<think>hello</think>world',          out: 'hello world' },
+      { in: '<think>a</think><think>b</think>c',  out: 'a b c' },
       { in: 'no think',                            out: 'no think' },
       { in: '',                                    out: '' },
       { in: null,                                  out: '' },
-      { in: '<think>多\n行\nthink</think>after',  out: 'after' },
+      { in: '<think>多\n行\nthink</think>after',  out: '多 行 think after' },
     ];
     let allPass = true;
     for (const c of cases) {
-      if (stripThink(c.in) !== c.out) { allPass = false; ng(`stripThink 错: ${JSON.stringify(c.in)}`); }
+      if (extractContent(c.in) !== c.out) { allPass = false; ng(`extractContent 错: ${JSON.stringify(c.in)} → ${JSON.stringify(extractContent(c.in))}`); }
     }
-    if (allPass) ok(`stripThink: ${cases.length} cases`);
+    if (allPass) ok(`extractContent: ${cases.length} cases`);
   }
 
   // 1b. extractReasoning — 两种命名 + 优先级
@@ -164,7 +164,7 @@ async function test() {
         json: async () => ({
           choices: [{
             message: {
-              content: '<think>思考中</think>Hello!',
+              content: '{"text":"Hello!","meta":"思考中"}',
               reasoning_content: '我应该回答',
               tool_calls: [{ id: 't1', function: { name: 'search', arguments: '{"q":"x"}' } }],
             },
@@ -176,7 +176,7 @@ async function test() {
     try {
       await p.connect('sk-test');
       const r = await p.chat('gpt-4', [{ role: 'user', content: 'hi' }], { includeRaw: false });
-      if (r.content === 'Hello!') ok('adapter.chat: stripThink 后 content 正确');
+      if (r.content === 'Hello!') ok('adapter.chat: extractContent 内容正确');
       else ng(`adapter.chat content 错: ${r.content}`);
       // reasoning 不在顶层, 在 epc 的 SUB_THINKING 帧里 (provider-kit 当前契约)
       const rFrames = parseFrames(r.epc);

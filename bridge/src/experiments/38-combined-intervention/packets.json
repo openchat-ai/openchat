@@ -1,0 +1,82 @@
+{
+  "_meta": {
+    "purpose": "E38 — combined intervention: narrow tools (4 render*) + template. LLM 必须用 tool call 表达 packet, 不再 chat 输出 JSON。跟 E37 (chat extraction 73%) 对比看 tool call 路径能不能拉到 100% extraction。",
+    "repeats": 3,
+    "note": "每 packet 配 expect.tool (正确工具名) + expect.json (正确 json 参数) + expectedBytes (跟 E37 一致)"
+  },
+  "packets": [
+    {
+      "id": "p1-connect",
+      "prompt": "Use the renderConnect tool to produce a MQTT 3.1.1 CONNECT packet with these fields:\n- protoName: 'MQTT'\n- protoLevel: 4\n- connectFlags: { cleanSession: true }\n- keepAlive: 60\n- clientId: 'test-123'\n\nPass the fields as the json argument to renderConnect.",
+      "expect": {
+        "tool": "renderConnect",
+        "json": {
+          "type": "CONNECT",
+          "protoName": "MQTT",
+          "protoLevel": 4,
+          "connectFlags": { "cleanSession": true },
+          "keepAlive": 60,
+          "clientId": "test-123"
+        }
+      },
+      "expectedBytes": [16, 20, 0, 4, 77, 81, 84, 84, 4, 2, 0, 60, 0, 8, 116, 101, 115, 116, 45, 49, 50, 51],
+      "fieldLabels": ["packetType(0x10)", "remainingLen(0x14=20)", "protoNameLen", "protoName", "protoLevel", "connectFlags(0x02)", "keepAlive", "clientIdLen", "clientId"]
+    },
+    {
+      "id": "p2-connect-short",
+      "prompt": "Use the renderConnect tool to produce a MQTT 3.1.1 CONNECT packet with these fields:\n- protoName: 'MQTT'\n- protoLevel: 4\n- connectFlags: { cleanSession: true }\n- keepAlive: 30\n- clientId: 'abc'\n\nPass them as the json argument.",
+      "expect": {
+        "tool": "renderConnect",
+        "json": {
+          "type": "CONNECT",
+          "protoName": "MQTT",
+          "protoLevel": 4,
+          "connectFlags": { "cleanSession": true },
+          "keepAlive": 30,
+          "clientId": "abc"
+        }
+      },
+      "expectedBytes": [16, 15, 0, 4, 77, 81, 84, 84, 4, 2, 0, 30, 0, 3, 97, 98, 99],
+      "fieldLabels": ["packetType", "remainingLen(0x0F=15)", "protoNameLen", "protoName", "protoLevel", "connectFlags", "keepAlive(30)", "clientIdLen(3)", "clientId('abc')"]
+    },
+    {
+      "id": "p3-publish",
+      "prompt": "Use the renderPublish tool to produce a MQTT 3.1.1 PUBLISH packet:\n- flags: { qos: 0, retain: false, dup: false }\n- topic: 'foo/bar'\n- payload: 'hello'\n\nPass them as the json argument.",
+      "expect": {
+        "tool": "renderPublish",
+        "json": {
+          "type": "PUBLISH",
+          "flags": { "qos": 0, "retain": false, "dup": false },
+          "topic": "foo/bar",
+          "payload": "hello"
+        }
+      },
+      "expectedBytes": [48, 14, 0, 7, 102, 111, 111, 47, 98, 97, 114, 104, 101, 108, 108, 111],
+      "fieldLabels": ["packetType(0x30)", "remainingLen(0x0E=14)", "topicLen", "topic('foo/bar')", "payload('hello')"]
+    },
+    {
+      "id": "p4-subscribe",
+      "prompt": "Use the renderSubscribe tool to produce a MQTT 3.1.1 SUBSCRIBE packet:\n- packetId: 1\n- subscriptions: [{ topic: 'foo/+', qos: 1 }]\n\nPass them as the json argument.",
+      "expect": {
+        "tool": "renderSubscribe",
+        "json": {
+          "type": "SUBSCRIBE",
+          "packetId": 1,
+          "subscriptions": [{ "topic": "foo/+", "qos": 1 }]
+        }
+      },
+      "expectedBytes": [130, 10, 0, 1, 0, 5, 102, 111, 111, 47, 43, 1],
+      "fieldLabels": ["packetType(0x82)", "remainingLen", "packetId(1)", "topicLen", "topic('foo/+')", "qos(0x01)"]
+    },
+    {
+      "id": "p5-pingreq",
+      "prompt": "Use the renderPingreq tool to produce a MQTT 3.1.1 PINGREQ packet (heartbeat). No fields needed.",
+      "expect": {
+        "tool": "renderPingreq",
+        "json": { "type": "PINGREQ" }
+      },
+      "expectedBytes": [192, 0],
+      "fieldLabels": ["packetType(0xC0)", "remainingLen(0x00)"]
+    }
+  ]
+}

@@ -19,7 +19,7 @@ import { TOOLS as DEV_TOOLS, executeTool as devExec } from './dev-tools.mjs';
 import { TOOLS as AST_TOOLS, executeTool as astExec } from './ast-search.mjs';
 import { TOOLS as DEEP_TOOLS, executeTool as deepExec } from './tools-deep.mjs';
 import { TOOLS as ADAPTER_TOOLS, executeTool as adapterExec } from './ast-adapters.mjs';
-import { TOOLS as MQTT_TOOLS, executeTool as mqttExec } from './mqtt-adapter.mjs';
+import { TOOLS as MQTT_TOOLS, executeTool as mqttExec } from './mqtt-tools.mjs';
 
 const PROJECT_ROOT = process.cwd(); // F:\openchat (or bridge/)
 

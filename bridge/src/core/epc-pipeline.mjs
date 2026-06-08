@@ -22,7 +22,7 @@
 //   // System prompt
 //   const prompt = `${baseSystemPrompt}\n\n${getEditProtocolGuidance()}`;
 
-import { epcFromResponse, stripThink, extractReasoning, normalizeToolCalls, parseActionFallback } from 'provider-kit';
+import { epcFromResponse, extractContent, extractReasoning, normalizeToolCalls, parseActionFallback } from 'provider-kit';
 
 /** 把 (content, reasoningContent, toolCalls) 装进 EPC 帧 */
 export function buildEpc({ content, reasoningContent = '', toolCalls = [] }) {
@@ -40,12 +40,12 @@ export function buildEpc({ content, reasoningContent = '', toolCalls = [] }) {
  *     4 个函数都从 provider-kit 导入且都是幂等的 — 二次处理不改变数据。
  */
 export function runPipeline(rawResponse) {
-  // rawContent 在这里是"半成品" (provider-kit 已剥过 think) — 我们再 stripThink 一道确保干净
+  // rawContent 在这里是"半成品" (provider-kit 已处理过) — 我们再 extractContent 兜底确保干净
   const rawContent = rawResponse?.content || '';
   const reasoningContent = extractReasoning(rawResponse);
   let toolCalls = normalizeToolCalls(rawResponse?.toolCalls);
   toolCalls = parseActionFallback(rawContent, toolCalls);
-  const content = stripThink(rawContent);
+  const content = extractContent(rawContent);
   const epc = buildEpc({ content, reasoningContent, toolCalls });
   return { rawContent, content, reasoningContent, toolCalls, epc };
 }
