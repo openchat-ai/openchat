@@ -25,6 +25,7 @@
 | **存储** | Qiniu S3（上传 Token + 预签名 URL） |
 | **音频** | `record` + `audioplayers` |
 | **Codec 同步** | `neural_audio_codec.dart` ↔ `neural-audio-codec.js` 必须始终同步，改一个必须改另一个 |
+| **provider-kit 工作流** | 改 `modules/provider-kit/` → `npm version patch` → `npm publish` → `cd bridge && npm install provider-kit@<新版>`。禁止手动 xcopy 同步 |
 | **Qiniu API 兼容表** | 手机端只能用 S3 端点（`*.s3.qiniucs.com`），不能用 RS 管理 API（`rs.qbox.me`）。S3 V4 预签名签名方式全部可用（GET/LIST/DELETE），上传用表单上传（Qiniu token）。参见 `qiniu\:api-table` |
 
 ## Qiniu API 兼容表

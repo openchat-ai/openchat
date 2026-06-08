@@ -92,7 +92,7 @@
     "onnxruntime-node": "1.24.3",
     "opusscript": "0.1.1",
     "pino": "10.3.1",
-    "provider-kit": "1.5.3",
+    "provider-kit": "^1.5.3",
     "qiniu": "7.15.2",
     "swagger-ui-express": "5.0.1",
     "uuid": "9.0.0",
@@ -100,9 +100,9 @@
     "zeromq": "6.5.0"
   },
   "devDependencies": {
+    "@eslint/js": "9.15.0",
     "eslint": "9.39.4",
     "globals": "15.14.0",
-    "@eslint/js": "9.15.0",
     "husky": "9.1.7",
     "prettier": "3.4.2"
   },
