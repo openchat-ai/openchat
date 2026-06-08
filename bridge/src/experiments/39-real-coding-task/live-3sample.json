@@ -2,7 +2,7 @@
   "aggregate": {
     "n": 3,
     "sourceExtracted": 1,
-    "functionShapeOk": 0.6666666666666666,
+    "functionShapeOk": 1,
     "renderConnectCalled": 1,
     "renderConnectArgsOk": 1,
     "renderSubscribeCalled": 1,
@@ -21,7 +21,7 @@
       "sandboxRan": true,
       "packetsSentCorrect": true,
       "_debug": {
-        "source": "async function mqttSubscribe({host, port, topic, clientId}) {\n  const connectPacket = await renderConnect({\n    protoName: 'MQTT',\n    protoLevel: 4,\n    connectFlags: { cleanSession: true },\n    keepAlive: 60,\n    clientId\n  });\n  \n  const subscribePacket = await renderSubscribe({\n    packetId: 1,\n    subscriptions: [{ topic, qos: 1 }]\n  });\n  \n  return new Promise((resolve, reject) => {\n    const socket = net.connect({host, port}, () => {\n      socket.write(Buffer.from(connectPacket.bytes));\n      socket.write(Buffer.from(subscribePacket.bytes), () => {\n        resolve();\n      });\n    });\n    \n    socket.on('error', reject);\n  });\n}",
+        "source": "async function mqttSubscribe({host, port, topic, clientId}) { const connectPacket = await renderConnect({ protoName: 'MQTT', protoLevel: 4, connectFlags: { cleanSession: true }, keepAlive: 60, clientId }); const subscribePacket = await renderSubscribe({ packetId: 1, subscriptions: [{ topic, qos: 1 }] }); return new Promise((resolve, reject) => { const socket = net.connect({host, port}, async () => { try { await new Promise((res, rej) => { socket.write(Buffer.from(connectPacket.bytes), (err) => err ? rej(err) : res()); }); await new Promise((res, rej) => { socket.write(Buffer.from(subscribePacket.bytes), (err) => err ? rej(err) : res()); }); resolve(); } catch (err) { reject(err); } }); socket.on('error', reject); }); }",
         "renderConnectCall": {
           "protoName": "MQTT",
           "protoLevel": 4,
@@ -58,7 +58,7 @@
       "sandboxRan": true,
       "packetsSentCorrect": true,
       "_debug": {
-        "source": "async function mqttSubscribe({host, port, topic, clientId}) {\n  const connectPacket = await renderConnect({\n    protoName: 'MQTT',\n    protoLevel: 4,\n    connectFlags: { cleanSession: true },\n    keepAlive: 60,\n    clientId\n  });\n  \n  const subscribePacket = await renderSubscribe({\n    packetId: 1,\n    subscriptions: [{ topic, qos: 1 }]\n  });\n  \n  return new Promise((resolve, reject) => {\n    const socket = net.connect({host, port}, () => {\n      socket.write(Buffer.from(connectPacket.bytes), (err) => {\n        if (err) return reject(err);\n        socket.write(Buffer.from(subscribePacket.bytes), (err) => {\n          if (err) return reject(err);\n          resolve();\n        });\n      });\n    });\n    \n    socket.on('error', reject);\n  });\n}",
+        "source": "async function mqttSubscribe({host, port, topic, clientId}) { const connectPacket = await renderConnect({ protoName: 'MQTT', protoLevel: 4, connectFlags: { cleanSession: true }, keepAlive: 60, clientId }); const subscribePacket = await renderSubscribe({ packetId: 1, subscriptions: [{ topic, qos: 1 }] }); return new Promise((resolve, reject) => { const socket = net.connect({host, port}, () => { socket.write(Buffer.from(connectPacket.bytes), () => { socket.write(Buffer.from(subscribePacket.bytes), () => { resolve(); }); }); }); socket.on('error', reject); }); }",
         "renderConnectCall": {
           "protoName": "MQTT",
           "protoLevel": 4,
@@ -87,7 +87,7 @@
     },
     {
       "sourceExtracted": true,
-      "functionShapeOk": false,
+      "functionShapeOk": true,
       "renderConnectCalled": true,
       "renderConnectArgsOk": true,
       "renderSubscribeCalled": true,
@@ -95,7 +95,7 @@
       "sandboxRan": true,
       "packetsSentCorrect": true,
       "_debug": {
-        "source": "function mqttSubscribe({host, port, topic, clientId}) {\n  return new Promise(async (resolve, reject) => {\n    const connectPacket = await renderConnect({\n      protoName: 'MQTT',\n      protoLevel: 4,\n      connectFlags: { cleanSession: true },\n      keepAlive: 60,\n      clientId\n    });\n    \n    const subscribePacket = await renderSubscribe({\n      packetId: 1,\n      subscriptions: [{ topic, qos: 1 }]\n    });\n    \n    const socket = net.connect({host, port}, () => {\n      socket.write(Buffer.from(connectPacket.bytes), () => {\n        socket.write(Buffer.from(subscribePacket.bytes), () => {\n          resolve();\n        });\n      });\n    });\n    \n    socket.on('error', reject);\n  });\n}",
+        "source": "async function mqttSubscribe({host, port, topic, clientId}) { const connectPacket = await renderConnect({ protoName: 'MQTT', protoLevel: 4, connectFlags: { cleanSession: true }, keepAlive: 60, clientId }); const subscribePacket = await renderSubscribe({ packetId: 1, subscriptions: [{ topic, qos: 1 }] }); return new Promise((resolve, reject) => { const socket = net.connect({ host, port }, () => { socket.write(Buffer.from(connectPacket.bytes), () => { socket.write(Buffer.from(subscribePacket.bytes), () => { resolve(); }); }); }); socket.on('error', reject); }); }",
         "renderConnectCall": {
           "protoName": "MQTT",
           "protoLevel": 4,
