@@ -81,4 +81,7 @@ bridge/test-traces/
 
 bridge/workspaces/
 
+# === Autonomy experiment sandbox (local-only, not in git) ===
+bridge/src/experiments/_autonomy-sandbox/
+
 tests/~$*.xlsx
