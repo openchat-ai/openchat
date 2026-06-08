@@ -1,12 +1,78 @@
-// Experiment 18: GoalManager — goal lifecycle + Orchestrator.executeGoal
+// Experiment 18: Goal — 拆解目标为步骤, 每步调 agent 实验执行
+// 两级体系: goal (规划层) → 拆步骤 → 调 agent (执行层, 多轮工具循环)
 // Manifest id: goal
-// I/O: { description, sessionId? } → { result, events }
+// I/O: { description, sessionId? } → { summary, steps: [{action, status, result}], done, failed }
 
 import { create } from './lib/report.mjs';
+import { run as composeRun } from './compose.mjs';
+import { persistentConfig } from '../core/persistent-config.js';
+import { createProvider } from 'provider-kit';
 import assert from 'node:assert';
 
 export const META = { id: 'goal' };
-const NAME = 'Goal — goal lifecycle + executeGoal';
+const NAME = 'Goal — 拆解目标 + agent 逐步执行';
+const MAX_STEPS = 8;
+
+async function _getProvider() {
+  const cfg = persistentConfig.config;
+  const provider = cfg.current?.provider || Object.keys(cfg.providers || {})[0];
+  const model = cfg.current?.model || cfg.providers?.[provider]?.defaultModel;
+  const apiKey = cfg.providers?.[provider]?.apiKey;
+  if (!apiKey) throw new Error('goal: no apiKey');
+  const p = createProvider(provider, apiKey);
+  await p.connect(apiKey);
+  return { provider: p, model };
+}
+
+async function _decompose(description, p, model) {
+  const prompt = `Decompose the following goal into ${MAX_STEPS} concrete sequential steps.
+
+Goal: ${description}
+
+Return ONLY a JSON array, no other text:
+[{ "action": "...", "expected": "..." }]`;
+
+  const resp = await p.chat(model, [{ role: 'user', content: prompt }]);
+  const text = resp.content || '';
+  const jsonMatch = text.match(/\[[\s\S]*\]/);
+  if (!jsonMatch) throw new Error(`goal: cannot parse steps: ${text.slice(0, 200)}`);
+  const steps = JSON.parse(jsonMatch[0]);
+  if (!Array.isArray(steps) || steps.length === 0) throw new Error('goal: no steps returned');
+  return steps.slice(0, MAX_STEPS);
+}
+
+// compose 契约入口
+export async function run({ inputs = {} } = {}) {
+  const { description, sessionId = 'default' } = inputs;
+  if (!description) throw new Error('goal.run: description required');
+
+  const { provider, model } = await _getProvider();
+  const steps = await _decompose(description, provider, model);
+
+  const results = [];
+  let done = 0;
+  let failed = 0;
+
+  for (let i = 0; i < steps.length; i++) {
+    const s = steps[i];
+    const stepPrompt = `[Goal: ${description}]\nStep ${i + 1}/${steps.length}: ${s.action}\nExpected: ${s.expected}\n\nExecute this step now.`;
+    let result = '';
+    let status = 'failed';
+    try {
+      const r = await composeRun('agent', { text: stepPrompt, chatId: `${sessionId}/step-${i}` });
+      result = r?.response || '';
+      if (result) status = 'done';
+    } catch (e) {
+      result = `[Error] ${e.message}`;
+    }
+    if (status === 'done') done++;
+    else failed++;
+    results.push({ action: s.action, expected: s.expected, status, result: result.slice(0, 2000) });
+  }
+
+  const summary = `Goal "${description}": ${done}/${results.length} steps done, ${failed} failed.`;
+  return { outputs: { summary, steps: results, done, failed, total: results.length } };
+}
 
 export async function test() {
   const R = create();

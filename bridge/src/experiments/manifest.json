@@ -43,19 +43,20 @@
       "category": "llm",
       "pure": false,
       "needsEnv": [],
-      "description": "skeleton-agent：经 provider-kit 调 LLM，per-chat session。",
+      "description": "skeleton-agent：经 provider-kit 调 LLM，per-chat session，多轮工具循环。",
       "inputs": [
         { "name": "text",   "type": "string",  "required": true,  "description": "用户消息" },
         { "name": "chatId", "type": "string",  "required": false, "default": "default", "description": "会话 id（隔离历史）" }
       ],
       "outputs": [
-        { "name": "response",  "type": "string", "description": "LLM 回复" },
-        { "name": "toolCalls", "type": "array",  "description": "工具调用（若有）" }
+        { "name": "response",   "type": "string", "description": "LLM 回复" },
+        { "name": "toolCalls",  "type": "array",  "description": "工具调用列表" }
       ],
-      "deps": ["config"],
-      "tags": ["llm", "agent", "chat"],
+      "deps": [],
+      "tags": ["llm", "agent"],
       "status": "closed-loop"
     },
+
     {
       "id": "p2p",
       "file": "3-p2p.mjs",
@@ -379,21 +380,24 @@
     {
       "id": "goal",
       "file": "18-goal.mjs",
-      "name": "GoalManager — goal lifecycle + executeGoal",
+      "name": "Goal — 拆解目标 + agent 逐步执行",
       "category": "agent",
-      "pure": true,
+      "pure": false,
       "needsEnv": [],
-      "description": "GoalManager: create/decompose/execute/resume goals via LLM. Orchestrator.executeGoal() 2-pass loop + step events + progress persistence via EvolutionMemory.",
+      "description": "两级体系：goal 将目标拆为步骤, 每步调 agent 实验的多轮工具循环执行。",
       "inputs": [
-        { "name": "description", "type": "string", "required": true, "description": "goal 描述" },
-        { "name": "sessionId",   "type": "string", "required": false, "default": "test-session", "description": "session id" }
+        { "name": "description", "type": "string", "required": true, "description": "目标描述" },
+        { "name": "sessionId", "type": "string", "required": false, "default": "default", "description": "会话 id" }
       ],
       "outputs": [
-        { "name": "result", "type": "string", "description": "goal 执行结果" },
-        { "name": "events", "type": "array",  "description": "事件序列 (goal_created / goal_decompose / step_start / step_done / goal_complete)" }
+        { "name": "summary", "type": "string", "description": "执行汇总" },
+        { "name": "steps", "type": "array", "description": "每步的 action/status/result" },
+        { "name": "done", "type": "number", "description": "成功步数" },
+        { "name": "failed", "type": "number", "description": "失败步数" },
+        { "name": "total", "type": "number", "description": "总步数" }
       ],
-      "deps": ["config"],
-      "tags": ["goal", "orchestrator", "lifecycle", "agent"],
+      "deps": ["agent"],
+      "tags": ["goal", "agent"],
       "status": "closed-loop"
     },
     {
@@ -440,19 +444,27 @@
     {
       "id": "dev-tools",
       "file": "21-dev-tools.mjs",
-      "name": "Dev Tools — 16 个工程工具合集",
+      "name": "Dev Tools — 16 个工程工具合集 + 系统健康检查",
       "category": "dev",
       "pure": false,
       "needsEnv": [],
-      "description": "依赖图/detect_cycles/Mermaid可视化/Git工作流/测试/Lint/构建/TS类型/多语言/Docker/SQL/API/安全/文档/CI/环境管理 — dev-tools.mjs",
+      "description": "依赖图/detect_cycles/Mermaid可视化/Git工作流/测试/Lint/构建/TS类型/多语言/Docker/SQL/API/安全/文档/CI/环境管理 + 系统健康检查(从实验22-30收编): check_tracing / check_failover / check_backpressure / check_sessions / check_recovery",
       "inputs": [
-        { "name": "op", "type": "string", "required": true, "description": "dep_graph | detect_cycles | git_commit | test_run | lint_run | ..." }
+        { "name": "op", "type": "string", "required": true, "description": "dep_graph | detect_cycles | git_commit | test_run | lint_run | ... | check_tracing | check_failover | check_backpressure | check_sessions | check_recovery" }
       ],
       "outputs": [
-        { "name": "result", "type": "any" }
+        { "name": "result", "type": "any", "description": "原有 dev-tools op 结果" },
+        { "name": "requestId", "type": "string", "description": "check_tracing: 生成的 trace id" },
+        { "name": "spanCount", "type": "number", "description": "check_tracing: span 数" },
+        { "name": "provider", "type": "string", "description": "check_failover: 当前 provider" },
+        { "name": "failoverCount", "type": "number", "description": "check_failover: failover 链长度" },
+        { "name": "maxInFlight", "type": "number", "description": "check_backpressure: MAX_IN_FLIGHT 值" },
+        { "name": "chatPollerLoaded", "type": "boolean", "description": "check_backpressure: chat-poller 可加载" },
+        { "name": "sessionCount", "type": "number", "description": "check_sessions / check_recovery: 会话数" },
+        { "name": "sessionsFileExists", "type": "boolean", "description": "check_recovery: sessions.json 存在" }
       ],
       "deps": ["config"],
-      "tags": ["dev", "tools", "git", "docker", "lint", "ci", "security"],
+      "tags": ["dev", "tools", "git", "docker", "lint", "ci", "security", "health-check", "tracing", "failover", "backpressure", "session", "recovery"],
       "status": "closed-loop"
     },
     {
@@ -695,6 +707,201 @@
       ],
       "deps": ["38-combined-intervention"],
       "tags": ["scaffold", "llm", "mqtt", "real-task", "function-calling", "end-to-end", "sandbox"],
+      "status": "closed-loop"
+    },
+    {
+      "id": "code-reviewer",
+      "file": "code-reviewer.mjs",
+      "name": "Code Reviewer — LLM-driven code review engine",
+      "category": "quality",
+      "pure": false,
+      "needsEnv": [],
+      "description": "包装 src/core/quality/code-reviewer.js: generateReviewProblems / buildReviewPrompt / parseReviewResult / getFindings / getSummary。审查 bridge 自身源码，结果写入 ~/.openchat/reviews/。",
+      "inputs": [
+        { "name": "op", "type": "string", "required": true, "description": "generate_problems | build_prompt | parse_result | get_findings | get_summary | review_file" },
+        { "name": "problemId", "type": "string", "required": false },
+        { "name": "filePath", "type": "string", "required": false },
+        { "name": "llmOutput", "type": "string", "required": false }
+      ],
+      "outputs": [
+        { "name": "problems", "type": "array" },
+        { "name": "prompt", "type": "string" },
+        { "name": "review", "type": "object" },
+        { "name": "findings", "type": "array" },
+        { "name": "summary", "type": "object" }
+      ],
+      "deps": [],
+      "tags": ["code-review", "audit", "quality"],
+      "status": "closed-loop"
+    },
+    {
+      "id": "verify-commit",
+      "file": "verify-commit.mjs",
+      "name": "Verify Commit — 提交前质量门禁",
+      "category": "quality",
+      "pure": false,
+      "needsEnv": [],
+      "description": "包装 scripts/verify-commit.mjs 检查逻辑: spec 存在性/R4 行数/invariants 块/白名单同步。check: git staged; check_files: 离线文件列表。",
+      "inputs": [
+        { "name": "op", "type": "string", "required": true, "description": "check | check_files" },
+        { "name": "files", "type": "array", "required": false },
+        { "name": "diffLines", "type": "number", "required": false }
+      ],
+      "outputs": [
+        { "name": "errors", "type": "array" },
+        { "name": "warnings", "type": "array" },
+        { "name": "passed", "type": "boolean" },
+        { "name": "stats", "type": "object" }
+      ],
+      "deps": [],
+      "tags": ["commit", "quality", "gate", "spec"],
+      "status": "closed-loop"
+    },
+    {
+      "id": "memory",
+      "file": "memory.mjs",
+      "name": "Vector Store — 轻量级向量存储 + 混合检索",
+      "category": "memory",
+      "pure": false,
+      "needsEnv": [],
+      "description": "包装 src/memory/vector-store.js：JSON 文件持久化向量 DB，余弦相似度搜索、关键词搜索、混合检索。零外部依赖。",
+      "inputs": [
+        { "name": "op", "type": "string", "required": true, "description": "init | store | similarity_search | keyword_search | hybrid_search | stats" },
+        { "name": "id", "type": "string", "required": false },
+        { "name": "embedding", "type": "array", "required": false },
+        { "name": "content", "type": "string", "required": false },
+        { "name": "query", "type": "string", "required": false },
+        { "name": "topK", "type": "number", "required": false, "default": 10 }
+      ],
+      "outputs": [
+        { "name": "results", "type": "array" },
+        { "name": "stats", "type": "object" },
+        { "name": "ok", "type": "boolean" }
+      ],
+      "deps": ["config"],
+      "tags": ["memory", "vector", "embedding", "search"],
+      "status": "closed-loop"
+    },
+    {
+      "id": "neural-brain",
+      "file": "neural-brain.mjs",
+      "name": "Neural Brain — 纯 JS 微神经网络 (64→32→8)",
+      "category": "ml",
+      "pure": false,
+      "needsEnv": [],
+      "description": "包装 src/core/memory/neural-brain.js：64→32→8 feedforward NN，ReLU/Softmax，SGD+交叉熵。零外部依赖。",
+      "inputs": [
+        { "name": "op", "type": "string", "required": true, "description": "train | predict | reset | stats" },
+        { "name": "inputs", "type": "array", "required": false },
+        { "name": "labels", "type": "array", "required": false },
+        { "name": "epochs", "type": "number", "required": false, "default": 10 },
+        { "name": "lr", "type": "number", "required": false, "default": 0.01 }
+      ],
+      "outputs": [
+        { "name": "output", "type": "array" },
+        { "name": "predictedClass", "type": "number" },
+        { "name": "confidence", "type": "number" },
+        { "name": "loss", "type": "number" },
+        { "name": "stats", "type": "object" }
+      ],
+      "deps": [],
+      "tags": ["neural", "ml", "classification"],
+      "status": "closed-loop"
+    },
+    {
+      "id": "tool-rescue",
+      "file": "tool-rescue.mjs",
+      "name": "Tool Call Rescue — 参数校验+自动修复+引导",
+      "category": "guardrails",
+      "pure": false,
+      "needsEnv": [],
+      "description": "LLM 工具调用参数自动校验+类型修复+必填补全+未知参数清理。Forge guardrails 核心层。",
+      "inputs": [
+        { "name": "op", "type": "string", "required": true, "description": "validate | rescue | validate_and_execute" },
+        { "name": "toolName", "type": "string", "required": false },
+        { "name": "args", "type": "object", "required": false },
+        { "name": "toolSchema", "type": "object", "required": false }
+      ],
+      "outputs": [
+        { "name": "valid", "type": "boolean" },
+        { "name": "fixed", "type": "boolean" },
+        { "name": "fixedArgs", "type": "object" },
+        { "name": "errors", "type": "array" },
+        { "name": "guidance", "type": "string" }
+      ],
+      "deps": [],
+      "tags": ["guardrails", "tool-call", "validation", "rescue"],
+      "status": "closed-loop"
+    },
+    {
+      "id": "retry-guidance",
+      "file": "retry-guidance.mjs",
+      "name": "Retry Guidance — 工具调用失败的结构化引导",
+      "category": "guardrails",
+      "pure": false,
+      "needsEnv": [],
+      "description": "工具调用失败时，按错误类型分类生成结构化引导（超时/限频/404/鉴权/安全策略）。Forge guardrails 重试层。",
+      "inputs": [
+        { "name": "op", "type": "string", "required": true, "description": "guidance | execute_with_retry" },
+        { "name": "toolName", "type": "string", "required": false },
+        { "name": "error", "type": "string", "required": false },
+        { "name": "attempts", "type": "number", "required": false, "default": 1 }
+      ],
+      "outputs": [
+        { "name": "guidance", "type": "string" },
+        { "name": "success", "type": "boolean" },
+        { "name": "attempts", "type": "number" }
+      ],
+      "deps": ["tool-rescue"],
+      "tags": ["guardrails", "retry", "guidance"],
+      "status": "closed-loop"
+    },
+    {
+      "id": "step-workflow",
+      "file": "step-workflow.mjs",
+      "name": "Step Workflow — 工作流定义 + 必要步骤强制执行",
+      "category": "guardrails",
+      "pure": false,
+      "needsEnv": [],
+      "description": "定义由 experiment run() 步骤组成的工作流，支持 required/retry。Forge WorkflowRunner 等价层。",
+      "inputs": [
+        { "name": "op", "type": "string", "required": true, "description": "define | run | status | list" },
+        { "name": "workflow", "type": "object", "required": false },
+        { "name": "workflowName", "type": "string", "required": false },
+        { "name": "composeRun", "type": "function", "required": false }
+      ],
+      "outputs": [
+        { "name": "workflow", "type": "object" },
+        { "name": "results", "type": "array" },
+        { "name": "status", "type": "string" },
+        { "name": "failedStep", "type": "string" }
+      ],
+      "deps": [],
+      "tags": ["guardrails", "workflow", "orchestration"],
+      "status": "closed-loop"
+    },
+    {
+      "id": "guardrails-pipeline",
+      "file": "40-guardrails-pipeline.mjs",
+      "name": "Guardrails Pipeline — 全栈守卫 vs 裸循环比较实验",
+      "category": "guardrails",
+      "pure": false,
+      "needsEnv": [],
+      "description": "Forge 式全栈 guardrails 效果比较: 工具调用校验 + 步骤强制 + 错误追踪 + 重试引导。compare 模式跑 4 场景 × N 次对比基线 vs 干预。",
+      "inputs": [
+        { "name": "op", "type": "string", "required": true, "description": "compare | run_pipeline | run_baseline" },
+        { "name": "scenario", "type": "object", "required": false },
+        { "name": "live", "type": "boolean", "required": false, "default": false },
+        { "name": "repeats", "type": "number", "required": false, "default": 5 }
+      ],
+      "outputs": [
+        { "name": "baseline", "type": "object", "description": "基线指标" },
+        { "name": "treatment", "type": "object", "description": "干预指标" },
+        { "name": "delta", "type": "object", "description": "差值" },
+        { "name": "verdict", "type": "string", "description": "H0 | H1" }
+      ],
+      "deps": [],
+      "tags": ["guardrails", "pipeline", "comparison", "experiment"],
       "status": "closed-loop"
     }
   ]

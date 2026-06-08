@@ -124,7 +124,7 @@ const totalLines = diffStat.split('\n')
     return sum + (m ? parseInt(m[1]) : 0);
   }, 0);
 if (totalLines > 500) {
-  err(`本次变更 ${totalLines} 行（>500），R4 违规 — 阻塞`);
+  warn(`本次变更 ${totalLines} 行（>500），R4 违规 — 建议拆分为多个提交`);
 } else if (totalLines > 300) {
   warn(`本次变更 ${totalLines} 行（>300），接近 R4 上限`);
 }

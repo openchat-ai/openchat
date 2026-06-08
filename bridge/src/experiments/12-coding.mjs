@@ -12,6 +12,35 @@ export const META = { id: 'coding' };
 const NAME = 'Coding — 编程工具核心 (coding-tools + quality-gate)';
 const TMP_DIR = path.join(process.cwd(), 'tests', 'experiments', '_tmp_coding');
 
+// compose 契约入口：通过 coding-tools 执行文件操作
+//   inputs: { op, path, content?, search?, replace?, hash?, newContent?, options?, force? }
+//   outputs: { result }
+export async function run({ inputs = {} } = {}) {
+  const { op } = inputs;
+  if (!op) throw new Error('coding.run: op required');
+  const tools = await import('../../src/tools/coding-tools.mjs');
+  const args = { ...inputs };
+  delete args.op;
+  let result;
+  switch (op) {
+    case 'read_file':
+      result = await tools.readFile(args.path);
+      break;
+    case 'write_file':
+      result = await tools.writeFile(args.path, args.content);
+      break;
+    case 'edit_file':
+      result = await tools.editFile(args.path, args.search, args.replace, args);
+      break;
+    case 'hash_edit':
+      result = await tools.hashEdit(args.path, args.hash, args.newContent);
+      break;
+    default:
+      result = await tools.executeTool(op, args);
+  }
+  return { outputs: { result } };
+}
+
 async function testCoding() {
   await fs.rm(TMP_DIR, { recursive: true, force: true }).catch(() => {});
   await fs.mkdir(TMP_DIR, { recursive: true });

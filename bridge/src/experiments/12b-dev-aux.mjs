@@ -7,6 +7,41 @@ import fs from 'fs/promises';
 
 export const META = { id: 'dev-aux' };
 
+export async function run({ inputs = {} } = {}) {
+  const { op, ...args } = inputs;
+  if (!op) throw new Error('dev-aux.run: op required');
+  switch (op) {
+    case 'commit_msg': {
+      const ac = await import('../../src/tools/auto-commit.mjs');
+      const diff = args.diff !== undefined ? args.diff : ac.gitDiff();
+      return { outputs: { message: ac.generateMessage(diff) } };
+    }
+    case 'project_context': {
+      const pc = await import('../../src/tools/project-context.mjs');
+      const sub = args.sub || 'all';
+      const result = {};
+      if (sub === 'files' || sub === 'all') result.relatedFiles = await pc.findRelatedFiles(args.path);
+      if (sub === 'deps' || sub === 'all') result.dependencies = await pc.findDependencies(args.path);
+      if (sub === 'structure' || sub === 'all') result.projectStructure = await pc.getProjectStructure(args.root);
+      return { outputs: result };
+    }
+    case 'diff_review': {
+      const dwp = await import('../../src/plugins/dev-workflow-plugin.mjs');
+      return { outputs: { result: await dwp.executeTool('diff_review', args) } };
+    }
+    case 'multi_edit': {
+      const dwp = await import('../../src/plugins/dev-workflow-plugin.mjs');
+      return { outputs: { result: await dwp.executeTool('multi_edit', args) } };
+    }
+    case 'ast_edit': {
+      const dwp = await import('../../src/plugins/dev-workflow-plugin.mjs');
+      return { outputs: { result: await dwp.executeTool('ast_edit', args) } };
+    }
+    default:
+      throw new Error(`dev-aux.run: unknown op "${op}"`);
+  }
+}
+
 const NAME = 'Dev-Aux — auto-commit / project-context / dev-repl / bin';
 
 async function testDevAux() {

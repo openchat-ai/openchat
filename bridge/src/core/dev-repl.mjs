@@ -1,7 +1,8 @@
 import { createInterface } from 'readline';
 import os from 'os';
 
-const MAX_ROUNDS = 16;
+const MAX_ROUNDS = 8;
+const MAX_REPEAT = 3;
 
 const toolModules = [
   { name: 'system_exec', import: () => import('../tools/system-exec.mjs'), toolsKey: 'TOOLS', execKey: 'executeTool' },
@@ -126,6 +127,7 @@ Call tools one at a time. After results, either call more tools or answer the us
 
     const messages = [systemMsg, { role: 'user', content: input }];
     let finalAnswer = '';
+    const callCount = new Map();
 
     for (let round = 0; round < MAX_ROUNDS; round++) {
       try {
@@ -153,6 +155,15 @@ Call tools one at a time. After results, either call more tools or answer the us
           messages.push({ role: 'assistant', content: content || null, tool_calls: toolCalls });
           for (const tc of toolCalls) {
             const n = tc.function?.name || tc.name;
+            const key = `${n}:${tc.function?.arguments || tc.arguments || '{}'}`;
+            const count = (callCount.get(key) || 0) + 1;
+            callCount.set(key, count);
+            if (count > MAX_REPEAT) {
+              const abortMsg = `[loop aborted: ${n} called ${count} times with same args]`;
+              process.stdout.write(`\x1b[31m${abortMsg}\x1b[0m\n`);
+              messages.push({ role: 'tool', tool_call_id: tc.id, content: abortMsg });
+              continue;
+            }
             let a = '';
             try { const p = JSON.parse(tc.function?.arguments || tc.arguments || '{}'); a = Object.keys(p).map(k => `${k}=${String(p[k]).slice(0, 40)}`).join(', '); } catch { a = (tc.function?.arguments || tc.arguments || '').slice(0, 40); }
             process.stdout.write(`  \x1b[33m→ ${n}(${a})\x1b[0m `);

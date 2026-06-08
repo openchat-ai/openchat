@@ -177,3 +177,88 @@ E36 → E37 → E38 → E40 单调递增, 每一步都在**不换模型**的前�
 - **C 计划上限还没到**: 5 件套都补齐后 100% 端到端, 接下来可以扩任务复杂度 (E41: 多步 MQTT client with onMessage) 验证 scaffold 横向扩展性。
 
 **E40 完成度**: 端到端 sandbox 验证 ✅ (3/3, 字节对 expected), C 计划 JS 整合脚手架第 5 件套已落地。
+
+---
+
+## 7. E41 — Router Provider 接入 + 15 次长跑
+
+**目标**: 把 user 已写好的 RouterProvider + adapter failover 流程 (在 `provider-registry.js` 里 inline) 接到 `openai-compatible.js:867` 的 `createProvider` 这条 hot path, 验证 failover 在 E39 这种 8 维端到端任务上的实际价值.
+
+### 7.1 改动 (3 个文件, 1 个新文件)
+
+| 文件 | 操作 | 改了什么 |
+|---|---|---|
+| `providers/provider-router.js` | **新建** | 抽出 `RouterProvider` + `buildAdapterProviders` + `loadOpenChatConfig` 三个工具, 跟 `provider-registry.js` 内联版等价. 单向引用 openai-compatible.js (底类) + anthropic-adapter.js (factory), 不引 provider-registry.js, 避免循环. |
+| `providers/openai-compatible.js` | **改** | 顶部加 import, `createProvider` (line 867) 在原逻辑前插入: 读 `~/.config/openchat/config.json` 的 `providers.<id>.adapter` 段, 调 `buildAdapterProviders`, 非空就 wrap `RouterProvider` 返回. user 的 `provider-registry.js` 没动 (你还在迭代). |
+| `buildAdapterProviders` 内的 openai 分支 | **修循环 bug** | 第一次写时调 `createOpenAIProvider` (factory), 触发 `createProvider` → `buildAdapterProviders` 死循环. 改成直接 `new OpenAICompatibleProvider` (底层类, 不再走 factory). |
+
+### 7.2 Router 真的接到了 hot path (验证脚本)
+
+```
+type: RouterProvider                                  ← 不是 OpenAICompatibleProvider
+MiniMax-M3: __multiProtocol=failover
+  providers: AnthropicAdapter@https://api.minimaxi.com/anthropic
+           | OpenAICompatibleProvider@https://api.minimaxi.com/v1
+default baseUrl: https://api.minimaxi.com/v1
+```
+
+minimax 在 hot path 上现在是 `RouterProvider`, MiniMax-M3 走 `failover` 策略, 每次先打 anthropic endpoint, 失败 fallback 到 openai endpoint. user 改的 `anthropic-adapter.js` 真的进了 LLM 调用链.
+
+### 7.3 15 次长跑结果
+
+| 实验 | 样本 | 端到端通过率 | timeout | 其它失败 |
+|---|---|---|---|---|
+| **E36** (raw, 无 scaffold, 写字节) | 15 | 27% (4/15) | **40% (6/15)** | 33% (字节错/格式错) |
+| **E40** (单 endpoint, 写代码) | 3 | 100% (3/3) | 0% | 0% |
+| **E41** (router failover, 写代码) | **15** | **100% (15/15)** | **0%** | 0% |
+
+E41 15/15 8 维全 100%, 0 timeout, 0 任何失败. 8 维 (sourceExtracted / functionShapeOk / renderConnectCalled/ArgsOk / renderSubscribeCalled/ArgsOk / sandboxRan / packetsSentCorrect) 每条都 1.0.
+
+### 7.4 Router 实际价值评估
+
+**15 次样本里看不到 router 救场**, 因为 0/15 timeout. E36 baseline 6/15 = 40% timeout **不能直接拿来对比**, 原因:
+
+- **任务复杂度差**: E36 prompt 长 (含完整协议细节 + 要求 LLM 算字节), E41 prompt 短 (只要求 LLM 写函数, 字节交给 renderConnect 工具)
+- **LLM 思考时间差**: E36 LLM 要算字节 (易卡住), E41 LLM 直接调工具生成字节 (不会卡)
+- **prompt 长度差**: E36 prompt 包含 4 个工具 schema 加上 E37 协议字段; E41 prompt 简单. 长 prompt 更容易撞 provider token 限流 / 队列堆积
+
+**这意味着**: 15 次 E41 的 0/15 timeout **不能证明** router 没价值, 只能证明"在 E41 这种简单任务上 provider 抖动概率低, 15 次样本里没碰到".
+
+**要量化 router 价值, 需要**:
+- (a) **跑 E40 (无 router) 15 次对照** — 同样 prompt 同样任务, 看 timeout 率. 如果 E40 也有 0/15 timeout, 那 15 次样本看不到任何 router 价值. 如果 E40 有 2-3/15 timeout 而 E41 是 0/15, 量化了 "router 救了多少".
+- (b) **跑更大样本 (50-100 次)** — 长尾才能看到 provider 抖动.
+- (c) **加任务复杂度 (E42: 写完整 MQTT client 含 onMessage)** — prompt 变长, 抖动概率上升, router 价值更明显.
+
+### 7.5 配置策略警告
+
+user 当前 config 顺序是 **anthropic 在前, openai 在后**:
+```json
+"adapter": { "MiniMax-M3": {
+  "anthropic": { "baseURL": "https://api.minimaxi.com/anthropic" },
+  "openai":    { "baseURL": "https://api.minimaxi.com/v1" },
+  "strategy": "failover"
+}}
+```
+
+这意味着每次请求**先打 anthropic, 失败才 fallback**. 实测发现: 早期一轮跑出 2/3 (1 run anthropic 慢响应, sandbox 3s 内没回来, "no source"). 后续 15/15 全过说明 provider 状态在好转.
+
+**建议 (待 user 决定)**:
+- 方案 A: 调 config 把 `openai` 放前, `anthropic` 放后 (openai 之前 E40 验证稳定, 放前面避免每次先撞 anthropic 慢路径).
+- 方案 B: 给 `AnthropicAdapter.chat` 加更短超时 (例如 5s), 配合 `Promise.race` 让 failover 更快触发.
+- 方案 C: 跑 (a)/(b)/(c) 拿到 router 价值数据, 再决定.
+
+### 7.6 改动影响表 (user 7 个改动对 E36-E41 现在的实际影响)
+
+| 文件 | 之前 (E36-E40) | 现在 (E41) |
+|---|---|---|
+| `utils/normalize.js` | 跑了, 但 ```js 代码块反引号不处理 (extractor 那边剥) | 同上 (行为不变) |
+| `providers/provider-registry.js` | ❌ 没用 (E36-E40 调 `createProvider` 不调 `providerRegistry`) | 仍然没用 (但 RouterProvider 抽出来后, 将来可 import 复用, 干掉重复) |
+| `providers/anthropic-adapter.js` | ❌ 完全没用 | ✅ **进 hot path** (通过 RouterProvider 调 anthropic endpoint) |
+| `providers/azure-adapter.js` / `bedrock-adapter.js` | ❌ 没用 | ❌ 仍没用 (但 registry 里其它 provider 跑会用到) |
+| `providers/provider-error-adapter.js` | ❌ withRetry/withTimeout 没人调 | ❌ 仍没人调 (但 `ProviderError` 类被 anthropic-adapter 用了) |
+| `providers/openai-compatible.js` (我的接入) | 单 endpoint | ✅ 走 `RouterProvider`, failover 救场 |
+
+**3 个改动现在真的进了 E36-E41 hot path**: `anthropic-adapter` + `openai-compatible.js` 的 router 接入 + `provider-router.js` 新模块.
+
+**E41 完成度**: router 接入 hot path ✅, 15/15 8 维 100%, 0 timeout. **但 15 次样本里看不出 router 实际救了多少 baseline timeout** — 需要 (a)/(b)/(c) 之一才能量化.
+

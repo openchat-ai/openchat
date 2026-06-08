@@ -1,10 +1,78 @@
 // Experiment 14: 存储 + Provider 接线
+// Manifest id: storage
+// I/O: 见各 op
 //
 // - persistent-store.js: 会话/provider 持久化（~/.openchat/sessions.json + providers.json）
 // - provider-service.js: provider-kit 单一入口（唯一 import provider-kit 的文件）
 // - tool-registry.js:    工具注册中心（read_memory / web_fetch / calculate / finish）
 
 import { create } from './lib/report.mjs';
+
+export const META = { id: 'storage' };
+
+export async function run({ inputs = {} } = {}) {
+  const { op, ...args } = inputs;
+  if (!op) throw new Error('storage.run: op required');
+
+  // session.*
+  if (op.startsWith('session.')) {
+    const { persistentStore } = await import('../../src/core/persistent-store.js');
+    const sub = op.slice(8);
+    switch (sub) {
+      case 'get': return { outputs: { result: persistentStore.getSession(args.id) } };
+      case 'set': persistentStore.setSession(args.id, args.data); return { outputs: { ok: true } };
+      case 'delete': persistentStore.deleteSession(args.id); return { outputs: { ok: true } };
+      case 'all': return { outputs: { result: persistentStore.getAllSessions() } };
+      default: throw new Error(`storage.run: unknown op "${op}"`);
+    }
+  }
+
+  // provider.*
+  if (op.startsWith('provider.')) {
+    const { persistentStore } = await import('../../src/core/persistent-store.js');
+    const sub = op.slice(9);
+    switch (sub) {
+      case 'get': return { outputs: { result: persistentStore.getProvider(args.id) } };
+      case 'set': persistentStore.setProvider(args.id, args.data); return { outputs: { ok: true } };
+      case 'delete': persistentStore.deleteProvider(args.id); return { outputs: { ok: true } };
+      case 'all': return { outputs: { result: persistentStore.getAllProviders() } };
+      default: throw new Error(`storage.run: unknown op "${op}"`);
+    }
+  }
+
+  // tool.*
+  if (op.startsWith('tool.')) {
+    const { toolRegistry } = await import('../../src/core/tool-registry.js');
+    const sub = op.slice(5);
+    switch (sub) {
+      case 'list': return { outputs: { tools: toolRegistry.list() } };
+      case 'call': return { outputs: { result: await toolRegistry.call(args.name, args.args) } };
+      default: throw new Error(`storage.run: unknown op "${op}"`);
+    }
+  }
+
+  // 直接工具调用（快捷 op）
+  switch (op) {
+    case 'web_fetch': {
+      const { toolRegistry } = await import('../../src/core/tool-registry.js');
+      return { outputs: { result: await toolRegistry.call('web_fetch', { url: args.url }) } };
+    }
+    case 'calculate': {
+      const { toolRegistry } = await import('../../src/core/tool-registry.js');
+      return { outputs: { result: await toolRegistry.call('calculate', { expression: args.expression }) } };
+    }
+    case 'finish': {
+      const { toolRegistry } = await import('../../src/core/tool-registry.js');
+      return { outputs: { result: await toolRegistry.call('finish', { answer: args.answer }) } };
+    }
+    case 'read_memory': {
+      const { toolRegistry } = await import('../../src/core/tool-registry.js');
+      return { outputs: { result: await toolRegistry.call('read_memory', { query: args.query, scope: args.scope }) } };
+    }
+    default:
+      throw new Error(`storage.run: unknown op "${op}"`);
+  }
+}
 
 const { ok, ng, skip, report } = create();
 const NAME = 'Storage/Provider — persistent-store / provider-service / tool-registry';

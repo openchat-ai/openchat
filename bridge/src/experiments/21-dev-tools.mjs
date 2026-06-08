@@ -8,6 +8,165 @@ import assert from 'node:assert';
 export const META = { id: 'dev-tools' };
 const NAME = 'Dev-Tools — 16 个工程工具';
 
+// compose 契约入口：ops 包括原有 dev-tools 操作 + 系统健康检查
+export async function run({ inputs = {} } = {}) {
+  const { op, ...args } = inputs;
+  if (!op) throw new Error('dev-tools.run: op required');
+  const tools = await import('../tools/dev-tools.mjs');
+
+  switch (op) {
+    // === 系统健康检查（从实验 26-30 收编） ===
+
+    case 'check_tracing': {
+      const { generate, createSpan, endSpan, getTrace, formatLog } = await import('../tools/request-id.mjs');
+      const id = generate();
+      const child = createSpan('', 'child');
+      const grandchild = createSpan(child, 'grandchild');
+      endSpan(grandchild);
+      endSpan(child);
+      const trace = getTrace(grandchild);
+      const log = formatLog(id, 'hello', 'world');
+      return {
+        outputs: {
+          requestId: id,
+          spanCount: trace.length,
+          spanNames: trace.map(s => s.name),
+          logExample: log,
+        },
+      };
+    }
+
+    case 'check_failover': {
+      const { persistentConfig } = await import('../core/persistent-config.js');
+      const cfg = persistentConfig.config || {};
+      const providerId = cfg.current?.provider || '';
+      const prov = cfg.providers?.[providerId];
+      const failoverChain = prov?.failover || prov?.fallback || [];
+      const apiKeyOk = !!prov?.apiKey;
+      return {
+        outputs: {
+          provider: providerId,
+          model: cfg.current?.model || '',
+          hasApiKey: apiKeyOk,
+          failoverCount: Array.isArray(failoverChain) ? failoverChain.length : 0,
+          failoverChain: Array.isArray(failoverChain) ? failoverChain : [],
+          healthy: apiKeyOk,
+        },
+      };
+    }
+
+    case 'check_backpressure': {
+      const { persistentConfig } = await import('../core/persistent-config.js');
+      const cfg = persistentConfig.config || {};
+      const defaultMax = 20;
+      let pollerOk = false;
+      try {
+        const { tsFromKey, parseMsgPayload } = await import('../core/chat-poller.mjs');
+        pollerOk = typeof tsFromKey === 'function' && typeof parseMsgPayload === 'function';
+      } catch {}
+      return {
+        outputs: {
+          maxInFlight: defaultMax,
+          chatPollerLoaded: pollerOk,
+          note: 'inFlight state is module-private in chat-poller.mjs; runtime backpressure not externally observable',
+        },
+      };
+    }
+
+    case 'check_sessions': {
+      const { persistentStore } = await import('../core/persistent-store.js');
+      const all = persistentStore.getAllSessions();
+      return {
+        outputs: {
+          sessionCount: all.length,
+          sessionIds: all.map(s => s.id),
+          sessions: all,
+        },
+      };
+    }
+
+    case 'check_recovery': {
+      const { persistentStore } = await import('../core/persistent-store.js');
+      const sessions = persistentStore.getAllSessions();
+      const { homedir } = await import('os');
+      const { join } = await import('path');
+      const sessionsFile = join(homedir(), '.openchat', 'sessions.json');
+      const fs = await import('fs/promises');
+      let fileExists = false;
+      try { await fs.access(sessionsFile); fileExists = true; } catch {}
+      return {
+        outputs: {
+          sessionsFileExists: fileExists,
+          sessionCount: sessions.length,
+          note: 'seenKeys is module-private in chat-poller.mjs; recovery state not externally observable',
+        },
+      };
+    }
+
+    // === 原有 dev-tools 操作（通过 tools module 代理） ===
+
+    case 'dep_graph':
+    case 'depGraph':
+      return { outputs: { result: await tools.depGraph(args.rootDir) } };
+    case 'detect_cycles':
+    case 'detectCycles':
+      return { outputs: { result: await tools.detectCycles(args.rootDir) } };
+    case 'to_mermaid':
+    case 'toMermaid':
+      return { outputs: { result: tools.toMermaid(args.edges) } };
+    case 'git_commit':
+    case 'gitCommit':
+      return { outputs: { result: tools.gitCommit(args.context) } };
+    case 'git_log':
+    case 'gitLog':
+      return { outputs: { result: tools.gitLog(args.count) } };
+    case 'test_run':
+    case 'testRun':
+      return { outputs: { result: await tools.testRun(args.pattern) } };
+    case 'test_discover':
+    case 'testDiscover':
+      return { outputs: { result: await tools.testDiscover(args.rootDir) } };
+    case 'lint_run':
+    case 'lintRun':
+      return { outputs: { result: tools.lintRun(args.pattern) } };
+    case 'lint_fix':
+    case 'lintFix':
+      return { outputs: { result: tools.lintFix(args.pattern) } };
+    case 'build_run':
+    case 'buildRun':
+      return { outputs: { result: tools.buildRun(args.command) } };
+    case 'ts_typecheck':
+    case 'tsTypeCheck':
+      return { outputs: { result: tools.tsTypeCheck(args.pattern) } };
+    case 'lang_run':
+    case 'langRun':
+      return { outputs: { result: tools.langRun(args.language, args.command) } };
+    case 'docker_build':
+    case 'dockerBuild':
+      return { outputs: { result: tools.dockerBuild(args.tag, args.dockerfile) } };
+    case 'sql_parse':
+    case 'sqlParse':
+      return { outputs: { result: tools.sqlParseCreate(args.sql) } };
+    case 'curl_run':
+    case 'curlRun':
+      return { outputs: { result: await tools.curlRun(args.method, args.url, args.body) } };
+    case 'sec_audit':
+    case 'secAudit':
+      return { outputs: { result: tools.secNpmAudit() } };
+    case 'docs_suggest':
+    case 'docsFindChanged':
+      return { outputs: { result: tools.docsFindChanged() } };
+    case 'ci_detect':
+    case 'ciDetect':
+      return { outputs: { result: tools.ciDetect() } };
+    case 'env_diff':
+    case 'envDiff':
+      return { outputs: { result: tools.envDiff(args.a, args.b) } };
+    default:
+      throw new Error(`dev-tools.run: unknown op "${op}"`);
+  }
+}
+
 export async function test() {
   const R = create();
   const tools = await import('../tools/dev-tools.mjs');

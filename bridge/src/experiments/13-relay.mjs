@@ -6,6 +6,50 @@
 
 import { create } from './lib/report.mjs';
 
+export const META = { id: 'relay' };
+
+export async function run({ inputs = {} } = {}) {
+  const { op, ...args } = inputs;
+  if (!op) throw new Error('relay.run: op required');
+
+  if (op === 'subscribe' || op === 'publish' || op === 'send_to' || op === 'reply' || op === 'broadcast' || op === 'delegate') {
+    const { messageBus } = await import('../../src/core/message-bus.js');
+    switch (op) {
+      case 'subscribe': {
+        const unsub = messageBus.subscribe(args.topic, args.handler);
+        return { outputs: { unsub } };
+      }
+      case 'publish': messageBus.publish(args.topic, args.data); return { outputs: { ok: true } };
+      case 'send_to': messageBus.sendTo(args.from, args.to, args.content, args.ref); return { outputs: { ok: true } };
+      case 'reply': messageBus.reply(args.targetMsg, args.content); return { outputs: { ok: true } };
+      case 'broadcast': messageBus.broadcast(args.from, args.content); return { outputs: { ok: true } };
+      case 'delegate': messageBus.delegate(args.from, args.to, args.content); return { outputs: { ok: true } };
+    }
+  }
+
+  switch (op) {
+    case 'best_write': {
+      const { BucketRelay } = await import('../../src/core/bucket-relay.js');
+      return { outputs: { result: (await _makeBucketRelay(args)).getBestWriteBucket() } };
+    }
+    case 'best_read': {
+      const { BucketRelay } = await import('../../src/core/bucket-relay.js');
+      return { outputs: { result: (await _makeBucketRelay(args)).getBestReadBucket() } };
+    }
+    default:
+      throw new Error(`relay.run: unknown op "${op}"`);
+  }
+}
+
+async function _makeBucketRelay(args) {
+  const { BucketRelay } = await import('../../src/core/bucket-relay.js');
+  const r = new BucketRelay(args.writer || { writeTo: async () => {} }, args.peerId || 'test');
+  if (args.buckets) r._buckets = args.buckets;
+  if (args.writeLatency) for (const [k, v] of Object.entries(args.writeLatency)) r._writeLatency.set(k, v);
+  if (args.readLatency) for (const [k, v] of Object.entries(args.readLatency)) r._readLatency.set(k, v);
+  return r;
+}
+
 const { ok, ng, skip, report } = create();
 const NAME = 'Relay — bucket-relay / signal-relay / message-bus';
 

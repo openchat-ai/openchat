@@ -19,7 +19,8 @@ Rules:
 
 ${getEditProtocolGuidance()}`;
 
-const MAX_ROUNDS = 12;
+const MAX_ROUNDS = 8;
+const MAX_REPEAT = 3;
 let _provider = null;
 let _model = null;
 const _sessions = new Map(); // chatId → { history, sessionId }
@@ -53,39 +54,70 @@ function _getOrCreateSession(chatId) {
   return entry;
 }
 
-export async function processText(text, chatId = 'default') {
+export async function processText(text, chatId = 'default', opts = {}) {
   if (!_provider) throw new Error('call initProvider() first');
   const entry = _getOrCreateSession(chatId);
   entry.history.push({ role: 'user', content: text });
 
+  const guardian = opts.guardian || null;
   let finalText = '';
+  const callCount = new Map();
 
   for (let round = 0; round < MAX_ROUNDS; round++) {
     const rawResponse = await _provider.chat(_model, entry.history, {
       tools: CODING_TOOLS,
     });
 
-    const p = runPipeline(rawResponse);
-    const toolCalls = p.toolCalls;
+    let toolCalls;
+    if (guardian) {
+      // guardian 模式: 先校验整个响应
+      const v = guardian.validateResponse(rawResponse);
+      toolCalls = v.toolCalls;
+      if (!v.valid) {
+        const nudge = v.errors.map(e => `[Guardian] ${e.tool}: ${e.error}`).join('\n');
+        entry.history.push({ role: 'tool', tool_call_id: 'guardian', content: nudge });
+        if (v.toolCalls.length === 0) continue;
+      }
+    } else {
+      const p = runPipeline(rawResponse);
+      toolCalls = p.toolCalls;
+    }
 
     if (toolCalls && toolCalls.length > 0) {
       const asstMsg = {
         role: 'assistant',
-        content: p.content || null,
+        content: rawResponse.content || null,
         tool_calls: toolCalls.map(tc => ({
           id: tc.id,
           type: 'function',
-          function: { name: tc.name, arguments: tc.arguments },
+          function: { name: tc.name, arguments: typeof tc.arguments === 'string' ? tc.arguments : JSON.stringify(tc.args || {}) },
         })),
       };
       entry.history.push(asstMsg);
 
       for (const tc of toolCalls) {
-        const result = await _execTool(tc.name, tc.arguments);
-        entry.history.push({ role: 'tool', tool_call_id: tc.id, content: result });
+        const rawArgs = tc.function?.arguments || tc.arguments || '{}';
+        const key = `${tc.name}:${rawArgs}`;
+        const count = (callCount.get(key) || 0) + 1;
+        callCount.set(key, count);
+        if (count > MAX_REPEAT) {
+          finalText = `[loop aborted: ${tc.name} called ${count} times with same args]`;
+          entry.history.push({ role: 'tool', tool_call_id: tc.id, content: finalText });
+          break;
+        }
+
+        if (guardian) {
+          const g = await guardian.wrap(tc, _execTool);
+          entry.history.push({ role: 'tool', tool_call_id: tc.id, content: g.ok ? g.result : g.error });
+          if (g.bypassedByGuardian) break;
+        } else {
+          const result = await _execTool(tc.name, rawArgs);
+          entry.history.push({ role: 'tool', tool_call_id: tc.id, content: result });
+        }
       }
+      if (finalText) break;
     } else {
-      finalText = p.content || '';
+      finalText = rawResponse.content || '';
       break;
     }
   }

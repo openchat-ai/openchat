@@ -11,7 +11,13 @@
 //     agent: { text: 'hello', chatId: 'c1' },
 //   });
 //
-//   // 3. 列清单 / 看依赖图
+//   // 3. pipeline（串联）
+//   const { config, result } = await pipeline([
+//     { id: 'config' },
+//     { id: 'guardrails-pipeline', inputs: { op: 'run_pipeline', scenario: { id: 'test', text: 'hi', tools: [], mockSeq: [] } } },
+//   ]);
+//
+//   // 4. 列清单 / 看依赖图
 //   list();             // → manifest.experiments
 //   getMeta('codec');   // → 单个实验的 manifest
 //   printDeps('chat-poller');  // → 依赖树
@@ -124,6 +130,28 @@ export function printDeps(id) {
   }
   visit(id);
   return lines.join('\n');
+}
+
+// pipeline — 按序串联实验，前一个 outputs 作为后一个 inputs
+// stages: [{ id, inputs?, map? }]
+//   - id: 实验 id
+//   - inputs: 额外输入（可选，合并到前一步 outputs）
+//   - map: (prevOutputs) => inputs 转换函数（可选，优先级高于 inputs）
+// 示例:
+//   await pipeline([
+//     { id: 'config' },
+//     { id: 'tool-rescue', map: out => ({ op: 'validate', toolName: 'read_file', args: { path: out.config?.projectDir } }) },
+//   ]);
+export async function pipeline(stages, initialInput = {}) {
+  let acc = { ...initialInput };
+  for (const st of stages) {
+    const inputs = st.map ? st.map(acc) : { ...acc, ...st.inputs };
+    const { outputs } = await _runExp(_meta(st.id), inputs);
+    if (outputs !== null && typeof outputs === 'object') {
+      acc = { ...acc, ...outputs };
+    }
+  }
+  return acc;
 }
 
 // 汇总：所有实验的 outputs（用于调试/序列化）
