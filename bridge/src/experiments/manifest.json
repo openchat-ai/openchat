@@ -515,6 +515,17 @@
       "description": "验证 persistent-store session 持久化 + seenKeys prime 恢复逻辑",
       "deps": ["chat-poller"],
       "tags": ["recovery", "persistence", "resilience"]
+    },
+    {
+      "id": "mqtt-adapter",
+      "file": "31-mqtt-adapter/test.mjs",
+      "name": "MQTT 设备协议适配器",
+      "category": "protocol",
+      "pure": true,
+      "needsEnv": [],
+      "description": "mqtt-adapter.mjs: net 模块模拟 MQTT 3.1.1, 支持多连接/订阅/发布/断线重连",
+      "deps": [],
+      "tags": ["mqtt", "protocol", "adapter"]
     }
   ]
 }

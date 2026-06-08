@@ -109,7 +109,16 @@ class PersistentConfig {
     ensureDir(LOGS_DIR);
     ensureDir(HOUSES_DIR);
 
-    this.config = readJson(CONFIG_FILE, DEFAULT_CONFIG);
+    // 优先从新路径 ~/.config/openchat/config.json 加载
+    // 回退到旧路径 ~/.openchat/config.json
+    const newCfg = readJson(NEW_CONFIG_FILE, null);
+    const oldCfg = readJson(CONFIG_FILE, null);
+    this.config = newCfg || oldCfg || DEFAULT_CONFIG;
+    // 合并旧配置的 bridge + sessionHistory（新配置不存这些字段）
+    if (oldCfg) {
+      if (oldCfg.bridge && !this.config.bridge) this.config.bridge = oldCfg.bridge;
+      if (oldCfg.sessionHistory) this.config.sessionHistory = oldCfg.sessionHistory;
+    }
   }
 
   // ================== 提供商管理 ==================
@@ -318,7 +327,8 @@ class PersistentConfig {
   // ================== 保存 ==================
 
   save() {
-    writeJson(CONFIG_FILE, this.config);
+    // 写入新路径（规范存储）；旧路径不再写入
+    writeJson(NEW_CONFIG_FILE, this.config);
   }
 
   // ================== 路径信息 ==================
