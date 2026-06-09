@@ -152,6 +152,18 @@ export function getHistory(chatId) {
   return entry ? [...entry.history] : [];
 }
 
+// compose 契约入口
+//   inputs: { text, chatId?, guardian? }
+//   deps:   { guardian: { guardian } }
+//   outputs: { response, toolCalls }
+export async function run({ inputs = {}, deps = {} } = {}) {
+  const { text, chatId = 'default' } = inputs;
+  if (!text) throw new Error('skeleton-agent.run: text required');
+  const guardianOpt = inputs.guardian || deps.guardian?.guardian;
+  const r = await processText(text, chatId, guardianOpt ? { guardian: guardianOpt } : {});
+  return { outputs: { response: r.response || '', toolCalls: r.toolCalls || [] } };
+}
+
 export async function generateSessionName(chatId) {
   if (!_provider) throw new Error('provider not initialized');
   const entry = _sessions.get(chatId);

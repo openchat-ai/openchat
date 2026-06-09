@@ -38,12 +38,12 @@
     },
     {
       "id": "agent",
-      "file": "2-agent.mjs",
+      "file": "../../scripts/skeleton-agent.mjs",
       "name": "LLM 代理 (provider-kit)",
       "category": "llm",
       "pure": false,
       "needsEnv": [],
-      "description": "skeleton-agent：经 provider-kit 调 LLM，per-chat session，多轮工具循环。",
+      "description": "skeleton-agent（script）：经 provider-kit 调 LLM，多轮工具循环，默认 guardian 守卫。",
       "inputs": [
         { "name": "text",   "type": "string",  "required": true,  "description": "用户消息" },
         { "name": "chatId", "type": "string",  "required": false, "default": "default", "description": "会话 id（隔离历史）" }
