@@ -7,7 +7,7 @@
 //   const { encoded } = await run('codec', { op: 'encode', pcm: buffer });
 //
 //   // 2. 多个实验（自动按 deps 拓扑排序）
-//   const { agent, qiniu } = await compose(['config', 'agent', 'qiniu'], {
+//   const { agent, qiniu } = await compose(['config', 'skeleton-agent', 'qiniu'], {
 //     agent: { text: 'hello', chatId: 'c1' },
 //   });
 //

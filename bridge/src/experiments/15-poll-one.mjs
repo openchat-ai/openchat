@@ -53,7 +53,7 @@ export async function run({ inputs = {} } = {}) {
   let reply = '';
   let agentError = null;
   try {
-    const r = await composeRun('agent', { text, chatId });
+    const r = await composeRun('skeleton-agent', { text, chatId });
     reply = r?.outputs?.response || '';
   } catch (e) {
     agentError = e.message;
