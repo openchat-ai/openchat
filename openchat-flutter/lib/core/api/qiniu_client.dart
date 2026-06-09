@@ -141,6 +141,11 @@ class QiniuDirectClient {
   }
 
   Future<void> putBinary(String key, Uint8List data) async {
+    // oc/recordings/ 只允许 .epc，禁止 .enc 写入
+    if (key.startsWith('oc/recordings/') && key.endsWith('.enc')) {
+      log('warn', 'putBinary rejected: .enc not allowed in oc/recordings/');
+      return;
+    }
     try {
       final config = QiniuConfigRegistry.snapshot();
       final uri = Uri.parse('https://upload-z0.qiniup.com/');
