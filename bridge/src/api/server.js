@@ -291,7 +291,7 @@ function viewFile(key){
         c.innerHTML = '<textarea id="editor">'+escHtml(pretty)+'</textarea>'
           +'<div class="btn-row">'
           +'<button onclick="saveFile()">Save</button>'
-          +'<button class="danger" onclick="deleteFile(\''+escAttr(key)+'\')">Delete</button>'
+          +'<button class="danger" onclick="deleteFile(this.dataset.key)" data-key="'+escAttr(key)+'">Delete</button>'
           +'</div>';
       }).catch(e=>c.textContent='Fetch error: '+e.message);
     }).catch(e=>c.textContent='Error: '+e.message);
