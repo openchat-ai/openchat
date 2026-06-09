@@ -9,6 +9,12 @@ import { autoNameIfNeeded } from './session-namer.mjs';
 import { run as composeRun } from '../experiments/compose.mjs';
 import { generate as genId, createSpan, endSpan, formatLog } from '../tools/request-id.mjs';
 
+let _quiet = false;
+export function setQuiet(v) { _quiet = v; }
+
+function _log(...args) { if (!_quiet) console.log(...args); }
+function _warn(...args) { if (!_quiet) console.warn(...args); }
+
 // === invariants ===
 // - Polls oc/chat/ every POLL_INTERVAL_MS
 // - Processes .enc (lmdn voice) and .msg (text, EPC BB 00 DD) files
@@ -84,7 +90,7 @@ export function parseMsgPayload(key, raw) {
     return null;
   }
   if (msg.type !== 'text' || !msg.text) {
-    console.warn(`[chat-poller] unexpected msg format in ${key}`);
+    _warn(`[chat-poller] unexpected msg format in ${key}`);
     return null;
   }
   const parts = key.split('/');
@@ -97,14 +103,14 @@ export async function handleMessage(key, raw, reqId) {
   reqId = reqId || genId();
   const parsed = parseMsgPayload(key, raw);
   if (!parsed) return;
-  console.log(formatLog(reqId, `text=${parsed.text.substring(0, 80)}`));
+  _log(formatLog(reqId, `text=${parsed.text.substring(0, 80)}`));
 
   const span = createSpan(reqId, 'composeRun');
   try {
     const r = await _deps.composeRun('poll-one', { msgKey: key, text: parsed.text, chatId: parsed.chatId });
     const reply = { reply: r.outputs.reply, replyKey: r.outputs.replyKey, error: r.outputs.error, sourceKey: key, chatId: parsed.chatId };
     _afterReply(parsed.chatId, reply);
-    console.log(formatLog(reqId, `reply=${(r.outputs.reply || '').slice(0, 40)}`));
+    _log(formatLog(reqId, `reply=${(r.outputs.reply || '').slice(0, 40)}`));
     return reply;
   } finally { endSpan(span); }
 }
@@ -122,7 +128,7 @@ export async function handleVoice(key, raw, reqId) {
   const parts = key.split('/');
   const chatId = parts.length >= 3 ? parts[2] : 'default';
   const text = '[用户发来一段语音消息]';
-  console.log(formatLog(reqId, `voice decoded ${decoded.pcm.length}B -> text placeholder`));
+  _log(formatLog(reqId, `voice decoded ${decoded.pcm.length}B -> text placeholder`));
 
   const reply = await _agentAndUpload(text, chatId, key, reqId);
   _afterReply(chatId, reply);
@@ -135,13 +141,13 @@ export async function processOne(key) {
   if (_inFlight.size >= MAX_IN_FLIGHT) return { skipped: 'backpressure' };
   if (_inFlight.has(key)) return { skipped: 'in-flight' };
   _inFlight.add(key);
-  console.log(formatLog(reqId, `start ${key}`));
+  _log(formatLog(reqId, `start ${key}`));
   const span = createSpan(reqId, 'processOne');
   try {
     const raw = await _deps.qiniuGet(key);
     if (!raw || raw.length === 0) return { skipped: 'empty' };
     const r = key.endsWith('.enc') ? await handleVoice(key, raw, reqId) : await handleMessage(key, raw, reqId);
-    console.log(formatLog(reqId, `done ${key}`));
+    _log(formatLog(reqId, `done ${key}`));
     return r;
   } catch (err) {
     console.error(formatLog(reqId, `error ${key}: ${err.message}`));
@@ -163,7 +169,7 @@ async function _agentAndUpload(text, chatId, key, reqId) {
   try {
     const r = await _deps.processText(text, chatId);
     reply = r?.response || '';
-    console.log(formatLog(reqId, `agent reply: ${reply.slice(0, 40)}`));
+    _log(formatLog(reqId, `agent reply: ${reply.slice(0, 40)}`));
   } catch (e) {
     agentError = e.message;
     console.error(formatLog(reqId, `agent error: ${e.message}`));
@@ -172,7 +178,7 @@ async function _agentAndUpload(text, chatId, key, reqId) {
   const replyText = reply || (agentError ? `[agent error] ${agentError}` : '(empty)');
   const payload = { text: replyText, sourceKey: key, ts: Date.now(), ...(agentError && { error: agentError }) };
   await _deps.qiniuPut(replyKey, Buffer.from(JSON.stringify(payload), 'utf8'));
-  console.log(formatLog(reqId, `uploaded ${replyKey}`));
+  _log(formatLog(reqId, `uploaded ${replyKey}`));
   return { reply: replyText, replyKey, error: agentError, sourceKey: key, chatId };
 }
 
@@ -186,7 +192,7 @@ function _afterReply(chatId, reply) {
 // === poll loop (long-running) ===
 
 async function _pollLoop() {
-  console.log('[chat-poller] starting...');
+  if (!_quiet) _log('[chat-poller] starting...');
   while (true) {
     try {
       const keys = await _deps.qiniuList(CHAT_PREFIX);
@@ -228,9 +234,9 @@ async function _primeSeenKeys() {
       if (k.includes('-reply.json')) continue;
       if (repliedSources.has(k)) seenKeys.add(k);
     }
-    console.log(`[chat-poller] primed: ${seenKeys.size} seen, ${keys.length - seenKeys.size} pending`);
+    _log(`[chat-poller] primed: ${seenKeys.size} seen, ${keys.length - seenKeys.size} pending`);
   } catch (e) {
-    console.warn('[chat-poller] prime failed:', e.message);
+    _warn('[chat-poller] prime failed:', e.message);
   }
 }
 
@@ -239,7 +245,7 @@ async function _uploadSduiConfig() {
   try {
     const content = await readFile(new URL('../../../docs/config/audio.json', import.meta.url), 'utf8');
     await _deps.qiniuPut('oc/config/audio.json', Buffer.from(content, 'utf8'));
-    console.log('[chat-poller] SDUI config uploaded');
+    _log('[chat-poller] SDUI config uploaded');
   } catch (e) {
     // 不阻塞启动
   }
@@ -252,7 +258,7 @@ export async function startChatPoll() {
   const codec = new _deps.LmdnCodec();
   await codec.initialize();
   _codec = codec;
-  console.log('[chat-poller] codec ready');
+  _log('[chat-poller] codec ready');
 
   try {
     await initProvider();

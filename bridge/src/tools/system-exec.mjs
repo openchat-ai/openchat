@@ -10,7 +10,7 @@
 import { execSync } from 'child_process';
 import { compressOutput } from './output-compressor.mjs';
 
-const ALLOWED_COMMANDS = ['ls', 'cat', 'echo', 'node', 'npm', 'git', 'pwd', 'dir', 'type', 'whoami', 'date', 'find', 'grep', 'head', 'tail', 'wc'];
+const ALLOWED_COMMANDS = ['ls', 'cat', 'echo', 'node', 'npm', 'git', 'pwd', 'dir', 'type', 'whoami', 'date', 'find', 'grep', 'head', 'tail', 'wc', 'cmd'];
 const BLOCKED_PATTERNS = [/\brm\b/, /\bdel\b/, /\bformat\b/, /\bsudo\b/, /\bshutdown\b/, /\breboot\b/, /\bhalt\b/, /\bpoweroff\b/, /\bmv\b/, /\bcp\b/, /\bchmod\b/, /\bchown\b/, /\bmkfs\b/, /\bdd\b/, /\b>|>>|\||;&\${/];
 const MAX_OUTPUT = 100 * 1024;
 const DEFAULT_TIMEOUT = 10000;
@@ -66,7 +66,7 @@ export const TOOLS = [
     type: 'function',
     function: {
       name: 'exec_command',
-      description: 'Execute a shell command on the host. Only safe commands are allowed (ls, cat, echo, node, npm, git, pwd, dir, type, whoami, date, find, grep, head, tail, wc). Use pipes/redirects with caution — shell metacharacters may be rejected.',
+      description: 'Execute a shell command on the host. Allowed: ls, cat, echo, node, npm, git, pwd, dir, type, whoami, date, find, grep, head, tail, wc, cmd. Use pipes/redirects with caution — shell metacharacters may be rejected.',
       parameters: {
         type: 'object',
         properties: {

@@ -282,7 +282,19 @@ export function createMockBroker(opts = {}) {
 
         switch (type) {
           case 1: {
-            const rc = (opts.refuseConnack !== undefined) ? opts.refuseConnack : 0;
+            // Track connect attempts server-wide (for refuseConnackCount)
+            server.attemptCount = (server.attemptCount || 0) + 1;
+            let rc;
+            if (opts.refuseConnackCount !== undefined) {
+              // Retry mode: refuse first N attempts, accept after
+              const shouldRefuse = server.attemptCount <= opts.refuseConnackCount;
+              rc = shouldRefuse
+                ? (opts.refuseConnack !== undefined ? opts.refuseConnack : 5)
+                : 0;
+            } else {
+              // Legacy: refuse always if refuseConnack is set, else accept
+              rc = (opts.refuseConnack !== undefined) ? opts.refuseConnack : 0;
+            }
             send(Buffer.from([0x20, 0x02, 0x00, rc]));
             if (rc !== 0) { socket.end(); return; }
             break;
@@ -334,6 +346,7 @@ export function createMockBroker(opts = {}) {
 
   server.published = published;
   server.subscriptions = subscriptions;
+  server.attemptCount = 0;  // exposed for refuseConnackCount / retry testing
   return server;
 }
 
@@ -405,6 +418,34 @@ export async function test() {
       else ng('refused error format: ' + e.message.substring(0, 30));
     }
     refBroker.close();
+
+    // 8b. CONNACK refused N times then accept (retry path)
+    //     49-mqtt-resume uses this to test LLM retry logic
+    const retryBroker = createMockBroker({ refuseConnackCount: 2, refuseConnack: 5 });
+    await new Promise((r) => retryBroker.listen(0, '127.0.0.1', r));
+    const retryPort = retryBroker.address().port;
+    try {
+      // First two attempts should fail
+      for (let i = 1; i <= 2; i++) {
+        try {
+          await mqttConnect('127.0.0.1', retryPort, 'retry-' + i, { timeout: 2000 });
+          ng(`retry attempt ${i} should throw`);
+          break;
+        } catch (e) {
+          if (e.message.includes('CONNACK refused')) ok(`retry attempt ${i}: refused (attemptCount=${retryBroker.attemptCount})`);
+          else ng(`retry attempt ${i}: bad error: ${e.message.substring(0, 30)}`);
+        }
+      }
+      // Third attempt should succeed
+      try {
+        const c3 = await mqttConnect('127.0.0.1', retryPort, 'retry-3', { timeout: 2000 });
+        ok(`retry attempt 3: succeeded (attemptCount=${retryBroker.attemptCount})`);
+        if (retryBroker.attemptCount !== 3) ng(`expected attemptCount=3, got ${retryBroker.attemptCount}`);
+        await c3.disconnect();
+      } catch (e) { ng('retry attempt 3: ' + e.message.substring(0, 30)); }
+    } finally {
+      retryBroker.close();
+    }
 
     // 9. unknown connId (dead session)
     try {

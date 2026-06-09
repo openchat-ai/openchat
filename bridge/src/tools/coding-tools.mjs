@@ -185,7 +185,7 @@ export async function executeTool(name, args) {
       return adapterExec(name, args);
     case 'mqtt_connect': case 'mqtt_subscribe': case 'mqtt_publish': case 'mqtt_disconnect':
       return mqttExec(name, args);
-    case 'read_memory': case 'memory_store':
+    case 'get_cwd': case 'read_memory': case 'memory_store':
       return memoryExec(name, args);
     default: throw new Error(`Unknown coding tool: ${name}`);
   }

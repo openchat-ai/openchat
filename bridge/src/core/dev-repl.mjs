@@ -78,7 +78,7 @@ function parseToolCalls(text) {
   return calls.length ? calls : null;
 }
 
-export async function startDevRepl(modelOverride) {
+export async function startDevRepl(modelOverride, chatId) {
   const cfg = JSON.parse(await import('fs/promises').then(fs => fs.readFile(os.homedir() + '/.config/openchat/config.json', 'utf8')));
   const providerName = cfg.current?.provider || 'minimax';
   const MODEL = modelOverride || cfg.current?.model || 'MiniMax-M3';
@@ -118,12 +118,19 @@ Call tools one at a time. After results, either call more tools or answer the us
   console.log(`\n  openchat bridge — dev mode (${MODEL})`);
   console.log(`  ${tools.length} tool(s) loaded\n`);
 
+  // 持久化 session（记录 chatId + cwd）
+  const sessionId = chatId || `repl_${Date.now()}`;
+  const { persistentStore } = await import('./persistent-store.js');
+  persistentStore?.setSession(sessionId, { chatId: sessionId, cwd: process.cwd(), lastActivity: Date.now(), type: 'repl' });
+
   const rl = createInterface({ input: process.stdin, output: process.stdout, prompt: '> ', terminal: process.platform !== 'win32' });
+  if (chatId) process.stdout.write(`\x1b[32m[continue session ${chatId.slice(0, 12)}...]\x1b[0m\n`);
   rl.prompt();
 
   for await (const line of rl) {
     const input = line.trim();
     if (!input || input === 'exit' || input === 'quit') { if (input === 'exit' || input === 'quit') break; rl.prompt(); continue; }
+    persistentStore?.setSession(sessionId, { chatId: sessionId, cwd: process.cwd(), lastActivity: Date.now(), type: 'repl' });
 
     const messages = [systemMsg, { role: 'user', content: input }];
     let finalAnswer = '';
