@@ -232,7 +232,7 @@ Rules:
 
           if (toolCalls.length) {
             if (content) process.stdout.write(`\x1b[90m[i] ${content.slice(0, 120)}${content.length > 120 ? '...' : ''} (${sec}s)\x1b[0m\n`);
-            const validation = validateResponse({ toolCalls: toolCalls.map(tc => ({ function: { name: tc.function?.name || tc.name, arguments: tc.function?.arguments || tc.arguments } })) }, tools);
+            const validation = validateResponse({ toolCalls: toolCalls.map(tc => ({ id: tc.id, function: { name: tc.function?.name || tc.name, arguments: tc.function?.arguments || tc.arguments } })) }, tools);
             const validatedCalls = validation.toolCalls;
             if (!validatedCalls.length && validation.errors.length) {
               const nudge = `[GP] ${validation.errors.map(e => e.error).join('; ')}。请修正工具调用。`;

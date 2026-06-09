@@ -268,8 +268,7 @@ class OpenAiProvider extends AiProvider {
   }
 
   supportsTools() {
-    const id = this.providerType || this.id;
-    return id !== 'minimax' && id !== 'minimax-coding-plan';
+    return true;
   }
 
   async chat(model, messages, tools, opts = {}) {
