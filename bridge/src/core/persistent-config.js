@@ -1,10 +1,9 @@
 /**
  * OpenChat 配置管理
  *
- * 存储结构：
- *
- * 用户主目录 ~/.openchat/
- * └── config.json         # 唯一配置文件（服务商、密钥、模型）
+ * 配置分离原则：
+ *   ~/.config/openchat/config.json  — 敏感信息（LLM keys、providers、current 选择）
+ *   ~/.openchat/config.json         — 普通配置（bridge、sessionHistory、preferences）
  *
  * 项目目录 项目/.openchat/
  * ├── sessions/           # 会话数据
@@ -327,8 +326,19 @@ class PersistentConfig {
   // ================== 保存 ==================
 
   save() {
-    // 写入新路径（规范存储）；旧路径不再写入
-    writeJson(NEW_CONFIG_FILE, this.config);
+    // 分离敏感/非敏感配置
+    // ~/.config/openchat/config.json: only providers + current (keys/tokens)
+    // ~/.openchat/config.json: bridge + sessionHistory + preferences
+    const sensitive = {};
+    if (this.config.current) sensitive.current = this.config.current;
+    if (this.config.providers) sensitive.providers = this.config.providers;
+    writeJson(NEW_CONFIG_FILE, sensitive);
+
+    const nonsensitive = {};
+    if (this.config.bridge) nonsensitive.bridge = this.config.bridge;
+    if (this.config.sessionHistory) nonsensitive.sessionHistory = this.config.sessionHistory;
+    if (this.config.preferences) nonsensitive.preferences = this.config.preferences;
+    writeJson(CONFIG_FILE, nonsensitive);
   }
 
   // ================== 路径信息 ==================
