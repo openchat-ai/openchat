@@ -63,12 +63,11 @@ export function checkRenderSubscribeArgs(source) {
   const body = m[1];
   // packetId: must be present (could be 1, or variable)
   if (!/packetId\s*:/i.test(body)) return 0;
-  // subscriptions: must be present and an array literal
+  // subscriptions: must be present and an array
   if (!/subscriptions\s*:\s*\[/.test(body)) return 0;
-  // inside subscriptions array: at least one { topic, qos } (or equivalent)
-  // Look for 'topic' (string) and 'qos' (number) inside the call
-  if (!/\btopic\b/.test(body)) return 0;
-  if (!/\bqos\b/.test(body)) return 0;
+  // The actual subscription objects may be referenced via a variable (e.g. [subs[i]]).
+  // Don't require literal 'topic'/'qos' words in the call body — those are runtime properties.
+  // Byte-level correctness is verified by the dynamic `packetsCorrect` dimension.
   return 1;
 }
 

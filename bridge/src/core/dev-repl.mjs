@@ -80,14 +80,33 @@ function parseToolCalls(text) {
 
 export async function startDevRepl(modelOverride, chatId) {
   const cfg = JSON.parse(await import('fs/promises').then(fs => fs.readFile(os.homedir() + '/.config/openchat/config.json', 'utf8')));
-  const providerName = cfg.current?.provider || 'minimax';
-  const MODEL = modelOverride || cfg.current?.model || 'MiniMax-M3';
-  const apiKey = cfg.providers?.[providerName]?.apiKey;
-  if (!apiKey) throw new Error(`No apiKey for "${providerName}"`);
+
+  // 构建 provider 降级链：current → openrouter → 其他已配置的
+  const fallbacks = [];
+  const currentProvider = cfg.current?.provider || 'minimax';
+  const currentModel = modelOverride || cfg.current?.model || 'MiniMax-M3';
+  fallbacks.push({ name: currentProvider, model: currentModel });
+  for (const [name, pcfg] of Object.entries(cfg.providers || {})) {
+    if (name !== currentProvider && pcfg.apiKey)
+      fallbacks.push({ name, model: pcfg.defaultModel || 'openrouter/auto' });
+  }
 
   const { createProvider } = await import('provider-kit');
-  const provider = createProvider(providerName, apiKey);
-  await provider.connect(apiKey);
+  let provider = null;
+  let providerLabel = '';
+  for (const fb of fallbacks) {
+    try {
+      const p = createProvider(fb.name, cfg.providers[fb.name]?.apiKey);
+      await p.connect(cfg.providers[fb.name]?.apiKey);
+      provider = p;
+      providerLabel = `${fb.name}/${fb.model}`;
+      break;
+    } catch (e) {
+      process.stdout.write(`\x1b[90m[provider ${fb.name} failed: ${e.message.slice(0, 60)}]\x1b[0m\n`);
+    }
+  }
+  if (!provider) throw new Error('No available provider');
+  const MODEL = providerLabel.split('/')[1] || currentModel;
   const { tools, dispatch } = await loadAllTools();
 
   tools.push(
@@ -184,6 +203,20 @@ Call tools one at a time. After results, either call more tools or answer the us
           break;
         }
       } catch (e) {
+        if (round < MAX_ROUNDS - 1 && (e.message?.includes('500') || e.message?.includes('timeout'))) {
+          process.stdout.write(`\x1b[90m[retry ${round + 1}: ${e.message.slice(0, 60)}]\x1b[0m\n`);
+          await new Promise(r => setTimeout(r, 1000));
+          continue;
+        }
+        // 当前 provider 不可用，尝试降级到下一个
+        const nextFb = fallbacks.find(fb => fb.name !== providerLabel.split('/')[0]);
+        if (nextFb) {
+          process.stdout.write(`\x1b[33m[fallback to ${nextFb.name}]\x1b[0m\n`);
+          provider = createProvider(nextFb.name, cfg.providers[nextFb.name]?.apiKey);
+          await provider.connect(cfg.providers[nextFb.name]?.apiKey).catch(() => {});
+          fallbacks.splice(fallbacks.indexOf(nextFb), 1);
+          continue;
+        }
         finalAnswer = `[Error] ${e.message}`;
         break;
       }
