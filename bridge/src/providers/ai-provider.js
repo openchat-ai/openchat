@@ -129,13 +129,7 @@ class MiniMaxCodingPlanProvider extends AiProvider {
     return true;
   }
 
-  async chat(model, messages, tools, opts = {}) {
-    // MiniMax Coding Plan 不支持原生 tool_calls（与 OpenAiProvider.supportsTools 约定一致）
-    // 早 fail，避免下游收到无工具上下文的畸形响应导致 500
-    if (tools && tools.length > 0) {
-      throw new Error('MiniMax Coding Plan does not support tool calls; remove tools or switch provider');
-    }
-
+  async chat(model, messages) {
     // 优先使用运行时配置的 apiKey，否则使用传入的 apiKey
     const apiKey = this.apiKey || getRuntimeApiKey('minimax-coding-plan') || getRuntimeApiKey('minimax');
 
