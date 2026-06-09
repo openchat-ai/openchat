@@ -1,0 +1,9 @@
+{
+  "task": {
+    "id": "mqtt-connect-retry",
+    "prompt": "Output ONLY a ```js code block``` with this function. NO prose, NO thinking, NO explanation.\n\nThe onConnect callback fires AFTER the broker has accepted. Do NOT parse CONNACK bytes.\n\n```js\nasync function connectWithRetry({host, port, clientId}) {\n  // Use net.connect({host, port}, onConnect) — onConnect is the 2nd arg\n  // Call renderConnect({protoName: 'MQTT', protoLevel: 4, connectFlags: 2, keepAlive: 60, clientId}) → {bytes, type, length}\n  // Write bytes via socket.write(bytes, callback)\n  // On error, retry up to 3 attempts. Backoff < 200ms.\n  // Return { socket, clientId } on success.\n}\n```\n\nFill in the function body. NO imports. NO require/module.exports.",
+    "expect": {
+      "functionShape": "async function connectWithRetry({host, port, clientId})"
+    }
+  }
+}

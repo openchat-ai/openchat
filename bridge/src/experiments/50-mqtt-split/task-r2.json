@@ -1,0 +1,9 @@
+{
+  "task": {
+    "id": "mqtt-restore-subscriptions",
+    "prompt": "Output ONLY a ```js code block``` with this function. NO prose, NO thinking, NO explanation.\n\n`conn` is the object returned from a previous `connectWithRetry` call.\n\n```js\nasync function restoreSubscriptions({conn, sessionStore}) {\n  // conn = { socket, clientId }\n  // Read sessionStore.getSubscriptions(conn.clientId) → [{topic, qos}, ...]\n  // For each stored sub, call renderSubscribe({packetId: i+1, subscriptions: [sub]}) → {bytes, type, length}\n  // Write each sub's bytes via conn.socket.write(bytes, callback)\n  // After all subs written, return { restoredCount, subscriptions: subs }\n}\n```\n\nFill in the function body. NO imports. NO require/module.exports.",
+    "expect": {
+      "functionShape": "async function restoreSubscriptions({conn, sessionStore})"
+    }
+  }
+}
