@@ -711,7 +711,7 @@
     },
     {
       "id": "code-reviewer",
-      "file": "code-reviewer.mjs",
+      "file": "41-code-reviewer.mjs",
       "name": "Code Reviewer — LLM-driven code review engine",
       "category": "quality",
       "pure": false,
@@ -736,7 +736,7 @@
     },
     {
       "id": "verify-commit",
-      "file": "verify-commit.mjs",
+      "file": "42-verify-commit.mjs",
       "name": "Verify Commit — 提交前质量门禁",
       "category": "quality",
       "pure": false,
@@ -759,7 +759,7 @@
     },
     {
       "id": "memory",
-      "file": "memory.mjs",
+      "file": "43-memory.mjs",
       "name": "Vector Store — 轻量级向量存储 + 混合检索",
       "category": "memory",
       "pure": false,
@@ -784,7 +784,7 @@
     },
     {
       "id": "neural-brain",
-      "file": "neural-brain.mjs",
+      "file": "44-neural-brain.mjs",
       "name": "Neural Brain — 纯 JS 微神经网络 (64→32→8)",
       "category": "ml",
       "pure": false,
@@ -810,7 +810,7 @@
     },
     {
       "id": "tool-rescue",
-      "file": "tool-rescue.mjs",
+      "file": "45-tool-rescue.mjs",
       "name": "Tool Call Rescue — 参数校验+自动修复+引导",
       "category": "guardrails",
       "pure": false,
@@ -835,7 +835,7 @@
     },
     {
       "id": "retry-guidance",
-      "file": "retry-guidance.mjs",
+      "file": "46-retry-guidance.mjs",
       "name": "Retry Guidance — 工具调用失败的结构化引导",
       "category": "guardrails",
       "pure": false,
@@ -858,7 +858,7 @@
     },
     {
       "id": "step-workflow",
-      "file": "step-workflow.mjs",
+      "file": "47-step-workflow.mjs",
       "name": "Step Workflow — 工作流定义 + 必要步骤强制执行",
       "category": "guardrails",
       "pure": false,

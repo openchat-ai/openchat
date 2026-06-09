@@ -48,7 +48,7 @@ export async function run({ inputs = {} } = {}) {
 
     case 'execute_with_retry': {
       if (!args.executor) throw new Error('executor function required');
-      const { run: rescueRun } = await import('./tool-rescue.mjs');
+      const { run: rescueRun } = await import('./45-tool-rescue.mjs');
       const maxRetries = args.maxRetries || 3;
 
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
