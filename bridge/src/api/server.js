@@ -194,7 +194,8 @@ td.cb input{cursor:pointer}
 <div class="bar">
   <input id="path" value="oc/" placeholder="prefix" spellcheck="false">
   <button id="browseBtn">Browse</button>
-  <button id="delBtn" class="danger" style="display:none">Delete Selected</button>
+   <button id="delBtn" class="danger" style="display:none">Delete Selected</button>
+   <button id="cleanTestBtn" class="danger">Clean Test Files</button>
 </div>
 <div class="breadcrumb" id="bc"></div>
 <table id="tbl"><thead><tr><th class="cb"><input type="checkbox" id="selectAll"></th><th>Name</th><th>Size</th><th>Modified</th></tr></thead><tbody id="body"><tr><td class="loading" colspan="4">Enter a prefix and click Browse</td></tr></tbody></table>
@@ -206,6 +207,7 @@ let _prefix = '';
 document.getElementById('browseBtn').addEventListener('click', () => browse());
 document.getElementById('path').addEventListener('keydown', e => { if(e.key==='Enter') browse(); });
 document.getElementById('delBtn').addEventListener('click', deleteSelected);
+document.getElementById('cleanTestBtn').addEventListener('click', cleanTestFiles);
 document.getElementById('selectAll').addEventListener('change', e => {
   document.querySelectorAll('#body input[type=checkbox]').forEach(cb => {cb.checked=e.target.checked});
   updateDelBtn();
@@ -329,6 +331,16 @@ function deleteSelected(){
     }).catch(e=>toast('Error: '+e.message));
 }
 
+function cleanTestFiles(){
+  if(!confirm('Delete test artifacts (latency-test, _test, flutter_test, token-test, e2e-test)?')) return;
+  fetch('/api/v1/qiniu/clean-test', {method:'POST'})
+    .then(r=>r.json()).then(d=>{
+      if(d.success) toast('Deleted '+d.deleted+' test files');
+      else toast('Error: '+d.error);
+      browse(_prefix);
+    }).catch(e=>toast('Error: '+e.message));
+}
+
 function toast(msg){
   const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),3000);
@@ -383,6 +395,21 @@ function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'
         if (!key) return res.status(400).json({ success: false, error: 'Missing key' });
         await qiniuSignaling.deleteObject(key);
         res.json({ success: true });
+      } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+      }
+    });
+
+    // Qiniu API: clean test artifacts
+    this.app.post('/api/v1/qiniu/clean-test', async (req, res) => {
+      try {
+        const items = await qiniuSignaling.listObjects('');
+        const testPatterns = ['latency-test', '/_test/', 'flutter_test', 'token-test', 'e2e-test', '/poll-one-test/', '/call_recordings/', '/calls/demo_', '/debug/'];
+        const toDelete = items.filter(f => testPatterns.some(p => f.key.includes(p)));
+        for (const f of toDelete) {
+          await qiniuSignaling.deleteObject(f.key).catch(() => {});
+        }
+        res.json({ success: true, deleted: toDelete.length });
       } catch (e) {
         res.status(500).json({ success: false, error: e.message });
       }

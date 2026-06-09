@@ -106,39 +106,40 @@ export async function test() {
     const ts = Date.now();
     const msgKey = `oc/chat/${chatId}/${ts}.msg`;
     const replyKey = `${msgKey.replace(/\.msg$/, '-reply.json')}`;
-
-    // 上传测试 .msg
-    const testMsgs = ['推荐一本技术书', '用中文说你好', '什么是递归', '写个hello world', '今天的日期是？'];
-await q.qiniuPut(msgKey, Buffer.from(JSON.stringify({ type: 'text', text: testMsgs[Date.now() % testMsgs.length] })));
-    ok(`上传 ${msgKey}`);
-
-    // run pollOne
-    const r = await run({ inputs: { msgKey } });
-    if (r.outputs.replyKey === replyKey) ok(`replyKey: ${replyKey}`);
-    else ng(`replyKey 错: ${r.outputs.replyKey}`);
-    if (r.outputs.chatId === chatId) ok(`chatId: ${chatId}`);
-    else ng(`chatId 错: ${r.outputs.chatId}`);
-    if (r.outputs.reply) ok(`reply: "${r.outputs.reply?.substring(0, 40)}..."`);
-    else ok('reply 为空 (agent 限速)');
-
-    // 验证 reply 上传 + sourceKey
-    const got = await q.qiniuGet(replyKey);
-    const verify = JSON.parse(got.toString('utf8'));
-    if (verify.sourceKey === msgKey) ok(`verify.sourceKey 匹配 ✓`);
-    else ng(`sourceKey 错: ${verify.sourceKey}`);
-
-    // 验证坏 JSON
     const badKey = `oc/chat/${chatId}/${ts}-bad.msg`;
-    await q.qiniuPut(badKey, Buffer.from('not json'));
-    const rBad = await run({ inputs: { msgKey: badKey } });
-    if (rBad.outputs.error?.startsWith('read-msg')) ok('坏 JSON → read-msg error');
-    else ng(`坏 JSON 错: ${rBad.outputs.error}`);
+    let cleanup = true;
 
-    // 清理
-    await q.qiniuDelete(msgKey);
-    await q.qiniuDelete(badKey);
-    await q.qiniuDelete(replyKey);
-    ok('cleanup ok');
+    try {
+      // 上传测试 .msg
+      const testMsgs = ['推荐一本技术书', '用中文说你好', '什么是递归', '写个hello world', '今天的日期是？'];
+      await q.qiniuPut(msgKey, Buffer.from(JSON.stringify({ type: 'text', text: testMsgs[Date.now() % testMsgs.length] })));
+      ok(`上传 ${msgKey}`);
+
+      const r = await run({ inputs: { msgKey } });
+      if (r.outputs.replyKey === replyKey) ok(`replyKey: ${replyKey}`);
+      else ng(`replyKey 错: ${r.outputs.replyKey}`);
+      if (r.outputs.chatId === chatId) ok(`chatId: ${chatId}`);
+      else ng(`chatId 错: ${r.outputs.chatId}`);
+      if (r.outputs.reply) ok(`reply: "${r.outputs.reply?.substring(0, 40)}..."`);
+      else ok('reply 为空 (agent 限速)');
+
+      const got = await q.qiniuGet(replyKey);
+      const verify = JSON.parse(got.toString('utf8'));
+      if (verify.sourceKey === msgKey) ok(`verify.sourceKey 匹配 ✓`);
+      else ng(`sourceKey 错: ${verify.sourceKey}`);
+
+      await q.qiniuPut(badKey, Buffer.from('not json'));
+      const rBad = await run({ inputs: { msgKey: badKey } });
+      if (rBad.outputs.error?.startsWith('read-msg')) ok('坏 JSON → read-msg error');
+      else ng(`坏 JSON 错: ${rBad.outputs.error}`);
+    } finally {
+      // 无论测试成功还是崩溃，都清理
+      const del = async k => { try { await q.qiniuDelete(k); } catch {} };
+      await del(msgKey);
+      await del(replyKey);
+      await del(badKey);
+      ok('cleanup ok');
+    }
   } else {
     skip('Qiniu 不可达，跳过 e2e');
   }

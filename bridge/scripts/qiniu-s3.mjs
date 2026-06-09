@@ -1,4 +1,5 @@
 // Bridge 端 Qiniu S3 兼容 API 封装（list/get/put）
+import 'dotenv/config';
 import { createHmac, createHash } from 'crypto';
 
 const _ak = String.fromCharCode(106,118,106,77,82,56,90,67,53,55,86,122,84,48,68,104,55,97,86,122,104,101,76,119,75,114,90,118,72,87,77,115,113,81,53,72,86,122,112,71);
@@ -60,9 +61,13 @@ function signV4(method, canonicalUri, canonicalQueryString, payloadHash, expires
 }
 
 async function qiniuList(prefix) {
-  const url = signV4('GET', '/', `prefix=${encodeURIComponent(prefix)}`, 'UNSIGNED-PAYLOAD', 60);
+  const url = signV4('GET', '/', `prefix=${encodeURIComponent(prefix)}&list-type=2`, 'UNSIGNED-PAYLOAD', 60);
   const resp = await fetch(url);
-  if (!resp.ok) return [];
+  if (!resp.ok) {
+    const body = await resp.text().catch(() => '');
+    console.warn(`[qiniuList] HTTP ${resp.status} for prefix="${prefix}": ${body.slice(0, 200)}`);
+    return [];
+  }
   const xml = await resp.text();
   const keys = [];
   const regex = /<Key>([^<]+)<\/Key>/g;
