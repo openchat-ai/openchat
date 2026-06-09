@@ -52,7 +52,7 @@
         { "name": "response",   "type": "string", "description": "LLM 回复" },
         { "name": "toolCalls",  "type": "array",  "description": "工具调用列表" }
       ],
-      "deps": [],
+      "deps": ["guardian"],
       "tags": ["llm", "agent"],
       "status": "closed-loop"
     },
@@ -902,6 +902,22 @@
       ],
       "deps": [],
       "tags": ["guardrails", "pipeline", "comparison", "experiment"],
+      "status": "closed-loop"
+    },
+    {
+      "id": "guardian",
+      "file": "48-guardian.mjs",
+      "name": "Guardian — 守卫层中间件",
+      "category": "guardrails",
+      "pure": false,
+      "needsEnv": [],
+      "description": "供 compose.mjs pipeline() 编排的守卫层。输出 guardian 实例，注入 agent 的 processText。实现响应校验 + 步骤强制 + 错误追踪。",
+      "inputs": [],
+      "outputs": [
+        { "name": "guardian", "type": "object", "description": "guardian 实例" }
+      ],
+      "deps": [],
+      "tags": ["guardian", "middleware"],
       "status": "closed-loop"
     }
   ]
