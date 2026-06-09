@@ -53,7 +53,7 @@
         { "name": "toolCalls",  "type": "array",  "description": "工具调用列表" }
       ],
       "deps": ["guardian"],
-      "tags": ["llm", "agent"],
+      "tags": ["llm", "multi-turn"],
       "status": "closed-loop"
     },
 
@@ -308,7 +308,7 @@
         { "name": "result", "type": "any" }
       ],
       "deps": ["qiniu"],
-      "tags": ["relay", "bucket", "message-bus", "agent"],
+      "tags": ["relay", "bucket", "message-bus"],
       "status": "closed-loop"
     },
     {
@@ -380,8 +380,8 @@
     {
       "id": "goal",
       "file": "18-goal.mjs",
-      "name": "Goal — 拆解目标 + agent 逐步执行",
-      "category": "agent",
+      "name": "Goal — 拆解目标 + 多轮执行",
+      "category": "multi-turn",
       "pure": false,
       "needsEnv": [],
       "description": "两级体系：goal 将目标拆为步骤, 每步调 agent 实验的多轮工具循环执行。",
@@ -397,14 +397,14 @@
         { "name": "total", "type": "number", "description": "总步数" }
       ],
       "deps": ["skeleton-agent"],
-      "tags": ["goal", "agent"],
+      "tags": ["goal", "multi-turn"],
       "status": "closed-loop"
     },
     {
       "id": "orchestrator",
       "file": "19-orchestrator.mjs",
       "name": "编排器 — processStream / process / executeGoal",
-      "category": "agent",
+      "category": "multi-turn",
       "pure": true,
       "needsEnv": [],
       "description": "Orchestrator: 2-pass LLM loop with RAG + FC + tool dispatch + quality check. processStream(streaming), process(non-streaming), executeGoal(goal-driven).",
