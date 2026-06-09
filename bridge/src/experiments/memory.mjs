@@ -43,8 +43,7 @@ export async function run({ inputs = {} } = {}) {
     case 'store': {
       if (!args.id || !args.embedding) throw new Error('id and embedding required');
       await store.initialize();
-      store.add(args.id, args.embedding, args.content, args.metadata);
-      await store.save();
+      await store.addVector({ id: args.id, embedding: args.embedding, content: args.content, metadata: args.metadata, type: args.type });
       return { outputs: { ok: true, id: args.id } };
     }
 
@@ -75,7 +74,8 @@ export async function run({ inputs = {} } = {}) {
 
     case 'stats': {
       await store.initialize();
-      return { outputs: { stats: { entryCount: store.index.size, dimension: store.dimension, cacheSize: store.cache.size } } };
+      const s = await store.getStats();
+      return { outputs: { stats: s } };
     }
 
     default:
@@ -92,21 +92,24 @@ async function test() {
   const { VectorStore } = await import('../memory/vector-store.js');
   const store = new VectorStore();
   await store.initialize();
+  await store.clear();
 
-  store.add('t1', [1, 2, 3], 'hello', { type: 'test' });
-  store.add('t2', [4, 5, 6], 'world', { type: 'test' });
-  await store.save();
+  await store.addVector({ id: 't1', embedding: [1, 2, 3], content: 'hello world', metadata: { type: 'test' } });
+  await store.addVector({ id: 't2', embedding: [4, 5, 6], content: 'goodbye', metadata: { type: 'test' } });
 
-  const sim = store.similaritySearch([1, 2, 3], { topK: 5 });
-  if (sim.length >= 1 && sim[0].id === 't1') ok('similaritySearch: top result is t1');
-  else ng(`similaritySearch got: ${JSON.stringify(sim)}`);
+  const sim = await store.similaritySearch([1, 2, 3], { topK: 5 });
+  const simHasT1 = sim.some(r => r.id === 't1');
+  if (simHasT1) ok('similaritySearch: t1 in top results');
+  else ng(`similaritySearch: t1 not in ${JSON.stringify(sim.map(r => r.id))}`);
 
-  const kw = store.keywordSearch('hello', { topK: 5 });
-  if (kw.some(r => r.id === 't1')) ok('keywordSearch: found hello');
-  else ng(`keywordSearch missed: ${JSON.stringify(kw)}`);
+  const kw = await store.keywordSearch('hello', { topK: 5 });
+  const kwHasT1 = kw.some(r => r.id === 't1');
+  if (kwHasT1) ok('keywordSearch: found hello');
+  else ng(`keywordSearch: hello not in ${JSON.stringify(kw.map(r => ({id:r.id,content:r.content})))}`);
 
-  const stats = { entryCount: store.index.size, dimension: store.dimension };
-  if (stats.entryCount > 0) ok(`stats: ${stats.entryCount} entries`);
+  const stats = await store.getStats();
+  if (stats.totalCount >= 2) ok(`stats: ${stats.totalCount} entries`);
+  else ng(`stats: expected >=2, got ${JSON.stringify(stats)}`);
 
   await store.clear();
   report(NAME);

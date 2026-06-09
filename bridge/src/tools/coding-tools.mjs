@@ -20,6 +20,7 @@ import { TOOLS as AST_TOOLS, executeTool as astExec } from './ast-search.mjs';
 import { TOOLS as DEEP_TOOLS, executeTool as deepExec } from './tools-deep.mjs';
 import { TOOLS as ADAPTER_TOOLS, executeTool as adapterExec } from './ast-adapters.mjs';
 import { TOOLS as MQTT_TOOLS, executeTool as mqttExec } from './mqtt-tools.mjs';
+import { TOOLS as MEMORY_TOOLS, executeTool as memoryExec } from './memory-tools.mjs';
 
 const PROJECT_ROOT = process.cwd(); // F:\openchat (or bridge/)
 
@@ -90,7 +91,7 @@ export async function hashEdit(filePath, hash, newContent) {
   throw new Error(`Hash anchor ${hash} not found in ${filePath}`);
 }
 
-export const TOOLS = [...SEARCH_TOOLS, ...DEV_TOOLS, ...AST_TOOLS, ...DEEP_TOOLS, ...ADAPTER_TOOLS, ...MQTT_TOOLS,
+export const TOOLS = [...SEARCH_TOOLS, ...DEV_TOOLS, ...AST_TOOLS, ...DEEP_TOOLS, ...ADAPTER_TOOLS, ...MQTT_TOOLS, ...MEMORY_TOOLS,
   {
     type: 'function',
     function: {
@@ -184,6 +185,8 @@ export async function executeTool(name, args) {
       return adapterExec(name, args);
     case 'mqtt_connect': case 'mqtt_subscribe': case 'mqtt_publish': case 'mqtt_disconnect':
       return mqttExec(name, args);
+    case 'read_memory': case 'memory_store':
+      return memoryExec(name, args);
     default: throw new Error(`Unknown coding tool: ${name}`);
   }
 }
