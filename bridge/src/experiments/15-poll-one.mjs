@@ -108,7 +108,8 @@ export async function test() {
     const replyKey = `${msgKey.replace(/\.msg$/, '-reply.json')}`;
 
     // 上传测试 .msg
-    await q.qiniuPut(msgKey, Buffer.from(JSON.stringify({ type: 'text', text: '一句话介绍你自己' })));
+    const testMsgs = ['推荐一本技术书', '用中文说你好', '什么是递归', '写个hello world', '今天的日期是？'];
+await q.qiniuPut(msgKey, Buffer.from(JSON.stringify({ type: 'text', text: testMsgs[Date.now() % testMsgs.length] })));
     ok(`上传 ${msgKey}`);
 
     // run pollOne

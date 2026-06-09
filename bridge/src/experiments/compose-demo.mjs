@@ -90,7 +90,8 @@ const demo = async () => {
     reset();
     const chatId  = 'demo-pipeline';
     const ts      = Date.now();
-    const userText = '一句话介绍你自己';
+    const demos = ['推荐一本技术书', '写个递归函数', '解释什么是闭包', '今儿天气怎么样'];
+const userText = demos[Date.now() % demos.length];
     const msgKey   = `oc/chat/${chatId}/${ts}.msg`;
     const replyKey = `oc/chat/${chatId}/${ts}-reply.json`;
     console.log(`   input:  { chatId: "${chatId}", text: "${userText}" }`);
