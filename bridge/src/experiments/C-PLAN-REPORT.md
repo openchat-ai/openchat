@@ -124,17 +124,19 @@ E34 验证 strict schema 在 40 tool 场景有 extraFields 副作用. E38 是 4 
 
 ---
 
-## 6. 5 轮实验已完成, 实验目录可清理
+## 6. 实验目录清理 (已完成 2026-06-09)
 
 **保留**:
 - `src/experiments/C-PLAN-REPORT.md` (本文件) — 决策依据
-- `~/.claude/memory/cplan_scaffold_decision.md` (更新后) — 5 件套简版
+- `~/.claude/memory/cplan_scaffold_decision.md` (已更新) — 5 件套简版
 
-**清理**:
-- `src/experiments/36-code-ability-diagnostic/`
-- `src/experiments/37-protocol-template/`
-- `src/experiments/38-combined-intervention/`
-- `src/experiments/39-real-coding-task/`
+**已清理** (2026-06-09):
+- `src/experiments/36-code-ability-diagnostic/` ✅
+- `src/experiments/37-protocol-template/` ✅
+- `src/experiments/38-combined-intervention/` ✅
+- `src/experiments/39-real-coding-task/` ✅
+
+**manifest.json**: 同步移除 4 个 entry, 42 个实验条目, 0 个 dangling 引用.
 
 **理由**: experiment harness 是 一次性代码, 不进 production. 每次 provider-kit 改 API 实验就挂, 维护成本是纯负. 数据 (live-*.json, REPORT) 已沉淀到本报告, 删了不丢结论. 已进 production 的代码 (`normalize.js`, `anthropic-adapter.js` 等) 不算 experiment 资产.
 
@@ -150,9 +152,9 @@ E34 验证 strict schema 在 40 tool 场景有 extraFields 副作用. E38 是 4 
 ## 7. 引用
 
 - **memory**: `~/.claude/memory/cplan_scaffold_decision.md` (4 件套 → 5 件套更新版)
-- **E36 详细**: `src/experiments/36-code-ability-diagnostic/REPORT.md` (待删)
-- **E37 详细**: `src/experiments/37-protocol-template/REPORT.md` (待删)
-- **E38 详细**: `src/experiments/38-combined-intervention/REPORT.md` (待删)
-- **E39/E40/E41 详细**: `src/experiments/39-real-coding-task/REPORT.md` (待删)
+- **E36 详细**: 沉淀于本报告 §1, 2
+- **E37 详细**: 沉淀于本报告 §1, 2
+- **E38 详细**: 沉淀于本报告 §1, 2
+- **E39/E40/E41 详细**: 沉淀于本报告 §1, 2, 4 (E39→E40 修复 4 处, E41 router 接入)
 
 **实验当构件** (跟 experiments_vision 一致): E36-E41 都有 `META` + `run({inputs})` + `outputs` 契约, 可被 compose.mjs 拼装. 但当前没复用场景, 删目录不影响构件愿景.

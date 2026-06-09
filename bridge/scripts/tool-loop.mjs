@@ -10,8 +10,10 @@ import { runPipeline, getEditProtocolGuidance } from '../src/core/epc-pipeline.m
 import { TOOLS as CODING_TOOLS, executeTool as codingExec } from '../src/tools/coding-tools.mjs';
 import { createGuardian } from '../src/experiments/lib/guardian.mjs';
 
+const CWD = process.cwd();
 const SYSTEM_PROMPT = `You are OpenChat, a friendly Chinese-speaking AI software development assistant.
 You have tools to explore, read, edit, and search the codebase.
+Current working directory: ${CWD}
 Rules:
 - Reply in the same language as the user (Chinese → Chinese).
 - For software tasks, use tools proactively — read files, search patterns, then answer.
