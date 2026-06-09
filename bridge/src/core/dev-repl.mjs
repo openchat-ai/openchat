@@ -1,15 +1,14 @@
 import { createInterface } from 'readline';
 import os from 'os';
 
-const MAX_ROUNDS = 8;
-const MAX_REPEAT = 3;
+const MAX_ROUNDS = 100;
 
 const toolModules = [
   { name: 'system_exec', import: () => import('../tools/system-exec.mjs'), toolsKey: 'TOOLS', execKey: 'executeTool' },
   { name: 'coding_tools', import: () => import('../tools/coding-tools.mjs'), toolsKey: 'TOOLS', execKey: 'executeTool' },
   { name: 'multi_edit', import: () => import('../tools/multi-edit.mjs'), toolsKey: null, execKey: 'executeTool' },
   { name: 'ast_edit', import: () => import('../tools/ast-edit.mjs'), toolsKey: null, execKey: 'executeTool' },
-  { name: 'diff_review', import: () => import('../tools/diff-review.mjs'), toolsKey: null, execKey: 'getGitDiff' },
+  { name: 'diff_review', import: () => import('../tools/diff-review.mjs'), toolsKey: null, execKey: 'executeTool' },
 ];
 
 async function loadAllTools() {
@@ -25,11 +24,27 @@ async function loadAllTools() {
   return { tools, dispatch };
 }
 
+function _repairJSON(s) {
+  // Try adding missing closing quotes and braces for common LLM truncation
+  let fixed = s;
+  // Count unescaped quotes — if odd, add a closing quote
+  let inStr = false, escape = false, quoteCount = 0;
+  for (const c of fixed) { if (escape) { escape = false; continue; } if (c === '\\') { escape = true; continue; } if (c === '"') { inStr = !inStr; quoteCount++; } }
+  if (inStr) fixed += '"';
+  // Count braces — add missing closing braces
+  const opens = (fixed.match(/\{/g) || []).length;
+  const closes = (fixed.match(/\}/g) || []).length;
+  for (let i = 0; i < opens - closes; i++) fixed += '}';
+  return fixed;
+}
+
 async function execTool(tc, dispatch) {
   const name = tc.function?.name || tc.name;
   const rawArgs = tc.function?.arguments || tc.arguments || '{}';
   let args;
-  try { args = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : rawArgs; } catch { return `[Error] Invalid JSON: ${rawArgs.slice(0, 80)}`; }
+  try { args = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : rawArgs; }
+  catch { args = typeof rawArgs === 'string' ? JSON.parse(_repairJSON(rawArgs)) : rawArgs; }
+  let lastError = '';
   for (const fn of Object.values(dispatch)) {
     try {
       const r = await fn(name, args);
@@ -37,7 +52,11 @@ async function execTool(tc, dispatch) {
       const lines = s.split('\n');
       if (lines.length > 80) return lines.slice(0, 60).join('\n') + `\n... (${lines.length - 60} more lines)`;
       return s.length > 8000 ? s.slice(0, 8000) + '\n... (truncated)' : s;
-    } catch { /* try next */ }
+    } catch (e) {
+      const msg = e.message || String(e);
+      if (!msg.includes('Unknown tool:')) return `[Error] ${msg.slice(0, 200)}`;
+      lastError = msg;
+    }
   }
   return `[Error] Tool "${name}" not found`;
 }
@@ -82,7 +101,7 @@ export async function startDevRepl(modelOverride, chatId) {
   const cfg = JSON.parse(await import('fs/promises').then(fs => fs.readFile(os.homedir() + '/.config/openchat/config.json', 'utf8')));
 
   // 构建 provider 降级链：current → openrouter → 其他已配置的
-  const fallbacks = [];
+  let fallbacks = [];
   const currentProvider = cfg.current?.provider || 'minimax';
   const currentModel = modelOverride || cfg.current?.model || 'MiniMax-M3';
   fallbacks.push({ name: currentProvider, model: currentModel });
@@ -106,7 +125,7 @@ export async function startDevRepl(modelOverride, chatId) {
     }
   }
   if (!provider) throw new Error('No available provider');
-  const MODEL = providerLabel.split('/')[1] || currentModel;
+  let MODEL = providerLabel.split('/')[1] || currentModel;
   const { tools, dispatch } = await loadAllTools();
 
   tools.push(
@@ -114,6 +133,12 @@ export async function startDevRepl(modelOverride, chatId) {
     { type: 'function', function: { name: 'ast_edit', description: 'AST rename/replace_body.', parameters: { type: 'object', properties: { path: { type: 'string' }, selector: { type: 'string' }, action: { type: 'string' }, newValue: { type: 'string' } }, required: ['path', 'selector', 'action', 'newValue'] } } },
     { type: 'function', function: { name: 'diff_review', description: 'Show git diff.', parameters: { type: 'object', properties: {}, required: [] } } },
   );
+
+  const { validateResponse } = await import('../experiments/lib/response-validator.mjs');
+  const { createStepEnforcer } = await import('../experiments/lib/step-enforcer.mjs');
+  const { createErrorTracker } = await import('../experiments/lib/error-tracker.mjs');
+  const enforcer = createStepEnforcer();
+  const tracker = createErrorTracker();
 
   const toolList = tools.map(t => { const f = t.function || t; const p = f.parameters?.properties ? Object.keys(f.parameters.properties).join(', ') : ''; return `  ${f.name}(${p}): ${f.description || ''}`; }).join('\n');
 
@@ -127,11 +152,21 @@ When the user asks to explore/analyze the project, call tools immediately. Never
 
 Notes:
 - This is Windows. For directory listing, use exec_command(command="cmd /c dir /b") not ls.
-- For reading files, use read_file(path="...").
-- For searching files, use glob(pattern="**/*.json").
-- If a tool fails, try a different approach.
+- For reading files, use read_file(path="...") for short paths, or exec_command(command="cmd /c type ...") for long Windows paths (JSON may truncate).
+- Windows paths in JSON arguments must use escaped backslashes: path="C:\\\\Users\\\\name\\\\file.txt".
+- If a tool fails, try a different approach. For files outside the project root, use read_file with allowExternal=true.
 
-Call tools one at a time. After results, either call more tools or answer the user.`,
+Debug strategy (diagnostic tasks):
+  Step 1 — Identify: Find entry point (main/src/index), handler (where messages are received), reply/send (where replies go out). Usually 3-4 key files.
+  Step 2 — Read: Read those key files FULLY, understand the data flow. Take notes of relevant functions and their signatures.
+  Step 3 — Analyze: Trace a message from receive → process → reply. Look for: single-use listeners (once), process.exit, session.clear, or one-shot reply patterns.
+  Step 4 — Conclude: Summarize root cause in Chinese with code references. Propose fix only if confident.
+
+Rules:
+- No hard limit on tool calls. Keep exploring until you understand the ROOT CAUSE.
+- But aim to read only KEY files (entry point + handler + reply), not every file in the project.
+- For each key file you read, add a comment about what it does.
+- Answer in Chinese, reference specific code lines, explain the flow.`,
   };
 
   console.log(`\n  openchat bridge — dev mode (${MODEL})`);
@@ -151,9 +186,28 @@ Call tools one at a time. After results, either call more tools or answer the us
     if (!input || input === 'exit' || input === 'quit') { if (input === 'exit' || input === 'quit') break; rl.prompt(); continue; }
     persistentStore?.setSession(sessionId, { chatId: sessionId, cwd: process.cwd(), lastActivity: Date.now(), type: 'repl' });
 
-    const messages = [systemMsg, { role: 'user', content: input }];
+    // Memory context recall (via experiment 43)
+    let memoryCtx = '';
+    try {
+      const mem = await import('../experiments/43-memory.mjs');
+      const { outputs } = await mem.run({ inputs: { op: 'hybrid_search', query: input, embedding: [0], topK: 3 } });
+      if (outputs?.results?.length) memoryCtx = `[Memory] Related context:\n${outputs.results.map(r => `- ${r.content?.slice(0, 200)}`).join('\n')}`;
+    } catch {}
+
+    // Auto goal detection: complex diagnostic tasks get step-by-step guidance
+    const isComplex = input.length > 60 || /为什么|什么原因|debug|diagnose|investigate|分析|排查|项目|看看|怎么回事/.test(input);
+    const goalGuide = isComplex
+      ? { role: 'system', content: '[Goal] This is a multi-step diagnostic. Follow the Debug strategy from system prompt: identify 3-4 key files (entry, handler, reply), read them fully, trace the flow, then conclude. Do NOT read every file in the project — focus on the message/reply path.' }
+      : null;
+
+    const messages = [];
+    messages.push(systemMsg);
+    if (memoryCtx) messages.push({ role: 'system', content: memoryCtx });
+    if (goalGuide) messages.push(goalGuide);
+    messages.push({ role: 'user', content: input });
     let finalAnswer = '';
-    const callCount = new Map();
+    let totalToolCalls = 0;
+    const toolCache = new Map(); // session-scoped: cacheKey → result
 
     for (let round = 0; round < MAX_ROUNDS; round++) {
       try {
@@ -165,7 +219,7 @@ Call tools one at a time. After results, either call more tools or answer the us
 
         // Think stripping
         const tm = content.match(/<think>([\s\S]*?)<\/think>/);
-        if (tm) { process.stdout.write(`\x1b[90m[think] ${tm[1].trim().split('\n')[0]}\x1b[0m\n`); content = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim(); }
+        if (tm) { process.stdout.write(`\x1b[36m[think] ${tm[1].trim().split('\n')[0]}\x1b[0m\n`); content = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim(); }
 
         // XML fallback
         if (!toolCalls.length) {
@@ -176,45 +230,86 @@ Call tools one at a time. After results, either call more tools or answer the us
           }
         }
 
-        if (toolCalls.length) {
-          if (content) process.stdout.write(`\x1b[90m[i] ${content.slice(0, 120)}${content.length > 120 ? '...' : ''} (${sec}s)\x1b[0m\n`);
-          messages.push({ role: 'assistant', content: content || null, tool_calls: toolCalls });
-          for (const tc of toolCalls) {
-            const n = tc.function?.name || tc.name;
-            const key = `${n}:${tc.function?.arguments || tc.arguments || '{}'}`;
-            const count = (callCount.get(key) || 0) + 1;
-            callCount.set(key, count);
-            if (count > MAX_REPEAT) {
-              const abortMsg = `[loop aborted: ${n} called ${count} times with same args]`;
-              process.stdout.write(`\x1b[31m${abortMsg}\x1b[0m\n`);
-              messages.push({ role: 'tool', tool_call_id: tc.id, content: abortMsg });
+          if (toolCalls.length) {
+            if (content) process.stdout.write(`\x1b[90m[i] ${content.slice(0, 120)}${content.length > 120 ? '...' : ''} (${sec}s)\x1b[0m\n`);
+            const validation = validateResponse({ toolCalls: toolCalls.map(tc => ({ function: { name: tc.function?.name || tc.name, arguments: tc.function?.arguments || tc.arguments } })) }, tools);
+            const validatedCalls = validation.toolCalls;
+            if (!validatedCalls.length && validation.errors.length) {
+              const nudge = `[GP] ${validation.errors.map(e => e.error).join('; ')}。请修正工具调用。`;
+              process.stdout.write(`\x1b[31m${nudge}\x1b[0m\n`);
+              messages.push({ role: 'system', content: nudge });
+              const jsonFailRound = (messages.filter(m => m.role === 'system' && m.content?.includes('JSON 参数解析失败')).length);
+              if (jsonFailRound >= 3) {
+                messages.push({ role: 'system', content: '[GP] 连续 JSON 参数解析失败，请改用 exec_command(command="type <path>") 或 list_directory(path="...") 读取外部文件，避免在 JSON 中转义长 Windows 路径。' });
+              }
               continue;
             }
-            let a = '';
-            try { const p = JSON.parse(tc.function?.arguments || tc.arguments || '{}'); a = Object.keys(p).map(k => `${k}=${String(p[k]).slice(0, 40)}`).join(', '); } catch { a = (tc.function?.arguments || tc.arguments || '').slice(0, 40); }
-            process.stdout.write(`  \x1b[33m→ ${n}(${a})\x1b[0m `);
-            const result = await execTool(tc, dispatch);
-            process.stdout.write(`\x1b[32mdone\x1b[0m \x1b[90m(${result.length}B, ${sec}s)\x1b[0m\n`);
-            if (result.length < 1000) process.stdout.write(`${result}\n`);
-            messages.push({ role: 'tool', tool_call_id: tc.id, content: result });
+            messages.push({ role: 'assistant', content: content || null, tool_calls: validatedCalls.map(tc => ({ id: tc.id, type: 'function', function: { name: tc.name, arguments: JSON.stringify(tc.args) } })) });
+            for (const tc of validatedCalls) {
+              totalToolCalls++;
+              const n = tc.name;
+              const a = Object.keys(tc.args || {}).map(k => `${k}=${String(tc.args[k]).slice(0, 40)}`).join(', ');
+              process.stdout.write(`  \x1b[33m→ ${n}(${a})\x1b[0m `);
+              const check = enforcer.check(n);
+              if (!check.ok) {
+                process.stdout.write(`\x1b[31m[dependency] ${n} 需要先: ${check.missing.join(', ')}\x1b[0m\n`);
+                messages.push({ role: 'tool', tool_call_id: tc.id, content: `[dependency] ${n} needs: ${check.missing.join(', ')}` });
+                continue;
+              }
+              let result;
+              const cacheKey = `${n}:${JSON.stringify(tc.args)}`;
+              if (toolCache.has(cacheKey)) {
+                result = toolCache.get(cacheKey);
+                process.stdout.write(`\x1b[32mcached\x1b[0m \x1b[90m(${result.length}B)\x1b[0m\n`);
+                messages.push({ role: 'tool', tool_call_id: tc.id, content: result });
+                continue;
+              }
+              try {
+                result = await execTool({ function: { name: n, arguments: JSON.stringify(tc.args) }, id: tc.id }, dispatch);
+                toolCache.set(cacheKey, result);
+                enforcer.complete(n);
+                // Store successful results in memory (via experiment 43)
+                try {
+                  const mem = await import('../experiments/43-memory.mjs');
+                  await mem.run({ inputs: { op: 'store', id: `${Date.now()}_${n}`, embedding: [0], content: `[${n}] ${result.slice(0, 500)}`, metadata: { tool: n, args: tc.args }, type: 'tool_result' } });
+                } catch {}
+              } catch (e) {
+                const msg = e.message || String(e);
+                let guidance = '';
+                if (msg.includes('ENOENT') || msg.includes('not found')) guidance = '文件/目录不存在，请检查路径。';
+                else if (msg.includes('EACCES') || msg.includes('permission')) guidance = '权限不足，请检查文件权限或用 exec_command 替代。';
+                else if (msg.includes('timeout') || msg.includes('TIMEOUT')) guidance = '工具超时，尝试缩小范围或重试。';
+                else if (msg.includes('ENOBUFS') || msg.includes('too long')) guidance = '输出太长，尝试用 grep/glob 缩小搜索范围。';
+                else if (msg.includes('Path traversal')) guidance = '外部路径需要 allowExternal=true。';
+                result = `[Error] ${msg.slice(0, 200)}${guidance ? `\n[Guidance] ${guidance}` : ''}`;
+                tracker.record(n, tc.args, msg, round);
+              }
+              process.stdout.write(`\x1b[32mdone\x1b[0m \x1b[90m(${result.length}B, ${sec}s)\x1b[0m\n`);
+              messages.push({ role: 'tool', tool_call_id: tc.id, content: result });
+            }
+            await new Promise(r => setTimeout(r, 500));
+          } else {
+            finalAnswer = content;
+            break;
           }
-        } else {
-          finalAnswer = content;
-          break;
-        }
       } catch (e) {
-        if (round < MAX_ROUNDS - 1 && (e.message?.includes('500') || e.message?.includes('timeout'))) {
+        if (round < 1 && (e.message?.includes('500') || e.message?.includes('timeout'))) {
           process.stdout.write(`\x1b[90m[retry ${round + 1}: ${e.message.slice(0, 60)}]\x1b[0m\n`);
           await new Promise(r => setTimeout(r, 1000));
           continue;
         }
-        // 当前 provider 不可用，尝试降级到下一个
-        const nextFb = fallbacks.find(fb => fb.name !== providerLabel.split('/')[0]);
+        // 当前 provider 不可用，移除已尝试的全部 provider，取下一个
+        const currentName = providerLabel.split('/')[0];
+        fallbacks = fallbacks.filter(fb => fb.name !== currentName);
+        const nextFb = fallbacks[0];
         if (nextFb) {
           process.stdout.write(`\x1b[33m[fallback to ${nextFb.name}]\x1b[0m\n`);
           provider = createProvider(nextFb.name, cfg.providers[nextFb.name]?.apiKey);
           await provider.connect(cfg.providers[nextFb.name]?.apiKey).catch(() => {});
-          fallbacks.splice(fallbacks.indexOf(nextFb), 1);
+          providerLabel = `${nextFb.name}/${nextFb.model}`;
+          MODEL = nextFb.model || (cfg.providers[nextFb.name]?.defaultModel || 'openrouter/auto');
+          totalToolCalls = 0; // 新 provider 从头计数
+          round = -1;
           continue;
         }
         finalAnswer = `[Error] ${e.message}`;
@@ -222,8 +317,17 @@ Call tools one at a time. After results, either call more tools or answer the us
       }
     }
 
-    console.log(`\n${finalAnswer || '[max rounds]'}\n`);
-    rl.prompt();
+    // Force final answer summarization if LLM ran out of rounds
+    if (!finalAnswer) {
+      try {
+        messages.push({ role: 'system', content: '[STOP] You have gathered enough info. Give a final answer now in Chinese. Be concise.' });
+        const resp = await provider.chat(MODEL, messages, { tools: [] });
+        finalAnswer = resp.content?.trim() || '[max rounds]';
+      } catch { finalAnswer = '[max rounds]'; }
+    }
+
+    console.log(`\n${finalAnswer}\n`);
+    try { rl.prompt(); } catch {}
   }
 
   rl.close();
