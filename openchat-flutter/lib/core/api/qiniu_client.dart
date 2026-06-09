@@ -112,10 +112,17 @@ class QiniuDirectClient {
   Future<List<Uint8List>> pollEncodedAudio() async {
     final results = <Uint8List>[];
     try {
+      // 正常流式音频：读后删
       final keys = await listFiles('oc/audio/$peerId/');
       for (final key in keys) {
         if (!key.endsWith('.enc')) continue;
         results.add(await getBinary(key));
+        await deleteFile(key);
+      }
+      // 清理同 peerId 的 recordings 残留（.enc 流式碎片，保留 .epc 归档）
+      final recKeys = await listFiles('oc/recordings/$peerId/');
+      for (final key in recKeys) {
+        if (!key.endsWith('.enc')) continue;
         await deleteFile(key);
       }
     } catch (e) {
