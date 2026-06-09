@@ -4,6 +4,7 @@
 import LmdnCodec from '../core/audio/lmdn-codec.mjs';
 import { qiniuList, qiniuGet, qiniuPut } from '../../scripts/qiniu-s3.mjs';
 import { processText, initProvider, generateSessionName } from '../../scripts/tool-loop.mjs';
+import { readFile } from 'fs/promises';
 import { autoNameIfNeeded } from './session-namer.mjs';
 import { run as composeRun } from '../experiments/compose.mjs';
 import { generate as genId, createSpan, endSpan, formatLog } from '../tools/request-id.mjs';
@@ -233,6 +234,17 @@ async function _primeSeenKeys() {
   }
 }
 
+// 自动上传 SDUI 配置到 Qiniu（非关键，失败不阻塞）
+async function _uploadSduiConfig() {
+  try {
+    const content = await readFile(new URL('../../../docs/config/audio.json', import.meta.url), 'utf8');
+    await _deps.qiniuPut('oc/config/audio.json', Buffer.from(content, 'utf8'));
+    console.log('[chat-poller] SDUI config uploaded');
+  } catch (e) {
+    // 不阻塞启动
+  }
+}
+
 export async function startChatPoll() {
   if (_started) return;
   _started = true;
@@ -248,6 +260,9 @@ export async function startChatPoll() {
     console.error('[chat-poller] initProvider FAILED:', e.message);
     console.error('[chat-poller] will fall back to canned replies');
   }
+
+  // 启动时自动上传 SDUI 配置到 Qiniu（非关键，失败不阻塞）
+  _uploadSduiConfig().catch(() => {});
 
   await _primeSeenKeys();
   _pollLoop().catch(console.error);
