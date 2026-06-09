@@ -15,16 +15,26 @@ const MAX_STEPS = 8;
 
 async function _getProvider() {
   const cfg = persistentConfig.config;
-  const provider = cfg.current?.provider || Object.keys(cfg.providers || {})[0];
-  const model = cfg.current?.model || cfg.providers?.[provider]?.defaultModel;
-  const apiKey = cfg.providers?.[provider]?.apiKey;
-  if (!apiKey) throw new Error('goal: no apiKey');
-  const p = createProvider(provider, apiKey);
-  await p.connect(apiKey);
-  return { provider: p, model };
+  const currentProvider = cfg.current?.provider || 'minimax';
+  const defaultModel = cfg.current?.model || 'MiniMax-M3';
+  const fallbacks = [{ name: currentProvider, model: defaultModel }];
+  for (const [name, pcfg] of Object.entries(cfg.providers || {})) {
+    if (name !== currentProvider && pcfg.apiKey)
+      fallbacks.push({ name, model: pcfg.defaultModel || 'openrouter/auto' });
+  }
+  for (const fb of fallbacks) {
+    try {
+      const p = createProvider(fb.name, cfg.providers[fb.name]?.apiKey);
+      await p.connect(cfg.providers[fb.name]?.apiKey);
+      return { provider: p, model: fb.model, fallbacks };
+    } catch (e) {
+      console.error(`[goal] provider ${fb.name} failed: ${e.message.slice(0, 60)}`);
+    }
+  }
+  throw new Error('goal: no available provider');
 }
 
-async function _decompose(description, p, model) {
+async function _decompose(description, p, model, fallbacks, cfg) {
   const prompt = `Decompose the following goal into ${MAX_STEPS} concrete sequential steps.
 
 Goal: ${description}
@@ -32,13 +42,28 @@ Goal: ${description}
 Return ONLY a JSON array, no other text:
 [{ "action": "...", "expected": "..." }]`;
 
-  const resp = await p.chat(model, [{ role: 'user', content: prompt }]);
+  let resp;
+  for (let retry = 0; retry < 2; retry++) {
+    try {
+      resp = await p.chat(model, [{ role: 'user', content: prompt }]);
+      break;
+    } catch (e) {
+      if (retry === 0 && (e.message?.includes('500') || e.message?.includes('timeout'))) continue;
+      const currentName = model.split('/')[0];
+      fallbacks = fallbacks.filter(fb => fb.name !== currentName);
+      const nextFb = fallbacks[0];
+      if (!nextFb) throw e;
+      p = createProvider(nextFb.name, cfg.providers[nextFb.name]?.apiKey);
+      await p.connect(cfg.providers[nextFb.name]?.apiKey).catch(() => {});
+      model = nextFb.model || 'openrouter/auto';
+    }
+  }
   const text = resp.content || '';
   const jsonMatch = text.match(/\[[\s\S]*\]/);
   if (!jsonMatch) throw new Error(`goal: cannot parse steps: ${text.slice(0, 200)}`);
   const steps = JSON.parse(jsonMatch[0]);
   if (!Array.isArray(steps) || steps.length === 0) throw new Error('goal: no steps returned');
-  return steps.slice(0, MAX_STEPS);
+  return { steps: steps.slice(0, MAX_STEPS), p, model, fallbacks };
 }
 
 // compose 契约入口
@@ -46,8 +71,9 @@ export async function run({ inputs = {} } = {}) {
   const { description, sessionId = 'default' } = inputs;
   if (!description) throw new Error('goal.run: description required');
 
-  const { provider, model } = await _getProvider();
-  const steps = await _decompose(description, provider, model);
+  const cfg = persistentConfig.config;
+  const { provider, model, fallbacks } = await _getProvider();
+  const { steps } = await _decompose(description, provider, model, fallbacks, cfg);
 
   const results = [];
   let done = 0;

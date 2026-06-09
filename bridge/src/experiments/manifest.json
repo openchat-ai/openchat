@@ -835,6 +835,50 @@
       "deps": [],
       "tags": ["guardian", "middleware"],
       "status": "closed-loop"
+    },
+    {
+      "id": "mqtt-resume",
+      "file": "49-mqtt-resume/index.mjs",
+      "name": "MQTT connectWithResume — 5 件套在持久化+重试档的验证",
+      "category": "scaffold",
+      "pure": false,
+      "needsEnv": ["OPENCHAT_PROVIDER"],
+      "description": "LLM 写 connectWithResume({host, port, clientId, sessionStore}): 重连重试 + 从 sessionStore 恢复订阅。11 维评分 (8 静态 regex + 3 动态 sandbox)。2 sub-test: refuseConnackCount=0 (happy) + 2 (retry path)。E40 (1 function + 2 tools + no retry) 100% → E49 (1 function + 2 tools + retry + multi-sub) 横向扩展。",
+      "inputs": [
+        { "name": "live", "type": "boolean", "required": false, "default": false, "description": "true = 跑真 LLM 调用" },
+        { "name": "repeats", "type": "number", "required": false, "default": 15, "description": "LLM 调用次数 (live)" },
+        { "name": "model", "type": "string", "required": false, "default": null, "description": "覆盖默认 model" }
+      ],
+      "outputs": [
+        { "name": "aggregate", "type": "object", "description": "11 维 hit rate" },
+        { "name": "runs", "type": "array", "description": "每次 run 详细" },
+        { "name": "calls", "type": "number", "description": "总 LLM 调用次数" }
+      ],
+      "deps": ["mqtt-auto"],
+      "tags": ["scaffold", "mqtt", "resume", "retry", "session", "weak-llm", "e2e", "sandbox"],
+      "status": "closed-loop"
+    },
+    {
+      "id": "mqtt-split",
+      "file": "50-mqtt-split/index.mjs",
+      "name": "拆任务: connectWithRetry + restoreSubscriptions (2 轮 E40 档) — 5 件套对组合 E40 档子任务的支持验证",
+      "category": "scaffold",
+      "pure": false,
+      "needsEnv": ["OPENCHAT_PROVIDER"],
+      "description": "E49 拆任务版。LLM 写 2 个 E40 档函数: Round1 connectWithRetry({host, port, clientId}) → {socket, clientId}, Round2 restoreSubscriptions({conn, sessionStore}) → {restoredCount, subscriptions}。14 维评分 (5+5+4): R1 静态 5 + R1 动态 2 + R2 静态 5 + R2 动态 2 + combined 4 (跨轮次端到端)。验 '拆任务' 方案能不能跨过 E49 'reasoning 渗 code 块' 失败模式。",
+      "inputs": [
+        { "name": "live", "type": "boolean", "required": false, "default": false, "description": "true = 跑真 LLM 调用" },
+        { "name": "repeats", "type": "number", "required": false, "default": 15, "description": "run 次数 (live); 每次含 2 次 LLM call, 共 2×repeats 次" },
+        { "name": "model", "type": "string", "required": false, "default": null, "description": "覆盖默认 model" }
+      ],
+      "outputs": [
+        { "name": "aggregate", "type": "object", "description": "14 维 hit rate (5+5+4)" },
+        { "name": "runs", "type": "array", "description": "每次 run 详细" },
+        { "name": "calls", "type": "number", "description": "总 LLM 调用次数 (= 2 × repeats)" }
+      ],
+      "deps": ["mqtt-resume"],
+      "tags": ["scaffold", "mqtt", "split", "weak-llm", "e2e", "sandbox", "round-orchestration"],
+      "status": "closed-loop"
     }
   ]
 }

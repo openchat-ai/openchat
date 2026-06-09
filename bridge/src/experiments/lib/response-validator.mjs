@@ -5,6 +5,17 @@
 // - 未知 tool name 算 fatal 错误，不自动跳过
 // - 返回 errors 数组，不 throw
 
+function _repairJSON(s) {
+  let fixed = s;
+  let inStr = false, escape = false;
+  for (const c of fixed) { if (escape) { escape = false; continue; } if (c === '\\') { escape = true; continue; } if (c === '"') { inStr = !inStr; } }
+  if (inStr) fixed += '"';
+  const opens = (fixed.match(/\{/g) || []).length;
+  const closes = (fixed.match(/\}/g) || []).length;
+  for (let i = 0; i < opens - closes; i++) fixed += '}';
+  return fixed;
+}
+
 export function validateResponse(response, schemas) {
   const errors = [];
   if (!response || !response.toolCalls || !Array.isArray(response.toolCalls)) {
@@ -23,11 +34,18 @@ export function validateResponse(response, schemas) {
     }
 
     let args;
+    let parseError = '';
     try {
       args = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : rawArgs;
-    } catch {
-      errors.push({ tool: name, error: `参数不是合法 JSON: ${String(rawArgs).slice(0, 80)}` });
-      continue;
+    } catch (e) {
+      // 尝试修复常见的 LLM JSON 截断（未闭合的引号/花括号）
+      const repaired = _repairJSON(typeof rawArgs === 'string' ? rawArgs : '{}');
+      try { args = JSON.parse(repaired); }
+      catch (e2) {
+        parseError = e2.message?.includes('position') ? e2.message.slice(0, 60) : '语法错误';
+        errors.push({ tool: name, error: `JSON 参数解析失败: ${parseError}。收到: ${String(rawArgs).slice(0, 80)}` });
+        continue;
+      }
     }
 
     const paramErrors = _validateArgs(args, schema);

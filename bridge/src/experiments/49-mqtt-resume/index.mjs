@@ -161,10 +161,11 @@ export async function runLive({ repeats = 15, model = null } = {}) {
 
     try {
       // 240s 硬上限 per run (§4.1 长 prompt 风险: 60-180s 是常见区间)
+      // max_tokens: 16000 (M3 默认 4096, M3 容易 over-think 然后 truncated)
       const r = await Promise.race([
         chat.provider.chat(useModel, [
           { role: 'user', content: prompt },
-        ]),
+        ], { extra: { max_tokens: 16000 } }),
         new Promise((_, rej) => setTimeout(() => rej(new Error('llm-timeout-240s')), 240000)),
       ]);
       llmOutput = r?.content || r?.message?.content || '';

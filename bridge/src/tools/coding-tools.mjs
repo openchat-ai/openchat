@@ -29,7 +29,12 @@ function hashlineHash(line) {
   return crypto.createHash('md5').update(line).digest('hex').substring(0, 8);
 }
 
-export async function readFile(filePath) {
+export async function readFile(filePath, allowExternal) {
+  if (allowExternal) {
+    const resolved = path.resolve(filePath);
+    const content = await fs.readFile(resolved, 'utf8');
+    return content;
+  }
   const resolved = path.resolve(PROJECT_ROOT, filePath);
   if (!resolved.startsWith(PROJECT_ROOT)) throw new Error('Path traversal denied');
   const content = await fs.readFile(resolved, 'utf8');
@@ -96,10 +101,10 @@ export const TOOLS = [...SEARCH_TOOLS, ...DEV_TOOLS, ...AST_TOOLS, ...DEEP_TOOLS
     type: 'function',
     function: {
       name: 'read_file',
-      description: 'Read a file from the project. Path is relative to project root.',
+      description: 'Read a file. Path is relative to project root. Set allowExternal=true to read files outside the project (C:\\...).',
       parameters: {
         type: 'object',
-        properties: { path: { type: 'string', description: 'Relative file path' } },
+        properties: { path: { type: 'string', description: 'File path (relative or absolute if allowExternal=true)' }, allowExternal: { type: 'boolean', description: 'Allow reading files outside project root' } },
         required: ['path'],
       },
     },
@@ -157,7 +162,7 @@ export const TOOLS = [...SEARCH_TOOLS, ...DEV_TOOLS, ...AST_TOOLS, ...DEEP_TOOLS
 
 export async function executeTool(name, args) {
   switch (name) {
-    case 'read_file': return readFile(args.path);
+    case 'read_file': return readFile(args.path, args.allowExternal);
     case 'write_file': return writeFile(args.path, args.content);
     case 'edit_file': {
       // 协议选用交给 LLM (system prompt 含 getEditProtocolGuidance 引导):

@@ -77,12 +77,32 @@ export const TOOLS = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'list_directory',
+      description: 'List files in a directory. Handles Windows paths with spaces correctly.',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: 'Directory path to list (relative or absolute)' },
+        },
+        required: ['path'],
+      },
+    },
+  },
 ];
 
 // Execute tool by name, return result as string (with compression for LLM)
 export function executeTool(name, args) {
   if (name === 'exec_command') {
     const result = execCommand(args.command, args.timeout, true);
+    return JSON.stringify(result);
+  }
+  if (name === 'list_directory') {
+    const dirPath = (args.path || '.').replace(/\/$/, '');
+    const cmd = `cmd /c dir /b "${dirPath}"`;
+    const result = execCommand(cmd, 10000, true);
     return JSON.stringify(result);
   }
   throw new Error(`Unknown tool: ${name}`);

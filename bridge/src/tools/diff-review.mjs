@@ -19,6 +19,13 @@ export function getGitDiff(cwd = process.cwd()) {
   }
 }
 
+export function executeTool(name, args) {
+  if (name === 'diff_review' || name === 'getGitDiff') {
+    return getGitDiff(args?.cwd);
+  }
+  throw new Error(`Unknown tool: ${name}`);
+}
+
 export async function confirmDiff(diffText, promptText = 'Apply these changes? (Y/n): ') {
   if (!diffText || diffText === '(no changes)' || diffText.startsWith('(not a git repo')) {
     return true;

@@ -323,14 +323,10 @@ export async function run({ inputs = {} } = {}) {
     if (live) {
       const { persistentConfig } = await import('../core/persistent-config.js');
       const cfg = persistentConfig.config;
-      const pName = cfg.current?.provider, model = cfg.current?.model, apiKey = cfg.providers?.[pName]?.apiKey;
-      if (!pName || !model || !apiKey) throw new Error('live: no provider config');
-      const { createProvider } = await import('provider-kit');
-      const provider = createProvider(pName, apiKey);
-      await provider.connect(apiKey);
+      const fallbacks = _buildFallbackChain(cfg);
       const TOOLS = sc.tools.map(t => ({ type: 'function', function: t.function }));
       const history = [{ role: 'system', content: '你是 AI 助手，可用工具完成任务。每次调一个工具。' }, { role: 'user', content: sc.text }];
-      const result = await runPipelineLive(provider, model, TOOLS, history);
+      const result = await runPipelineLive(cfg, fallbacks, TOOLS, history);
       return { outputs: { ...result, scenario: sc.id } };
     }
     const llm = createMockLLM(sc.mockSeq);
@@ -343,14 +339,10 @@ export async function run({ inputs = {} } = {}) {
     if (live) {
       const { persistentConfig } = await import('../core/persistent-config.js');
       const cfg = persistentConfig.config;
-      const pName = cfg.current?.provider, model = cfg.current?.model, apiKey = cfg.providers?.[pName]?.apiKey;
-      if (!pName || !model || !apiKey) throw new Error('live: no provider config');
-      const { createProvider } = await import('provider-kit');
-      const provider = createProvider(pName, apiKey);
-      await provider.connect(apiKey);
+      const fallbacks = _buildFallbackChain(cfg);
       const TOOLS = sc.tools.map(t => ({ type: 'function', function: t.function }));
       const history = [{ role: 'system', content: '你是 AI 助手，可用工具完成任务。每次调一个工具。' }, { role: 'user', content: sc.text }];
-      const result = await runBaselineLive(provider, model, TOOLS, history);
+      const result = await runBaselineLive(cfg, fallbacks, TOOLS, history);
       return { outputs: { ...result, scenario: sc.id } };
     }
     const llm = createMockLLM(sc.mockSeq);
@@ -405,13 +397,16 @@ export async function run({ inputs = {} } = {}) {
     const { createProvider } = await import('provider-kit');
     const { persistentConfig } = await import('../core/persistent-config.js');
     const cfg = persistentConfig.config;
-    const pName = cfg.current?.provider;
-    const model = cfg.current?.model;
-    const apiKey = cfg.providers?.[pName]?.apiKey;
-    if (!pName || !model || !apiKey) throw new Error('config.json: provider/model/apiKey required for live mode');
 
-    const provider = createProvider(pName, apiKey);
-    await provider.connect(apiKey);
+    // 构建 fallback 链
+    const currentProvider = cfg.current?.provider || 'minimax';
+    const defaultModel = cfg.current?.model || 'MiniMax-M3';
+    const fallbacks = [];
+    fallbacks.push({ name: currentProvider, model: defaultModel });
+    for (const [name, pcfg] of Object.entries(cfg.providers || {})) {
+      if (name !== currentProvider && pcfg.apiKey)
+        fallbacks.push({ name, model: pcfg.defaultModel || 'openrouter/auto' });
+    }
 
     const TOOLS = MOCK_TOOLS.map(t => ({ type: 'function', function: t.function }));
     const systemMsg = { role: 'system', content: '你是 AI 助手，可以用工具完成任务。每次调用一个工具，获取结果后继续。完成后直接回答用户。' };
@@ -423,11 +418,11 @@ export async function run({ inputs = {} } = {}) {
       for (let r = 0; r < repeats; r++) {
         // baseline
         const bHistory = [{ ...systemMsg }, { role: 'user', content: sc.text }];
-        const bResult = await runBaselineLive(provider, model, TOOLS, bHistory);
+        const bResult = await runBaselineLive(cfg, fallbacks, TOOLS, bHistory);
 
         // treatment
         const tHistory = [{ ...systemMsg }, { role: 'user', content: sc.text }];
-        const tResult = await runPipelineLive(provider, model, TOOLS, tHistory);
+        const tResult = await runPipelineLive(cfg, fallbacks, TOOLS, tHistory);
 
         rows.push({ scenario: sc.id, repeat: r, baseline: bResult, treatment: tResult });
       }
@@ -478,21 +473,61 @@ export async function run({ inputs = {} } = {}) {
   throw new Error(`unknown op: "${op}"`);
 }
 
-// === live 模式的循环实现（简化版，直接调 provider-kit）===
+function _buildFallbackChain(cfg) {
+  const currentProvider = cfg.current?.provider || 'minimax';
+  const defaultModel = cfg.current?.model || 'MiniMax-M3';
+  const fb = [];
+  fb.push({ name: currentProvider, model: defaultModel });
+  for (const [name, pcfg] of Object.entries(cfg.providers || {})) {
+    if (name !== currentProvider && pcfg.apiKey)
+      fb.push({ name, model: pcfg.defaultModel || 'openrouter/auto' });
+  }
+  return fb;
+}
+
+// === live 模式：带 retry+fallback 的 LLM 调用 ===
 async function _callLLM(provider, model, tools, history) {
   const resp = await provider.chat(model, history, { tools });
   const p = (await import('../core/epc-pipeline.mjs')).runPipeline(resp);
   return { content: p.content || '', toolCalls: p.toolCalls || [] };
 }
 
-async function runBaselineLive(provider, model, tools, history) {
+async function _callLLMWithFallback(cfg, fallbacks, provider, model, tools, history, label) {
+  for (let retry = 0; retry < 2; retry++) {
+    try {
+      return { ...(await _callLLM(provider, model, tools, history)), provider, model, fallbacks };
+    } catch (e) {
+      if (retry === 0 && (e.message?.includes('500') || e.message?.includes('timeout'))) {
+        process.stdout.write(`\x1b[90m[retry ${retry + 1}: ${e.message.slice(0, 60)}]\x1b[0m\n`);
+        continue;
+      }
+      const currentName = (label || model).split('/')[0];
+      fallbacks = fallbacks.filter(fb => fb.name !== currentName);
+      const nextFb = fallbacks[0];
+      if (!nextFb) throw e;
+      process.stdout.write(`\x1b[33m[fallback to ${nextFb.name}]\x1b[0m\n`);
+      const { createProvider } = await import('provider-kit');
+      provider = createProvider(nextFb.name, cfg.providers[nextFb.name]?.apiKey);
+      await provider.connect(cfg.providers[nextFb.name]?.apiKey).catch(() => {});
+      model = nextFb.model || 'openrouter/auto';
+    }
+  }
+  throw new Error('All providers exhausted');
+}
+
+async function runBaselineLive(cfg, fallbacks, tools, history) {
   const callCount = new Map();
   let finalText = '';
   let totalToken = 0;
   const errors = [];
+  const { createProvider } = await import('provider-kit');
+  let provider = createProvider(fallbacks[0].name, cfg.providers[fallbacks[0].name]?.apiKey);
+  await provider.connect(cfg.providers[fallbacks[0].name]?.apiKey).catch(() => {});
+  let model = fallbacks[0].model;
 
   for (let r = 0; r < MAX_ROUNDS; r++) {
-    const resp = await _callLLM(provider, model, tools, history);
+    const resp = await _callLLMWithFallback(cfg, fallbacks, provider, model, tools, history, fallbacks[0].name);
+    ({ provider, model, fallbacks } = resp);
     totalToken += estimateTokens(resp.content);
     const tcs = resp.toolCalls || [];
 
@@ -527,18 +562,23 @@ async function runBaselineLive(provider, model, tools, history) {
   return { rounds: Math.min(history.filter(m => m.role === 'assistant' && m.tool_calls).length + 1, MAX_ROUNDS), completed: !finalText.includes('[loop abort]') && !finalText.includes('[max rounds]'), errorCount: errors.length, tokenEstimate: totalToken, finalText, errors };
 }
 
-async function runPipelineLive(provider, model, tools, history) {
+async function runPipelineLive(cfg, fallbacks, tools, history) {
   const callCount = new Map();
   const enforcer = createStepEnforcer();
   const tracker = createErrorTracker();
   let finalText = '';
   let totalToken = 0;
   const errors = [];
+  const { createProvider } = await import('provider-kit');
+  let provider = createProvider(fallbacks[0].name, cfg.providers[fallbacks[0].name]?.apiKey);
+  await provider.connect(cfg.providers[fallbacks[0].name]?.apiKey).catch(() => {});
+  let model = fallbacks[0].model;
 
   enforcer.defineAll({ edit_file: ['grep', 'read_file'], write_file: ['read_file'], execute_command: ['read_file'] });
 
   for (let r = 0; r < MAX_ROUNDS; r++) {
-    const resp = await _callLLM(provider, model, tools, history);
+    const resp = await _callLLMWithFallback(cfg, fallbacks, provider, model, tools, history, fallbacks[0].name);
+    ({ provider, model, fallbacks } = resp);
     totalToken += estimateTokens(resp.content);
 
     const validation = validateResponse({ toolCalls: resp.toolCalls }, tools);

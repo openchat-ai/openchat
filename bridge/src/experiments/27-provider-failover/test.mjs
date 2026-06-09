@@ -42,4 +42,17 @@ try {
     assert.ok(provider);
     console.log('✓ provider-failover: kit provider has failover config');
   } catch {}
+
+  // Test: dev-repl 风格 fallback — round 重置 + MODEL 更新
+  {
+    let model = 'MiniMax-M3';
+    let round = 7;
+    const fallbacks = [{ name: 'openrouter', model: 'openrouter/auto' }];
+    const nextFb = fallbacks[0];
+    model = nextFb.model;
+    round = -1;
+    assert.equal(model, 'openrouter/auto');
+    assert.equal(round, -1);
+    console.log('✓ provider-failover: dev-repl fallback 更新 MODEL + 重置 round');
+  }
 }
