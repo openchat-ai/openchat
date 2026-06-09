@@ -37,8 +37,8 @@
       "status": "closed-loop"
     },
     {
-      "id": "skeleton-agent",
-      "file": "../../scripts/skeleton-agent.mjs",
+      "id": "tool-loop",
+      "file": "../../scripts/tool-loop.mjs",
       "name": "多轮工具循环 (provider-kit)",
       "category": "llm",
       "pure": false,
@@ -128,7 +128,7 @@
       "outputs": [
         { "name": "running", "type": "boolean", "description": "是否成功启动" }
       ],
-      "deps": ["qiniu", "skeleton-agent", "codec"],
+      "deps": ["qiniu", "tool-loop", "codec"],
       "tags": ["chat", "poller", "walking-skeleton", "epc"],
       "status": "closed-loop"
     },
@@ -346,7 +346,7 @@
         { "name": "chatId",   "type": "string", "description": "解析出的 chatId" },
         { "name": "error",    "type": "string", "description": "错误信息（若有）" }
       ],
-      "deps": ["qiniu", "isolation", "skeleton-agent"],
+      "deps": ["qiniu", "isolation", "tool-loop"],
       "tags": ["composite", "chat", "poll", "walking-skeleton"],
       "status": "closed-loop"
     },
@@ -396,7 +396,7 @@
         { "name": "failed", "type": "number", "description": "失败步数" },
         { "name": "total", "type": "number", "description": "总步数" }
       ],
-      "deps": ["skeleton-agent"],
+      "deps": ["tool-loop"],
       "tags": ["goal", "multi-turn"],
       "status": "closed-loop"
     },

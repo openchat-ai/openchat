@@ -98,12 +98,12 @@ async function testSystemExec() {
 
   // 8. 验证 skeleton-agent 通过 provider-kit 调 LLM（不自写 LLM）
   try {
-    const agent = await import('../../scripts/skeleton-agent.mjs');
-    ok('skeleton-agent 可加载');
+    const agent = await import('../../scripts/tool-loop.mjs');
+    ok('tool-loop 可加载');
     if (typeof agent.initProvider === 'function') ok('initProvider 存在');
     if (typeof agent.processText === 'function') ok('processText 存在');
     // 验证 processText 走 provider-kit（不是自写 LLM）
-    const src = await import('fs/promises').then(fs => fs.readFile('scripts/skeleton-agent.mjs', 'utf8'));
+    const src = await import('fs/promises').then(fs => fs.readFile('scripts/tool-loop.mjs', 'utf8'));
     if (src.includes('createProvider') && src.includes("from 'provider-kit'")) ok('LLM 走 provider-kit');
     else ng('未走 provider-kit');
   } catch (e) {

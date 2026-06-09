@@ -43,7 +43,7 @@ export async function initProvider() {
   _provider = createProvider(provider, apiKey);
   await _provider.connect(apiKey);
   _model = model;
-  console.log(`[skeleton-agent] init OK: ${provider}/${model} (via provider-kit)`);
+  console.log(`[tool-loop] init OK: ${provider}/${model} (via provider-kit)`);
   return `${provider}/${model}`;
 }
 
@@ -51,7 +51,7 @@ function _getOrCreateSession(chatId) {
   if (_sessions.has(chatId)) return _sessions.get(chatId);
   const entry = { history: [{ role: 'system', content: SYSTEM_PROMPT }], sessionId: chatId };
   _sessions.set(chatId, entry);
-  console.log(`[skeleton-agent] new session chatId=${chatId}`);
+  console.log(`[tool-loop] new session chatId=${chatId}`);
   return entry;
 }
 
@@ -158,7 +158,7 @@ export function getHistory(chatId) {
 //   outputs: { response, toolCalls }
 export async function run({ inputs = {}, deps = {} } = {}) {
   const { text, chatId = 'default' } = inputs;
-  if (!text) throw new Error('skeleton-agent.run: text required');
+  if (!text) throw new Error('tool-loop.run: text required');
   const guardianOpt = inputs.guardian || deps.guardian?.guardian;
   const r = await processText(text, chatId, guardianOpt ? { guardian: guardianOpt } : {});
   return { outputs: { response: r.response || '', toolCalls: r.toolCalls || [] } };

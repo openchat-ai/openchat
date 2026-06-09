@@ -3,7 +3,7 @@
 
 import LmdnCodec from '../core/audio/lmdn-codec.mjs';
 import { qiniuList, qiniuGet, qiniuPut } from '../../scripts/qiniu-s3.mjs';
-import { processText, initProvider, generateSessionName } from '../../scripts/skeleton-agent.mjs';
+import { processText, initProvider, generateSessionName } from '../../scripts/tool-loop.mjs';
 import { autoNameIfNeeded } from './session-namer.mjs';
 import { run as composeRun } from '../experiments/compose.mjs';
 import { generate as genId, createSpan, endSpan, formatLog } from '../tools/request-id.mjs';

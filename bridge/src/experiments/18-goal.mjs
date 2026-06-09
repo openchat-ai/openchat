@@ -59,7 +59,7 @@ export async function run({ inputs = {} } = {}) {
     let result = '';
     let status = 'failed';
     try {
-      const r = await composeRun('skeleton-agent', { text: stepPrompt, chatId: `${sessionId}/step-${i}` });
+      const r = await composeRun('tool-loop', { text: stepPrompt, chatId: `${sessionId}/step-${i}` });
       result = r?.response || '';
       if (result) status = 'done';
     } catch (e) {
