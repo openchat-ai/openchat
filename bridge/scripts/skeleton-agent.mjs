@@ -8,6 +8,7 @@ import { persistentConfig } from '../src/core/persistent-config.js';
 import { createProvider } from 'provider-kit';
 import { runPipeline, getEditProtocolGuidance } from '../src/core/epc-pipeline.mjs';
 import { TOOLS as CODING_TOOLS, executeTool as codingExec } from '../src/tools/coding-tools.mjs';
+import { createGuardian } from '../src/experiments/lib/guardian.mjs';
 
 const SYSTEM_PROMPT = `You are OpenChat, a friendly Chinese-speaking AI software development assistant.
 You have tools to explore, read, edit, and search the codebase.
@@ -59,7 +60,10 @@ export async function processText(text, chatId = 'default', opts = {}) {
   const entry = _getOrCreateSession(chatId);
   entry.history.push({ role: 'user', content: text });
 
-  const guardian = opts.guardian || null;
+  const guardian = opts.guardian || createGuardian({
+    tools: CODING_TOOLS,
+    stepDeps: { edit_file: ['read_file'], hash_edit: ['read_file'], write_file: ['read_file'] },
+  });
   let finalText = '';
   const callCount = new Map();
 
