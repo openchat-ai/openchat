@@ -661,6 +661,22 @@
         "signal"
       ],
       "status": "closed-loop"
+    },
+    {
+      "id": "mqtt-push",
+      "file": "lingbao/42.mjs",
+      "name": "灵保: 告警推送模拟 (in-process, 无 broker)",
+      "category": "lingbao",
+      "pure": true,
+      "needsEnv": [],
+      "description": "灵保 L3 推送层. in-process EventEmitter 模拟 MQTT, 队列上限 100, handler 异常隔离. ID=1099530502144",
+      "deps": [],
+      "tags": [
+        "lingbao",
+        "push",
+        "mqtt"
+      ],
+      "status": "closed-loop"
     }
   ]
 }
