@@ -693,6 +693,22 @@
         "report"
       ],
       "status": "closed-loop"
+    },
+    {
+      "id": "calendar-parse",
+      "file": "lingbao/45.mjs",
+      "name": "灵保: 施工日历解析+阈值动态调整",
+      "category": "lingbao",
+      "pure": true,
+      "needsEnv": [],
+      "description": "灵保 L2 调度层. 5 种 phase (concrete/lifting/finishing/rest/unknown) 硬编码调整规则 + 7 天预告. ID=8796244017152",
+      "deps": [],
+      "tags": [
+        "lingbao",
+        "calendar",
+        "threshold"
+      ],
+      "status": "closed-loop"
     }
   ]
 }
