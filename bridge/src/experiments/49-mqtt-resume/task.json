@@ -1,9 +1,0 @@
-{
-  "task": {
-    "id": "mqtt-connect-resume",
-    "prompt": "Output ONLY a ```js code block``` with this function. NO prose, NO thinking, NO explanation.\n\nThe onConnect callback fires AFTER the broker has accepted. Do NOT parse CONNACK bytes. Do NOT implement packet readers.\n\n```js\nasync function connectWithResume({host, port, clientId, sessionStore}) {\n  // Connect with retry (max 3 attempts, backoff < 200ms)\n  // After onConnect fires, call sessionStore.getSubscriptions(clientId) and write SUBSCRIBE for each\n  // Resolve with {connId: clientId, restoredCount, subscriptions: subs}\n  // Globals: renderConnect, renderSubscribe (return {bytes, type, length}), net\n  // renderConnect args: {protoName: 'MQTT', protoLevel: 4, connectFlags: 2, keepAlive: 60, clientId}\n  // renderSubscribe args: {packetId: i+1, subscriptions: [subs[i]]}\n}\n```\n\nFill in the function body. NO imports. NO require/module.exports.",
-    "expect": {
-      "functionShape": "async function connectWithResume({host, port, clientId, sessionStore})"
-    }
-  }
-}

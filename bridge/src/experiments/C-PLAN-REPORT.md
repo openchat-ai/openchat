@@ -111,32 +111,50 @@ E34 验证 strict schema 在 40 tool 场景有 extraFields 副作用. E38 是 4 
 
 ---
 
-## 5. 未来方向 (没建, 留给后面)
+## 5. 已知 closed-loop (M3 能力上限)
+
+| 实验 | closed-loop 原因 | 含义 |
+|---|---|---|
+| E49 — mqtt-resume (已删) | M3 在 retry + 状态恢复任务上 0/15 | 5 件套不救 sampling 层缺陷 |
+| E50 — mqtt-split (已删) | M3 拆任务后 0.300 overall, combined 0/15 | "拆任务"方案不跨过 E49 的坎 |
+
+**结论**: M3 (MiniMax-M3) 在 E40 档 (简单协议 tool 调用) 100%, 在 E49/E50 档 (中等复杂 async 代码生成) 不可用。要么切强模型, 要么换输出范式 (tool call 替 free-form 代码)。两种路径都超出当前 C 计划 scope。
+
+## 6. 未来方向 (没建, 留给后面)
 
 | 方向 | 目的 | 风险 |
 |---|---|---|
-| E42 — 完整 MQTT client with onMessage | 测 scaffold 在多步异步 + 事件回调任务上的横向扩展 | prompt 变长, 可能撞 provider timeout (见 4.1) |
 | E43 — RouterProvider 接到 createProvider (永久) | 让 hot path 走 router, provider 抖动有 failover 兜底 | 跟 user 当前 openai-compatible.js 设计冲突, 需要 user 决策 (见 4.2) |
-| E44 — Strict schema 复测 | 在 E40 任务上重测 strict 副作用是否还在 | 如果副作用在, 决定是否砍 strict 或调工具集大小 |
 | E45 — C 计划外推到其它协议 (HTTP / gRPC) | 验证 5 件套是协议无关的, 还是 MQTT-specific | 风险高, 1-2 周工作量 |
 
-**建议优先级**: E43 (短) > E42 (中) > E44 (短) > E45 (高).
+**建议优先级**: E43 (短) > E45 (高).
 
 ---
 
-## 6. 实验目录清理 (已完成 2026-06-09)
+## 7. 实验目录清理 (两轮)
 
 **保留**:
 - `src/experiments/C-PLAN-REPORT.md` (本文件) — 决策依据
 - `~/.claude/memory/cplan_scaffold_decision.md` (已更新) — 5 件套简版
 
-**已清理** (2026-06-09):
+**已清理第一轮** (2026-06-09):
 - `src/experiments/36-code-ability-diagnostic/` ✅
 - `src/experiments/37-protocol-template/` ✅
 - `src/experiments/38-combined-intervention/` ✅
 - `src/experiments/39-real-coding-task/` ✅
 
-**manifest.json**: 同步移除 4 个 entry, 42 个实验条目, 0 个 dangling 引用.
+**已清理第二轮** (2026-06-10): MQTT 全部清出, 包含 E49/E50 closed-loop 数据, 见 §5
+- `src/experiments/33-mqtt-auto/` ✅
+- `src/experiments/49-mqtt-resume/` ✅
+- `src/experiments/50-mqtt-split/` ✅
+- `src/experiments/34-schema-strictness/` ✅ (含 MQTT fixture)
+- `src/experiments/35-narrow-tools/` ✅ (含 MQTT fixture)
+- `src/experiments/lib/mqtt-render-tools.mjs` ✅
+- `src/experiments/_autonomy-sandbox/` ✅ (MQTT goal)
+- `src/tools/mqtt-tools.mjs` + `.test.mjs` ✅ (production MQTT 工具, 跟 E33 联动删除)
+- `src/tools/coding-tools.mjs` 移除 MQTT_TOOLS 聚合 + 4 个 mqtt case
+
+**manifest.json**: 同步移除 5 个 entry, 0 个 dangling 引用 (其他 lib 文件 error-tracker/guardian/response-validator/step-enforcer 仍被 35 个实验用, 保留).
 
 **理由**: experiment harness 是 一次性代码, 不进 production. 每次 provider-kit 改 API 实验就挂, 维护成本是纯负. 数据 (live-*.json, REPORT) 已沉淀到本报告, 删了不丢结论. 已进 production 的代码 (`normalize.js`, `anthropic-adapter.js` 等) 不算 experiment 资产.
 
@@ -149,12 +167,13 @@ E34 验证 strict schema 在 40 tool 场景有 extraFields 副作用. E38 是 4 
 
 ---
 
-## 7. 引用
+## 8. 引用
 
 - **memory**: `~/.claude/memory/cplan_scaffold_decision.md` (4 件套 → 5 件套更新版)
 - **E36 详细**: 沉淀于本报告 §1, 2
 - **E37 详细**: 沉淀于本报告 §1, 2
 - **E38 详细**: 沉淀于本报告 §1, 2
 - **E39/E40/E41 详细**: 沉淀于本报告 §1, 2, 4 (E39→E40 修复 4 处, E41 router 接入)
+- **E49/E50 详细** (已删): 沉淀于本报告 §5 (M3 在 retry + 状态恢复档 0/15, "拆任务" 不跨)
 
 **实验当构件** (跟 experiments_vision 一致): E36-E41 都有 `META` + `run({inputs})` + `outputs` 契约, 可被 compose.mjs 拼装. 但当前没复用场景, 删目录不影响构件愿景.

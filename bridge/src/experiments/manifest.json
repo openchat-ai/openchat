@@ -1,883 +1,631 @@
 {
-  "version": 1,
+  "version": 6,
   "name": "openchat-experiments",
-  "description": "可组合实验：每个实验 = 一个有 I/O 契约的可复用构件。用 compose.mjs 按依赖图拼装。",
+  "description": "可组合实验。ID = 2^n(自身位) + ∑dep_ids(依赖和)，二进制可分解出完整依赖链。",
   "ioSchema": {
-    "Buffer":  "Node.js Buffer",
-    "string":  "UTF-8 字符串",
-    "number":  "整数",
-    "boolean": "true / false",
-    "object":  "结构化对象",
-    "array":   "数组",
-    "function":"async (args) => result",
-    "any":     "运行时决定"
+    "Buffer": "Node.js Buffer",
+    "string": "UTF-8 字符串",
+    "number": "整数",
+    "boolean": "true/false",
+    "object": "结构化对象",
+    "array": "数组",
+    "function": "async (args) => result",
+    "any": "运行时决定"
   },
   "statusSchema": {
-    "closed-loop":   "有真实行为断言，run-all 跑通即代表回归被捕获",
-    "skeleton":      "只有结构/存在性检查或无 test 函数；需要补充行为断言或挪走",
-    "reference-only": "参考实现，不是可跑实验；不应进 run-all"
+    "closed-loop": "有真实行为断言，run-all 跑通即代表回归被捕获",
+    "skeleton": "只有结构/存在性检查或无 test 函数",
+    "reference-only": "参考实现，不是可跑实验"
   },
   "experiments": [
     {
       "id": "config",
-      "file": "1-sdui.mjs",
-      "name": "持久化配置",
+      "file": "01.mjs",
+      "name": "持久化配置读取 ~/.openchat/config.json",
       "category": "config",
       "pure": true,
       "needsEnv": [],
-      "description": "读取 ~/.openchat/config.json，含 providers / current / paths。",
-      "inputs": [],
-      "outputs": [
-        { "name": "config",   "type": "object", "description": "完整 config 对象" },
-        { "name": "provider", "type": "string", "description": "当前 provider 名" },
-        { "name": "model",    "type": "string", "description": "当前 model" }
-      ],
+      "description": "持久化配置读取 ~/.openchat/config.json. ID=1",
       "deps": [],
-      "tags": ["config", "provider", "paths"],
+      "tags": [
+        "config",
+        "config"
+      ],
       "status": "closed-loop"
     },
     {
-      "id": "tool-loop",
-      "file": "../../scripts/tool-loop.mjs",
-      "name": "多轮工具循环 (provider-kit)",
-      "category": "llm",
-      "pure": false,
-      "needsEnv": [],
-      "description": "多轮工具循环：经 provider-kit 调 LLM，默认 guardian 守卫。",
-      "inputs": [
-        { "name": "text",   "type": "string",  "required": true,  "description": "用户消息" },
-        { "name": "chatId", "type": "string",  "required": false, "default": "default", "description": "会话 id（隔离历史）" }
-      ],
-      "outputs": [
-        { "name": "response",   "type": "string", "description": "LLM 回复" },
-        { "name": "toolCalls",  "type": "array",  "description": "工具调用列表" }
-      ],
-      "deps": ["guardian"],
-      "tags": ["llm", "multi-turn"],
-      "status": "closed-loop"
-    },
-
-    {
-      "id": "p2p",
-      "file": "3-p2p.mjs",
-      "name": "P2P 直连 + Qiniu 信令",
-      "category": "p2p",
-      "pure": false,
-      "needsEnv": ["QINIU_ACCESS_KEY", "QINIU_SECRET_KEY"],
-      "description": "p2p-net (TCP 直连) + qiniu-signaling (peer endpoint 交换)。",
-      "inputs": [],
-      "outputs": [
-        { "name": "swarm",  "type": "object", "description": "P2PSwarm 实例" },
-        { "name": "signaling", "type": "object", "description": "QiniuSignaling 单例" }
-      ],
-      "deps": ["qiniu"],
-      "tags": ["p2p", "signaling"],
-      "status": "skeleton"
-    },
-    {
-      "id": "codec",
-      "file": "4-codec.mjs",
-      "name": "LMDN 音频编解码 (48kHz)",
-      "category": "pure",
+      "id": "feature-flag",
+      "file": "02.mjs",
+      "name": "分层 Feature Flag — env→local→remote→disk→hardcoded",
+      "category": "config",
       "pure": true,
       "needsEnv": [],
-      "description": "LmdnCodec：48kHz, N=96, EPC 头 BB 01 CC (enc) / BB 00 DD (msg)。",
-      "inputs": [
-        { "name": "pcm",     "type": "Buffer", "required": false, "description": "48kHz int16 PCM (encode 输入)" },
-        { "name": "encoded", "type": "Buffer", "required": false, "description": "EPC 编码字节 (decode 输入)" },
-        { "name": "op",      "type": "string", "required": false, "default": "encode", "description": "encode | decode" }
-      ],
-      "outputs": [
-        { "name": "encoded", "type": "Buffer", "description": "EPC 编码字节 (encode 输出)" },
-        { "name": "pcm",     "type": "Buffer", "description": "48kHz int16 PCM (decode 输出)" }
-      ],
+      "description": "分层 Feature Flag — env→local→remote→disk→hardcoded. ID=2",
       "deps": [],
-      "tags": ["audio", "codec", "epc", "48khz"],
-      "status": "closed-loop"
-    },
-    {
-      "id": "qiniu",
-      "file": "5-qiniu.mjs",
-      "name": "Qiniu S3 兼容封装",
-      "category": "qiniu",
-      "pure": false,
-      "needsEnv": ["QINIU_ACCESS_KEY", "QINIU_SECRET_KEY"],
-      "description": "scripts/qiniu-s3.mjs：list / get / put / delete / deletePrefix。S3 V4 签名。",
-      "inputs": [
-        { "name": "op",   "type": "string", "required": true,  "description": "list | get | put | delete | deletePrefix" },
-        { "name": "key",  "type": "string", "required": false, "description": "对象 key" },
-        { "name": "data", "type": "Buffer", "required": false, "description": "put 内容" },
-        { "name": "prefix", "type": "string", "required": false, "description": "deletePrefix 前缀" }
+      "tags": [
+        "config",
+        "feature-flag"
       ],
-      "outputs": [
-        { "name": "result", "type": "any", "description": "操作结果" }
-      ],
-      "deps": [],
-      "tags": ["qiniu", "storage", "s3"],
-      "status": "closed-loop"
-    },
-    {
-      "id": "chat-poller",
-      "file": "6-app.mjs",
-      "name": "Chat-Poller (walking-skeleton)",
-      "category": "chat",
-      "pure": false,
-      "needsEnv": ["QINIU_ACCESS_KEY", "QINIU_SECRET_KEY"],
-      "description": "轮询 oc/chat/{chatId}/ → 调 agent → 写 *-reply.json。EPC 头 + seenKeys 双层去重。",
-      "inputs": [],
-      "outputs": [
-        { "name": "running", "type": "boolean", "description": "是否成功启动" }
-      ],
-      "deps": ["qiniu", "tool-loop", "codec"],
-      "tags": ["chat", "poller", "walking-skeleton", "epc"],
-      "status": "closed-loop"
-    },
-    {
-      "id": "isolation",
-      "file": "7-isolation.mjs",
-      "name": "chatId 路径隔离",
-      "category": "pure",
-      "pure": true,
-      "needsEnv": [],
-      "description": "从 oc/chat/{chatId}/{file} 路径解析 chatId，验证回复路径隔离。",
-      "inputs": [
-        { "name": "key", "type": "string", "required": true, "description": "Qiniu 对象 key" }
-      ],
-      "outputs": [
-        { "name": "chatId", "type": "string", "description": "解析出的 chatId" }
-      ],
-      "deps": [],
-      "tags": ["path", "isolation", "pure"],
-      "status": "closed-loop"
-    },
-    {
-      "id": "naming",
-      "file": "8-naming.mjs",
-      "name": "会话自动命名",
-      "category": "chat",
-      "pure": false,
-      "needsEnv": ["QINIU_ACCESS_KEY", "QINIU_SECRET_KEY"],
-      "description": "session-namer：消息数 3/8/16/32/64 触发自动命名；userSet 后不再触发。",
-      "inputs": [
-        { "name": "chatId",       "type": "string",  "required": true,  "description": "会话 id" },
-        { "name": "messageCount", "type": "number",  "required": true,  "description": "当前消息数" },
-        { "name": "generator",    "type": "function","required": true,  "description": "生成名字的 async () => string" }
-      ],
-      "outputs": [
-        { "name": "meta", "type": "object", "description": "{ name, userSet, autoNamed, createdAt, updatedAt }" }
-      ],
-      "deps": ["qiniu"],
-      "tags": ["naming", "chat", "auto-name"],
-      "status": "closed-loop"
-    },
-    {
-      "id": "session-tree",
-      "file": "9-session.mjs",
-      "name": "会话树 CRUD",
-      "category": "chat",
-      "pure": false,
-      "needsEnv": ["QINIU_ACCESS_KEY", "QINIU_SECRET_KEY"],
-      "description": "session-tree：_tree.json 持久化，节点 + variant + edit + signal。",
-      "inputs": [
-        { "name": "op",      "type": "string", "required": true,  "description": "addNode | addVariant | editMessage | handleSignal | getCurrentPath | getParentForNewUser" },
-        { "name": "chatId",  "type": "string", "required": true },
-        { "name": "data",    "type": "any",    "required": false, "description": "op-specific payload" }
-      ],
-      "outputs": [
-        { "name": "result", "type": "any", "description": "op-specific result" }
-      ],
-      "deps": ["qiniu"],
-      "tags": ["session", "tree", "chat"],
-      "status": "closed-loop"
-    },
-    {
-      "id": "system-exec",
-      "file": "10-system-exec.mjs",
-      "name": "宿主机命令安全执行",
-      "category": "exec",
-      "pure": true,
-      "needsEnv": [],
-      "description": "system-exec：白名单 + 黑名单；executeTool 路由；输出经 compressor 压缩。",
-      "inputs": [
-        { "name": "command", "type": "string", "required": true, "description": "shell 命令" }
-      ],
-      "outputs": [
-        { "name": "stdout",   "type": "string", "description": "标准输出" },
-        { "name": "stderr",   "type": "string", "description": "标准错误" },
-        { "name": "exitCode", "type": "number", "description": "退出码" }
-      ],
-      "deps": ["compressor"],
-      "tags": ["exec", "shell", "safety", "sandbox"],
-      "status": "closed-loop"
-    },
-    {
-      "id": "compressor",
-      "file": "11-token-saving.mjs",
-      "name": "CLI 输出压缩 (rtk 风格)",
-      "category": "pure",
-      "pure": true,
-      "needsEnv": [],
-      "description": "output-compressor：git_status / git_diff / dedup / truncate。保留 FAIL 过滤 PASS。",
-      "inputs": [
-        { "name": "command", "type": "string", "required": true,  "description": "产生该输出的命令" },
-        { "name": "stdout",  "type": "string", "required": false, "default": "" },
-        { "name": "stderr",  "type": "string", "required": false, "default": "" }
-      ],
-      "outputs": [
-        { "name": "stdout", "type": "string", "description": "压缩后输出" },
-        { "name": "meta",   "type": "object", "description": "{ strategy, origBytes, compressedBytes, ratio }" }
-      ],
-      "deps": [],
-      "tags": ["compression", "rtk", "pure"],
-      "status": "closed-loop"
-    },
-    {
-      "id": "coding",
-      "file": "12-coding.mjs",
-      "name": "编程工具核心 (coding-tools + quality-gate)",
-      "category": "coder",
-      "pure": true,
-      "needsEnv": [],
-      "description": "read_file / write_file / edit_file / hashEdit + snapshot/restore/applyWithGuard。",
-      "inputs": [
-        { "name": "op",     "type": "string", "required": true,  "description": "read_file | write_file | edit_file | hashEdit | snapshot | restore | applyWithGuard" },
-        { "name": "path",   "type": "string", "required": true },
-        { "name": "content","type": "string", "required": false },
-        { "name": "search", "type": "string", "required": false },
-        { "name": "replace","type": "string", "required": false },
-        { "name": "options","type": "object", "required": false }
-      ],
-      "outputs": [
-        { "name": "result", "type": "any", "description": "op-specific result" }
-      ],
-      "deps": [],
-      "tags": ["coding", "edit", "quality-gate"],
-      "status": "closed-loop"
-    },
-    {
-      "id": "edit-advanced",
-      "file": "12a-edit-advanced.mjs",
-      "name": "高级编辑 (multi-edit / ast-edit / diff-review)",
-      "category": "coder",
-      "pure": true,
-      "needsEnv": [],
-      "description": "multiEdit (批量) + astEdit (AST 重命名/replace_body) + diff-review (git diff + revert)。",
-      "inputs": [
-        { "name": "op",   "type": "string", "required": true,  "description": "multiEdit | astEdit | diff | revert" },
-        { "name": "path", "type": "string", "required": false },
-        { "name": "data", "type": "any",    "required": false }
-      ],
-      "outputs": [
-        { "name": "result", "type": "any" }
-      ],
-      "deps": ["coding"],
-      "tags": ["coding", "ast", "multi-edit", "diff-review"],
-      "status": "closed-loop"
-    },
-    {
-      "id": "dev-aux",
-      "file": "12b-dev-aux.mjs",
-      "name": "开发辅助 (auto-commit / project-context / dev-repl)",
-      "category": "dev",
-      "pure": false,
-      "needsEnv": [],
-      "description": "auto-commit (类型识别 commit msg) + project-context (依赖图) + dev-repl (CLI 入口) + bin/openchat.js。",
-      "inputs": [
-        { "name": "op",   "type": "string", "required": true,  "description": "commitMsg | deps | repl" }
-      ],
-      "outputs": [
-        { "name": "result", "type": "any" }
-      ],
-      "deps": [],
-      "tags": ["dev", "commit", "context", "repl"],
-      "status": "closed-loop"
-    },
-    {
-      "id": "relay",
-      "file": "13-relay.mjs",
-      "name": "中继 / 消息总线",
-      "category": "relay",
-      "pure": false,
-      "needsEnv": [],
-      "description": "bucket-relay (跨区域选最近 bucket) + signal-relay (单 bucket 信令) + message-bus (agent 间 pub/sub + sendTo/reply/broadcast/delegate)。",
-      "inputs": [
-        { "name": "op", "type": "string", "required": true, "description": "bestWrite | bestRead | subscribe | publish | sendTo | reply | broadcast | delegate" },
-        { "name": "data", "type": "any",  "required": false }
-      ],
-      "outputs": [
-        { "name": "result", "type": "any" }
-      ],
-      "deps": ["qiniu"],
-      "tags": ["relay", "bucket", "message-bus"],
-      "status": "closed-loop"
-    },
-    {
-      "id": "storage",
-      "file": "14-storage-provider.mjs",
-      "name": "存储 / Provider 接线",
-      "category": "storage",
-      "pure": false,
-      "needsEnv": [],
-      "description": "persistent-store (sessions.json + providers.json) + provider-service (provider-kit 唯一入口) + tool-registry (read_memory / web_fetch 私网拦截 / calculate / finish)。",
-      "inputs": [
-        { "name": "op", "type": "string", "required": true, "description": "session.{get,set,delete,all} | provider.{get,set,delete,all} | tool.{list,call} | getModels" }
-      ],
-      "outputs": [
-        { "name": "result", "type": "any" }
-      ],
-      "deps": ["config"],
-      "tags": ["storage", "provider", "tool-registry"],
-      "status": "closed-loop"
-    },
-    {
-      "id": "poll-one",
-      "file": "15-poll-one.mjs",
-      "name": "Poll-One — 复合实验 (单条消息处理)",
-      "category": "chat",
-      "pure": false,
-      "needsEnv": ["QINIU_ACCESS_KEY", "QINIU_SECRET_KEY"],
-      "description": "复合实验: qiniu + isolation + agent 拼出 .msg → reply.json。chat-poller.mjs 的 _generateAndUpload 实验化版本。",
-      "inputs": [
-        { "name": "msgKey", "type": "string", "required": true, "description": "oc/chat/{chatId}/{ts}.msg" }
-      ],
-      "outputs": [
-        { "name": "reply",    "type": "string", "description": "LLM 回复文本" },
-        { "name": "replyKey", "type": "string", "description": "写回的 reply.json key" },
-        { "name": "chatId",   "type": "string", "description": "解析出的 chatId" },
-        { "name": "error",    "type": "string", "description": "错误信息（若有）" }
-      ],
-      "deps": ["qiniu", "isolation", "tool-loop"],
-      "tags": ["composite", "chat", "poll", "walking-skeleton"],
       "status": "closed-loop"
     },
     {
       "id": "provider-kit",
-      "file": "17-provider-kit.mjs",
-      "name": "provider-kit — 适配器总测 (normalize + adapter + 错误分类 + 重试 + EPC 往返)",
+      "file": "03.mjs",
+      "name": "provider-kit 适配器总测 (normalize/adapter/error/retry/EPC)",
       "category": "llm",
-      "pure": true,
-      "needsEnv": [],
-      "description": "provider-kit 独立 node 项目的'门户实验'。测 openchat 用得上的所有 provider-kit API: 4 个 normalize 纯函数 (idempotent, 双 schema 兼容) + createProvider/listPresetProviders + OpenAICompatibleProvider.chat() 端到端 (mock fetch, 验证 4 步处理走通) + classifyError / ProviderError / withRetry / withTimeout 错误处理栈 + EPC encode→parse 往返。",
-      "inputs": [
-        { "name": "op", "type": "string", "required": false, "default": "normalize", "description": "normalize | createProvider | classify" }
-      ],
-      "outputs": [
-        { "name": "content",        "type": "string", "description": "剥 think 后的 content — normalize 出参" },
-        { "name": "reasoning",      "type": "string", "description": "extractReasoning 结果 (空时为 '', 真值在 epc SUB_THINKING 帧)" },
-        { "name": "toolCalls",      "type": "array",  "description": "扁平化 toolCalls (含 ACTION: 降级) — normalize 出参" },
-        { "name": "id",             "type": "string", "description": "provider id — createProvider 出参" },
-        { "name": "name",           "type": "string", "description": "provider 展示名" },
-        { "name": "baseUrl",        "type": "string", "description": "provider API baseUrl" },
-        { "name": "skipAuth",       "type": "boolean","description": "是否跳过 auth (本地服务)" },
-        { "name": "type",           "type": "string", "description": "错误分类 (auth/rate_limit/server_error/...) — classify 出参" },
-        { "name": "retryable",      "type": "boolean","description": "是否可重试" },
-        { "name": "friendly",       "type": "string", "description": "用户友好的错误消息" }
-      ],
-      "deps": [],
-      "tags": ["provider-kit", "llm", "adapter", "normalize", "error-classification", "retry", "epc", "idempotent", "standalone-package"],
-      "status": "closed-loop"
-    },
-    {
-      "id": "goal",
-      "file": "18-goal.mjs",
-      "name": "Goal — 拆解目标 + 多轮执行",
-      "category": "multi-turn",
       "pure": false,
       "needsEnv": [],
-      "description": "两级体系：goal 将目标拆为步骤, 每步调 agent 实验的多轮工具循环执行。",
-      "inputs": [
-        { "name": "description", "type": "string", "required": true, "description": "目标描述" },
-        { "name": "sessionId", "type": "string", "required": false, "default": "default", "description": "会话 id" }
+      "description": "provider-kit 适配器总测 (normalize/adapter/error/retry/EPC). ID=4",
+      "deps": [],
+      "tags": [
+        "llm",
+        "provider-kit"
       ],
-      "outputs": [
-        { "name": "summary", "type": "string", "description": "执行汇总" },
-        { "name": "steps", "type": "array", "description": "每步的 action/status/result" },
-        { "name": "done", "type": "number", "description": "成功步数" },
-        { "name": "failed", "type": "number", "description": "失败步数" },
-        { "name": "total", "type": "number", "description": "总步数" }
-      ],
-      "deps": ["tool-loop"],
-      "tags": ["goal", "multi-turn"],
       "status": "closed-loop"
     },
     {
-      "id": "orchestrator",
-      "file": "19-orchestrator.mjs",
-      "name": "编排器 — processStream / process / executeGoal",
-      "category": "multi-turn",
+      "id": "skill-loader",
+      "file": "04.mjs",
+      "name": "Markdown 即命令，条件路径激活 skill",
+      "category": "llm",
+      "pure": false,
+      "needsEnv": [],
+      "description": "Markdown 即命令，条件路径激活 skill. ID=8",
+      "deps": [],
+      "tags": [
+        "llm",
+        "skill-loader"
+      ],
+      "status": "closed-loop"
+    },
+    {
+      "id": "codec",
+      "file": "05.mjs",
+      "name": "LMDN 音频编解码 (48kHz, EPC)",
+      "category": "pure",
       "pure": true,
       "needsEnv": [],
-      "description": "Orchestrator: 2-pass LLM loop with RAG + FC + tool dispatch + quality check. processStream(streaming), process(non-streaming), executeGoal(goal-driven).",
-      "inputs": [
-        { "name": "mode", "type": "string", "required": false, "default": "processStream", "description": "processStream | process | executeGoal" }
+      "description": "LMDN 音频编解码 (48kHz, EPC). ID=16",
+      "deps": [],
+      "tags": [
+        "pure",
+        "codec"
       ],
-      "outputs": [
-        { "name": "response", "type": "string", "description": "LLM 回复" },
-        { "name": "events",   "type": "array",  "description": "事件序列" }
-      ],
-      "deps": ["config"],
-      "tags": ["orchestrator", "processStream", "executeGoal", "2-pass"],
       "status": "closed-loop"
     },
     {
-      "id": "code-search",
-      "file": "20-code-search.mjs",
-      "name": "语义搜索 — grep + 跨文件引用追踪",
+      "id": "isolation",
+      "file": "06.mjs",
+      "name": "chatId 路径隔离",
+      "category": "pure",
+      "pure": true,
+      "needsEnv": [],
+      "description": "chatId 路径隔离. ID=32",
+      "deps": [],
+      "tags": [
+        "pure",
+        "isolation"
+      ],
+      "status": "closed-loop"
+    },
+    {
+      "id": "compressor",
+      "file": "07.mjs",
+      "name": "CLI 输出压缩 (rtk 风格)",
+      "category": "pure",
+      "pure": true,
+      "needsEnv": [],
+      "description": "CLI 输出压缩 (rtk 风格). ID=64",
+      "deps": [],
+      "tags": [
+        "pure",
+        "compressor"
+      ],
+      "status": "closed-loop"
+    },
+    {
+      "id": "qiniu",
+      "file": "08.mjs",
+      "name": "Qiniu S3 兼容封装 (list/get/put/delete)",
+      "category": "qiniu",
+      "pure": false,
+      "needsEnv": [],
+      "description": "Qiniu S3 兼容封装 (list/get/put/delete). ID=128",
+      "deps": [],
+      "tags": [
+        "qiniu",
+        "qiniu"
+      ],
+      "status": "closed-loop"
+    },
+    {
+      "id": "coding",
+      "file": "09.mjs",
+      "name": "编程工具核心 (read/write/edit/hashEdit/snapshot/restore)",
       "category": "coder",
       "pure": true,
       "needsEnv": [],
-      "description": "grepSearch (ripgrep/fallback) + findReferences (JS/TS import/export parsing). 跨文件 symbol 导航。",
-      "inputs": [
-        { "name": "op", "type": "string", "required": true, "description": "grep | find_refs" },
-        { "name": "query", "type": "string", "required": false },
-        { "name": "symbol", "type": "string", "required": false }
+      "description": "编程工具核心 (read/write/edit/hashEdit/snapshot/restore). ID=256",
+      "deps": [],
+      "tags": [
+        "coder",
+        "coding"
       ],
-      "outputs": [
-        { "name": "results", "type": "array", "description": "搜索匹配行" },
-        { "name": "definitions", "type": "array", "description": "symbol 定义位置" },
-        { "name": "usages", "type": "array", "description": "symbol 使用位置" }
-      ],
-      "deps": ["config"],
-      "tags": ["search", "grep", "find-refs", "ast"],
       "status": "closed-loop"
     },
     {
-      "id": "dev-tools",
-      "file": "21-dev-tools.mjs",
-      "name": "Dev Tools — 16 个工程工具合集 + 系统健康检查",
+      "id": "dev-aux",
+      "file": "10.mjs",
+      "name": "auto-commit / project-context / dev-repl",
       "category": "dev",
       "pure": false,
       "needsEnv": [],
-      "description": "依赖图/detect_cycles/Mermaid可视化/Git工作流/测试/Lint/构建/TS类型/多语言/Docker/SQL/API/安全/文档/CI/环境管理 + 系统健康检查(从实验22-30收编): check_tracing / check_failover / check_backpressure / check_sessions / check_recovery",
-      "inputs": [
-        { "name": "op", "type": "string", "required": true, "description": "dep_graph | detect_cycles | git_commit | test_run | lint_run | ... | check_tracing | check_failover | check_backpressure | check_sessions | check_recovery" }
+      "description": "auto-commit / project-context / dev-repl. ID=512",
+      "deps": [],
+      "tags": [
+        "dev",
+        "dev-aux"
       ],
-      "outputs": [
-        { "name": "result", "type": "any", "description": "原有 dev-tools op 结果" },
-        { "name": "requestId", "type": "string", "description": "check_tracing: 生成的 trace id" },
-        { "name": "spanCount", "type": "number", "description": "check_tracing: span 数" },
-        { "name": "provider", "type": "string", "description": "check_failover: 当前 provider" },
-        { "name": "failoverCount", "type": "number", "description": "check_failover: failover 链长度" },
-        { "name": "maxInFlight", "type": "number", "description": "check_backpressure: MAX_IN_FLIGHT 值" },
-        { "name": "chatPollerLoaded", "type": "boolean", "description": "check_backpressure: chat-poller 可加载" },
-        { "name": "sessionCount", "type": "number", "description": "check_sessions / check_recovery: 会话数" },
-        { "name": "sessionsFileExists", "type": "boolean", "description": "check_recovery: sessions.json 存在" }
-      ],
-      "deps": ["config"],
-      "tags": ["dev", "tools", "git", "docker", "lint", "ci", "security", "health-check", "tracing", "failover", "backpressure", "session", "recovery"],
-      "status": "closed-loop"
-    },
-    {
-      "id": "ast-search",
-      "file": "22-ast-search/test.mjs",
-      "name": "AST 代码搜索 — symbol index + find refs + rename",
-      "category": "coder",
-      "pure": true,
-      "needsEnv": [],
-      "description": "ast-search.mjs: acorn-based AST parse, symbol index, findReferences, renameSymbol. 4 tools registered.",
-      "deps": [],
-      "tags": ["ast", "search", "refactor"],
-      "status": "closed-loop"
-    },
-    {
-      "id": "tools-deep",
-      "file": "23-tools-deep/test.mjs",
-      "name": "V2 深度工具 — Git/Test/多语言 AST",
-      "category": "dev",
-      "pure": true,
-      "needsEnv": [],
-      "description": "tools-deep.mjs: gitBranch/gitMerge/gitRebase/gitApplyPatch + testParallel/testFlaky + langASTParse(js/py/rs/go). 7 tools registered.",
-      "deps": [],
-      "tags": ["git", "test", "ast", "multi-lang"],
-      "status": "closed-loop"
-    },
-    {
-      "id": "ast-adapters",
-      "file": "24-ast-adapters/test.mjs",
-      "name": "多语言 AST 适配器 — Dart/JS/Python/Rust/Go",
-      "category": "coder",
-      "pure": true,
-      "needsEnv": [],
-      "description": "ast-adapters.mjs: Dart (Flutter) focus + JS acorn + Py/Rs/Go regex. 2 tools (lang_parse, lang_parse_file).",
-      "deps": [],
-      "tags": ["ast", "dart", "flutter", "multi-lang"],
-      "status": "closed-loop"
-    },
-    {
-      "id": "request-tracing",
-      "file": "26-request-tracing/test.mjs",
-      "name": "requestId 全链路追踪",
-      "category": "dev",
-      "pure": true,
-      "needsEnv": [],
-      "description": "request-id.mjs: generate/createSpan/endSpan/getTrace/formatLog. chat-poller reqId threading.",
-      "deps": [],
-      "tags": ["observability", "tracing", "request-id"],
-      "status": "closed-loop"
-    },
-    {
-      "id": "provider-failover",
-      "file": "27-provider-failover/test.mjs",
-      "name": "Provider 降级 — 主 provider 超时切备选",
-      "category": "llm",
-      "pure": true,
-      "needsEnv": [],
-      "description": "验证 provider-kit failover 策略：primary 超时 → fallback 接管 → 用户无感",
-      "deps": [],
-      "tags": ["llm", "failover", "resilience"],
       "status": "closed-loop"
     },
     {
       "id": "backpressure",
-      "file": "28-backpressure/test.mjs",
+      "file": "11.mjs",
       "name": "背压保护 — Qiniu 慢时请求限流",
       "category": "dev",
-      "pure": true,
+      "pure": false,
       "needsEnv": [],
-      "description": "MAX_IN_FLIGHT=20 限制并发请求，超限返回 skipped=backpressure",
-      "deps": ["chat-poller"],
-      "tags": ["backpressure", "resilience"],
+      "description": "背压保护 — Qiniu 慢时请求限流. ID=1024",
+      "deps": [],
+      "tags": [
+        "dev",
+        "backpressure"
+      ],
       "status": "closed-loop"
     },
     {
       "id": "multi-session",
-      "file": "29-multi-session/test.mjs",
-      "name": "多会话隔离 — 10 个并发会话互不干扰",
+      "file": "12.mjs",
+      "name": "多会话隔离 — N 个并发会话互不干扰",
       "category": "dev",
-      "pure": true,
+      "pure": false,
       "needsEnv": [],
-      "description": "10 个 chatId 并发收发，验证 history 隔离 + 时序不乱",
+      "description": "多会话隔离 — N 个并发会话互不干扰. ID=2048",
       "deps": [],
-      "tags": ["session", "isolation", "concurrent"],
+      "tags": [
+        "dev",
+        "multi-session"
+      ],
       "status": "closed-loop"
     },
     {
       "id": "process-recovery",
-      "file": "30-process-recovery/test.mjs",
-      "name": "进程恢复 — Bridge 重启后会话不丢",
+      "file": "13.mjs",
+      "name": "Bridge 重启后会话不丢",
       "category": "dev",
-      "pure": true,
-      "needsEnv": [],
-      "description": "验证 persistent-store session 持久化 + seenKeys prime 恢复逻辑",
-      "deps": ["chat-poller"],
-      "tags": ["recovery", "persistence", "resilience"],
-      "status": "closed-loop"
-    },
-    {
-      "id": "mqtt-auto",
-      "file": "33-mqtt-auto/index.mjs",
-      "name": "MQTT 3.1.1 Wire Protocol",
-      "category": "protocol",
       "pure": false,
       "needsEnv": [],
-      "description": "MQTT 3.1.1 wire protocol using only Node.js net module: connect/subscribe/publish/pingreq/disconnect with mock broker test.",
-      "inputs": [
-        { "name": "op", "type": "string", "required": true, "description": "connect | subscribe | publish | disconnect | list" }
-      ],
-      "outputs": [
-        { "name": "result", "type": "any", "description": "op-specific result" }
-      ],
+      "description": "Bridge 重启后会话不丢. ID=4096",
       "deps": [],
-      "tags": ["mqtt", "protocol", "net"],
-      "status": "closed-loop"
-    },
-    {
-      "id": "34-schema-strictness",
-      "file": "34-schema-strictness/index.mjs",
-      "name": "Schema strictness 对弱模型工具调用质量的影响",
-      "category": "scaffold",
-      "pure": false,
-      "needsEnv": [],
-      "description": "用 10 个固定 prompt 测 baseline vs strict+example schema 的参数幻觉率、validCall 率。test() 默认 dryRun (验证 schema 结构 + scoring 函数); live 模式需 E34_LIVE=1.",
-      "inputs": [
-        { "name": "live", "type": "boolean", "required": false, "default": false, "description": "true = 跑真 LLM; false = dryRun" },
-        { "name": "repeats", "type": "number", "required": false, "default": 3, "description": "每 prompt 重复次数 (live)" }
+      "tags": [
+        "dev",
+        "process-recovery"
       ],
-      "outputs": [
-        { "name": "baseline", "type": "object", "description": "baseline 条件聚合分数" },
-        { "name": "strict", "type": "object", "description": "strict 条件聚合分数" },
-        { "name": "delta", "type": "object", "description": "strict - baseline 差值" },
-        { "name": "calls", "type": "number", "description": "总 LLM 调用次数" }
-      ],
-      "deps": [],
-      "tags": ["scaffold", "llm", "schema", "eval"],
-      "status": "closed-loop"
-    },
-    {
-      "id": "35-narrow-tools",
-      "file": "35-narrow-tools/index.mjs",
-      "name": "Narrow tools 对弱模型选对工具的影响",
-      "category": "scaffold",
-      "pure": false,
-      "needsEnv": [],
-      "description": "WIDE 40 tools vs NARROW 10 tools (10 个 prompt 各对应 1 个 tool)。test() 默认 dryRun, live 需 E35_LIVE=1.",
-      "inputs": [
-        { "name": "live", "type": "boolean", "required": false, "default": false, "description": "true = 跑真 LLM; false = dryRun" },
-        { "name": "repeats", "type": "number", "required": false, "default": 3, "description": "每 prompt 重复次数 (live)" }
-      ],
-      "outputs": [
-        { "name": "wide", "type": "object", "description": "WIDE 条件聚合分数" },
-        { "name": "narrow", "type": "object", "description": "NARROW 条件聚合分数" },
-        { "name": "delta", "type": "object", "description": "narrow - wide 差值" },
-        { "name": "calls", "type": "number", "description": "总 LLM 调用次数" }
-      ],
-      "deps": ["34-schema-strictness"],
-      "tags": ["scaffold", "llm", "tools", "eval"],
       "status": "closed-loop"
     },
     {
       "id": "code-reviewer",
-      "file": "41-code-reviewer.mjs",
-      "name": "Code Reviewer — LLM-driven code review engine",
+      "file": "14.mjs",
+      "name": "LLM-driven code review engine",
       "category": "quality",
       "pure": false,
       "needsEnv": [],
-      "description": "包装 src/core/quality/code-reviewer.js: generateReviewProblems / buildReviewPrompt / parseReviewResult / getFindings / getSummary。审查 bridge 自身源码，结果写入 ~/.openchat/reviews/。",
-      "inputs": [
-        { "name": "op", "type": "string", "required": true, "description": "generate_problems | build_prompt | parse_result | get_findings | get_summary | review_file" },
-        { "name": "problemId", "type": "string", "required": false },
-        { "name": "filePath", "type": "string", "required": false },
-        { "name": "llmOutput", "type": "string", "required": false }
-      ],
-      "outputs": [
-        { "name": "problems", "type": "array" },
-        { "name": "prompt", "type": "string" },
-        { "name": "review", "type": "object" },
-        { "name": "findings", "type": "array" },
-        { "name": "summary", "type": "object" }
-      ],
+      "description": "LLM-driven code review engine. ID=8192",
       "deps": [],
-      "tags": ["code-review", "audit", "quality"],
+      "tags": [
+        "quality",
+        "code-reviewer"
+      ],
       "status": "closed-loop"
     },
     {
       "id": "verify-commit",
-      "file": "42-verify-commit.mjs",
-      "name": "Verify Commit — 提交前质量门禁",
+      "file": "15.mjs",
+      "name": "提交前质量门禁 (spec/R4/invariants/白名单)",
       "category": "quality",
       "pure": false,
       "needsEnv": [],
-      "description": "包装 scripts/verify-commit.mjs 检查逻辑: spec 存在性/R4 行数/invariants 块/白名单同步。check: git staged; check_files: 离线文件列表。",
-      "inputs": [
-        { "name": "op", "type": "string", "required": true, "description": "check | check_files" },
-        { "name": "files", "type": "array", "required": false },
-        { "name": "diffLines", "type": "number", "required": false }
-      ],
-      "outputs": [
-        { "name": "errors", "type": "array" },
-        { "name": "warnings", "type": "array" },
-        { "name": "passed", "type": "boolean" },
-        { "name": "stats", "type": "object" }
-      ],
+      "description": "提交前质量门禁 (spec/R4/invariants/白名单). ID=16384",
       "deps": [],
-      "tags": ["commit", "quality", "gate", "spec"],
-      "status": "closed-loop"
-    },
-    {
-      "id": "memory",
-      "file": "43-memory.mjs",
-      "name": "Vector Store — 轻量级向量存储 + 混合检索",
-      "category": "memory",
-      "pure": false,
-      "needsEnv": [],
-      "description": "包装 src/memory/vector-store.js：JSON 文件持久化向量 DB，余弦相似度搜索、关键词搜索、混合检索。零外部依赖。",
-      "inputs": [
-        { "name": "op", "type": "string", "required": true, "description": "init | store | similarity_search | keyword_search | hybrid_search | stats" },
-        { "name": "id", "type": "string", "required": false },
-        { "name": "embedding", "type": "array", "required": false },
-        { "name": "content", "type": "string", "required": false },
-        { "name": "query", "type": "string", "required": false },
-        { "name": "topK", "type": "number", "required": false, "default": 10 }
+      "tags": [
+        "quality",
+        "verify-commit"
       ],
-      "outputs": [
-        { "name": "results", "type": "array" },
-        { "name": "stats", "type": "object" },
-        { "name": "ok", "type": "boolean" }
-      ],
-      "deps": ["config"],
-      "tags": ["memory", "vector", "embedding", "search"],
-      "status": "closed-loop"
-    },
-    {
-      "id": "neural-brain",
-      "file": "44-neural-brain.mjs",
-      "name": "Neural Brain — 纯 JS 微神经网络 (64→32→8)",
-      "category": "ml",
-      "pure": false,
-      "needsEnv": [],
-      "description": "包装 src/core/memory/neural-brain.js：64→32→8 feedforward NN，ReLU/Softmax，SGD+交叉熵。零外部依赖。",
-      "inputs": [
-        { "name": "op", "type": "string", "required": true, "description": "train | predict | reset | stats" },
-        { "name": "inputs", "type": "array", "required": false },
-        { "name": "labels", "type": "array", "required": false },
-        { "name": "epochs", "type": "number", "required": false, "default": 10 },
-        { "name": "lr", "type": "number", "required": false, "default": 0.01 }
-      ],
-      "outputs": [
-        { "name": "output", "type": "array" },
-        { "name": "predictedClass", "type": "number" },
-        { "name": "confidence", "type": "number" },
-        { "name": "loss", "type": "number" },
-        { "name": "stats", "type": "object" }
-      ],
-      "deps": [],
-      "tags": ["neural", "ml", "classification"],
       "status": "closed-loop"
     },
     {
       "id": "tool-rescue",
-      "file": "45-tool-rescue.mjs",
-      "name": "Tool Call Rescue — 参数校验+自动修复+引导",
+      "file": "16.mjs",
+      "name": "Tool Call 参数校验+自动修复",
       "category": "guardrails",
       "pure": false,
       "needsEnv": [],
-      "description": "LLM 工具调用参数自动校验+类型修复+必填补全+未知参数清理。Forge guardrails 核心层。",
-      "inputs": [
-        { "name": "op", "type": "string", "required": true, "description": "validate | rescue | validate_and_execute" },
-        { "name": "toolName", "type": "string", "required": false },
-        { "name": "args", "type": "object", "required": false },
-        { "name": "toolSchema", "type": "object", "required": false }
-      ],
-      "outputs": [
-        { "name": "valid", "type": "boolean" },
-        { "name": "fixed", "type": "boolean" },
-        { "name": "fixedArgs", "type": "object" },
-        { "name": "errors", "type": "array" },
-        { "name": "guidance", "type": "string" }
-      ],
+      "description": "Tool Call 参数校验+自动修复. ID=32768",
       "deps": [],
-      "tags": ["guardrails", "tool-call", "validation", "rescue"],
-      "status": "closed-loop"
-    },
-    {
-      "id": "retry-guidance",
-      "file": "46-retry-guidance.mjs",
-      "name": "Retry Guidance — 工具调用失败的结构化引导",
-      "category": "guardrails",
-      "pure": false,
-      "needsEnv": [],
-      "description": "工具调用失败时，按错误类型分类生成结构化引导（超时/限频/404/鉴权/安全策略）。Forge guardrails 重试层。",
-      "inputs": [
-        { "name": "op", "type": "string", "required": true, "description": "guidance | execute_with_retry" },
-        { "name": "toolName", "type": "string", "required": false },
-        { "name": "error", "type": "string", "required": false },
-        { "name": "attempts", "type": "number", "required": false, "default": 1 }
+      "tags": [
+        "guardrails",
+        "tool-rescue"
       ],
-      "outputs": [
-        { "name": "guidance", "type": "string" },
-        { "name": "success", "type": "boolean" },
-        { "name": "attempts", "type": "number" }
-      ],
-      "deps": ["tool-rescue"],
-      "tags": ["guardrails", "retry", "guidance"],
       "status": "closed-loop"
     },
     {
       "id": "step-workflow",
-      "file": "47-step-workflow.mjs",
-      "name": "Step Workflow — 工作流定义 + 必要步骤强制执行",
+      "file": "17.mjs",
+      "name": "工作流定义 + 必要步骤强制执行",
       "category": "guardrails",
       "pure": false,
       "needsEnv": [],
-      "description": "定义由 experiment run() 步骤组成的工作流，支持 required/retry。Forge WorkflowRunner 等价层。",
-      "inputs": [
-        { "name": "op", "type": "string", "required": true, "description": "define | run | status | list" },
-        { "name": "workflow", "type": "object", "required": false },
-        { "name": "workflowName", "type": "string", "required": false },
-        { "name": "composeRun", "type": "function", "required": false }
-      ],
-      "outputs": [
-        { "name": "workflow", "type": "object" },
-        { "name": "results", "type": "array" },
-        { "name": "status", "type": "string" },
-        { "name": "failedStep", "type": "string" }
-      ],
+      "description": "工作流定义 + 必要步骤强制执行. ID=65536",
       "deps": [],
-      "tags": ["guardrails", "workflow", "orchestration"],
+      "tags": [
+        "guardrails",
+        "step-workflow"
+      ],
       "status": "closed-loop"
     },
     {
       "id": "guardrails-pipeline",
-      "file": "40-guardrails-pipeline.mjs",
-      "name": "Guardrails Pipeline — 全栈守卫 vs 裸循环比较实验",
+      "file": "18.mjs",
+      "name": "全栈守卫 vs 裸循环比较实验",
       "category": "guardrails",
       "pure": false,
       "needsEnv": [],
-      "description": "Forge 式全栈 guardrails 效果比较: 工具调用校验 + 步骤强制 + 错误追踪 + 重试引导。compare 模式跑 4 场景 × N 次对比基线 vs 干预。",
-      "inputs": [
-        { "name": "op", "type": "string", "required": true, "description": "compare | run_pipeline | run_baseline" },
-        { "name": "scenario", "type": "object", "required": false },
-        { "name": "live", "type": "boolean", "required": false, "default": false },
-        { "name": "repeats", "type": "number", "required": false, "default": 5 }
-      ],
-      "outputs": [
-        { "name": "baseline", "type": "object", "description": "基线指标" },
-        { "name": "treatment", "type": "object", "description": "干预指标" },
-        { "name": "delta", "type": "object", "description": "差值" },
-        { "name": "verdict", "type": "string", "description": "H0 | H1" }
-      ],
+      "description": "全栈守卫 vs 裸循环比较实验. ID=131072",
       "deps": [],
-      "tags": ["guardrails", "pipeline", "comparison", "experiment"],
+      "tags": [
+        "guardrails",
+        "guardrails-pipeline"
+      ],
       "status": "closed-loop"
     },
     {
       "id": "guardian",
-      "file": "48-guardian.mjs",
-      "name": "Guardian — 守卫层中间件",
+      "file": "19.mjs",
+      "name": "守卫层中间件",
       "category": "guardrails",
       "pure": false,
       "needsEnv": [],
-      "description": "供 compose.mjs pipeline() 编排的守卫层。输出 guardian 实例，注入 agent 的 processText。实现响应校验 + 步骤强制 + 错误追踪。",
-      "inputs": [],
-      "outputs": [
-        { "name": "guardian", "type": "object", "description": "guardian 实例" }
-      ],
+      "description": "守卫层中间件. ID=262144",
       "deps": [],
-      "tags": ["guardian", "middleware"],
+      "tags": [
+        "guardrails",
+        "guardian"
+      ],
       "status": "closed-loop"
     },
     {
-      "id": "mqtt-resume",
-      "file": "49-mqtt-resume/index.mjs",
-      "name": "MQTT connectWithResume — 5 件套在持久化+重试档的验证",
-      "category": "scaffold",
+      "id": "neural-brain",
+      "file": "20.mjs",
+      "name": "纯 JS 微神经网络 (64→32→8)",
+      "category": "ml",
       "pure": false,
-      "needsEnv": ["OPENCHAT_PROVIDER"],
-      "description": "LLM 写 connectWithResume({host, port, clientId, sessionStore}): 重连重试 + 从 sessionStore 恢复订阅。11 维评分 (8 静态 regex + 3 动态 sandbox)。2 sub-test: refuseConnackCount=0 (happy) + 2 (retry path)。E40 (1 function + 2 tools + no retry) 100% → E49 (1 function + 2 tools + retry + multi-sub) 横向扩展。",
-      "inputs": [
-        { "name": "live", "type": "boolean", "required": false, "default": false, "description": "true = 跑真 LLM 调用" },
-        { "name": "repeats", "type": "number", "required": false, "default": 15, "description": "LLM 调用次数 (live)" },
-        { "name": "model", "type": "string", "required": false, "default": null, "description": "覆盖默认 model" }
+      "needsEnv": [],
+      "description": "纯 JS 微神经网络 (64→32→8). ID=524288",
+      "deps": [],
+      "tags": [
+        "ml",
+        "neural-brain"
       ],
-      "outputs": [
-        { "name": "aggregate", "type": "object", "description": "11 维 hit rate" },
-        { "name": "runs", "type": "array", "description": "每次 run 详细" },
-        { "name": "calls", "type": "number", "description": "总 LLM 调用次数" }
-      ],
-      "deps": ["mqtt-auto"],
-      "tags": ["scaffold", "mqtt", "resume", "retry", "session", "weak-llm", "e2e", "sandbox"],
       "status": "closed-loop"
     },
     {
-      "id": "mqtt-split",
-      "file": "50-mqtt-split/index.mjs",
-      "name": "拆任务: connectWithRetry + restoreSubscriptions (2 轮 E40 档) — 5 件套对组合 E40 档子任务的支持验证",
-      "category": "scaffold",
+      "id": "teach-me",
+      "file": "21.mjs",
+      "name": "苏格拉底式交互教学",
+      "category": "llm",
       "pure": false,
-      "needsEnv": ["OPENCHAT_PROVIDER"],
-      "description": "E49 拆任务版。LLM 写 2 个 E40 档函数: Round1 connectWithRetry({host, port, clientId}) → {socket, clientId}, Round2 restoreSubscriptions({conn, sessionStore}) → {restoredCount, subscriptions}。14 维评分 (5+5+4): R1 静态 5 + R1 动态 2 + R2 静态 5 + R2 动态 2 + combined 4 (跨轮次端到端)。验 '拆任务' 方案能不能跨过 E49 'reasoning 渗 code 块' 失败模式。",
-      "inputs": [
-        { "name": "live", "type": "boolean", "required": false, "default": false, "description": "true = 跑真 LLM 调用" },
-        { "name": "repeats", "type": "number", "required": false, "default": 15, "description": "run 次数 (live); 每次含 2 次 LLM call, 共 2×repeats 次" },
-        { "name": "model", "type": "string", "required": false, "default": null, "description": "覆盖默认 model" }
+      "needsEnv": [],
+      "description": "苏格拉底式交互教学. ID=1048584",
+      "deps": [
+        "skill-loader"
       ],
-      "outputs": [
-        { "name": "aggregate", "type": "object", "description": "14 维 hit rate (5+5+4)" },
-        { "name": "runs", "type": "array", "description": "每次 run 详细" },
-        { "name": "calls", "type": "number", "description": "总 LLM 调用次数 (= 2 × repeats)" }
+      "tags": [
+        "llm",
+        "teach-me"
       ],
-      "deps": ["mqtt-resume"],
-      "tags": ["scaffold", "mqtt", "split", "weak-llm", "e2e", "sandbox", "round-orchestration"],
+      "status": "closed-loop"
+    },
+    {
+      "id": "tool-loop",
+      "file": "22.mjs",
+      "name": "多轮工具循环 (provider-kit)",
+      "category": "llm",
+      "pure": false,
+      "needsEnv": [],
+      "description": "多轮工具循环 (provider-kit). ID=2359296",
+      "deps": [
+        "guardian"
+      ],
+      "tags": [
+        "llm",
+        "tool-loop"
+      ],
+      "status": "closed-loop"
+    },
+    {
+      "id": "code-search",
+      "file": "23.mjs",
+      "name": "语义搜索 — grep + 跨文件引用追踪",
+      "category": "coder",
+      "pure": true,
+      "needsEnv": [],
+      "description": "语义搜索 — grep + 跨文件引用追踪. ID=4194305",
+      "deps": [
+        "config"
+      ],
+      "tags": [
+        "coder",
+        "code-search"
+      ],
+      "status": "closed-loop"
+    },
+    {
+      "id": "edit-advanced",
+      "file": "24.mjs",
+      "name": "高级编辑 (multi-edit / ast-edit / diff-review)",
+      "category": "coder",
+      "pure": true,
+      "needsEnv": [],
+      "description": "高级编辑 (multi-edit / ast-edit / diff-review). ID=8388864",
+      "deps": [
+        "coding"
+      ],
+      "tags": [
+        "coder",
+        "edit-advanced"
+      ],
+      "status": "closed-loop"
+    },
+    {
+      "id": "dev-tools",
+      "file": "25.mjs",
+      "name": "16 个工程工具合集 + 系统健康检查",
+      "category": "dev",
+      "pure": false,
+      "needsEnv": [],
+      "description": "16 个工程工具合集 + 系统健康检查. ID=16777217",
+      "deps": [
+        "config"
+      ],
+      "tags": [
+        "dev",
+        "dev-tools"
+      ],
+      "status": "closed-loop"
+    },
+    {
+      "id": "retry-guidance",
+      "file": "26.mjs",
+      "name": "工具调用失败的结构化引导",
+      "category": "guardrails",
+      "pure": false,
+      "needsEnv": [],
+      "description": "工具调用失败的结构化引导. ID=33587200",
+      "deps": [
+        "tool-rescue"
+      ],
+      "tags": [
+        "guardrails",
+        "retry-guidance"
+      ],
+      "status": "closed-loop"
+    },
+    {
+      "id": "storage",
+      "file": "27.mjs",
+      "name": "存储/Provider 接线 (persistent-store + provider-service)",
+      "category": "storage",
+      "pure": false,
+      "needsEnv": [],
+      "description": "存储/Provider 接线 (persistent-store + provider-service). ID=67108865",
+      "deps": [
+        "config"
+      ],
+      "tags": [
+        "storage",
+        "storage"
+      ],
+      "status": "closed-loop"
+    },
+    {
+      "id": "relay",
+      "file": "28.mjs",
+      "name": "中继 / 消息总线 (bucket-relay + signal-relay + message-bus)",
+      "category": "relay",
+      "pure": false,
+      "needsEnv": [],
+      "description": "中继 / 消息总线 (bucket-relay + signal-relay + message-bus). ID=134217856",
+      "deps": [
+        "qiniu"
+      ],
+      "tags": [
+        "relay",
+        "relay"
+      ],
+      "status": "closed-loop"
+    },
+    {
+      "id": "p2p",
+      "file": "29.mjs",
+      "name": "P2P 直连 + Qiniu 信令",
+      "category": "p2p",
+      "pure": false,
+      "needsEnv": [],
+      "description": "P2P 直连 + Qiniu 信令. ID=268435584",
+      "deps": [
+        "qiniu"
+      ],
+      "tags": [
+        "p2p",
+        "p2p"
+      ],
+      "status": "closed-loop"
+    },
+    {
+      "id": "naming",
+      "file": "30.mjs",
+      "name": "会话自动命名 (消息数 3/8/16/32/64 触发)",
+      "category": "chat",
+      "pure": false,
+      "needsEnv": [],
+      "description": "会话自动命名 (消息数 3/8/16/32/64 触发). ID=536871040",
+      "deps": [
+        "qiniu"
+      ],
+      "tags": [
+        "chat",
+        "naming"
+      ],
+      "status": "closed-loop"
+    },
+    {
+      "id": "session-tree",
+      "file": "31.mjs",
+      "name": "会话树 CRUD (_tree.json 持久化)",
+      "category": "chat",
+      "pure": false,
+      "needsEnv": [],
+      "description": "会话树 CRUD (_tree.json 持久化). ID=1073741952",
+      "deps": [
+        "qiniu"
+      ],
+      "tags": [
+        "chat",
+        "session-tree"
+      ],
+      "status": "closed-loop"
+    },
+    {
+      "id": "system-exec",
+      "file": "32.mjs",
+      "name": "宿主机命令安全执行 (白名单+黑名单)",
+      "category": "exec",
+      "pure": false,
+      "needsEnv": [],
+      "description": "宿主机命令安全执行 (白名单+黑名单). ID=2147483712",
+      "deps": [
+        "compressor"
+      ],
+      "tags": [
+        "exec",
+        "system-exec"
+      ],
+      "status": "closed-loop"
+    },
+    {
+      "id": "memory",
+      "file": "33.mjs",
+      "name": "Vector Store — 轻量级向量存储 + 混合检索",
+      "category": "memory",
+      "pure": false,
+      "needsEnv": [],
+      "description": "Vector Store — 轻量级向量存储 + 混合检索. ID=4294967297",
+      "deps": [
+        "config"
+      ],
+      "tags": [
+        "memory",
+        "memory"
+      ],
+      "status": "closed-loop"
+    },
+    {
+      "id": "orchestrator",
+      "file": "34.mjs",
+      "name": "编排器 — processStream / process / executeGoal",
+      "category": "multi-turn",
+      "pure": false,
+      "needsEnv": [],
+      "description": "编排器 — processStream / process / executeGoal. ID=8589934593",
+      "deps": [
+        "config"
+      ],
+      "tags": [
+        "multi-turn",
+        "orchestrator"
+      ],
+      "status": "closed-loop"
+    },
+    {
+      "id": "chat-poller",
+      "file": "35.mjs",
+      "name": "Chat-Poller (walking-skeleton, 轮询+EPC+去重)",
+      "category": "chat",
+      "pure": false,
+      "needsEnv": [],
+      "description": "Chat-Poller (walking-skeleton, 轮询+EPC+去重). ID=17182228624",
+      "deps": [
+        "qiniu",
+        "tool-loop",
+        "codec"
+      ],
+      "tags": [
+        "chat",
+        "chat-poller"
+      ],
+      "status": "closed-loop"
+    },
+    {
+      "id": "poll-one",
+      "file": "36.mjs",
+      "name": "复合实验 — qiniu+isolation+agent 拼出单条消息处理",
+      "category": "chat",
+      "pure": false,
+      "needsEnv": [],
+      "description": "复合实验 — qiniu+isolation+agent 拼出单条消息处理. ID=34362097824",
+      "deps": [
+        "qiniu",
+        "isolation",
+        "tool-loop"
+      ],
+      "tags": [
+        "chat",
+        "poll-one"
+      ],
+      "status": "closed-loop"
+    },
+    {
+      "id": "dream-consolidation",
+      "file": "37.mjs",
+      "name": "后台记忆归并引擎 (24h+5sessions 门控)",
+      "category": "memory",
+      "pure": false,
+      "needsEnv": [],
+      "description": "后台记忆归并引擎 (24h+5sessions 门控). ID=73014444033",
+      "deps": [
+        "memory"
+      ],
+      "tags": [
+        "memory",
+        "dream-consolidation"
+      ],
+      "status": "closed-loop"
+    },
+    {
+      "id": "goal",
+      "file": "38.mjs",
+      "name": "拆解目标 + 多轮执行",
+      "category": "multi-turn",
+      "pure": false,
+      "needsEnv": [],
+      "description": "拆解目标 + 多轮执行. ID=137441312768",
+      "deps": [
+        "tool-loop"
+      ],
+      "tags": [
+        "multi-turn",
+        "goal"
+      ],
       "status": "closed-loop"
     }
   ]
