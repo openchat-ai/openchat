@@ -11,19 +11,18 @@ import { TOOLS as CODING_TOOLS, executeTool as codingExec } from './lib/coding-t
 import { createGuardian } from './lib/guardian.mjs';
 
 const CWD = process.cwd();
-const SYSTEM_PROMPT = `You are OpenChat, a friendly Chinese-speaking AI software development assistant.
-You have tools to explore, read, edit, and search the codebase.
-Current working directory: ${CWD}
-Rules:
-- Reply in the same language as the user (Chinese → Chinese).
-- For software tasks, use tools proactively — read files, search patterns, then answer.
-- Never describe what you would do — execute tools and show results.
-- Call ONE tool at a time. After getting results, either call more or answer.
+// 简化 SYSTEM_PROMPT — 原版约束太多 (Call ONE tool at a time + getEditProtocolGuidance), 阻断 M3 多步探索
+// M3 验证 (e2e_loop_result.json) 显示它喜欢多 read + 多 write + 中间 verify, 给它自由度
+const SYSTEM_PROMPT = `You are a coding assistant. Working directory: ${CWD}.
 
-${getEditProtocolGuidance()}`;
+Use available tools to complete the user's task. Be thorough — read files first, then make targeted edits, then verify (re-read or run tests).
 
-const MAX_ROUNDS = 8;
-const MAX_REPEAT = 3;
+Reply in the same language as the user.`;
+
+const MAX_ROUNDS = 20;
+const MAX_REPEAT = 8;
+// 读类工具不计入 repeat 限制 — M3 习惯多读几遍确认 (wc / powershell / node -e 等), 这是合法探索, 不是 loop
+const READ_ONLY_TOOLS = new Set(['read_file', 'grep', 'code_search', 'ast_find_refs', 'find_refs', 'ast_index', 'ast_search', 'ast_extract', 'ts_typecheck', 'lint_run', 'test_run', 'test_discover', 'docs_suggest', 'env_diff', 'sec_audit', 'ci_detect', 'git_log']);
 let _provider = null;
 let _model = null;
 const _sessions = new Map(); // chatId → { history, sessionId }
@@ -62,16 +61,19 @@ export async function processText(text, chatId = 'default', opts = {}) {
   const entry = _getOrCreateSession(chatId);
   entry.history.push({ role: 'user', content: text });
 
-  const guardian = opts.guardian || createGuardian({
-    tools: CODING_TOOLS,
-    stepDeps: { edit_file: ['read_file'], hash_edit: ['read_file'], write_file: ['read_file'] },
-  });
+  const guardian = opts.guardian !== undefined ? opts.guardian : null;  // 默认关闭 guardian — 它会拒绝 LLM 的合法 tool call, 阻断 M3 多步探索
+  // 窄工具集: 调用方传 opts.tools (tool name 数组) → 只暴露这些给 LLM.
+  // 默认 = 全 39. M3 在 39 工具下会偏向 build_run/lang_run (通用 shell), 不肯用 edit_file/hash_edit,
+  // 浪费 round 在探索, 撞 MAX_ROUNDS. 5-件套原则: 任务越窄, 工具越少越好.
+  const toolSubset = (Array.isArray(opts.tools) && opts.tools.length > 0)
+    ? CODING_TOOLS.filter(t => opts.tools.includes(t.function?.name))
+    : CODING_TOOLS;
   let finalText = '';
   const callCount = new Map();
 
   for (let round = 0; round < MAX_ROUNDS; round++) {
     const rawResponse = await _provider.chat(_model, entry.history, {
-      tools: CODING_TOOLS,
+      tools: toolSubset,
     });
 
     let toolCalls;
@@ -104,12 +106,14 @@ export async function processText(text, chatId = 'default', opts = {}) {
       for (const tc of toolCalls) {
         const rawArgs = tc.function?.arguments || tc.arguments || '{}';
         const key = `${tc.name}:${rawArgs}`;
-        const count = (callCount.get(key) || 0) + 1;
-        callCount.set(key, count);
-        if (count > MAX_REPEAT) {
-          finalText = `[loop aborted: ${tc.name} called ${count} times with same args]`;
-          entry.history.push({ role: 'tool', tool_call_id: tc.id, content: finalText });
-          break;
+        if (!READ_ONLY_TOOLS.has(tc.name)) {
+          const count = (callCount.get(key) || 0) + 1;
+          callCount.set(key, count);
+          if (count > MAX_REPEAT) {
+            finalText = `[loop aborted: ${tc.name} called ${count} times with same args]`;
+            entry.history.push({ role: 'tool', tool_call_id: tc.id, content: finalText });
+            break;
+          }
         }
 
         if (guardian) {
@@ -155,14 +159,17 @@ export function getHistory(chatId) {
 }
 
 // compose 契约入口
-//   inputs: { text, chatId?, guardian? }
+//   inputs: { text, chatId?, guardian?, tools? }
 //   deps:   { guardian: { guardian } }
 //   outputs: { response, toolCalls }
 export async function run({ inputs = {}, deps = {} } = {}) {
   const { text, chatId = 'default' } = inputs;
   if (!text) throw new Error('tool-loop.run: text required');
   const guardianOpt = inputs.guardian || deps.guardian?.guardian;
-  const r = await processText(text, chatId, guardianOpt ? { guardian: guardianOpt } : {});
+  const opts = {};
+  if (guardianOpt) opts.guardian = guardianOpt;
+  if (Array.isArray(inputs.tools) && inputs.tools.length > 0) opts.tools = inputs.tools;
+  const r = await processText(text, chatId, opts);
   return { outputs: { response: r.response || '', toolCalls: r.toolCalls || [] } };
 }
 
