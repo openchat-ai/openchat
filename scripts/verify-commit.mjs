@@ -4,11 +4,13 @@
  *
  * 检查项（err = 阻塞 commit, warn = 提示不阻塞）：
  *  - ERR: 新增 dart 文件 >50 行无对应 .spec.md → 阻塞
+ *  - ERR: 新增 mjs 文件 >50 行无对应 .spec.md → 阻塞
  *  - ERR: 修改 >100 行白名单文件时未同步 spec.md → 阻塞
  *  - ERR: 白名单内文件缺少 spec.md → 阻塞
  *  - ERR: spec.md 缺少关键章节 (数据流/接口签名/边界条件/文件清单) → 阻塞
  *  - ERR: 总 diff >500 行 → 阻塞 (R4)
  *  - WARN: dart 文件 >200 行 → 提示
+ *  - WARN: mjs 文件 >200 行 → 提示
  *  - WARN: >100 行但缺 invariants 块 → 提示
  */
 
@@ -49,20 +51,43 @@ const SPEC_REQUIRED = [
   'openchat-flutter/lib/ui/screens/room_screen.dart',
 ];
 
+// MJS 实验白名单（38 原语平台 + 灵保扩展）
+// 任何列在此的 .mjs 文件改动必须配套同名 .spec.md
+const MJS_SPEC_REQUIRED = [
+  // === 38 原语（首批，后续按需追加）===
+  // === 灵保扩展（实验 39-45）===
+  'bridge/src/experiments/lingbao/39.mjs',
+  'bridge/src/experiments/lingbao/40.mjs',
+  'bridge/src/experiments/lingbao/41.mjs',
+  'bridge/src/experiments/lingbao/42.mjs',
+  'bridge/src/experiments/lingbao/43.mjs',
+  'bridge/src/experiments/lingbao/44.mjs',
+  'bridge/src/experiments/lingbao/45.mjs',
+];
+
+// === invariants ===
+// - SPEC_REQUIRED 路径必须已存在于工作区（否则 err 误报）
+// - MJS_SPEC_REQUIRED 改动 .mjs 文件时同目录 .spec.md 必须 stage（ERR）
+// - 不区分 OS，路径统一用 / 分隔（git 输出标准）
+// - 不递归扫描子目录，路径必须全字面匹配
+
 // ── 1. 获取本次变更的文件 ──────────────────────────
 const changedRaw = run('git diff --cached --name-only --diff-filter=ACMR');
 const allFiles = changedRaw.split('\n').filter(Boolean);
 const dartFiles = allFiles.filter(f => f.endsWith('.dart') && existsSync(resolve(cwd, f)));
+const mjsFiles = allFiles.filter(f => f.endsWith('.mjs') && existsSync(resolve(cwd, f)));
 const specFiles = allFiles.filter(f => f.endsWith('.spec.md'));
 const newDartFiles = run('git diff --cached --diff-filter=A --name-only')
   .split('\n').filter(f => f.endsWith('.dart'));
+const newMjsFiles = run('git diff --cached --diff-filter=A --name-only')
+  .split('\n').filter(f => f.endsWith('.mjs'));
 
-if (dartFiles.length === 0 && specFiles.length === 0) {
+if (dartFiles.length === 0 && mjsFiles.length === 0 && specFiles.length === 0) {
   info('无变更，跳过检查');
   process.exit(0);
 }
 
-info(`检查 ${dartFiles.length} 个 Dart + ${specFiles.length} 个 Spec 文件...`);
+info(`检查 ${dartFiles.length} 个 Dart + ${mjsFiles.length} 个 MJS + ${specFiles.length} 个 Spec 文件...`);
 
 // ── 2. 逐文件检查 ────────────────────────────────────────
 for (const f of dartFiles) {
@@ -101,6 +126,46 @@ for (const f of dartFiles) {
   // 2e. 白名单内文件必须有 spec (ERR)
   if (inWhitelist && !existsSync(resolve(cwd, specPath))) {
     err(`${f}: 白名单模块缺少 ${specPath} — 阻塞`);
+  }
+}
+
+// ── 2-MJS. MJS 文件检查（38 原语平台 + 灵保扩展） ─────
+for (const f of mjsFiles) {
+  const fullPath = resolve(cwd, f);
+  const content = readFileSync(fullPath, 'utf-8');
+  const lineCount = content.split('\n').length;
+  const specPath = f.replace(/\.mjs$/, '.spec.md');
+  const isNew = newMjsFiles.includes(f);
+
+  // MJS 行数警告 (WARN)
+  if (lineCount > 200) {
+    warn(`${f}: ${lineCount} 行（建议 ≤200）`);
+  }
+
+  // MJS invariants 警告 (>100 行) (WARN)
+  if (lineCount > 100 && !content.includes('// === invariants ===')) {
+    warn(`${f}: >100 行但缺少 // === invariants === 约束块`);
+  }
+
+  // 新增 >50 行必须有 spec (ERR - 阻塞)
+  if (isNew && lineCount > 50) {
+    if (!existsSync(resolve(cwd, specPath))) {
+      err(`${f}: 新增 >50 行但无对应 spec (${specPath}) — 阻塞`);
+    }
+  }
+
+  // MJS 白名单检查（白名单内文件已存在工作区时强制 spec 同步）
+  const inMjsWhitelist = MJS_SPEC_REQUIRED.includes(f);
+  if (inMjsWhitelist && !isNew && lineCount > 100) {
+    const specStaged = specFiles.includes(specPath);
+    if (!specStaged) {
+      err(`${f}: MJS 白名单文件改动 >100 行但未同步 ${specPath} — 阻塞`);
+    }
+  }
+  // 白名单已登记 + 文件已存在工作区 → 必须有 spec
+  // （首次提交时 .mjs 和 .spec.md 一起 add，不会误报）
+  if (inMjsWhitelist && existsSync(fullPath) && !existsSync(resolve(cwd, specPath))) {
+    err(`${f}: MJS 白名单模块缺少 ${specPath} — 阻塞`);
   }
 }
 
