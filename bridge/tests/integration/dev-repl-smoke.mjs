@@ -1,5 +1,12 @@
 // === dev-repl-smoke.mjs ===
 // dev-repl 端到端 smoke 测试 (mock provider, 无 apiKey 也跑得通)
+
+// === invariants ===
+// - 不依赖真 apiKey (mock fetch + 纯函数测试)
+// - 不写盘 (除 3d/3e 测试临时文件, 用完即删)
+// - 不阻塞 dev-repl 启动 (无副作用导入)
+// - 退出码 0 = 全过, 1 = 任一 fail (供 CI 集成)
+// - r.ok/r.ng 计数, 最终 r.report(NAME) 打印汇总
 //
 // 测 4 条数据流 (dev-repl 内部核心):
 //   1. provider-health.diagnose: 5 维检查全场景
@@ -238,6 +245,40 @@ const NAME = 'dev-repl-smoke (无 apiKey 端到端)';
   } finally {
     globalThis.fetch = orig;
   }
+}
+
+// === 6. edit-quality-gate ===
+{
+  const gate = await import('../../src/experiments/lib/edit-quality-gate.mjs');
+  // 6a. isEditTool 4 个真 + 1 个假
+  assert.equal(gate.isEditTool('edit_file'), true);
+  assert.equal(gate.isEditTool('write_file'), true);
+  assert.equal(gate.isEditTool('multi_edit'), true);
+  assert.equal(gate.isEditTool('ast_edit'), true);
+  assert.equal(gate.isEditTool('read_file'), false);
+  assert.equal(gate.isEditTool('list_directory'), false);
+  r.ok('isEditTool 6 用例');
+
+  // 6b. 非 JS 扩展名 → skip
+  const g1 = await gate.checkEditedFile('test.json');
+  assert.equal(g1.ok, true);
+  assert.ok(g1.summary?.includes('skip'));
+  r.ok('checkEditedFile .json → skip');
+
+  // 6c. 无效 filePath
+  const g2 = await gate.checkEditedFile(null);
+  assert.equal(g2.ok, false);
+  r.ok('checkEditedFile null → ok:false');
+
+  // 6d. compose 入口
+  const g3 = await gate.run({ inputs: { op: 'isEditTool', toolName: 'edit_file' } });
+  assert.equal(g3.outputs.isEdit, true);
+  r.ok('run isEditTool 契约');
+
+  // 6e. 不存在的 .js 文件 → lintRun 静默 OK
+  const g4 = await gate.checkEditedFile('_nonexistent_' + Date.now() + '.js');
+  assert.equal(g4.ok, true);
+  r.ok('checkEditedFile 不存在 → ok:true (静默)');
 }
 
 // === 4. dev-repl 消息流模拟 (核心端到端) ===

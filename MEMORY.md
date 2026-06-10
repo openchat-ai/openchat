@@ -408,3 +408,31 @@
 | `bridge/src/experiments/10.mjs` | 契约测试 7→9 用例（含 `/resume` 无参/有参） |
 | `bridge/tests/integration/dev-repl-smoke.mjs` | +6 用例 `/resume`：空/列表/by id/by 序号/当前/找不到；parseSlash 7→9；listCommands 6→7 |
 | `MEMORY.md` | 本节 |
+
+### 2026-06-11 提交（1+2：provider-failover + /commit 一键提交）
+
+| # | 文件 | 作用 |
+|---|------|------|
+| **1** | `bridge/src/experiments/lib/failover-picker.mjs` | pickFirstAlive(fallbacks, cfg) — 对每个候选先 ping 3s, 首个 alive 再 createProvider+connect, **省 5-10s** |
+| **1** | `bridge/src/experiments/lib/failover-picker.spec.md` | R3 spec |
+| **1** | `bridge/src/experiments/lib/provider-health.mjs` | +导出 `pingProvider(name, pcfg, opts)` 供 picker 复用（baseUrl 拼接唯一源） |
+| **1** | `bridge/src/experiments/lib/dev-repl.mjs` | 启动 + 运行时切降级链改用 picker（替代 connect 试错） |
+| **2** | `bridge/src/experiments/lib/slash-commands.mjs` | +`/commit` 命令：async 调 ctx.onCommit 拿结果（committed true/false/error），applySlash 改 async 兼容 |
+| **2** | `bridge/src/experiments/lib/slash-commands.spec.md` | C8-C10 检查点（commit 4 结果分支） |
+| **2** | `bridge/src/experiments/lib/dev-repl.mjs` | 注入 onCommit 回调（动态 import auto-commit, hasGitRepo/gitDiff/generateMessage/autoCommit） |
+| **2** | `bridge/src/experiments/10.mjs` | parseSlash 9→10 用例 |
+| **2** | `bridge/tests/integration/dev-repl-smoke.mjs` | +4 /commit 用例 + 6 pingProvider + 1 pickFirstAlive；listCommands 7→8 |
+| — | `MEMORY.md` | 本节 |
+
+### 2026-06-11 提交（4+5：lint-on-edit + 清理警告）
+
+| # | 文件 | 作用 |
+|---|------|------|
+| **4** | `bridge/src/experiments/lib/edit-quality-gate.mjs` | edit_file/write_file/multi_edit/ast_edit 后异步跑 lint, 失败塞 messages+history, 不阻塞 REPL (8s 超时) |
+| **4** | `bridge/src/experiments/lib/edit-quality-gate.spec.md` | R3 spec |
+| **4** | `bridge/src/experiments/lib/dev-repl.mjs` | edit tool 完成异步 fire-and-forget checkEditedFile, 失败 [lint-gate] 黄色提示 + 写入 history |
+| **4** | `bridge/tests/integration/dev-repl-smoke.mjs` | +5 用例：isEditTool 6 + checkEditedFile .json skip + null + 不存在 .js + run 契约 |
+| **5** | `bridge/src/experiments/lib/dev-repl.mjs` | 顶部加 // === invariants === 块（8 条不变量） |
+| **5** | `bridge/src/experiments/lib/slash-commands.mjs` | 顶部加 invariants 块（7 条） |
+| **5** | `bridge/tests/integration/dev-repl-smoke.mjs` | 顶部加 invariants 块（5 条） |
+| — | `MEMORY.md` | 本节 |

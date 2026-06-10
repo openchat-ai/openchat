@@ -1,6 +1,16 @@
 import { createInterface } from 'readline';
 import os from 'os';
 
+// === invariants ===
+// - startDevRepl 入口先调 provider-health.diagnose + failover-picker 选 alive provider
+// - readline 循环: 同一轮 tool 调用 cache (toolCache Map) 防重复
+// - 流式分支: provider.chatStream 不存在时降级 provider.chat, lastStreamed 防重复打印
+// - history: 每次 user/assistant/tool 落盘 ~/.openchat/repl-history/<id>.json, /clear 清空
+// - /resume 跳到目标: sessionId 不变, 后续 histAppend 仍写**原** session (保护目标不被污染)
+// - slash-commands: applySlash async, 调 ctx.onCommit (commit 路径) 和 ctx.availableSessions (/resume 路径)
+// - edit-quality-gate: edit tool 完成后异步 fire-and-forget, 失败塞 messages+history, 不阻塞 REPL
+// - 全程 never-throw 策略: 所有 catch 静默, gate/pinger 内部保永不抛
+
 const MAX_ROUNDS = 100;
 
 const toolModules = [
@@ -385,6 +395,20 @@ Rules:
               process.stdout.write(`\x1b[32mdone\x1b[0m \x1b[90m(${result.length}B, ${sec}s)\x1b[0m\n`);
               messages.push({ role: 'tool', tool_call_id: tc.id, content: result });
               histAppend(sessionId, { role: 'tool', tool_call_id: tc.id, content: result });
+
+              // edit-quality-gate: 改文件后异步跑 lint (失败不阻塞, 写入 history 供下轮 LLM 看到)
+              const { isEditTool, checkEditedFile } = await import('./edit-quality-gate.mjs');
+              if (isEditTool(n) && tc.args?.path) {
+                checkEditedFile(tc.args.path).then(gate => {
+                  if (!gate.ok && gate.errors.length) {
+                    const errSummary = gate.errors.slice(0, 5).map(e => `  ${e.line || '?'}:${e.column || '?'} ${e.message || e.text || ''}`).join('\n');
+                    const gateMsg = `[lint-gate] ${gate.summary}\n${errSummary}`;
+                    process.stdout.write(`\x1b[33m${gateMsg}\x1b[0m\n`);
+                    messages.push({ role: 'system', content: gateMsg });
+                    histAppend(sessionId, { role: 'system', content: gateMsg });
+                  }
+                }).catch(() => { /* swallow, gate 已保永不抛 */ });
+              }
             }
             await new Promise(r => setTimeout(r, 500));
           } else {

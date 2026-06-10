@@ -1,5 +1,14 @@
 // === slash-commands.mjs ===
 // dev-repl 的斜杠命令分发 (opencode /claudecode 风格):
+
+// === invariants ===
+// - COMMANDS 是单例, 不在运行时变更 (P0 命令集)
+// - parseSlash 是纯函数, 不读 cfg 不写盘
+// - applySlash 整体 async (commit 路径要 await onCommit), 其他 case 直接返同步值包成 Promise
+// - 不直接操作 readline / process.exit, 全部通过 sideEffect 通知 dev-repl
+// - 不持久化 model 切换 (运行中内存态, 退出生效)
+// - /resume 接受 id 或序号, 找不到返 "找不到" 不抛
+// - /commit 必依赖 ctx.onCommit, 缺失返 "未注入" 不抛
 //   /help             — 列出所有命令
 //   /status           — 当前 session/provider/model/工具数/历史轮数
 //   /clear            — 清屏 + 重置历史
