@@ -1,5 +1,6 @@
 # 项目开发指南
 > **记忆系统**: 按 @MEMORY.md 路由表只读当前任务对应段落，不读全文。
+> **🔬 38 个实验**（编号 01-38，分 3 层：原子 01-20 / 单依赖 21-34 / 多依赖 35-38）：根目录 `bridge/src/experiments/`。清单与依赖图见 `bridge/src/experiments/EXPERIMENT_TREE.md`（权威）和 `bridge/src/experiments/manifest.json`（机器可读）。运行器：`cd bridge && node src/experiments/run-all.mjs`。子项目 `bridge/src/experiments/lingbao/` 内有 5 个额外实验（40/41/42/44/45，漏电检测/灵保），与 38 个并列但独立。
 
 > **🔴 TOKEN 危机**: 剩余 25%，还有 20 天。每条回复 ≤4 行，无废话，无总结，无解释。先想再写，一次做对。
 

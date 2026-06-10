@@ -103,10 +103,51 @@ async function testDevAux() {
     r.ng('coding-tools 集成验证失败', e);
   }
 
-  // 5. dev-repl.mjs 可加载
+  // 5. dev-repl.mjs 可加载 + 子模块契约
   try {
     const dev = await import('./lib/dev-repl.mjs');
     r.ok(`dev-repl.mjs 可加载 (exports: ${Object.keys(dev).join(', ')})`);
+    // 5a. 子模块契约: provider-health (启动 doctor)
+    try {
+      const ph = await import('./lib/provider-health.mjs');
+      if (typeof ph.diagnose === 'function') {
+        const dr = await ph.diagnose({ silent: true });
+        if (dr && typeof dr.ok === 'boolean' && Array.isArray(dr.lines) && Array.isArray(dr.report?.items)) {
+          r.ok(`provider-health.diagnose 契约: ok=${dr.ok}, items=${dr.report.items.length}, lines=${dr.lines.length}`);
+        } else r.ng(`provider-health.diagnose 契约错: ${JSON.stringify(Object.keys(dr || {}))}`);
+      } else r.ng('provider-health.diagnose 缺失');
+    } catch (e) { r.ng('provider-health 加载失败', e); }
+    // 5b. 子模块契约: slash-commands (opencode 风格 P0)
+    try {
+      const sc = await import('./lib/slash-commands.mjs');
+      for (const fn of ['parseSlash', 'applySlash', 'listCommands']) {
+        if (typeof sc[fn] !== 'function') { r.ng(`slash-commands.${fn} 缺失`); break; }
+      }
+      const cases = [
+        { in: '/help',    handled: true,  cmd: 'help' },
+        { in: '/status',  handled: true,  cmd: 'status' },
+        { in: '/model X', handled: true,  cmd: 'model', arg: 'X' },
+        { in: '/clear',   handled: true,  cmd: 'clear' },
+        { in: '/unknown', handled: true },
+        { in: 'hello',    handled: false },
+        { in: '/exit',    handled: true,  cmd: 'exit' },
+      ];
+      let slashAllOk = true;
+      for (const c of cases) {
+        const p = sc.parseSlash(c.in);
+        if (p.handled !== c.handled) { slashAllOk = false; r.ng(`parseSlash(${JSON.stringify(c.in)}).handled=${p.handled} 期望 ${c.handled}`); break; }
+        if (c.cmd && p.cmd !== c.cmd) { slashAllOk = false; r.ng(`parseSlash(${JSON.stringify(c.in)}).cmd=${p.cmd} 期望 ${c.cmd}`); break; }
+        if (c.arg !== undefined && p.arg !== c.arg) { slashAllOk = false; r.ng(`parseSlash(${JSON.stringify(c.in)}).arg=${p.arg} 期望 ${c.arg}`); break; }
+      }
+      if (slashAllOk) r.ok(`slash-commands 7 用例全过`);
+      // applySlash 关键路径: /model 应改 ctx.model, /exit 应给 sideEffect.exit
+      const m1 = sc.applySlash({ cmd: 'model', arg: 'gpt-4o', ctx: { model: 'old' } });
+      if (m1.sideEffect?.setModel === 'gpt-4o') r.ok('applySlash(/model gpt-4o): sideEffect.setModel 正确');
+      else r.ng(`applySlash(/model): ${JSON.stringify(m1)}`);
+      const m2 = sc.applySlash({ cmd: 'exit', arg: '', ctx: {} });
+      if (m2.sideEffect?.exit === true) r.ok('applySlash(/exit): sideEffect.exit 正确');
+      else r.ng(`applySlash(/exit): ${JSON.stringify(m2)}`);
+    } catch (e) { r.ng('slash-commands 加载失败', e); }
   } catch (e) {
     r.ng('dev-repl.mjs 加载失败', e);
   }

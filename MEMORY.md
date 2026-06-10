@@ -68,6 +68,11 @@
 ## 最近会话摘要
 
 - [2026-06-03] **Bridge agent 端到端打通**：手机录音 → 微信 → Qiniu → bridge → agent → 文字气泡，中午实测成功。provider-kit 收口为单 import gate（provider-service.js），agent 改为 2-pass 系统（call-tools + final-answer），加 response cache + 上下文截断，prompt 改 20-token CoT。修复 config.json 缺逗号导致的静默 parse 失败。
+- [2026-06-11] **lingbao 子项目落地 + M3 档 3 baseline** (本地 14 commit, 未推送)：
+  - **lingbao** — 工地临时漏电 AI 协同防护，9/15 子任务完成 (60%)，5 新原语 (40-45)：waveform-sim/signal-algo/mqtt-push/doc-gen/calendar-parse, 4 task demo (10/13/14/15) 端到端跑通 (push 33ms, 5620B 报告, 1741B 方案书)。L1 硬件+L3 UI 依赖外部环境标 skeleton。
+  - **cap/60.mjs** — M3 能力档位诊断骨架，5 档任务 baseline 5/5 通过（simulateIdealLLM）。U 假说雏形：retry-state 状态机下沉到 tool 层，LLM 只调 recordAttempt()。下一步跑真实 M3 填 failure-taxonomy.json。
+  - **verify-commit 升级**：支持 .mjs 白名单 + invariants 检查 + 排除 lingbao/tasks/ demo 目录。
+  - **教训**：cap 实验的"baseline 5/5"是硬编码理想 LLM, 不是真实 M3。S 路线结论必须等真实 M3 跑完才能下, 当前数据不足以做 S/T/U 决策。
 - [2026-05-25] **音频链路 E1 完成**：队列播放 + 淡入淡出 + Opus 集成 + SDUI 三模式可切（raw/opus/neural）。RNNoise/AGC/VAD 管线已接入并通过 CI。AGENTS.md 新增 SDUI 优先原则（UI 变动先问 SDUI 能不能做，不 rebuild）。AGENTS.md 新增 Flutter API 签对签规则（推送前去 pub.dev 逐行核对 API）。修复 OpenRouter API key 泄露（git filter-repo 误删仓库后从 CI 引用恢复）。清理 33 个 apk-* tag 和所有旧 Actions runs。
 
 - [2026-05-16] **项目定位大讨论**：通过多角色审视（VC、安全研究员、贡献者、核心工程师、Petals 开发者、考古学家、学生用户、记者、Flutter App 视角）确认项目真实竞争力在 P2P 语音通讯，而非分布式大模型。AI 居民社区方向保留但标注为实验。
@@ -89,6 +94,7 @@
 | Flutter/客户端/UI | memory/flutter.md | openchat-flutter 架构、API Client 层 |
 | 语音/音频/WebRTC | memory/audio.md | RNNoise、神经编解码、语音网关 |
 | 调试经验 | memory/debugging.md | 常见 bug、调试技巧 |
+| lingbao/工地漏电/cap 档位 | memory/lingbao.md | 灵保 5 原语 + 4 demo, M3 能力档位诊断 |
 
 ## 开放线程
 
@@ -332,3 +338,60 @@
 | R3 | AudioConfig/VoiceUiConfig 换方案：`Map<String,dynamic>` 泛型包装，新增字段零 Dart 改动 | 架构师 | P0-1 | ✅ 已修(R3) | 架构师 |
 | R3 | 空 catch 吞异常修复（`log()` 记录错误） | 安全研究员 | P0-2 | ✅ 已修(R3) | 安全研究员 |
 | R3 | 版号宣布：v0.1.0-alpha | 技术经理 | — | ✅ 已宣布(R3) | 技术经理 |
+
+## 🔑 关键定位笔记（自检发现，非专家评审结论）
+
+> 这章节是用户/我自检得出的**项目结构定位**，不是 13 专家评审流的意见。专门记"以后别再找不到了"的关键路径与能力对照。
+
+### 38 个实验的"opencode/claudecode 等价物"
+
+| 项 | 值 |
+|----|----|
+| **位置** | `bridge/src/experiments/lib/dev-repl.mjs`（`src/core/dev-repl.mjs` 是 1 行跳板） |
+| **CLI 入口** | `bridge/bin/openchat.js`（`openchat` / `openchat server` / `openchat -c` / `openchat --goal X`） |
+| **自我定位** | 实验 22 tool-loop 第 5 行注释：**"Multi-turn tool loop ... (like opencode goal)"** |
+| **实验 10 关系** | `dev-aux` 名字直接含 `dev-repl`，是它的"骨架测试"（只测模块可加载） |
+| **38 里和它最像的** | **22 tool-loop**（多轮工具循环）/ **10 dev-aux**（CLI 骨架） |
+| **本质** | CLI agent 循环：读 `~/.config/openchat/config.json` → 建降级链 → 拉 5 个工具模块（system-exec/coding/multi-edit/ast-edit/diff-review）→ `provider.chat()` 多轮 → 输出 think/tool_call 着色到 stdout |
+| **关键能力对照** | ✅ 多轮循环 / 工具缓存 / 错误引导 / 思考折叠 / 降级链<br>❌ 启动 doctor（已补）/ slash 命令（已补 P0）/ 流式输出（未做）/ history 续接（未做）/ TUI（未做）/ subagent（未做） |
+
+### 38 个实验清单速查（[桥接实验树](bridge/src/experiments/EXPERIMENT_TREE.md)）
+
+- **原子层 01-20**：01 config / 02 feature-flag / 03 provider-kit / 04 skill-loader / 05 codec / 06 isolation / 07 compressor / 08 qiniu / 09 coding / 10 dev-aux / 11 backpressure / 12 multi-session / 13 process-recovery / 14 code-reviewer / 15 verify-commit / 16 tool-rescue / 17 step-workflow / 18 guardrails-pipeline / 19 guardian / 20 neural-brain
+- **单依赖层 21-34**：21 teach-me / 22 tool-loop / 23 code-search / 24 edit-advanced / 25 dev-tools / 26 retry-guidance / 27 storage / 28 relay / 29 p2p / 30 naming / 31 session-tree / 32 system-exec / 33 memory / 34 orchestrator
+- **多依赖层 35-38**：35 chat-poller / 36 poll-one / 37 dream-consolidation / 38 goal
+- **灵保并列 5（39-43）**：waveform-sim / signal-algo / mqtt-push / doc-gen / calendar-parse（在 `experiments/lingbao/`）
+
+### 用户报"老提示"的真实源头（已修）
+
+| 用户说 | 实际位置 | 修复 |
+|--------|---------|------|
+| "做实验时提示本地没有 LLM 可用" | `experiments/lib/dev-repl.mjs:127` `throw new Error('No available provider')` | 替换为 `await diagnose({silent:false})` 打印 actionable 报告 + 友好 throw |
+| "38 实验里没对应到" | 25 dev-tools 有 `check_failover` 但只读 config 不 ping 端点 | provider-health.mjs 补 `check_provider_alive` 等价能力 |
+
+### 2026-06-11 提交（P0 补完 3 项）
+
+| 文件 | 作用 |
+|------|------|
+| `bridge/src/experiments/lib/provider-health.mjs` | 启动 doctor：5 维检查（config 存在/JSON 合法/current.provider/apiKey/真 ping 端点）+ actionable 修复 |
+| `bridge/src/experiments/lib/provider-health.spec.md` | R3 spec |
+| `bridge/src/experiments/lib/slash-commands.mjs` | opencode 风格 P0 slash：`/help` `/status` `/clear` `/model` `/exit` |
+| `bridge/src/experiments/lib/slash-commands.spec.md` | R3 spec |
+| `bridge/src/experiments/lib/dev-repl.mjs` | +38/-4：调 diagnose 替换 throw + readline 顶部 slash dispatch + banner 升级 |
+| `AGENTS.md` | 顶部加 38 实验路由（防下次再找） |
+
+### 2026-06-11 提交（ABC 补完 3 项）
+
+| # | 文件 | 作用 |
+|---|------|------|
+| **A** | `bridge/src/experiments/10.mjs` | 实验 10 dev-aux 升级：5a/5b 验证 provider-health 契约 + slash 7 用例 + applySlash 关键路径（+43 行） |
+| **B** | `bridge/src/experiments/lib/dev-repl.mjs` | +48/-4 流式输出：接 `provider.chatStream`，累积 content/toolCalls 边写 stdout，`lastStreamed` 防重复打印 + 修 max-rounds fallback 边界 |
+| **C** | `bridge/src/experiments/lib/dev-repl.mjs` | +18/-2 history 续接：调 `repl-history` 落盘 user/assistant/tool，`-c` 启动时灌回 messages，`/clear` 触发清空 |
+| — | `bridge/src/experiments/lib/repl-history.mjs` | 93 行，消息持久化（`~/.openchat/repl-history/<chatId>.json`），原子写 + 路径穿越防护 + 1000 条裁剪 |
+| — | `bridge/src/experiments/lib/repl-history.spec.md` | R3 spec |
+| — | `bridge/tests/integration/dev-repl-smoke.mjs` | 153 行，14 用例端到端 smoke（diagnose/slash/history/消息流），无需 apiKey 也能跑通 |
+| — | `MEMORY.md` | 本节 |
+
+### 2026-06-11 评估搁置
+
+- **P2 TUI 升级**：opencode-style inquirer TUI（多行编辑/翻历史/Markdown 渲染）。**不做**：拉新依赖 + diff 超 500 + 收益纯体验。重启条件：dev-repl 成为日常主入口或 ≥2 用户主动提。

@@ -111,6 +111,7 @@ export async function startDevRepl(modelOverride, chatId) {
   }
 
   const { createProvider } = await import('provider-kit');
+  const { diagnose } = await import('./provider-health.mjs');
   let provider = null;
   let providerLabel = '';
   for (const fb of fallbacks) {
@@ -124,7 +125,11 @@ export async function startDevRepl(modelOverride, chatId) {
       process.stdout.write(`\x1b[90m[provider ${fb.name} failed: ${e.message.slice(0, 60)}]\x1b[0m\n`);
     }
   }
-  if (!provider) throw new Error('No available provider');
+  if (!provider) {
+    const diag = await diagnose({ silent: false });
+    for (const line of diag.lines) process.stdout.write(line + '\n');
+    throw new Error(diag.fix ? `No available provider — ${diag.fix.split('\n')[0]}` : 'No available provider');
+  }
   let MODEL = providerLabel.split('/')[1] || currentModel;
   const { tools, dispatch } = await loadAllTools();
 
@@ -169,21 +174,55 @@ Rules:
 - Answer in Chinese, reference specific code lines, explain the flow.`,
   };
 
-  console.log(`\n  openchat bridge — dev mode (${MODEL})`);
-  console.log(`  ${tools.length} tool(s) loaded\n`);
+  console.log(`\n  openchat bridge — dev mode (${providerLabel})`);
+  console.log(`  ${tools.length} tool(s) loaded · session ${sessionId.slice(0, 16)} · cwd ${process.cwd()}`);
+  console.log(`  输入 /help 查看命令, /status 看状态, /exit 退出\n`);
 
   // 持久化 session（记录 chatId + cwd）
   const sessionId = chatId || `repl_${Date.now()}`;
   const { persistentStore } = await import('./persistent-store.js');
+  const { loadHistory, appendMessage: histAppend, clearHistory: histClear } = await import('./repl-history.mjs');
   persistentStore?.setSession(sessionId, { chatId: sessionId, cwd: process.cwd(), lastActivity: Date.now(), type: 'repl' });
 
+  // 续接历史 (-c 模式)
+  const resumedHistory = chatId ? loadHistory(sessionId) : [];
+  if (resumedHistory.length) process.stdout.write(`\x1b[32m[repl-history] load ${resumedHistory.length} msgs from last session\x1b[0m\n`);
+
   const rl = createInterface({ input: process.stdin, output: process.stdout, prompt: '> ', terminal: process.platform !== 'win32' });
-  if (chatId) process.stdout.write(`\x1b[32m[continue session ${chatId.slice(0, 12)}...]\x1b[0m\n`);
+  if (chatId && !resumedHistory.length) process.stdout.write(`\x1b[32m[continue session ${chatId.slice(0, 12)} (无历史)...]\x1b[0m\n`);
   rl.prompt();
 
   for await (const line of rl) {
     const input = line.trim();
-    if (!input || input === 'exit' || input === 'quit') { if (input === 'exit' || input === 'quit') break; rl.prompt(); continue; }
+    if (!input) { rl.prompt(); continue; }
+    if (input === 'exit' || input === 'quit') break;
+
+    // Slash command dispatch (opencode/claudecode 风格)
+    if (input.startsWith('/')) {
+      const { parseSlash, applySlash } = await import('./slash-commands.mjs');
+      const parsed = parseSlash(input);
+      if (parsed.handled) {
+        if (parsed.cmd) {
+          const result = applySlash({
+            cmd: parsed.cmd,
+            arg: parsed.arg,
+            ctx: {
+              cfg, providerName: providerLabel.split('/')[0], model: MODEL,
+              sessionId, cwd: process.cwd(), toolCount: tools.length, historyRounds: 0,
+            },
+          });
+          if (result.reply) process.stdout.write(result.reply + '\n');
+          if (result.sideEffect?.exit) break;
+          if (result.sideEffect?.setModel) {
+            MODEL = result.sideEffect.setModel;
+            providerLabel = providerLabel.split('/')[0] + '/' + MODEL;
+          }
+          if (result.sideEffect?.clearHistory) { histClear(sessionId); resumedHistory.length = 0; rl.prompt(); continue; }
+        }
+        rl.prompt();
+        continue;
+      }
+    }
     persistentStore?.setSession(sessionId, { chatId: sessionId, cwd: process.cwd(), lastActivity: Date.now(), type: 'repl' });
 
     // Memory context recall (via experiment 43)
@@ -201,21 +240,45 @@ Rules:
       : null;
 
     const messages = [];
+    // 灌入续接的历史 (跳过原 systemMsg, 避免被新 system 覆盖)
+    for (const m of resumedHistory) {
+      if (m.role === 'system') continue; // 旧 system 略过
+      messages.push(m);
+    }
     messages.push(systemMsg);
     if (memoryCtx) messages.push({ role: 'system', content: memoryCtx });
     if (goalGuide) messages.push(goalGuide);
     messages.push({ role: 'user', content: input });
+    // 续接模式下: 本轮新 user 也追加到历史文件
+    histAppend(sessionId, { role: 'user', content: input });
     let finalAnswer = '';
     let totalToolCalls = 0;
+    let lastStreamed = false; // 末轮是否走了流式 (避免 console.log 重复打印)
     const toolCache = new Map(); // session-scoped: cacheKey → result
 
     for (let round = 0; round < MAX_ROUNDS; round++) {
       try {
         const t0 = Date.now();
-        const resp = await provider.chat(MODEL, messages, { tools });
+        let content = '';
+        let toolCalls = [];
+        let firstChunk = true;
+        if (typeof provider.chatStream === 'function') {
+          lastStreamed = true;
+          for await (const ev of provider.chatStream(MODEL, messages, { tools })) {
+            if (ev.type === 'content' && ev.content) { content += ev.content; if (firstChunk) { firstChunk = false; } process.stdout.write(ev.content); }
+            else if (ev.type === 'thinking' && ev.content) { /* 折叠, 不实时打 */ }
+            else if (ev.type === 'tool_calls' && ev.toolCalls) { toolCalls = ev.toolCalls; }
+            else if (ev.done || ev.type === 'done') break;
+          }
+          if (content) process.stdout.write('\n');
+        } else {
+          lastStreamed = false;
+          const resp = await provider.chat(MODEL, messages, { tools });
+          content = resp.content || '';
+          toolCalls = resp.toolCalls || [];
+        }
         const sec = ((Date.now() - t0) / 1000).toFixed(1);
-        let content = resp.content?.trim() || '';
-        let toolCalls = resp.toolCalls || [];
+        content = content.trim();
 
         // Think stripping
         const tm = content.match(/<think>([\s\S]*?)<\/think>/);
@@ -286,10 +349,13 @@ Rules:
               }
               process.stdout.write(`\x1b[32mdone\x1b[0m \x1b[90m(${result.length}B, ${sec}s)\x1b[0m\n`);
               messages.push({ role: 'tool', tool_call_id: tc.id, content: result });
+              histAppend(sessionId, { role: 'tool', tool_call_id: tc.id, content: result });
             }
             await new Promise(r => setTimeout(r, 500));
           } else {
             finalAnswer = content;
+            // assistant 最终回答落盘
+            if (content) histAppend(sessionId, { role: 'assistant', content });
             break;
           }
       } catch (e) {
@@ -323,10 +389,12 @@ Rules:
         messages.push({ role: 'system', content: '[STOP] You have gathered enough info. Give a final answer now in Chinese. Be concise.' });
         const resp = await provider.chat(MODEL, messages, { tools: [] });
         finalAnswer = resp.content?.trim() || '[max rounds]';
+        lastStreamed = false; // fallback 走了非流式 chat, 允许 console.log 打印
       } catch { finalAnswer = '[max rounds]'; }
     }
 
-    console.log(`\n${finalAnswer}\n`);
+    // finalAnswer: 流式分支已实时打印 content, 跳过; 非流式分支才补打
+    if (finalAnswer && !lastStreamed) console.log(`\n${finalAnswer}\n`);
     try { rl.prompt(); } catch {}
   }
 
