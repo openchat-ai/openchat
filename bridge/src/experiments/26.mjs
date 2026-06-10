@@ -1,3 +1,5 @@
+import { rescueToolCall } from './lib/rescue-utils.mjs';
+
 // Experiment: retry-guidance — 工具调用失败的结构化引导重试
 // Manifest id: retry-guidance
 // 当工具调用失败时，生成结构化引导信息给 LLM，提高重试成功率
@@ -48,18 +50,16 @@ export async function run({ inputs = {} } = {}) {
 
     case 'execute_with_retry': {
       if (!args.executor) throw new Error('executor function required');
-      const { run: rescueRun } = await import('./16.mjs');
       const maxRetries = args.maxRetries || 3;
 
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        // 1. Rescue: 先校验+修复参数
         let callArgs = args.args;
         if (args.toolSchema) {
-          const rescued = await rescueRun({ inputs: { op: 'rescue', toolName: args.toolName, args: callArgs, toolSchema: args.toolSchema } });
-          if (!rescued.outputs.valid) {
-            return { outputs: { success: false, result: null, attempts: attempt, guidance: rescued.outputs.guidance } };
+          const rescued = rescueToolCall(args.toolName, callArgs, args.toolSchema);
+          if (!rescued.valid) {
+            return { outputs: { success: false, result: null, attempts: attempt, guidance: rescued.guidance } };
           }
-          if (rescued.outputs.fixed) callArgs = rescued.outputs.fixedArgs;
+          if (rescued.fixed) callArgs = rescued.fixedArgs;
         }
 
         // 2. 执行
