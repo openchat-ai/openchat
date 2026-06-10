@@ -395,3 +395,16 @@
 ### 2026-06-11 评估搁置
 
 - **P2 TUI 升级**：opencode-style inquirer TUI（多行编辑/翻历史/Markdown 渲染）。**不做**：拉新依赖 + diff 超 500 + 收益纯体验。重启条件：dev-repl 成为日常主入口或 ≥2 用户主动提。
+
+### 2026-06-11 提交（/resume 命令 P0）
+
+| 文件 | 作用 |
+|------|------|
+| `bridge/src/experiments/lib/slash-commands.mjs` | +`/resume` 命令：无参列 ≤20 个有历史的 session（按 lastActivity 倒序，当前标记）+ by id / 序号跳；+`availableSessions` ctx 注入（不硬耦合 repl-history） |
+| `bridge/src/experiments/lib/slash-commands.spec.md` | 更新 C1-C8 检查点 |
+| `bridge/src/experiments/lib/dev-repl.mjs` | +`resumeTo` sideEffect 处理：重置 resumedHistory + 灌入目标 session msgs（**读不写，保护原 session**） |
+| `bridge/src/experiments/lib/repl-history.mjs` | **修 Windows EPERM**：writeFileSync 替代 .tmp+rename（单用户可接受非原子） |
+| `bridge/src/experiments/lib/repl-history.spec.md` | 同步更新不变量块 |
+| `bridge/src/experiments/10.mjs` | 契约测试 7→9 用例（含 `/resume` 无参/有参） |
+| `bridge/tests/integration/dev-repl-smoke.mjs` | +6 用例 `/resume`：空/列表/by id/by 序号/当前/找不到；parseSlash 7→9；listCommands 6→7 |
+| `MEMORY.md` | 本节 |

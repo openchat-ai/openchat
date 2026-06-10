@@ -51,12 +51,12 @@ const NAME = 'dev-repl-smoke (无 apiKey 端到端)';
 // === 2. slash-commands 全命令 ===
 {
   const sc = await import('../../src/experiments/lib/slash-commands.mjs');
-  // 2a. listCommands 含 6 命令
+  // 2a. listCommands 含 7 命令
   const list = sc.listCommands();
-  for (const c of ['/help', '/status', '/clear', '/model', '/exit', '/quit']) {
+  for (const c of ['/help', '/status', '/clear', '/model', '/resume', '/exit', '/quit']) {
     assert.ok(list.includes(c), `listCommands 缺 ${c}`);
   }
-  r.ok('listCommands 含 6 命令');
+  r.ok('listCommands 含 7 命令');
 
   // 2b. parseSlash 7 用例 (与实验 10 一致)
   const cases = [
@@ -67,6 +67,8 @@ const NAME = 'dev-repl-smoke (无 apiKey 端到端)';
     { in: '/unknown', handled: true },
     { in: 'hello',    handled: false },
     { in: '/exit',    handled: true,  cmd: 'exit' },
+    { in: '/resume',  handled: true,  cmd: 'resume' },
+    { in: '/resume X', handled: true, cmd: 'resume', arg: 'X' },
   ];
   for (const c of cases) {
     const p = sc.parseSlash(c.in);
@@ -74,7 +76,7 @@ const NAME = 'dev-repl-smoke (无 apiKey 端到端)';
     if (c.cmd) assert.equal(p.cmd, c.cmd);
     if (c.arg !== undefined) assert.equal(p.arg, c.arg);
   }
-  r.ok('parseSlash 7 用例');
+  r.ok('parseSlash 9 用例');
 
   // 2c. applySlash 关键路径
   const m1 = sc.applySlash({ cmd: 'model', arg: 'gpt-4o', ctx: { model: 'old' } });
@@ -89,6 +91,34 @@ const NAME = 'dev-repl-smoke (无 apiKey 端到端)';
   assert.ok(m5.reply?.includes('p1/m1'));
   assert.ok(m5.reply?.includes('tools:      5'));
   r.ok('applySlash 5 关键路径');
+
+  // 2d. /resume 6 用例
+  const now = Date.now();
+  const sessions = [
+    { id: 'repl_1', msgCount: 4,  lastActivity: now - 60000 },
+    { id: 'repl_2', msgCount: 12, lastActivity: now - 3600000 },
+    { id: 'repl_3', msgCount: 2,  lastActivity: now - 5 * 86400000 },
+  ];
+  // 无参 + 空
+  const re1 = sc.applySlash({ cmd: 'resume', arg: '', ctx: { availableSessions: [] } });
+  assert.ok(re1.reply?.includes('没有'));
+  // 无参 + 列表
+  const re2 = sc.applySlash({ cmd: 'resume', arg: '', ctx: { availableSessions: sessions, sessionId: 'repl_1' } });
+  assert.ok(re2.reply?.includes('repl_1 · 4 msgs'));
+  assert.ok(re2.reply?.includes('← 当前'));
+  // by id
+  const re3 = sc.applySlash({ cmd: 'resume', arg: 'repl_2', ctx: { availableSessions: sessions, sessionId: 'repl_1' } });
+  assert.equal(re3.sideEffect?.resumeTo, 'repl_2');
+  // by 序号
+  const re4 = sc.applySlash({ cmd: 'resume', arg: '2', ctx: { availableSessions: sessions, sessionId: 'repl_1' } });
+  assert.equal(re4.sideEffect?.resumeTo, 'repl_2');
+  // 当前
+  const re5 = sc.applySlash({ cmd: 'resume', arg: 'repl_1', ctx: { availableSessions: sessions, sessionId: 'repl_1' } });
+  assert.ok(re5.reply?.includes('已经在'));
+  // 找不到
+  const re6 = sc.applySlash({ cmd: 'resume', arg: 'xxx', ctx: { availableSessions: sessions, sessionId: 'repl_1' } });
+  assert.ok(re6.reply?.includes('找不到'));
+  r.ok('/resume 6 用例');
 }
 
 // === 3. repl-history ===

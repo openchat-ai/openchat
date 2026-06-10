@@ -41,7 +41,7 @@ run({ op, chatId?, history?, msg? })         // compose 契约入口
 
 ## 不变量
 - 路径隔离: 与 `~/.openchat/sessions.json` 物理独立
-- 原子写: .tmp + rename
+- 写盘: 直接 writeFileSync (Windows rename 偶发 EPERM, 单用户可接受非原子)
 - chatId 白名单: `[a-zA-Z0-9_-]{1,64}`
 - 单文件上限 1000 条
 - load 永不抛

@@ -29,23 +29,26 @@ sideEffect: { setModel?: string, clearHistory?: bool, exit?: bool }
 - 输入非字符串 → parseSlash handled=false (防御)
 
 ## 当前实现 (P0, 故意不做的列在 P2)
-- ✅ /help /status /clear /model /exit /quit
+- ✅ /help /status /clear /model /resume /exit /quit
 - ❌ /sessions /compact /cost /bug /init /memory — 需新 storage 模块, 另开 PR
 
 ## 文件清单
 | 文件 | 职责 | 行数上限 |
 |------|------|---------|
-| `bridge/src/experiments/lib/slash-commands.mjs` | 解析 + 应用 | 100 |
-| `bridge/src/experiments/lib/dev-repl.mjs` | 在 readline 循环顶部 dispatch | (改 1 处) |
+| `bridge/src/experiments/lib/slash-commands.mjs` | 解析 + 应用 | 150 |
+| `bridge/src/experiments/lib/dev-repl.mjs` | 在 readline 循环顶部 dispatch + 注入 availableSessions + 处理 resumeTo | (改 1 处) |
 
 ## 调试检查点
 | C | grep 关键词 | 预期 |
 |---|-------------|------|
-| C1 | `/help` 输入 | 列出 6 个命令 |
+| C1 | `/help` 输入 | 列出 7 个命令 |
 | C2 | `/status` 输入 | 输出 session/provider/cwd/tools/history |
 | C3 | `/model X` | 输出 "已切换 model: X" + 下次 LLM 用新 model |
 | C4 | `/unknown` | 输出 "未知命令" + 引导 /help |
 | C5 | `/exit` | REPL 退出 |
+| C6 | `/resume` 无参 | 列出 ≤20 个 session + 当前标记 + 用法 |
+| C7 | `/resume <id>` | sideEffect.resumeTo=id, dev-repl 灌入该 session 历史 |
+| C8 | `/resume <序号>` | 同上 (按列表顺序) |
 
 ## 不变量
 - COMMANDS 是单例, 不在运行时变更

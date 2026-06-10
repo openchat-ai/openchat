@@ -62,9 +62,8 @@ export function saveHistory(chatId, history) {
   const trimmed = history.length > MAX_HISTORY
     ? [history[0], ...history.slice(-(MAX_HISTORY - 1))] // 保留 system + 末 N-1
     : history;
-  const tmp = fp + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(trimmed));
-  fs.renameSync(tmp, fp);
+  // 直接写盘: Windows rename 偶发 EPERM (单用户 dev-repl, 可接受非原子)
+  fs.writeFileSync(fp, JSON.stringify(trimmed));
   return { ok: true, count: trimmed.length };
 }
 

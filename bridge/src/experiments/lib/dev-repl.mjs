@@ -181,7 +181,8 @@ Rules:
   // 持久化 session（记录 chatId + cwd）
   const sessionId = chatId || `repl_${Date.now()}`;
   const { persistentStore } = await import('./persistent-store.js');
-  const { loadHistory, appendMessage: histAppend, clearHistory: histClear } = await import('./repl-history.mjs');
+  const { loadHistory, appendMessage: histAppend, clearHistory: histClear, listSessions: histList } = await import('./repl-history.mjs');
+  const histLoad = loadHistory; // alias
   persistentStore?.setSession(sessionId, { chatId: sessionId, cwd: process.cwd(), lastActivity: Date.now(), type: 'repl' });
 
   // 续接历史 (-c 模式)
@@ -200,15 +201,25 @@ Rules:
     // Slash command dispatch (opencode/claudecode 风格)
     if (input.startsWith('/')) {
       const { parseSlash, applySlash } = await import('./slash-commands.mjs');
+      const { listSessions: histList } = await import('./repl-history.mjs');
       const parsed = parseSlash(input);
       if (parsed.handled) {
         if (parsed.cmd) {
+          // 注入可续接的 session 列表 (合并历史文件 + persistentStore 时间戳)
+          const histIds = new Set(histList());
+          const sessions = persistentStore?.getAllSessions() || [];
+          const availableSessions = sessions
+            .filter(s => histIds.has(s.id) && s.type === 'repl')
+            .map(s => ({ id: s.id, msgCount: histLoad(s.id).length, lastActivity: s.lastActivity || 0, cwd: s.cwd }))
+            .sort((a, b) => (b.lastActivity || 0) - (a.lastActivity || 0))
+            .slice(0, 20);
           const result = applySlash({
             cmd: parsed.cmd,
             arg: parsed.arg,
             ctx: {
               cfg, providerName: providerLabel.split('/')[0], model: MODEL,
               sessionId, cwd: process.cwd(), toolCount: tools.length, historyRounds: 0,
+              availableSessions,
             },
           });
           if (result.reply) process.stdout.write(result.reply + '\n');
@@ -218,6 +229,20 @@ Rules:
             providerLabel = providerLabel.split('/')[0] + '/' + MODEL;
           }
           if (result.sideEffect?.clearHistory) { histClear(sessionId); resumedHistory.length = 0; rl.prompt(); continue; }
+          if (result.sideEffect?.resumeTo) {
+            // 跳到指定 session: 重置 resumedHistory + 改 sessionId
+            const newId = result.sideEffect.resumeTo;
+            const newHist = histLoad(newId);
+            resumedHistory.length = 0;
+            for (const m of newHist) resumedHistory.push(m);
+            process.stdout.write(`\x1b[32m[resumed ${newHist.length} msgs from ${newId}]\x1b[0m\n`);
+            // 注意: sessionId 仍为原值, 后续 append 写入新 session 文件
+            // (避免污染原 session 历史)
+            // 若想"接着原 session 写", 改成: const oldId = sessionId; ... sessionId = newId
+            // 当前选择: 读但不写, 保护原 session 完整
+            rl.prompt();
+            continue;
+          }
         }
         rl.prompt();
         continue;
