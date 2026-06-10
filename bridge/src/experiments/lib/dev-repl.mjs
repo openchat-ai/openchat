@@ -110,26 +110,17 @@ export async function startDevRepl(modelOverride, chatId) {
       fallbacks.push({ name, model: pcfg.defaultModel || 'openrouter/auto' });
   }
 
-  const { createProvider } = await import('provider-kit');
   const { diagnose } = await import('./provider-health.mjs');
-  let provider = null;
-  let providerLabel = '';
-  for (const fb of fallbacks) {
-    try {
-      const p = createProvider(fb.name, cfg.providers[fb.name]?.apiKey);
-      await p.connect(cfg.providers[fb.name]?.apiKey);
-      provider = p;
-      providerLabel = `${fb.name}/${fb.model}`;
-      break;
-    } catch (e) {
-      process.stdout.write(`\x1b[90m[provider ${fb.name} failed: ${e.message.slice(0, 60)}]\x1b[0m\n`);
-    }
-  }
-  if (!provider) {
+  const { pickFirstAlive } = await import('./failover-picker.mjs');
+  const picked = await pickFirstAlive(fallbacks, cfg, { silent: false });
+  if (!picked.ok) {
+    // picker 已逐项报告, 调 diagnose 拿 actionable fix
     const diag = await diagnose({ silent: false });
     for (const line of diag.lines) process.stdout.write(line + '\n');
     throw new Error(diag.fix ? `No available provider — ${diag.fix.split('\n')[0]}` : 'No available provider');
   }
+  let provider = picked.provider;
+  let providerLabel = picked.label;
   let MODEL = providerLabel.split('/')[1] || currentModel;
   const { tools, dispatch } = await loadAllTools();
 
@@ -213,13 +204,32 @@ Rules:
             .map(s => ({ id: s.id, msgCount: histLoad(s.id).length, lastActivity: s.lastActivity || 0, cwd: s.cwd }))
             .sort((a, b) => (b.lastActivity || 0) - (a.lastActivity || 0))
             .slice(0, 20);
-          const result = applySlash({
+          const result = await applySlash({
             cmd: parsed.cmd,
             arg: parsed.arg,
             ctx: {
               cfg, providerName: providerLabel.split('/')[0], model: MODEL,
               sessionId, cwd: process.cwd(), toolCount: tools.length, historyRounds: 0,
               availableSessions,
+              onCommit: async () => {
+                // 动态 import (避免启动时强耦合 auto-commit)
+                const ac = await import('./auto-commit.mjs');
+                if (!ac.hasGitRepo(process.cwd())) {
+                  return { ok: false, message: '当前目录不是 git 仓库' };
+                }
+                const diff = ac.gitDiff(process.cwd());
+                if (!diff.trim()) {
+                  return { ok: false, message: '无未提交的变更 (git diff 为空)' };
+                }
+                const msg = ac.generateMessage(diff, process.cwd());
+                const result = await ac.autoCommit([], process.cwd()).catch(() => {
+                  return { committed: false, message: msg, diff: diff.slice(0, 500) };
+                });
+                if (result.committed === false && result.diff) {
+                  return { ok: true, committed: false, message: `建议 commit msg: ${msg}\n(未自动 commit, 请手动执行)`, diff: result.diff };
+                }
+                return { ok: true, committed: true, message: `已 commit: ${msg}` };
+              },
             },
           });
           if (result.reply) process.stdout.write(result.reply + '\n');
@@ -389,16 +399,14 @@ Rules:
           await new Promise(r => setTimeout(r, 1000));
           continue;
         }
-        // 当前 provider 不可用，移除已尝试的全部 provider，取下一个
+        // 当前 provider 不可用，移除已尝试的全部 provider，用 picker 选下一个
         const currentName = providerLabel.split('/')[0];
         fallbacks = fallbacks.filter(fb => fb.name !== currentName);
-        const nextFb = fallbacks[0];
-        if (nextFb) {
-          process.stdout.write(`\x1b[33m[fallback to ${nextFb.name}]\x1b[0m\n`);
-          provider = createProvider(nextFb.name, cfg.providers[nextFb.name]?.apiKey);
-          await provider.connect(cfg.providers[nextFb.name]?.apiKey).catch(() => {});
-          providerLabel = `${nextFb.name}/${nextFb.model}`;
-          MODEL = nextFb.model || (cfg.providers[nextFb.name]?.defaultModel || 'openrouter/auto');
+        const nextPicked = await pickFirstAlive(fallbacks, cfg, { silent: false });
+        if (nextPicked.ok) {
+          provider = nextPicked.provider;
+          providerLabel = nextPicked.label;
+          MODEL = providerLabel.split('/')[1] || currentModel;
           totalToolCalls = 0; // 新 provider 从头计数
           round = -1;
           continue;

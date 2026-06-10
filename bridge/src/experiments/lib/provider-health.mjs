@@ -203,4 +203,20 @@ export async function diagnose({ configPath, silent = false } = {}) {
   return { ok: false, report, lines, firstAlive: null, fix: report.fix };
 }
 
+// 暴露给 failover-picker 复用 (R6: 不在 dev-repl 里重写 baseUrl 拼接)
+export async function pingProvider(name, pcfg = {}, { timeoutMs = 3000 } = {}) {
+  const preset = (await loadPresetMeta())[name] || {};
+  const baseUrl = pcfg.baseUrl || preset.baseUrl || '';
+  if (!baseUrl) return { ok: false, status: 0, latencyMs: 0, error: 'no-baseurl', skipPing: true };
+  const skipAuth = pcfg.skipAuth ?? preset.skipAuth ?? false;
+  const apiKey = pcfg.apiKey || '';
+  if (!skipAuth && !apiKey) return { ok: false, status: 0, latencyMs: 0, error: 'no-api-key' };
+  let pingUrl = null;
+  if (name === 'ollama') pingUrl = baseUrl.replace(/\/+$/, '') + '/api/tags';
+  else pingUrl = baseUrl.replace(/\/+$/, '') + '/models';
+  const headers = {};
+  if (!skipAuth && apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+  return await pingEndpoint(pingUrl, { timeoutMs, headers });
+}
+
 export const META = { id: 'provider-health' };

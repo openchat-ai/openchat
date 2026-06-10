@@ -51,12 +51,12 @@ const NAME = 'dev-repl-smoke (无 apiKey 端到端)';
 // === 2. slash-commands 全命令 ===
 {
   const sc = await import('../../src/experiments/lib/slash-commands.mjs');
-  // 2a. listCommands 含 7 命令
+  // 2a. listCommands 含 8 命令
   const list = sc.listCommands();
-  for (const c of ['/help', '/status', '/clear', '/model', '/resume', '/exit', '/quit']) {
+  for (const c of ['/help', '/status', '/clear', '/model', '/resume', '/commit', '/exit', '/quit']) {
     assert.ok(list.includes(c), `listCommands 缺 ${c}`);
   }
-  r.ok('listCommands 含 7 命令');
+  r.ok('listCommands 含 8 命令');
 
   // 2b. parseSlash 7 用例 (与实验 10 一致)
   const cases = [
@@ -78,47 +78,60 @@ const NAME = 'dev-repl-smoke (无 apiKey 端到端)';
   }
   r.ok('parseSlash 9 用例');
 
-  // 2c. applySlash 关键路径
-  const m1 = sc.applySlash({ cmd: 'model', arg: 'gpt-4o', ctx: { model: 'old' } });
+  // 2c. applySlash 关键路径 (async)
+  const m1 = await sc.applySlash({ cmd: 'model', arg: 'gpt-4o', ctx: { model: 'old' } });
   assert.equal(m1.sideEffect?.setModel, 'gpt-4o');
-  const m2 = sc.applySlash({ cmd: 'exit', arg: '', ctx: {} });
+  const m2 = await sc.applySlash({ cmd: 'exit', arg: '', ctx: {} });
   assert.equal(m2.sideEffect?.exit, true);
-  const m3 = sc.applySlash({ cmd: 'model', arg: '', ctx: { model: 'old' } });
+  const m3 = await sc.applySlash({ cmd: 'model', arg: '', ctx: { model: 'old' } });
   assert.ok(m3.reply?.includes('用法'));
-  const m4 = sc.applySlash({ cmd: 'clear', arg: '', ctx: {} });
+  const m4 = await sc.applySlash({ cmd: 'clear', arg: '', ctx: {} });
   assert.equal(m4.sideEffect?.clearHistory, true);
-  const m5 = sc.applySlash({ cmd: 'status', arg: '', ctx: { sessionId: 's1', providerName: 'p1', model: 'm1', toolCount: 5, historyRounds: 3 } });
+  const m5 = await sc.applySlash({ cmd: 'status', arg: '', ctx: { sessionId: 's1', providerName: 'p1', model: 'm1', toolCount: 5, historyRounds: 3 } });
   assert.ok(m5.reply?.includes('p1/m1'));
   assert.ok(m5.reply?.includes('tools:      5'));
   r.ok('applySlash 5 关键路径');
 
-  // 2d. /resume 6 用例
+  // 2d. /resume 6 用例 (async)
   const now = Date.now();
   const sessions = [
     { id: 'repl_1', msgCount: 4,  lastActivity: now - 60000 },
     { id: 'repl_2', msgCount: 12, lastActivity: now - 3600000 },
     { id: 'repl_3', msgCount: 2,  lastActivity: now - 5 * 86400000 },
   ];
-  // 无参 + 空
-  const re1 = sc.applySlash({ cmd: 'resume', arg: '', ctx: { availableSessions: [] } });
+  const re1 = await sc.applySlash({ cmd: 'resume', arg: '', ctx: { availableSessions: [] } });
   assert.ok(re1.reply?.includes('没有'));
-  // 无参 + 列表
-  const re2 = sc.applySlash({ cmd: 'resume', arg: '', ctx: { availableSessions: sessions, sessionId: 'repl_1' } });
+  const re2 = await sc.applySlash({ cmd: 'resume', arg: '', ctx: { availableSessions: sessions, sessionId: 'repl_1' } });
   assert.ok(re2.reply?.includes('repl_1 · 4 msgs'));
   assert.ok(re2.reply?.includes('← 当前'));
-  // by id
-  const re3 = sc.applySlash({ cmd: 'resume', arg: 'repl_2', ctx: { availableSessions: sessions, sessionId: 'repl_1' } });
+  const re3 = await sc.applySlash({ cmd: 'resume', arg: 'repl_2', ctx: { availableSessions: sessions, sessionId: 'repl_1' } });
   assert.equal(re3.sideEffect?.resumeTo, 'repl_2');
-  // by 序号
-  const re4 = sc.applySlash({ cmd: 'resume', arg: '2', ctx: { availableSessions: sessions, sessionId: 'repl_1' } });
+  const re4 = await sc.applySlash({ cmd: 'resume', arg: '2', ctx: { availableSessions: sessions, sessionId: 'repl_1' } });
   assert.equal(re4.sideEffect?.resumeTo, 'repl_2');
-  // 当前
-  const re5 = sc.applySlash({ cmd: 'resume', arg: 'repl_1', ctx: { availableSessions: sessions, sessionId: 'repl_1' } });
+  const re5 = await sc.applySlash({ cmd: 'resume', arg: 'repl_1', ctx: { availableSessions: sessions, sessionId: 'repl_1' } });
   assert.ok(re5.reply?.includes('已经在'));
-  // 找不到
-  const re6 = sc.applySlash({ cmd: 'resume', arg: 'xxx', ctx: { availableSessions: sessions, sessionId: 'repl_1' } });
+  const re6 = await sc.applySlash({ cmd: 'resume', arg: 'xxx', ctx: { availableSessions: sessions, sessionId: 'repl_1' } });
   assert.ok(re6.reply?.includes('找不到'));
   r.ok('/resume 6 用例');
+
+  // 2e. /commit 4 用例 (async)
+  // 无 onCommit 回调
+  const c1 = await sc.applySlash({ cmd: 'commit', arg: '', ctx: {} });
+  assert.ok(c1.reply?.includes('未注入'));
+  r.ok('/commit 无回调 → 提示注入');
+  // onCommit 返 ok:false
+  const c2 = await sc.applySlash({ cmd: 'commit', arg: '', ctx: { onCommit: async () => ({ ok: false, message: '无变更' }) } });
+  assert.ok(c2.reply?.includes('无变更'));
+  r.ok('/commit 无变更 → ✗ 提示');
+  // onCommit 返 committed:true
+  const c3 = await sc.applySlash({ cmd: 'commit', arg: '', ctx: { onCommit: async () => ({ ok: true, committed: true, message: '已 commit: feat(x): y' }) } });
+  assert.ok(c3.reply?.includes('已 commit'));
+  r.ok('/commit 已 commit → ✓');
+  // onCommit 返 committed:false (只生成 msg, 不真 commit)
+  const c4 = await sc.applySlash({ cmd: 'commit', arg: '', ctx: { onCommit: async () => ({ ok: true, committed: false, message: '建议: feat(x)', diff: '+abc' }) } });
+  assert.ok(c4.reply?.includes('建议'));
+  assert.ok(c4.reply?.includes('diff 预览'));
+  r.ok('/commit 未自动 commit → 📝 提示');
 }
 
 // === 3. repl-history ===
@@ -165,6 +178,66 @@ const NAME = 'dev-repl-smoke (无 apiKey 端到端)';
   assert.deepEqual(bad, []);
   fs.unlinkSync(path.join(dir, `${badCid}.json`));
   r.ok('JSON 损坏 → 空数组 (不抛)');
+}
+
+// === 5. failover-picker pingProvider (mock fetch) ===
+{
+  const { pingProvider } = await import('../../src/experiments/lib/provider-health.mjs');
+  const orig = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    const u = String(url);
+    if (u.includes('11434')) return { status: 200, ok: true };
+    if (u.includes('openai.com')) return { status: 200, ok: true };
+    if (u.includes('openrouter')) return { status: 503, ok: false };
+    return { status: 404, ok: false };
+  };
+  try {
+    // 5a. ollama 端点
+    const p1 = await pingProvider('ollama', { baseUrl: 'http://localhost:11434' });
+    assert.equal(p1.ok, true);
+    assert.equal(p1.status, 200);
+    r.ok('pingProvider ollama 200 → alive');
+
+    // 5b. openai 端点
+    const p2 = await pingProvider('openai', { baseUrl: 'https://api.openai.com/v1', apiKey: 'sk-x' });
+    assert.equal(p2.ok, true);
+    r.ok('pingProvider openai 200 → alive');
+
+    // 5c. openrouter 503
+    const p3 = await pingProvider('openrouter', { baseUrl: 'https://openrouter.ai/api/v1', apiKey: 'sk-x' });
+    assert.equal(p3.ok, false);
+    assert.equal(p3.status, 503);
+    r.ok('pingProvider openrouter 503 → down');
+
+    // 5d. 缺 apiKey (非 ollama)
+    const p4 = await pingProvider('openai', { baseUrl: 'https://api.openai.com/v1' });
+    assert.equal(p4.error, 'no-api-key');
+    r.ok('pingProvider 缺 apiKey → no-api-key');
+
+    // 5e. 缺 baseUrl
+    const p5 = await pingProvider('openai', {});
+    assert.equal(p5.error, 'no-baseurl');
+    r.ok('pingProvider 缺 baseUrl → no-baseurl');
+
+    // 5f. ollama skipAuth 不需要 apiKey
+    const p6 = await pingProvider('ollama', { baseUrl: 'http://localhost:11434' });
+    assert.equal(p6.ok, true);
+    r.ok('pingProvider ollama skipAuth (无 apiKey) → alive');
+
+    // 5g. pickFirstAlive: 全死 → ok:false, tried 全有
+    const { pickFirstAlive } = await import('../../src/experiments/lib/failover-picker.mjs');
+    const fail = await pickFirstAlive(
+      [{ name: 'openrouter', model: 'm1' }],
+      { providers: { openrouter: { baseUrl: 'https://openrouter.ai/api/v1', apiKey: 'sk' } } },
+      { silent: true }
+    );
+    assert.equal(fail.ok, false);
+    assert.equal(fail.tried.length, 1);
+    assert.equal(fail.tried[0].ping.status, 503);
+    r.ok('pickFirstAlive 全死 → ok:false, tried 记录');
+  } finally {
+    globalThis.fetch = orig;
+  }
 }
 
 // === 4. dev-repl 消息流模拟 (核心端到端) ===

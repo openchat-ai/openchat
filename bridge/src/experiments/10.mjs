@@ -133,6 +133,7 @@ async function testDevAux() {
         { in: '/exit',    handled: true,  cmd: 'exit' },
         { in: '/resume',  handled: true,  cmd: 'resume' },
         { in: '/resume X', handled: true, cmd: 'resume', arg: 'X' },
+        { in: '/commit',  handled: true,  cmd: 'commit' },
       ];
       let slashAllOk = true;
       for (const c of cases) {
@@ -141,7 +142,7 @@ async function testDevAux() {
         if (c.cmd && p.cmd !== c.cmd) { slashAllOk = false; r.ng(`parseSlash(${JSON.stringify(c.in)}).cmd=${p.cmd} 期望 ${c.cmd}`); break; }
         if (c.arg !== undefined && p.arg !== c.arg) { slashAllOk = false; r.ng(`parseSlash(${JSON.stringify(c.in)}).arg=${p.arg} 期望 ${c.arg}`); break; }
       }
-      if (slashAllOk) r.ok(`slash-commands 9 用例全过`);
+      if (slashAllOk) r.ok(`slash-commands 10 用例全过`);
       // applySlash 关键路径: /model 应改 ctx.model, /exit 应给 sideEffect.exit
       const m1 = sc.applySlash({ cmd: 'model', arg: 'gpt-4o', ctx: { model: 'old' } });
       if (m1.sideEffect?.setModel === 'gpt-4o') r.ok('applySlash(/model gpt-4o): sideEffect.setModel 正确');

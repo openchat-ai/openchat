@@ -21,6 +21,7 @@ export const COMMANDS = {
   clear:   { arg: '',              desc: '清屏 + 重置对话历史 (不退出)' },
   model:   { arg: '<name|id>',     desc: '切换当前 model, 写到 cfg.current.model' },
   resume:  { arg: '[chatId]',      desc: '列有历史的 session; 或 /resume <id> 跳到指定' },
+  commit:  { arg: '',              desc: '一键 git add + 自动 commit msg (基于 git diff)' },
   exit:    { arg: '',              desc: '退出 REPL (alias: /quit)' },
   quit:    { arg: '',              desc: '退出 REPL (alias: /exit)' },
 };
@@ -52,7 +53,7 @@ function formatRelativeTime(ts) {
   return new Date(ts).toISOString().slice(0, 10);
 }
 
-export function applySlash({ cmd, arg, ctx }) {
+export async function applySlash({ cmd, arg, ctx }) {
   // ctx: { cfg, model, sessionId, historyRounds, toolCount, cCwd, availableSessions? }
   switch (cmd) {
     case 'help':
@@ -91,6 +92,22 @@ export function applySlash({ cmd, arg, ctx }) {
       if (!target) return { reply: `找不到 session: ${arg}\n输入 /resume 查看列表。` };
       if (target.id === ctx.sessionId) return { reply: `已经在 session ${arg} 中。` };
       return { reply: `切换到 session: ${target.id} (${target.msgCount} msgs)`, sideEffect: { resumeTo: target.id } };
+    }
+    case 'commit': {
+      if (typeof ctx.onCommit !== 'function') {
+        return { reply: '/commit 不可用: dev-repl 未注入 onCommit 回调' };
+      }
+      // 调 ctx.onCommit() (async), 把结果作为 reply 返回
+      try {
+        const r = await ctx.onCommit();
+        if (!r.ok) return { reply: `✗ ${r.message}` };
+        if (r.committed === false) {
+          return { reply: `📝 ${r.message}\n${r.diff ? `  diff 预览: ${r.diff.slice(0, 100)}...` : ''}` };
+        }
+        return { reply: `✓ ${r.message}` };
+      } catch (e) {
+        return { reply: `✗ /commit 失败: ${e.message?.slice(0, 100)}` };
+      }
     }
     case 'exit':
     case 'quit':
