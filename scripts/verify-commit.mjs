@@ -65,6 +65,12 @@ const MJS_SPEC_REQUIRED = [
   'bridge/src/experiments/lingbao/45.mjs',
 ];
 
+// tasks/ 子目录是 demo 跑动脚本, 非产品代码 — 跳过 spec 检查
+// 路径前缀匹配, 子目录内所有 .mjs 不受 spec 约束
+const MJS_SPEC_EXCLUDE_PREFIX = [
+  'bridge/src/experiments/lingbao/tasks/',
+];
+
 // === invariants ===
 // - SPEC_REQUIRED 路径必须已存在于工作区（否则 err 误报）
 // - MJS_SPEC_REQUIRED 改动 .mjs 文件时同目录 .spec.md 必须 stage（ERR）
@@ -136,6 +142,10 @@ for (const f of mjsFiles) {
   const lineCount = content.split('\n').length;
   const specPath = f.replace(/\.mjs$/, '.spec.md');
   const isNew = newMjsFiles.includes(f);
+
+  // 排除目录 (前缀匹配)
+  const excluded = MJS_SPEC_EXCLUDE_PREFIX.some(p => f.startsWith(p));
+  if (excluded) continue;
 
   // MJS 行数警告 (WARN)
   if (lineCount > 200) {
