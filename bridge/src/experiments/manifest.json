@@ -643,6 +643,24 @@
         "waveform"
       ],
       "status": "closed-loop"
+    },
+    {
+      "id": "signal-algo",
+      "file": "lingbao/41.mjs",
+      "name": "灵保: 信号处理算法 (互相关/FFT/漏电检测/电弧能量)",
+      "category": "lingbao",
+      "pure": true,
+      "needsEnv": [],
+      "description": "灵保 L2 算法层. 互相关定位 / FFT 频谱 / 漏电阈值检测 / 电弧能量. 纯 JS 零依赖. ID=549765251072",
+      "deps": [
+        "waveform-sim"
+      ],
+      "tags": [
+        "lingbao",
+        "algo",
+        "signal"
+      ],
+      "status": "closed-loop"
     }
   ]
 }
