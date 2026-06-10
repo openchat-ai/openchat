@@ -627,6 +627,22 @@
         "goal"
       ],
       "status": "closed-loop"
+    },
+    {
+      "id": "waveform-sim",
+      "file": "lingbao/40.mjs",
+      "name": "灵保: 漏电流合成波形生成器",
+      "category": "lingbao",
+      "pure": true,
+      "needsEnv": [],
+      "description": "灵保 L1/L2 合成数据源. 50Hz 基波 + 漏电分量 + arc 高频 + 过载. ID=274882625536",
+      "deps": [],
+      "tags": [
+        "lingbao",
+        "sim",
+        "waveform"
+      ],
+      "status": "closed-loop"
     }
   ]
 }
