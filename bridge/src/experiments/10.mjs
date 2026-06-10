@@ -12,12 +12,12 @@ export async function run({ inputs = {} } = {}) {
   if (!op) throw new Error('dev-aux.run: op required');
   switch (op) {
     case 'commit_msg': {
-      const ac = await import('../../src/tools/auto-commit.mjs');
+      const ac = await import('./lib/auto-commit.mjs');
       const diff = args.diff !== undefined ? args.diff : ac.gitDiff();
       return { outputs: { message: ac.generateMessage(diff) } };
     }
     case 'project_context': {
-      const pc = await import('../../src/tools/project-context.mjs');
+      const pc = await import('./lib/project-context.mjs');
       const sub = args.sub || 'all';
       const result = {};
       if (sub === 'files' || sub === 'all') result.relatedFiles = await pc.findRelatedFiles(args.path);
@@ -26,15 +26,15 @@ export async function run({ inputs = {} } = {}) {
       return { outputs: result };
     }
     case 'diff_review': {
-      const dwp = await import('../../src/plugins/dev-workflow-plugin.mjs');
+      const dwp = await import('./lib/dev-workflow-plugin.mjs');
       return { outputs: { result: await dwp.executeTool('diff_review', args) } };
     }
     case 'multi_edit': {
-      const dwp = await import('../../src/plugins/dev-workflow-plugin.mjs');
+      const dwp = await import('./lib/dev-workflow-plugin.mjs');
       return { outputs: { result: await dwp.executeTool('multi_edit', args) } };
     }
     case 'ast_edit': {
-      const dwp = await import('../../src/plugins/dev-workflow-plugin.mjs');
+      const dwp = await import('./lib/dev-workflow-plugin.mjs');
       return { outputs: { result: await dwp.executeTool('ast_edit', args) } };
     }
     default:
@@ -50,7 +50,7 @@ async function testDevAux() {
   // 1. auto-commit 可加载
   let ac;
   try {
-    ac = await import('../../src/tools/auto-commit.mjs');
+    ac = await import('./lib/auto-commit.mjs');
     r.ok('auto-commit.mjs 可加载');
   } catch (e) {
     r.ng('auto-commit 加载失败', e);
@@ -76,7 +76,7 @@ async function testDevAux() {
   // 3. project-context 可加载
   let pc;
   try {
-    pc = await import('../../src/tools/project-context.mjs');
+    pc = await import('./lib/project-context.mjs');
     r.ok('project-context.mjs 可加载');
   } catch (e) {
     r.ng('project-context 加载失败', e);
@@ -105,7 +105,7 @@ async function testDevAux() {
 
   // 5. dev-repl.mjs 可加载
   try {
-    const dev = await import('../../src/core/dev-repl.mjs');
+    const dev = await import('./lib/dev-repl.mjs');
     r.ok(`dev-repl.mjs 可加载 (exports: ${Object.keys(dev).join(', ')})`);
   } catch (e) {
     r.ng('dev-repl.mjs 加载失败', e);

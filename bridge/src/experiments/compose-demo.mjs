@@ -83,7 +83,7 @@ const demo = async () => {
   //    注意: compose 跨调用会缓存，顺序执行时用 run() 避开缓存
   console.log('▸ 8. 真组合应用: chat-message-pipeline (qiniu + isolation + agent)');
   // 能力探测: 试列一次空前缀，能成功就当 Qiniu 可用
-  const q = await import('../../scripts/qiniu-s3.mjs');
+  const q = await import('./lib/qiniu-s3.mjs');
   let hasQiniu = false;
   try { await q.qiniuList(''); hasQiniu = true; } catch { hasQiniu = false; }
   if (hasQiniu) {

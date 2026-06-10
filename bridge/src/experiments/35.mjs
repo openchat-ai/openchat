@@ -20,7 +20,7 @@ const NAME = 'Chat-Poller — walking-skeleton 核心 (真行为测试)';
 let _pollerPromise = null;
 function _load() {
   if (_pollerPromise) return _pollerPromise;
-  _pollerPromise = import('../../src/core/chat-poller.mjs');
+  _pollerPromise = import('./lib/poller-shim.mjs');
   return _pollerPromise;
 }
 
@@ -273,14 +273,14 @@ async function test() {
   const hasQiniu = !!process.env.QINIU_ACCESS_KEY && !!process.env.QINIU_SECRET_KEY;
   const hasProvider = await (async () => {
     try {
-      const cfg = (await import('../../src/core/persistent-config.js')).persistentConfig.config;
+      const cfg = (await import('./lib/config.mjs')).persistentConfig.config;
       return !!(cfg.providers?.[cfg.current?.provider]?.apiKey);
     } catch { return false; }
   })();
 
   if (hasQiniu && hasProvider) {
     try {
-      const { qiniuPut, qiniuList, qiniuGet, qiniuDelete } = await import('../../scripts/qiniu-s3.mjs');
+      const { qiniuPut, qiniuList, qiniuGet, qiniuDelete } = await import('./lib/qiniu-s3.mjs');
       const chatId = 'e2e-test';
       const ts = Date.now();
       const key = `oc/chat/${chatId}/${ts}.msg`;

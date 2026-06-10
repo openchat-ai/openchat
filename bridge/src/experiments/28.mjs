@@ -13,7 +13,7 @@ export async function run({ inputs = {} } = {}) {
   if (!op) throw new Error('relay.run: op required');
 
   if (op === 'subscribe' || op === 'publish' || op === 'send_to' || op === 'reply' || op === 'broadcast' || op === 'delegate') {
-    const { messageBus } = await import('../../src/core/message-bus.js');
+    const { messageBus } = await import('./lib/message-bus.js');
     switch (op) {
       case 'subscribe': {
         const unsub = messageBus.subscribe(args.topic, args.handler);
@@ -29,11 +29,11 @@ export async function run({ inputs = {} } = {}) {
 
   switch (op) {
     case 'best_write': {
-      const { BucketRelay } = await import('../../src/core/bucket-relay.js');
+      const { BucketRelay } = await import('./lib/bucket-relay.js');
       return { outputs: { result: (await _makeBucketRelay(args)).getBestWriteBucket() } };
     }
     case 'best_read': {
-      const { BucketRelay } = await import('../../src/core/bucket-relay.js');
+      const { BucketRelay } = await import('./lib/bucket-relay.js');
       return { outputs: { result: (await _makeBucketRelay(args)).getBestReadBucket() } };
     }
     default:
@@ -42,7 +42,7 @@ export async function run({ inputs = {} } = {}) {
 }
 
 async function _makeBucketRelay(args) {
-  const { BucketRelay } = await import('../../src/core/bucket-relay.js');
+  const { BucketRelay } = await import('./lib/bucket-relay.js');
   const r = new BucketRelay(args.writer || { writeTo: async () => {} }, args.peerId || 'test');
   if (args.buckets) r._buckets = args.buckets;
   if (args.writeLatency) for (const [k, v] of Object.entries(args.writeLatency)) r._writeLatency.set(k, v);
@@ -56,7 +56,7 @@ const NAME = 'Relay — bucket-relay / signal-relay / message-bus';
 async function test() {
   // === bucket-relay ===
   try {
-    const { BucketRelay } = await import('../../src/core/bucket-relay.js');
+    const { BucketRelay } = await import('./lib/bucket-relay.js');
     ok('bucket-relay.js 可加载');
     const r = new BucketRelay({ writeTo: async () => {}, readFrom: async () => Buffer.alloc(0) }, 'test-peer');
     if (typeof r.init === 'function') ok('BucketRelay.init 存在');
@@ -94,7 +94,7 @@ async function test() {
 
   // === signal-relay ===
   try {
-    const { SignalRelay } = await import('../../src/core/signal-relay.js');
+    const { SignalRelay } = await import('./lib/signal-relay.js');
     ok('signal-relay.js 可加载');
     const sr = new SignalRelay({ writeTo: async () => {}, readFrom: async () => null }, 'peer-x');
     if (typeof sr.init === 'function') ok('SignalRelay.init 存在');
@@ -124,7 +124,7 @@ async function test() {
 
   // === message-bus ===
   try {
-    const mb = await import('../../src/core/message-bus.js');
+    const mb = await import('./lib/message-bus.js');
     ok('message-bus.js 可加载');
 
     if (mb.messageBus) ok('messageBus 单例存在');

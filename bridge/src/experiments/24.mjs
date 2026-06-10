@@ -38,7 +38,7 @@ async function testEditAdvanced() {
   // 1. multi-edit 可加载
   let me;
   try {
-    me = await import('../../src/tools/multi-edit.mjs');
+    me = await import('./lib/multi-edit.mjs');
     r.ok('multi-edit.mjs 可加载');
     if (typeof me.multiEdit === 'function') r.ok('multiEdit 函数存在');
     else r.ng('multiEdit 缺失');
@@ -49,7 +49,7 @@ async function testEditAdvanced() {
   // 2. ast-edit 可加载 + rename / replace_body
   let ae;
   try {
-    ae = await import('../../src/tools/ast-edit.mjs');
+    ae = await import('./lib/ast-edit.mjs');
     r.ok('ast-edit.mjs 可加载');
     if (typeof ae.astEdit === 'function') r.ok('astEdit 函数存在');
     else r.ng('astEdit 缺失');
@@ -73,7 +73,7 @@ async function testEditAdvanced() {
   // 3. diff-review 可加载
   let dr;
   try {
-    dr = await import('../../src/tools/diff-review.mjs');
+    dr = await import('./lib/diff-review.mjs');
     r.ok('diff-review.mjs 可加载');
     if (typeof dr.getGitDiff === 'function') r.ok('getGitDiff 存在');
     if (typeof dr.revertChanges === 'function') r.ok('revertChanges 存在');

@@ -14,7 +14,7 @@ export const META = { id: 'qiniu' };
 export async function run({ inputs = {} } = {}) {
   const { op, key, data, prefix } = inputs;
   if (!op) throw new Error('qiniu.run: op required (list|get|put|delete|deletePrefix)');
-  const q = await import('../../scripts/qiniu-s3.mjs');
+  const q = await import('./lib/qiniu-s3.mjs');
   switch (op) {
     case 'list':         return { outputs: { result: await q.qiniuList(prefix || '') } };
     case 'get':          return { outputs: { result: await q.qiniuGet(key) } };
@@ -31,7 +31,7 @@ const NAME = 'Qiniu — S3 兼容封装 (qiniu-s3)';
 async function test() {
   let q;
   try {
-    q = await import('../../scripts/qiniu-s3.mjs');
+    q = await import('./lib/qiniu-s3.mjs');
     ok('scripts/qiniu-s3.mjs 可加载');
   } catch (e) {
     ng('qiniu-s3 加载失败', e);

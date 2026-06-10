@@ -9,7 +9,7 @@ export const META = { id: 'system-exec' };
 export async function run({ inputs = {} } = {}) {
   const { command } = inputs;
   if (!command) throw new Error('system-exec.run: command required');
-  const tools = await import('../../src/tools/system-exec.mjs');
+  const tools = await import('./lib/system-exec.mjs');
   const r = tools.execCommand(command);
   return { outputs: { stdout: r.stdout, stderr: r.stderr, exitCode: r.exitCode } };
 }
@@ -20,7 +20,7 @@ async function testSystemExec() {
   // 1. system-exec.mjs 可加载，TOOLS 数组完整
   let tools;
   try {
-    tools = await import('../../src/tools/system-exec.mjs');
+    tools = await import('./lib/system-exec.mjs');
     ok('system-exec.mjs 可加载');
   } catch (e) {
     ng('system-exec 加载失败', e);
@@ -98,7 +98,7 @@ async function testSystemExec() {
 
   // 8. 验证 skeleton-agent 通过 provider-kit 调 LLM（不自写 LLM）
   try {
-    const agent = await import('../../scripts/tool-loop.mjs');
+    const agent = await import('./22.mjs');
     ok('tool-loop 可加载');
     if (typeof agent.initProvider === 'function') ok('initProvider 存在');
     if (typeof agent.processText === 'function') ok('processText 存在');

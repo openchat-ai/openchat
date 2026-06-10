@@ -10,7 +10,7 @@ export async function run() {
 
 async function testNaming() {
   try {
-    const namer = await import('../../src/core/session-namer.mjs');
+    const namer = await import('./lib/session-namer.mjs');
     ok('session-namer.mjs 可加载');
 
     if (typeof namer.autoNameIfNeeded === 'function') ok('autoNameIfNeeded 存在');

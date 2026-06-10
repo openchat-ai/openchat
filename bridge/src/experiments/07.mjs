@@ -11,7 +11,7 @@ const NAME = 'Token Saving — CLI 输出压缩 (rtk 风格)';
 let _compressorPromise = null;
 async function _getCompressor() {
   if (_compressorPromise) return _compressorPromise;
-  _compressorPromise = import('../../src/tools/output-compressor.mjs');
+  _compressorPromise = import('./lib/output-compressor.mjs');
   return _compressorPromise;
 }
 
@@ -29,7 +29,7 @@ async function testTokenSaving() {
 
   let compressor;
   try {
-    compressor = await import('../../src/tools/output-compressor.mjs');
+    compressor = await import('./lib/output-compressor.mjs');
     ok('output-compressor.mjs 可加载');
   } catch (e) {
     ng('output-compressor 加载失败', e);
@@ -101,7 +101,7 @@ async function testTokenSaving() {
 
   // 11. 集成验证 — system-exec 已使用 compressor
   try {
-    const sysExec = await import('../../src/tools/system-exec.mjs');
+    const sysExec = await import('./lib/system-exec.mjs');
     ok('system-exec.mjs 可加载');
     const src = await import('fs/promises').then(fs => fs.readFile('src/tools/system-exec.mjs', 'utf8'));
     if (src.includes('compress') && src.includes('output-compressor')) ok('system-exec 已集成压缩');

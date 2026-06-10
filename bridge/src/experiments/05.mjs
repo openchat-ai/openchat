@@ -17,7 +17,7 @@ let _codecPromise = null;
 async function _getCodec() {
   if (_codecPromise) return _codecPromise;
   _codecPromise = (async () => {
-    const mod = await import('../../src/core/audio/lmdn-codec.mjs');
+    const mod = await import('./lib/lmdn-codec.mjs');
     const LmdnCodec = mod.default || mod.LmdnCodec;
     const c = new LmdnCodec();
     await c.initialize();
@@ -49,7 +49,7 @@ async function test() {
   const { ok, ng, skip, report } = create();
   let LmdnCodec;
   try {
-    const mod = await import('../../src/core/audio/lmdn-codec.mjs');
+    const mod = await import('./lib/lmdn-codec.mjs');
     LmdnCodec = mod.default || mod.LmdnCodec;
     ok('LmdnCodec 类可加载');
   } catch (e) {

@@ -11,7 +11,7 @@ export async function run() {
 async function testTree() {
   let treeMod;
   try {
-    treeMod = await import('../../src/core/session-tree.mjs');
+    treeMod = await import('./lib/session-tree.mjs');
     ok('session-tree.mjs 可加载');
   } catch (e) {
     ng('session-tree 加载失败', e);
@@ -94,7 +94,7 @@ async function testTree() {
 
   // 验证删除 — qiniu-s3.mjs (S3 兼容 DELETE 签名)
   try {
-    const qiniu = await import('../../scripts/qiniu-s3.mjs');
+    const qiniu = await import('./lib/qiniu-s3.mjs');
     if (typeof qiniu.qiniuDelete === 'function') ok('qiniuDelete 函数存在');
     if (typeof qiniu.qiniuDeletePrefix === 'function') ok('qiniuDeletePrefix 函数存在');
     // 验证 deleteSession 使用了 qiniuDeletePrefix

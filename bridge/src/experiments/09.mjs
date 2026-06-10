@@ -18,7 +18,7 @@ const TMP_DIR = path.join(process.cwd(), 'tests', 'experiments', '_tmp_coding');
 export async function run({ inputs = {} } = {}) {
   const { op } = inputs;
   if (!op) throw new Error('coding.run: op required');
-  const tools = await import('../../src/tools/coding-tools.mjs');
+  const tools = await import('./lib/coding-tools.mjs');
   const args = { ...inputs };
   delete args.op;
   let result;
@@ -49,7 +49,7 @@ async function testCoding() {
 
   let tools, qg;
   try {
-    tools = await import('../../src/tools/coding-tools.mjs');
+    tools = await import('./lib/coding-tools.mjs');
     r.ok('coding-tools.mjs 可加载');
   } catch (e) {
     r.ng('coding-tools 加载失败', e);
@@ -57,7 +57,7 @@ async function testCoding() {
   }
 
   try {
-    qg = await import('../../src/tools/quality-gate.mjs');
+    qg = await import('./lib/quality-gate.mjs');
     r.ok('quality-gate.mjs 可加载');
   } catch (e) {
     r.ng('quality-gate 加载失败', e);

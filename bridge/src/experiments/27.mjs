@@ -16,7 +16,7 @@ export async function run({ inputs = {} } = {}) {
 
   // session.*
   if (op.startsWith('session.')) {
-    const { persistentStore } = await import('../../src/core/persistent-store.js');
+    const { persistentStore } = await import('./lib/persistent-store.js');
     const sub = op.slice(8);
     switch (sub) {
       case 'get': return { outputs: { result: persistentStore.getSession(args.id) } };
@@ -29,7 +29,7 @@ export async function run({ inputs = {} } = {}) {
 
   // provider.*
   if (op.startsWith('provider.')) {
-    const { persistentStore } = await import('../../src/core/persistent-store.js');
+    const { persistentStore } = await import('./lib/persistent-store.js');
     const sub = op.slice(9);
     switch (sub) {
       case 'get': return { outputs: { result: persistentStore.getProvider(args.id) } };
@@ -42,7 +42,7 @@ export async function run({ inputs = {} } = {}) {
 
   // tool.*
   if (op.startsWith('tool.')) {
-    const { toolRegistry } = await import('../../src/core/tool-registry.js');
+    const { toolRegistry } = await import('./lib/tool-registry.js');
     const sub = op.slice(5);
     switch (sub) {
       case 'list': return { outputs: { tools: toolRegistry.list() } };
@@ -54,19 +54,19 @@ export async function run({ inputs = {} } = {}) {
   // 直接工具调用（快捷 op）
   switch (op) {
     case 'web_fetch': {
-      const { toolRegistry } = await import('../../src/core/tool-registry.js');
+      const { toolRegistry } = await import('./lib/tool-registry.js');
       return { outputs: { result: await toolRegistry.call('web_fetch', { url: args.url }) } };
     }
     case 'calculate': {
-      const { toolRegistry } = await import('../../src/core/tool-registry.js');
+      const { toolRegistry } = await import('./lib/tool-registry.js');
       return { outputs: { result: await toolRegistry.call('calculate', { expression: args.expression }) } };
     }
     case 'finish': {
-      const { toolRegistry } = await import('../../src/core/tool-registry.js');
+      const { toolRegistry } = await import('./lib/tool-registry.js');
       return { outputs: { result: await toolRegistry.call('finish', { answer: args.answer }) } };
     }
     case 'read_memory': {
-      const { toolRegistry } = await import('../../src/core/tool-registry.js');
+      const { toolRegistry } = await import('./lib/tool-registry.js');
       return { outputs: { result: await toolRegistry.call('read_memory', { query: args.query, scope: args.scope }) } };
     }
     default:
@@ -80,7 +80,7 @@ const NAME = 'Storage/Provider — persistent-store / provider-service / tool-re
 async function test() {
   // === persistent-store ===
   try {
-    const ps = await import('../../src/core/persistent-store.js');
+    const ps = await import('./lib/persistent-store.js');
     ok('persistent-store.js 可加载');
 
     if (ps.PersistentSessionStore) ok('PersistentSessionStore 类存在');
@@ -111,7 +111,7 @@ async function test() {
 
   // === provider-service ===
   try {
-    const psvc = await import('../../src/core/provider-service.js');
+    const psvc = await import('./lib/provider-service.js');
     ok('provider-service.js 可加载');
 
     // 必备接线函数
@@ -148,7 +148,7 @@ async function test() {
 
   // === tool-registry ===
   try {
-    const tr = await import('../../src/core/tool-registry.js');
+    const tr = await import('./lib/tool-registry.js');
     ok('tool-registry.js 可加载');
     if (tr.toolRegistry) ok('toolRegistry 单例存在');
     if (tr.default) ok('default (ToolRegistry) 导出存在');

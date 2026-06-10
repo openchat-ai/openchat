@@ -97,7 +97,7 @@ export async function test() {
   else ng(`非 .msg 错: ${r0.outputs.error}`);
 
   // Qiniu 能力探测
-  const q = await import('../../scripts/qiniu-s3.mjs');
+  const q = await import('./lib/qiniu-s3.mjs');
   let hasQiniu = false;
   try { await q.qiniuList(''); hasQiniu = true; } catch { hasQiniu = false; }
 

@@ -8,7 +8,7 @@ export const META = { id: 'config' };
 
 // compose 契约入口：返回当前配置
 export async function run() {
-  const mod = await import('../../src/core/persistent-config.js');
+  const mod = await import('./lib/config.mjs');
   const cfg = mod.persistentConfig?.config || {};
   return {
     outputs: {
@@ -29,7 +29,7 @@ const NAME = 'Config — persistent-config 加载';
 async function test() {
   let mod;
   try {
-    mod = await import('../../src/core/persistent-config.js');
+    mod = await import('./lib/config.mjs');
     ok('persistent-config.js 可加载');
   } catch (e) {
     ng('persistent-config 加载失败', e);
