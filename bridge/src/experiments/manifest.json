@@ -677,6 +677,22 @@
         "mqtt"
       ],
       "status": "closed-loop"
+    },
+    {
+      "id": "doc-gen",
+      "file": "lingbao/44.mjs",
+      "name": "灵保: 报告/问卷/ROI/方案书生成 (Markdown/CSV)",
+      "category": "lingbao",
+      "pure": true,
+      "needsEnv": [],
+      "description": "灵保 L4 文档层. 4 种 renderer: report/questionnaire/roi/proposal. 纯字符串, 无外部依赖. ID=4398122008576",
+      "deps": [],
+      "tags": [
+        "lingbao",
+        "doc",
+        "report"
+      ],
+      "status": "closed-loop"
     }
   ]
 }
