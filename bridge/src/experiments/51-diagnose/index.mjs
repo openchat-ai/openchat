@@ -218,6 +218,25 @@ const KNOWN_FAILURES = [
     ],
     tier: 2,
   },
+  {
+    id: 'tier2-bare-json',
+    label: 'Tier 2 retry exhausted - bare JSON tool call (no XML envelope)',
+    patterns: [
+      /\{"name"\s*:\s*"[a-z_]+"/i,
+      /JSON\.parse\([^)]*trimmed/i,
+      /raw\s*JSON\s*fallback\s*matched/i,
+      /content\s*=\s*['"]?\{[\s\S]*?"name"[\s\S]*?"args"/i,
+      /tier2-retry.*exhausted/i,
+    ],
+    evidence: '模型输出 raw JSON {"name": "...", "args": {...}} 但 parser 只认 <tool_call>/<tool_name> XML envelope, 漏掉 → round 0 0 tool call → Tier 2 retry 2/2 失败 → 任务 abort.',
+    rootCause: 'parseToolCalls 严格 match XML envelope, 没 raw JSON 兜底. 弱模型常不用 XML 直接出 JSON.',
+    loop: ['rewrite-user-prompt', 'switch-strong-model'],
+    scaffold: [
+      { id: 3, name: '强契约 (parser 加 raw JSON 兜底)', why: 'parseToolCalls 加 3 层 raw JSON 兜底 (整段 / ```json codeblock / inline), 让 M3 直接出的 JSON 也能被解析成 tool call' },
+      { id: 4, name: '可恢复执行 (parser 失败不抛, 走 finalAnswer)', why: 'parser JSON.parse 失败时静默 fall through, 不让单次 parse 错把整轮 abort. 同时 tier2-retry 兜底完了走 normal finalAnswer 路径而不是抛' },
+    ],
+    tier: 2,
+  },
 ];
 
 // === 5 件套 v2 (cplan_scaffold_decision.md) ===
@@ -556,6 +575,28 @@ Error message: "MiniMax-M3 is not available in your region"
     assert.ok(fps.some(f => f.id === 'clear-empty-content'), `Case 7: 期望命中 clear-empty-content, 实际 ${fps.map(f => f.id).join(',')}`);
     assert.ok(r.outputs.scaffold.pieces.some(p => p.id === 4), `Case 7: 期望 scaffold 含件 4 可恢复执行 (retry 前清空 content)`);
     R.ok(`Case 7 (clear empty content): 命中 ${fps.length} 条, scaffold 件 ${r.outputs.scaffold.pieces.map(p => p.id).join('+')}`);
+  }
+
+  // === Case 8: tier2-bare-json (ac623ffb v5→v6 fix) → M3 出 raw JSON, parser 漏 XML envelope
+  {
+    const bareJsonSnippet = `[tool-loop] init OK: minimax/MiniMax-M3
+Round 0 LLM output (raw): {"name": "read_file", "args": {"path": "src/experiments/lib/dev-repl.mjs"}}
+[parser] no XML envelope matched, parseToolCalls returned null
+[XML-fallback] no tool calls parsed from content
+[tier2-retry] round 0 no tool call, retrying (1/2)
+Round 0 LLM output (raw): {"name": "read_file", "args": {"path": "src/experiments/lib/dev-repl.mjs"}}
+[parser] no XML envelope matched, parseToolCalls returned null
+[tier2-retry] round 0 no tool call, retrying (2/2)
+Round 0 LLM output (raw): {"name": "read_file", "args": {"path": "src/experiments/lib/dev-repl.mjs"}}
+[tier2-retry] exhausted
+[abort] no tool call produced, falling back to final answer
+Final answer: 我无法读取文件.`;
+    const r = await run({ inputs: { transcript: bareJsonSnippet, failureDescription: 'ac623ffb v5: M3 输出 raw JSON {"name":"read_file",...}, 但 dev-repl parser 只 match XML envelope, 全漏掉' } });
+    const fps = r.outputs.fingerprints;
+    assert.ok(fps.some(f => f.id === 'tier2-bare-json'), `Case 8: 期望命中 tier2-bare-json, 实际 ${fps.map(f => f.id).join(',')}`);
+    assert.ok(r.outputs.scaffold.pieces.some(p => p.id === 3), `Case 8: 期望 scaffold 含件 3 强契约 (parser 加 raw JSON 兜底)`);
+    assert.ok(r.outputs.scaffold.pieces.some(p => p.id === 4), `Case 8: 期望 scaffold 含件 4 可恢复执行 (parser 失败不抛)`);
+    R.ok(`Case 8 (tier2 bare JSON): 命中 ${fps.length} 条, scaffold 件 ${r.outputs.scaffold.pieces.map(p => p.id).join('+')}`);
   }
 
   R.report(NAME);
