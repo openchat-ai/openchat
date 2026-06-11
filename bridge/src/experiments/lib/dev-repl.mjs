@@ -126,12 +126,25 @@ export async function startDevRepl(modelOverride, chatId, initialMessage) {
 
   const { diagnose } = await import('./provider-health.mjs');
   const { pickFirstAlive } = await import('./failover-picker.mjs');
-  const picked = await pickFirstAlive(fallbacks, cfg, { silent: false });
+  // 5 件套 v2 件 4: try-once-then-skip. pickFirstAlive 内部不抛 (line 13 invariant),
+  // 但外层加 try-catch 兜底, 防止任何未来回归 (例如 import 失败 / cfg 异常) 把 crash 传进 bridge boot.
+  let picked;
+  try {
+    picked = await pickFirstAlive(fallbacks, cfg, { silent: false, timeoutMs: 8000 });
+  } catch (e) {
+    process.stdout.write(`\x1b[33m[bridge] pickFirstAlive 异常: ${e.message?.slice(0, 100)} → 降级 diagnose\x1b[0m\n`);
+    picked = { ok: false, error: e.message, tried: [] };
+  }
   if (!picked.ok) {
     // picker 已逐项报告, 调 diagnose 拿 actionable fix
-    const diag = await diagnose({ silent: false });
+    let diag;
+    try { diag = await diagnose({ silent: false }); } catch (e2) {
+      diag = { lines: ['[bridge] diagnose 异常: ' + (e2.message?.slice(0, 100) || 'unknown')], fix: '运行 `openchat config` 检查 provider/key 配置' };
+    }
     for (const line of diag.lines) process.stdout.write(line + '\n');
-    throw new Error(diag.fix ? `No available provider — ${diag.fix.split('\n')[0]}` : 'No available provider');
+    process.stdout.write(`\x1b[33m[bridge] No available provider — pre-flight 失败, REPL 启动中止. 修好后重试.\x1b[0m\n`);
+    // 不 throw: 避免 crash 污染 bridge boot 阶段. 直接返回 (让 CLI 干净退出)
+    return;
   }
   let provider = picked.provider;
   let providerLabel = picked.label;
@@ -455,6 +468,7 @@ FIRST-TURN TOOL CALL CONTRACT (硬约束):
         let firstChunk = true;
         // Tier 1 transport-layer tool-call force (round 0 only): 在 user 消息**前面**拼 transport 提示,
         // 强制 LLM 在 tool_call 或显式拒绝之间二选一, 禁止 preamble/thinking 绕过去.
+        // 方案 A 实验: round 0 同时在 provider 协议层传 tool_choice="required", API 强制必须 tool_call.
         if (round === 0 && !transportHintInjected) {
           const last = messages[messages.length - 1];
           if (last && last.role === 'user') {
@@ -462,9 +476,10 @@ FIRST-TURN TOOL CALL CONTRACT (硬约束):
           }
           transportHintInjected = true;
         }
+        const roundOptions = (round === 0) ? { tools, tool_choice: 'required' } : { tools };
         if (typeof provider.chatStream === 'function') {
           lastStreamed = true;
-          for await (const ev of provider.chatStream(MODEL, messages, { tools })) {
+          for await (const ev of provider.chatStream(MODEL, messages, roundOptions)) {
             if (ev.type === 'content' && ev.content) { content += ev.content; if (firstChunk) { firstChunk = false; } process.stdout.write(ev.content); }
             else if (ev.type === 'thinking' && ev.content) { /* 折叠, 不实时打 */ }
             else if (ev.type === 'tool_calls' && ev.toolCalls) { toolCalls = ev.toolCalls; }
@@ -473,7 +488,7 @@ FIRST-TURN TOOL CALL CONTRACT (硬约束):
           if (content) process.stdout.write('\n');
         } else {
           lastStreamed = false;
-          const resp = await provider.chat(MODEL, messages, { tools });
+          const resp = await provider.chat(MODEL, messages, roundOptions);
           content = resp.content || '';
           toolCalls = resp.toolCalls || [];
         }
