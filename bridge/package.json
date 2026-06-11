@@ -5,7 +5,7 @@
   "type": "module",
   "main": "src/main.js",
   "bin": {
-    "openchat": "./bin/openchat.js"
+    "openchat": "./bin/openchat.mjs"
   },
   "engines": {
     "node": ">=20.10.0 <23",
