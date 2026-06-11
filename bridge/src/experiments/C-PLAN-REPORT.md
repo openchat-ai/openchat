@@ -44,6 +44,52 @@
 
 ---
 
+## 2.1 5 件套 v2 升级 (2026-06-11)
+
+**v1 局限**: 件套名是 MQTT-codegen 验出来的 (协议级 tool, JS 整合脚手架). MQTT 全清 + 主战场转到 LLM tool-loop (subagent/dev-repl) + LLM decision (cap/60) 后, v1 件套名过专, 需升级.
+
+**v2 升级 4 件**:
+
+| v1 | v2 | 变化 |
+|---|---|---|
+| 协议级 tool | **动作级 tool** | 协议 (MQTT/HTTP/gRPC) 是特例, 提一档到"动作级" |
+| 强 schema | **强契约** | 加输出 + 错误 shape, 不只参数. runtime 校验 |
+| fallback | **可恢复执行** | 单层 → 三层降级: provider failover / tool retry / 错误降级到下轮 |
+| JS 整合脚手架 | **执行边界** | codegen-only → 也覆盖 tool-loop (轮 cap + 截断 + 会话隔离) |
+| 窄工具集 | (同名沿用) | 数据从 E40 扩到 E40 + 22.mjs + subagent 三处 |
+
+**v2 5 件套**:
+1. **动作级 tool** — 工具按 LLM 意图聚合 (read/edit/run), 不暴露 raw API
+2. **窄工具集** — 任务越窄, 工具越少. `opts.tools` 数组
+3. **强契约** — 参数 + 输出 + 错误 三段 shape + runtime 校验
+4. **可恢复执行** — provider failover → tool retry → 降级到下轮 prompt
+5. **执行边界** — codegen: sandbox 对齐真实 API; tool-loop: 轮 cap + 截断 + 会话隔离
+
+**适用场景矩阵** (哪条件套在哪类 LLM 任务上被验过):
+
+| 件套 | LLM codegen | LLM tool-loop | LLM decision |
+|---|---|---|---|
+| 1 动作级 tool | ✓ (E40) | ✓ (22.mjs + subagent) | N/A |
+| 2 窄工具集 | ✓ (E40) | ✓ (22.mjs + subagent) | N/A |
+| 3 强契约 | ✓ (sandbox mock 校) | ⚠️ (runtime 校验弱) | ✓ (state machine) |
+| 4 可恢复执行 | ✓ (sandbox try-catch) | ✓ (provider/tool retry) | ✓ (5 mini-task) |
+| 5 执行边界 | ✓ (sandbox 4 处) | ✓ (subagent 30/4000/id) | ✓ (attempt + 终态) |
+
+**v2 落地状态 (2026-06-11)**:
+- 件套 1, 2, 4: 22.mjs + subagent.mjs + dev-repl.mjs 都有 `opts.tools` 透传 + fallback
+- 件套 3: 39 工具 schema 在, runtime 校验弱 (validateResponse 只验 schema 类型, enum 越界未验)
+- 件套 5: subagent 已加 (30 轮 + 4000 chars 截断 + 独立 sessionId); dev-repl 主循环 MAX_ROUNDS=100 不一致 (待办)
+
+**v2 数据点 (2026-06-10/11)**:
+- 22.mjs e2e (8 工具 39→4 窄化): fileModified=true, exp09Pass=33/33, 98s
+- subagent smoke (新 9 用例): 57/57 passed, 含 opts.tools 过滤生效 (3→2) + /task 4 路
+- dev-repl smoke: 14 用例 (opencode-style 升级: doctor/slash/streaming/history)
+- cap/60: 5 mini-task retry/recover 诊断骨架, 5/5 simulateIdealLLM
+
+**v2 跟 v1 的关系**: 不冲突, 是 v1 件套名的抽象层提升. v1 验出的具体数据 (E40 sandbox 4 处修复, E41 provider failover) 在 v2 仍然 valid, 只是放进"执行边界"和"可恢复执行"两个更通用的件套名下. 详细迁移表见 memory: `~/.claude/memory/cplan_scaffold_decision.md` v2 段.
+
+---
+
 ## 3. 关键决策 (给桥接 / openchat)
 
 ### 3.1 弱模型能力边界
