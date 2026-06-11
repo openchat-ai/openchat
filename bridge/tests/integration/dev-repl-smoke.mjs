@@ -502,6 +502,75 @@ const NAME = 'dev-repl-smoke (无 apiKey 端到端)';
   r.ok('/task onTask 失败 → ✗ 提示 error');
 }
 
+// === 10. 5 件套 v2 gap 收口 (3 件) ===
+{
+  // 10a. MAX_ROUNDS=30 (件套 5 一致性)
+  const path = await import('path');
+  const devReplPath = path.join(path.dirname(new URL(import.meta.url).pathname.replace(/^\//, '')), '..', '..', 'src', 'experiments', 'lib', 'dev-repl.mjs');
+  const fs = await import('fs');
+  const devReplSrc = fs.readFileSync(devReplPath, 'utf8');
+  const m = devReplSrc.match(/const MAX_ROUNDS\s*=\s*(\d+)/);
+  assert.ok(m, 'dev-repl.mjs 应有 MAX_ROUNDS 常量');
+  assert.equal(parseInt(m[1], 10), 30, `MAX_ROUNDS 应为 30 (跟 subagent 对齐), 实际 ${m[1]}`);
+  r.ok('dev-repl MAX_ROUNDS=30 (件套 5 跟 subagent 一致)');
+
+  // 10b. response-validator enum 越界校验 (件套 3 强契约)
+  const { validateResponse } = await import('../../src/experiments/lib/response-validator.mjs');
+  const schemaEnum = [{
+    type: 'function',
+    function: {
+      name: 'set_mode',
+      parameters: {
+        type: 'object',
+        properties: {
+          mode: { type: 'string', enum: ['read', 'edit', 'search'] },
+          level: { type: 'number', enum: [1, 2, 3] },
+        },
+        required: ['mode'],
+      },
+    },
+  }];
+  // 10b-i. enum 合法 → 不报错
+  const ok1 = validateResponse({ toolCalls: [{ id: 't1', function: { name: 'set_mode', arguments: '{"mode":"read","level":2}' } }] }, schemaEnum);
+  assert.equal(ok1.errors.length, 0, `enum 合法应无错误, 实际: ${JSON.stringify(ok1.errors)}`);
+  r.ok('enum 合法 (string) → 0 错');
+  const ok2 = validateResponse({ toolCalls: [{ id: 't2', function: { name: 'set_mode', arguments: '{"mode":"search","level":3}' } }] }, schemaEnum);
+  assert.equal(ok2.errors.length, 0);
+  r.ok('enum 合法 (number) → 0 错');
+
+  // 10b-ii. enum 越界 (string) → 报错
+  const err1 = validateResponse({ toolCalls: [{ id: 't3', function: { name: 'set_mode', arguments: '{"mode":"INVALID"}' } }] }, schemaEnum);
+  assert.equal(err1.errors.length, 1);
+  assert.ok(err1.errors[0].error?.includes('enum [read, edit, search]'));
+  assert.ok(err1.errors[0].error?.includes('INVALID'));
+  r.ok('enum 越界 (string) → 报错 + 列出 enum 集');
+
+  // 10b-iii. enum 越界 (number) → 报错
+  const err2 = validateResponse({ toolCalls: [{ id: 't4', function: { name: 'set_mode', arguments: '{"mode":"read","level":99}' } }] }, schemaEnum);
+  assert.equal(err2.errors.length, 1);
+  assert.ok(err2.errors[0].error?.includes('enum [1, 2, 3]'));
+  r.ok('enum 越界 (number) → 报错');
+
+  // 10b-iv. 多 tool call: 1 个合法 + 1 个越界 → 返 1 错, 2 个 call 都保留
+  const mixed = validateResponse({
+    toolCalls: [
+      { id: 'a', function: { name: 'set_mode', arguments: '{"mode":"read"}' } },
+      { id: 'b', function: { name: 'set_mode', arguments: '{"mode":"BAD"}' } },
+    ],
+  }, schemaEnum);
+  assert.equal(mixed.errors.length, 1);
+  assert.equal(mixed.toolCalls.length, 2);
+  r.ok('多 call 混合: 越界 1 错, 2 个 call 都返回');
+
+  // 10c. dev-repl 5 raw 工具默认隐藏 (件套 1 动作级 tool)
+  // 验证源码里有 RAW_TOOLS 集合 + 默认隐藏分支
+  const hasRawSet = /RAW_TOOLS\s*=\s*new Set\(\[.*build_run.*lang_run.*exec_command.*docker_build.*sql_parse/s.test(devReplSrc);
+  assert.ok(hasRawSet, 'dev-repl.mjs 应有 RAW_TOOLS 含 5 个 raw 工具名');
+  const hasFilter = /OPENCHAT_RAW_TOOLS\s*!==\s*['"]1['"]/.test(devReplSrc) && /RAW_TOOLS\.has\(.*\.function\?\.name\)/.test(devReplSrc);
+  assert.ok(hasFilter, 'dev-repl.mjs 应有 OPENCHAT_RAW_TOOLS env opt-in + 默认 splice 过滤');
+  r.ok('dev-repl 5 raw 工具默认隐藏, OPENCHAT_RAW_TOOLS=1 opt-in');
+}
+
 // === 4. dev-repl 消息流模拟 (核心端到端) ===
 {
   const h = await import('../../src/experiments/lib/repl-history.mjs');

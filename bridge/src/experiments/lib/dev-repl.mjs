@@ -11,7 +11,9 @@ import os from 'os';
 // - edit-quality-gate: edit tool 完成后异步 fire-and-forget, 失败塞 messages+history, 不阻塞 REPL
 // - 全程 never-throw 策略: 所有 catch 静默, gate/pinger 内部保永不抛
 
-const MAX_ROUNDS = 100;
+// 5 件套 v2 件套 5: 跟 subagent 对齐 30 轮 cap. 之前 100 太高, M3 在长 prompt 下会卡死.
+// 100 是早期预 subagent 时代的值, 留作"足够长"的安全网, 实际 e2e 任务 8-15 轮够用.
+const MAX_ROUNDS = 30;
 
 const toolModules = [
   { name: 'system_exec', import: () => import('./system-exec.mjs'), toolsKey: 'TOOLS', execKey: 'executeTool' },
@@ -141,6 +143,15 @@ export async function startDevRepl(modelOverride, chatId) {
     { type: 'function', function: { name: 'ast_edit', description: 'AST rename/replace_body.', parameters: { type: 'object', properties: { path: { type: 'string' }, selector: { type: 'string' }, action: { type: 'string' }, newValue: { type: 'string' } }, required: ['path', 'selector', 'action', 'newValue'] } } },
     { type: 'function', function: { name: 'diff_review', description: 'Show git diff.', parameters: { type: 'object', properties: {}, required: [] } } },
   );
+
+  // 5 件套 v2 件套 1 (动作级 tool): 5 个 raw API 工具默认隐藏, M3 在 39 工具下偏 build_run 浪费 round.
+  // OPENCHAT_RAW_TOOLS=1 显式 opt-in 才暴露 (给"我就要 shell"的场景留口子).
+  if (process.env.OPENCHAT_RAW_TOOLS !== '1') {
+    const RAW_TOOLS = new Set(['build_run', 'lang_run', 'exec_command', 'docker_build', 'sql_parse']);
+    for (let i = tools.length - 1; i >= 0; i--) {
+      if (RAW_TOOLS.has(tools[i].function?.name)) tools.splice(i, 1);
+    }
+  }
 
   const { validateResponse } = await import('./response-validator.mjs');
   const { createStepEnforcer } = await import('./step-enforcer.mjs');

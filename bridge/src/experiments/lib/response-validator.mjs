@@ -4,6 +4,8 @@
 // - 不修改 content，只校验 tool_calls 数组
 // - 未知 tool name 算 fatal 错误，不自动跳过
 // - 返回 errors 数组，不 throw
+// - 5 件套 v2 件套 3 (强契约): 校验参数 type + enum 越界, 输出 shape 不在这层 (runtime call 之后)
+//   enum 校验: 若 schema prop 有 enum 数组, value 必须在数组内
 
 function _repairJSON(s) {
   let fixed = s;
@@ -87,6 +89,10 @@ function _validateArgs(args, schema) {
     }
     if (prop?.type && typeof value !== prop.type && prop.type !== 'object' && prop.type !== 'array') {
       errors.push(`参数 "${key}" 应为 ${prop.type}，实际为 ${typeof value}`);
+    }
+    // 件套 3 强契约: enum 越界校验
+    if (Array.isArray(prop?.enum) && !prop.enum.includes(value)) {
+      errors.push(`参数 "${key}" 应为 enum [${prop.enum.join(', ')}]，实际为 ${JSON.stringify(value)}`);
     }
   }
 
