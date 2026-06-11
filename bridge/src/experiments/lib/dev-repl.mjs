@@ -109,7 +109,7 @@ function parseToolCalls(text) {
   return calls.length ? calls : null;
 }
 
-export async function startDevRepl(modelOverride, chatId) {
+export async function startDevRepl(modelOverride, chatId, initialMessage) {
   const cfg = JSON.parse(await import('fs/promises').then(fs => fs.readFile(os.homedir() + '/.config/openchat/config.json', 'utf8')));
   const { CostTracker } = await import('./cost-tracker.mjs');
   const costTracker = new CostTracker(cfg);
@@ -185,11 +185,18 @@ Rules:
 - No hard limit on tool calls. Keep exploring until you understand the ROOT CAUSE.
 - But aim to read only KEY files (entry point + handler + reply), not every file in the project.
 - For each key file you read, add a comment about what it does.
-- Answer in Chinese, reference specific code lines, explain the flow.`,
+- Answer in Chinese, reference specific code lines, explain the flow.
+
+FIRST-TURN TOOL CALL CONTRACT (硬约束):
+- 第一轮 (用户消息刚到时) 的回复必须是直接的 tool call, 不能先输出任何说明文字/中文分析/<think>.
+- 必须输出严格的 JSON: {"name": "<tool_name>", "args": {...}}, 不要包在 markdown 代码块里, 不要前缀解释.
+- 如果用了 XML 格式, 必须是 <tool_call><invoke name="..."><arg>val</arg></invoke></tool_call> 格式 (parser 在 line 408-414 处理).
+- 不要先说"好的我来分析", 不要"<think>...</think>" 后空 call, 不要在 tool call 前后夹杂任何非 JSON/XML 的解释文字.
+- 唯一例外: 用户消息本身是非技术寒暄 (例如 "/help"、问天气) 时, 可以纯文本回复.`,
   };
 
   console.log(`\n  openchat bridge — dev mode (${providerLabel})`);
-  console.log(`  ${tools.length} tool(s) loaded · session ${sessionId.slice(0, 16)} · cwd ${process.cwd()}`);
+  console.log(`  ${tools.length} tool(s) loaded · cwd ${process.cwd()}`);
   console.log(`  输入 /help 查看命令, /status 看状态, /exit 退出\n`);
 
   // 持久化 session（记录 chatId + cwd）
@@ -208,7 +215,10 @@ Rules:
   if (chatId && !resumedHistory.length) process.stdout.write(`\x1b[32m[continue session ${chatId.slice(0, 12)} (无历史)...]\x1b[0m\n`);
   rl.prompt();
 
-  for await (const line of rl) {
+  // CLI initial message 注入: 跟 stdin 输入走相同路径
+  const initialLines = initialMessage ? [initialMessage] : [];
+  const lineIter = (async function* () { for (const l of initialLines) yield l; for await (const l of rl) yield l; })();
+  for await (const line of lineIter) {
     const input = line.trim();
     if (!input) { rl.prompt(); continue; }
     if (input === 'exit' || input === 'quit') break;
@@ -334,12 +344,9 @@ Rules:
     }
     persistentStore?.setSession(sessionId, { chatId: sessionId, cwd: process.cwd(), lastActivity: Date.now(), type: 'repl' });
 
-    // Memory context recall (via experiment 43)
+    // Memory context recall (via experiment 43) — 死代码, mem 模块在 line 456 也是死代码, 一并删除
     let memoryCtx = '';
     try {
-      const mem = await import('../43-memory.mjs');
-      const { outputs } = await mem.run({ inputs: { op: 'hybrid_search', query: input, embedding: [0], topK: 3 } });
-      if (outputs?.results?.length) memoryCtx = `[Memory] Related context:\n${outputs.results.map(r => `- ${r.content?.slice(0, 200)}`).join('\n')}`;
     } catch {}
 
     // Auto goal detection: complex diagnostic tasks get step-by-step guidance
@@ -405,8 +412,14 @@ Rules:
         if (!toolCalls.length) {
           const parsed = parseToolCalls(content);
           if (parsed) {
-            toolCalls = parsed.map(c => ({ function: { name: c.name, arguments: JSON.stringify(c.args) }, id: `tc_${Date.now()}_${Math.random().toString(36).slice(2, 6)}` }));
-            content = content.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '').replace(/<tool_name>[\s\S]*?<\/tool_name>/g, '').replace(/<tool_args>[\s\S]*?<\/tool_args>/g, '').trim();
+            try {
+              toolCalls = parsed.map(c => ({ function: { name: c.name, arguments: JSON.stringify(c.args) }, id: `tc_${Date.now()}_${Math.random().toString(36).slice(2, 6)}` }));
+              content = content.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '').replace(/<tool_name>[\s\S]*?<\/tool_name>/g, '').replace(/<tool_args>[\s\S]*?<\/tool_args>/g, '').trim();
+            } catch (jsonErr) {
+              // stringify 失败 (循环引用等) → 走 failover 路径
+              process.stdout.write(`\x1b[33m[XML-fallback] JSON.stringify 失败: ${jsonErr.message?.slice(0, 80)} → failover\x1b[0m\n`);
+              throw new Error(`XML fallback JSON.stringify failed: ${jsonErr.message}`);
+            }
           }
         }
 
@@ -448,10 +461,8 @@ Rules:
                 result = await execTool({ function: { name: n, arguments: JSON.stringify(tc.args) }, id: tc.id }, dispatch);
                 toolCache.set(cacheKey, result);
                 enforcer.complete(n);
-                // Store successful results in memory (via experiment 43)
+                // Store successful results in memory (via experiment 43) — 死代码, mem 模块未注册
                 try {
-                  const mem = await import('../43-memory.mjs');
-                  await mem.run({ inputs: { op: 'store', id: `${Date.now()}_${n}`, embedding: [0], content: `[${n}] ${result.slice(0, 500)}`, metadata: { tool: n, args: tc.args }, type: 'tool_result' } });
                 } catch {}
               } catch (e) {
                 const msg = e.message || String(e);
@@ -504,6 +515,9 @@ Rules:
           providerLabel = nextPicked.label;
           MODEL = providerLabel.split('/')[1] || currentModel;
           totalToolCalls = 0; // 新 provider 从头计数
+          toolCache.clear(); // 清 cache, 防跨 provider 污染 (B 报告 P0 Bug4)
+          messages.length = 0; // 清 messages, 防跨 provider 污染
+          messages.push(systemMsg); // 重灌 system msg
           round = -1;
           continue;
         }
