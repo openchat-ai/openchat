@@ -444,6 +444,8 @@ FIRST-TURN TOOL CALL CONTRACT (硬约束):
     let totalToolCalls = 0;
     let lastStreamed = false; // 末轮是否走了流式 (避免 console.log 重复打印)
     const toolCache = new Map(); // session-scoped: cacheKey → result
+    let transportHintInjected = false; // Tier 1: round 0 user-prompt 改写已注入
+    let tier2RetriesLeft = 2; // Tier 2: server-side retry 硬上限 2 次
 
     for (let round = 0; round < MAX_ROUNDS; round++) {
       try {
@@ -451,6 +453,15 @@ FIRST-TURN TOOL CALL CONTRACT (硬约束):
         let content = '';
         let toolCalls = [];
         let firstChunk = true;
+        // Tier 1 transport-layer tool-call force (round 0 only): 在 user 消息**前面**拼 transport 提示,
+        // 强制 LLM 在 tool_call 或显式拒绝之间二选一, 禁止 preamble/thinking 绕过去.
+        if (round === 0 && !transportHintInjected) {
+          const last = messages[messages.length - 1];
+          if (last && last.role === 'user') {
+            last.content = '[TRANSPORT] Your first reply MUST be exactly one tool call. Output ONLY this JSON: {"name": "<tool_name>", "args": {...}}. Do NOT write any explanation, thinking, or preamble. If you cannot or will not, output {"error": "no_tool_call"} to indicate refusal.\n\n' + last.content;
+          }
+          transportHintInjected = true;
+        }
         if (typeof provider.chatStream === 'function') {
           lastStreamed = true;
           for await (const ev of provider.chatStream(MODEL, messages, { tools })) {
@@ -483,6 +494,11 @@ FIRST-TURN TOOL CALL CONTRACT (硬约束):
 
         // XML fallback
         if (!toolCalls.length) {
+          // Strip hallucinated system-reminder 防御: M3 在 narrative 约束下会用 "system-reminder" 当 escape hatch,
+          // 在 parse 之前剪掉, 防止 LLM 假装被"系统提醒"中断/中止任务.
+          const beforeStrip = content;
+          content = content.replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '').replace(/\bsystem-reminder\b/gi, '').trim();
+          if (beforeStrip !== content) process.stdout.write(`\x1b[90m[strip] hallucinated system-reminder removed (${beforeStrip.length - content.length} chars)\x1b[0m\n`);
           const parsed = parseToolCalls(content);
           if (parsed) {
             try {
@@ -568,6 +584,25 @@ FIRST-TURN TOOL CALL CONTRACT (硬约束):
             }
             await new Promise(r => setTimeout(r, 500));
           } else {
+            // Tier 2 server-side retry: round 0 LLM 出了纯文本, 没 tool_call, 改写更狠的 prompt 重发.
+            // 硬上限 2 次 (tier2RetriesLeft), 失败后走 normal finalAnswer 路径.
+            if (round === 0 && tier2RetriesLeft > 0) {
+              tier2RetriesLeft--;
+              const prevSnippet = content.slice(0, 200);
+              const retryHint = `[RETRY ${2 - tier2RetriesLeft}/2] You failed to emit a tool call. Your output was: ${prevSnippet}${content.length > 200 ? '...' : ''}. Now output ONLY the JSON tool call, no other text.`;
+              process.stdout.write(`\x1b[33m[tier2-retry] round 0 no tool call, retrying (${2 - tier2RetriesLeft}/2)\x1b[0m\n`);
+              // 移掉 round 0 的 assistant content, 替换成更强的 user 提示
+              const lastUserIdx = messages.findLastIndex(m => m.role === 'user');
+              if (lastUserIdx >= 0) {
+                const orig = messages[lastUserIdx];
+                orig.content = retryHint + '\n\n[Original user request]\n' + (orig.content.replace(/^\[TRANSPORT\][\s\S]*?\n\n/, '') || '');
+              } else {
+                messages.push({ role: 'user', content: retryHint });
+              }
+              // 强制 round 0 重跑: 把 round 改回 0 (for 循环 round++ 会变 1, 所以手动重置)
+              round = -1;
+              continue;
+            }
             finalAnswer = content;
             // assistant 最终回答落盘
             if (content) histAppend(sessionId, { role: 'assistant', content });
