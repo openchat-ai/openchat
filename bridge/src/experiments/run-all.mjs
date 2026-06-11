@@ -37,6 +37,11 @@ for (const exp of MANIFEST.experiments) {
     referenceCount++;
     continue;
   }
+  if (status === 'paused') {
+    const reason = exp.pausedReason || '';
+    console.log(`  ⏸  paused (${reason})`);
+    continue;
+  }
 
   closedLoopTotal++;
   try {

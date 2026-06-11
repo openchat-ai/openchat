@@ -190,6 +190,7 @@ Rules:
 
   // 续接历史 (-c 模式)
   const resumedHistory = chatId ? loadHistory(sessionId) : [];
+  let pendingTaskResult = null; // /task subagent 结果, 下一轮 user input 注入
   if (resumedHistory.length) process.stdout.write(`\x1b[32m[repl-history] load ${resumedHistory.length} msgs from last session\x1b[0m\n`);
 
   const rl = createInterface({ input: process.stdin, output: process.stdout, prompt: '> ', terminal: process.platform !== 'win32' });
@@ -224,6 +225,21 @@ Rules:
               sessionId, cwd: process.cwd(), toolCount: tools.length, historyRounds: 0,
               availableSessions,
               costSummary: costTracker.formatSummary(),
+              onForget: async (cid) => {
+                // 1. 删历史文件 (repl-history)
+                histClear(cid);
+                // 2. 删 persistentStore 元数据
+                try { persistentStore?.deleteSession(cid); } catch {}
+                return { ok: true };
+              },
+              onDiff: async () => {
+                const ac = await import('./auto-commit.mjs');
+                if (!ac.hasGitRepo(process.cwd())) {
+                  return { error: '当前目录不是 git 仓库' };
+                }
+                const diff = ac.gitDiff(process.cwd());
+                return { diff };
+              },
               onCommit: async () => {
                 // 动态 import (避免启动时强耦合 auto-commit)
                 const ac = await import('./auto-commit.mjs');
@@ -242,6 +258,31 @@ Rules:
                   return { ok: true, committed: false, message: `建议 commit msg: ${msg}\n(未自动 commit, 请手动执行)`, diff: result.diff };
                 }
                 return { ok: true, committed: true, message: `已 commit: ${msg}` };
+              },
+              onTask: async (goal) => {
+                // 派生子 agent 跑独立 session, 返回完整 result (由 slash 端再放进 sideEffect)
+                const { runSubagent } = await import('./subagent.mjs');
+                process.stdout.write(`\x1b[36m[/task] 派发 subagent: ${goal.slice(0, 80)}${goal.length > 80 ? '...' : ''}\x1b[0m\n`);
+                const result = await runSubagent({
+                  goal,
+                  deps: {
+                    provider, providerLabel, MODEL, cfg, fallbacks,
+                    pickFirstAlive, loadTools,
+                  },
+                });
+                if (!result.ok) {
+                  process.stdout.write(`\x1b[33m[/task] subagent 失败: ${result.error}\x1b[0m\n`);
+                  return { ok: false, error: result.error };
+                }
+                process.stdout.write(`\x1b[32m[/task] subagent 完成: ${result.rounds} 轮, ${result.toolCalls} 工具调用, ${(result.durationMs / 1000).toFixed(1)}s, sessionId=${result.sessionId}\x1b[0m\n`);
+                return {
+                  ok: true,
+                  sessionId: result.sessionId,
+                  content: `[Subagent result from ${result.sessionId}]\nGoal: ${goal.slice(0, 200)}\n\nResult:\n${result.finalAnswer}`,
+                  rounds: result.rounds,
+                  toolCalls: result.toolCalls,
+                  durationMs: result.durationMs,
+                };
               },
             },
           });
@@ -263,6 +304,12 @@ Rules:
             // (避免污染原 session 历史)
             // 若想"接着原 session 写", 改成: const oldId = sessionId; ... sessionId = newId
             // 当前选择: 读但不写, 保护原 session 完整
+            rl.prompt();
+            continue;
+          }
+          if (result.sideEffect?.taskResult) {
+            // /task 结果: 暂存到 pendingTaskResult, 下一轮 user input 时注入 messages
+            pendingTaskResult = result.sideEffect.taskResult;
             rl.prompt();
             continue;
           }

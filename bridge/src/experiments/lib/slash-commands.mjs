@@ -30,7 +30,10 @@ export const COMMANDS = {
   clear:   { arg: '',              desc: '清屏 + 重置对话历史 (不退出)' },
   model:   { arg: '<name|id>',     desc: '切换当前 model, 写到 cfg.current.model' },
   resume:  { arg: '[chatId]',      desc: '列有历史的 session; 或 /resume <id> 跳到指定' },
+  forget:  { arg: '[chatId]',      desc: '列有历史的 session; 或 /forget <id> 删除指定' },
   commit:  { arg: '',              desc: '一键 git add + 自动 commit msg (基于 git diff)' },
+  diff:    { arg: '',              desc: '显示未提交的 git diff (基于 cwd)' },
+  task:    { arg: '<goal>',        desc: '派生子 agent 跑任务 (独立 session, 不污染主历史)' },
   exit:    { arg: '',              desc: '退出 REPL (alias: /quit)' },
   quit:    { arg: '',              desc: '退出 REPL (alias: /exit)' },
 };
@@ -104,6 +107,61 @@ export async function applySlash({ cmd, arg, ctx }) {
       if (target.id === ctx.sessionId) return { reply: `已经在 session ${arg} 中。` };
       return { reply: `切换到 session: ${target.id} (${target.msgCount} msgs)`, sideEffect: { resumeTo: target.id } };
     }
+    case 'forget': {
+      const list = ctx.availableSessions || [];
+      if (!arg) {
+        if (!list.length) return { reply: '没有可删除的历史 session。' };
+        const lines = ['可删除的 session (按最近活跃排序):'];
+        for (let i = 0; i < list.length; i++) {
+          const s = list[i];
+          const tag = s.id === ctx.sessionId ? ' ← 当前 (有保护)' : '';
+          lines.push(`  ${String(i + 1).padStart(2)}. ${s.id} · ${s.msgCount} msgs · ${formatRelativeTime(s.lastActivity)}${tag}`);
+        }
+        lines.push('用法: /forget <id|序号> --force  删除 (--force 跳过确认)');
+        return { reply: lines.join('\n') };
+      }
+      // 形如: "/forget repl_x" → 先确认; "/forget repl_x --force" → 直接删
+      const parts = arg.split(/\s+/);
+      const targetArg = parts[0];
+      const isForce = parts.includes('--force');
+      if (typeof ctx.onForget !== 'function') {
+        return { reply: '/forget 不可用: dev-repl 未注入 onForget 回调' };
+      }
+      const target = list.find(s => s.id === targetArg) || list[parseInt(targetArg, 10) - 1];
+      if (!target) return { reply: `找不到 session: ${targetArg}\n输入 /forget 查看列表。` };
+      if (target.id === ctx.sessionId) {
+        return { reply: `✗ 不能删除当前 session (避免误操作, 退出后用 -c 模式再删)` };
+      }
+      if (!isForce) {
+        return { reply: `⚠ 将删除 session: ${target.id} (${target.msgCount} msgs)\n  再次执行 /forget ${targetArg} --force 确认` };
+      }
+      // --force 走回调
+      try {
+        const r = await ctx.onForget(target.id);
+        if (!r.ok) return { reply: `✗ 删除失败: ${r.error || '未知'}` };
+        return { reply: `✓ 已删除 session: ${target.id}` };
+      } catch (e) {
+        return { reply: `✗ 删除异常: ${e.message?.slice(0, 100)}` };
+      }
+    }
+    case 'diff': {
+      if (typeof ctx.onDiff !== 'function') {
+        return { reply: '/diff 不可用: dev-repl 未注入 onDiff 回调' };
+      }
+      try {
+        const r = await ctx.onDiff();
+        if (r.error) return { reply: `✗ ${r.error}` };
+        if (!r.diff) return { reply: '✓ 无未提交变更 (working tree clean)' };
+        const lines = r.diff.split('\n');
+        const max = 80;
+        const truncated = lines.length > max;
+        const display = lines.slice(0, max).map((l, i) => `  ${i + 1}${i < 9 ? ' ' : ''}  ${l}`).join('\n');
+        const summary = `📝 ${lines.length} 行 (${r.diff.length} 字节)${truncated ? ` · 显示前 ${max} 行` : ''}`;
+        return { reply: `${summary}\n${display}` };
+      } catch (e) {
+        return { reply: `✗ /diff 失败: ${e.message?.slice(0, 100)}` };
+      }
+    }
     case 'commit': {
       if (typeof ctx.onCommit !== 'function') {
         return { reply: '/commit 不可用: dev-repl 未注入 onCommit 回调' };
@@ -118,6 +176,28 @@ export async function applySlash({ cmd, arg, ctx }) {
         return { reply: `✓ ${r.message}` };
       } catch (e) {
         return { reply: `✗ /commit 失败: ${e.message?.slice(0, 100)}` };
+      }
+    }
+    case 'task': {
+      if (!arg) return { reply: '用法: /task <goal>\n  派生子 agent 跑任务 (独立 session, 不污染主历史)' };
+      if (typeof ctx.onTask !== 'function') {
+        return { reply: '/task 不可用: dev-repl 未注入 onTask 回调' };
+      }
+      // 同步调 ctx.onTask(goal) (async), 由 dev-repl 跑 subagent 并把结果存到 sideEffect
+      // dev-repl 在下一轮 LLM 入口前把 taskResult.content 注入 messages
+      try {
+        const r = await ctx.onTask(arg);
+        if (!r.ok) {
+          return { reply: `✗ subagent 失败: ${r.error?.slice(0, 150) || '未知'}` };
+        }
+        return {
+          reply: `✓ subagent 完成: ${r.rounds} 轮, ${r.toolCalls} 工具调用, ${(r.durationMs / 1000).toFixed(1)}s\n  sessionId: ${r.sessionId}\n  结果将作为 system 消息注入下一轮 LLM 输入`,
+          sideEffect: {
+            taskResult: { sessionId: r.sessionId, content: r.content, goal: arg, rounds: r.rounds, toolCalls: r.toolCalls, durationMs: r.durationMs },
+          },
+        };
+      } catch (e) {
+        return { reply: `✗ /task 派发失败: ${e.message?.slice(0, 100)}` };
       }
     }
     case 'exit':

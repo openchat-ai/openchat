@@ -350,6 +350,64 @@ const NAME = 'dev-repl-smoke (无 apiKey 端到端)';
   r.ok('compose 入口 new + record');
 }
 
+// === 8. /forget 6 用例 (async) ===
+{
+  const sc = await import('../../src/experiments/lib/slash-commands.mjs');
+  const now = Date.now();
+  const sessions = [
+    { id: 'repl_1', msgCount: 4, lastActivity: now - 60000 },
+    { id: 'repl_2', msgCount: 12, lastActivity: now - 3600000 },
+  ];
+  // 8a. 无参 + 空
+  const f1 = await sc.applySlash({ cmd: 'forget', arg: '', ctx: { availableSessions: [] } });
+  assert.ok(f1.reply?.includes('没有可删除'));
+  r.ok('/forget 无 session → 提示');
+  // 8b. 无参 + 列表 (有当前保护)
+  const f2 = await sc.applySlash({ cmd: 'forget', arg: '', ctx: { availableSessions: sessions, sessionId: 'repl_1' } });
+  assert.ok(f2.reply?.includes('repl_1'));
+  assert.ok(f2.reply?.includes('当前 (有保护)'));
+  r.ok('/forget 无参列 (含当前保护)');
+  // 8c. 删当前 → 拒
+  const f3 = await sc.applySlash({ cmd: 'forget', arg: 'repl_1', ctx: { availableSessions: sessions, sessionId: 'repl_1', onForget: async () => ({ ok: true }) } });
+  assert.ok(f3.reply?.includes('不能删除当前'));
+  r.ok('/forget 当前 → 拒');
+  // 8d. 删非当前 (无 --force) → 提示确认
+  const f4 = await sc.applySlash({ cmd: 'forget', arg: 'repl_2', ctx: { availableSessions: sessions, sessionId: 'repl_1', onForget: async () => ({ ok: true }) } });
+  assert.ok(f4.reply?.includes('将删除'));
+  assert.ok(f4.reply?.includes('--force'));
+  r.ok('/forget 非当前 (无 --force) → 确认提示');
+  // 8e. 删非当前 (有 --force) → 调 onForget
+  let forgetCalled = null;
+  const f5 = await sc.applySlash({ cmd: 'forget', arg: 'repl_2 --force', ctx: { availableSessions: sessions, sessionId: 'repl_1', onForget: async (id) => { forgetCalled = id; return { ok: true }; } } });
+  assert.equal(forgetCalled, 'repl_2');
+  assert.ok(f5.reply?.includes('已删除'));
+  r.ok('/forget --force → 调 onForget');
+  // 8f. onForget 返错
+  const f6 = await sc.applySlash({ cmd: 'forget', arg: 'repl_2 --force', ctx: { availableSessions: sessions, sessionId: 'repl_1', onForget: async () => ({ ok: false, error: 'permission denied' }) } });
+  assert.ok(f6.reply?.includes('permission denied'));
+  r.ok('/forget onForget 失败 → 提示');
+
+  // 8g. /diff 4 用例
+  // 无 onDiff
+  const d1 = await sc.applySlash({ cmd: 'diff', arg: '', ctx: {} });
+  assert.ok(d1.reply?.includes('未注入'));
+  r.ok('/diff 无回调 → 提示');
+  // onDiff 返 error
+  const d2 = await sc.applySlash({ cmd: 'diff', arg: '', ctx: { onDiff: async () => ({ error: 'not a git repo' }) } });
+  assert.ok(d2.reply?.includes('not a git repo'));
+  r.ok('/diff not git → 提示');
+  // onDiff 返空 (clean)
+  const d3 = await sc.applySlash({ cmd: 'diff', arg: '', ctx: { onDiff: async () => ({ diff: '' }) } });
+  assert.ok(d3.reply?.includes('working tree clean'));
+  r.ok('/diff 空 diff → clean');
+  // onDiff 返有内容
+  const diffText = 'diff --git a/x.js b/x.js\n+line1\n+line2\n-old';
+  const d4 = await sc.applySlash({ cmd: 'diff', arg: '', ctx: { onDiff: async () => ({ diff: diffText }) } });
+  assert.ok(d4.reply?.includes('4 行'));
+  assert.ok(d4.reply?.includes('+line1'));
+  r.ok('/diff 有内容 → 显示带行号');
+}
+
 // === 4. dev-repl 消息流模拟 (核心端到端) ===
 {
   const h = await import('../../src/experiments/lib/repl-history.mjs');

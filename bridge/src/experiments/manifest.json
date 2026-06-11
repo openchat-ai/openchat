@@ -1,5 +1,5 @@
 {
-  "version": 6,
+  "version": 7,
   "name": "openchat-experiments",
   "description": "可组合实验。ID = 2^n(自身位) + ∑dep_ids(依赖和)，二进制可分解出完整依赖链。",
   "ioSchema": {
@@ -15,7 +15,8 @@
   "statusSchema": {
     "closed-loop": "有真实行为断言，run-all 跑通即代表回归被捕获",
     "skeleton": "只有结构/存在性检查或无 test 函数",
-    "reference-only": "参考实现，不是可跑实验"
+    "reference-only": "参考实现，不是可跑实验",
+    "paused": "暂停 — run-all 跳过，保留文件以备恢复"
   },
   "experiments": [
     {
@@ -286,7 +287,8 @@
         "guardrails",
         "guardrails-pipeline"
       ],
-      "status": "closed-loop"
+      "status": "paused",
+      "pausedReason": "2026-06-11: 当前需求已用其他路径闭环，暂不需要 18。保留文件以便未来恢复。"
     },
     {
       "id": "guardian",
