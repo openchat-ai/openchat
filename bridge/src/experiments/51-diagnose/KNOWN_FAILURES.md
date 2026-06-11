@@ -70,6 +70,34 @@
 - **5 件套 v2**: 件 1 (cheat sheet 注入)
 - **tier**: 1 (P0 已修)
 
+## 9. failover-hang-no-stream
+- **label**: failover 阶段 stall (200 OK 但 body 不来 / 端点不通)
+- **典型 transcript**: `provider unreachable, timeout` / `200 OK but no stream, body never arrived` / `stream hang detected`
+- **根因**: 上游 provider 网络/区域限制, 或 stream 协议层 hang; 当前 health check 太宽松, 仅看 HTTP status
+- **来源**: aaa50d48 live 报告
+- **feedback loop**: `switch-strong-model` → `reproducer-minimal`
+- **5 件套 v2**: 件 3 (强契约 — provider health check 加 stricter ping, 200 OK 不算通, 必须拿到 stream 头或 body 起始字节) + 件 4 (可恢复执行 — failover 上限 1 次, 不无限重试)
+- **tier**: 2
+- **fallback hypothesis**: 切 openrouter/auto 路由, 让它自己选 region-可达的 model
+
+## 10. provider-region-block
+- **label**: provider 在当前 region 不可用
+- **典型 transcript**: `403 Forbidden` / `not available in your region` / `403 ... region`
+- **根因**: provider 在当前地理区域不可达, 单一 provider 配置无 region 感知
+- **来源**: a3f75eb0 报告 Part 1
+- **feedback loop**: `switch-strong-model` → `reproducer-minimal`
+- **5 件套 v2**: 件 4 (可恢复执行 — region-aware fallback chain, openrouter/auto 永远兜底, 让它自己选 region-可达的 model)
+- **tier**: 2
+
+## 11. clear-empty-content
+- **label**: Tier 2 retry messages 被空 content 污染
+- **典型 transcript**: `last user message content = ""` + `[tier2-retry] round 0` 后续无 tool-call indicator
+- **根因**: messages.splice 之前没删空 content 元素, 弱模型复读空消息导致反应一致
+- **来源**: a26cfad6 报告 Tier 2 bug
+- **feedback loop**: `clear-empty-content` → `switch-strong-model`
+- **5 件套 v2**: 件 4 (可恢复执行 — retry 前清空 content="" 的元素, 防止污染下一轮)
+- **tier**: 2
+
 ---
 
 ## 移植来源

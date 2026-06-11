@@ -169,6 +169,55 @@ const KNOWN_FAILURES = [
     ],
     tier: 1,
   },
+  {
+    id: 'failover-hang-no-stream',
+    label: 'failover 阶段 stall (200 OK 但 body 不来 / 端点不通)',
+    patterns: [
+      /不可达.*timeout/i,
+      /不可用.*region/i,
+      /200.*无.*stream/i,
+      /stream.*hang/i,
+    ],
+    evidence: 'provider failover 阶段 stall: 端点不通, 或 200 OK 后 body 不来 (stream hang).',
+    rootCause: '上游 provider 网络/区域限制, 或 stream 协议层 hang',
+    loop: ['switch-strong-model', 'reproducer-minimal'],
+    scaffold: [
+      { id: 3, name: '强契约 (provider health check)', why: 'failover 前加 stricter ping (超时/HEAD), 200 OK 不算通, 必须拿到 stream 头或 body 起始字节' },
+      { id: 4, name: '可恢复执行 (failover 上限 1 次)', why: 'failover 不无限重试, 上限 1 次后直接换 provider (openrouter auto / claude-sonnet-4-6)' },
+    ],
+    tier: 2,
+  },
+  {
+    id: 'provider-region-block',
+    label: 'provider 在当前 region 不可用',
+    patterns: [
+      /not available in your region/i,
+      /403.*region/i,
+      /403.*Forbidden.*region/i,
+    ],
+    evidence: 'provider 返回 403 Forbidden / "not available in your region", 当前 region 不可用.',
+    rootCause: 'provider 在当前地理区域不可达, 单一 provider 配置无 region 感知',
+    loop: ['switch-strong-model', 'reproducer-minimal'],
+    scaffold: [
+      { id: 4, name: '可恢复执行 (region-aware fallback chain)', why: 'cfg 加 region-aware fallback, openrouter/auto 永远兜底, 让它自己选 region-可达的 model' },
+    ],
+    tier: 2,
+  },
+  {
+    id: 'clear-empty-content',
+    label: 'Tier 2 retry messages 被空 content 污染',
+    patterns: [
+      /content.*=.*""/,
+      /tier2-retry.*round\s*0(?!.*\[i\])/i,
+    ],
+    evidence: 'Tier 2 retry 触发但 LLM 反应不变, 因前一轮的空 content="" 没清, 污染 messages.',
+    rootCause: 'messages.splice 之前没删空 content 元素, 弱模型复读空消息导致反应一致',
+    loop: ['clear-empty-content', 'switch-strong-model'],
+    scaffold: [
+      { id: 4, name: '可恢复执行 (retry 前清空 content)', why: 'retry 的 messages.splice 之前, 删掉 content="" 的元素, 防止污染下一轮' },
+    ],
+    tier: 2,
+  },
 ];
 
 // === 5 件套 v2 (cplan_scaffold_decision.md) ===
@@ -469,6 +518,44 @@ Eventually max rounds triggered and the session was killed.`;
     const r = await run({ inputs: { transcript: noProviderText } });
     assert.ok(r.outputs.hypotheses.length >= 1, 'Case 4: 0 命中时也必出至少 1 条 local hypothesis');
     R.ok(`Case 4 (无 fingerprint 兜底): ${r.outputs.hypotheses.length} local hypotheses`);
+  }
+
+  // === Case 5: failover-hang-no-stream → 期望命中 failover-hang-no-stream (aaa50d48)
+  {
+    const hangSnippet = `[failover] provider unreachable, timeout after 30s
+[provider-health] 200 OK but no stream, body never arrived
+[stream hang detected] switching to next provider`;
+    const r = await run({ inputs: { transcript: hangSnippet, failureDescription: 'aaa50d48: failover 阶段 200 OK 但 body 不来, stream hang' } });
+    const fps = r.outputs.fingerprints;
+    assert.ok(fps.some(f => f.id === 'failover-hang-no-stream'), `Case 5: 期望命中 failover-hang-no-stream, 实际 ${fps.map(f => f.id).join(',')}`);
+    assert.ok(r.outputs.scaffold.pieces.some(p => p.id === 3), `Case 5: 期望 scaffold 含件 3 强契约 (provider health check)`);
+    assert.ok(r.outputs.scaffold.pieces.some(p => p.id === 4), `Case 5: 期望 scaffold 含件 4 可恢复执行 (failover 上限)`);
+    R.ok(`Case 5 (failover hang no stream): 命中 ${fps.length} 条, scaffold 件 ${r.outputs.scaffold.pieces.map(p => p.id).join('+')}`);
+  }
+
+  // === Case 6: provider-region-block → 期望命中 provider-region-block (a3f75eb0 Part 1)
+  {
+    const regionSnippet = `[provider] minimax returned: 403 Forbidden
+Error message: "MiniMax-M3 is not available in your region"
+[failover] no fallback configured, request failed`;
+    const r = await run({ inputs: { transcript: regionSnippet, failureDescription: 'a3f75eb0 Part 1: provider 在当前 region 不可用' } });
+    const fps = r.outputs.fingerprints;
+    assert.ok(fps.some(f => f.id === 'provider-region-block'), `Case 6: 期望命中 provider-region-block, 实际 ${fps.map(f => f.id).join(',')}`);
+    assert.ok(r.outputs.scaffold.pieces.some(p => p.id === 4), `Case 6: 期望 scaffold 含件 4 可恢复执行 (region-aware fallback chain)`);
+    R.ok(`Case 6 (provider region block): 命中 ${fps.length} 条, scaffold 件 ${r.outputs.scaffold.pieces.map(p => p.id).join('+')}`);
+  }
+
+  // === Case 7: clear-empty-content → 期望命中 clear-empty-content (a26cfad6 Tier 2 bug)
+  {
+    const emptySnippet = `[tier2-retry] round 0 retrying
+[debug] last user message content = ""
+[tier2-retry] LLM 反应与上轮完全一致, 无新 tool call
+[abort] max retry reached, 放弃`;
+    const r = await run({ inputs: { transcript: emptySnippet, failureDescription: 'a26cfad6 Tier 2 bug: retry 触发但 messages 被空 content 污染' } });
+    const fps = r.outputs.fingerprints;
+    assert.ok(fps.some(f => f.id === 'clear-empty-content'), `Case 7: 期望命中 clear-empty-content, 实际 ${fps.map(f => f.id).join(',')}`);
+    assert.ok(r.outputs.scaffold.pieces.some(p => p.id === 4), `Case 7: 期望 scaffold 含件 4 可恢复执行 (retry 前清空 content)`);
+    R.ok(`Case 7 (clear empty content): 命中 ${fps.length} 条, scaffold 件 ${r.outputs.scaffold.pieces.map(p => p.id).join('+')}`);
   }
 
   R.report(NAME);
