@@ -1,5 +1,5 @@
 {
-  "version": 7,
+  "version": 8,
   "name": "openchat-experiments",
   "description": "可组合实验。ID = 2^n(自身位) + ∑dep_ids(依赖和)，二进制可分解出完整依赖链。",
   "ioSchema": {
@@ -26,13 +26,14 @@
       "category": "config",
       "pure": true,
       "needsEnv": [],
-      "description": "持久化配置读取 ~/.openchat/config.json. ID=1",
+      "description": "Reads and writes the persistent config file at ~/.openchat/config.json. Use when user mentions config, settings, providers, API keys, or default model.",
       "deps": [],
       "tags": [
         "config",
         "config"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
     },
     {
       "id": "feature-flag",
@@ -41,13 +42,15 @@
       "category": "config",
       "pure": true,
       "needsEnv": [],
-      "description": "分层 Feature Flag — env→local→remote→disk→hardcoded. ID=2",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. 分层 Feature Flag — env→local→remote→disk→hardcoded. ID=2",
+      "_todo": "description-spec",
       "deps": [],
       "tags": [
         "config",
         "feature-flag"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
     },
     {
       "id": "provider-kit",
@@ -56,13 +59,15 @@
       "category": "llm",
       "pure": false,
       "needsEnv": [],
-      "description": "provider-kit 适配器总测 (normalize/adapter/error/retry/EPC). ID=4",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. provider-kit 适配器总测 (normalize/adapter/error/retry/EPC). ID=4",
+      "_todo": "description-spec",
       "deps": [],
       "tags": [
         "llm",
         "provider-kit"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
     },
     {
       "id": "skill-loader",
@@ -71,13 +76,15 @@
       "category": "llm",
       "pure": false,
       "needsEnv": [],
-      "description": "Markdown 即命令，条件路径激活 skill. ID=8",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. Markdown 即命令，条件路径激活 skill. ID=8",
+      "_todo": "description-spec",
       "deps": [],
       "tags": [
         "llm",
         "skill-loader"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L1"
     },
     {
       "id": "codec",
@@ -86,13 +93,15 @@
       "category": "pure",
       "pure": true,
       "needsEnv": [],
-      "description": "LMDN 音频编解码 (48kHz, EPC). ID=16",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. LMDN 音频编解码 (48kHz, EPC). ID=16",
+      "_todo": "description-spec",
       "deps": [],
       "tags": [
         "pure",
         "codec"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
     },
     {
       "id": "isolation",
@@ -101,13 +110,15 @@
       "category": "pure",
       "pure": true,
       "needsEnv": [],
-      "description": "chatId 路径隔离. ID=32",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. chatId 路径隔离. ID=32",
+      "_todo": "description-spec",
       "deps": [],
       "tags": [
         "pure",
         "isolation"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
     },
     {
       "id": "compressor",
@@ -116,13 +127,15 @@
       "category": "pure",
       "pure": true,
       "needsEnv": [],
-      "description": "CLI 输出压缩 (rtk 风格). ID=64",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. CLI 输出压缩 (rtk 风格). ID=64",
+      "_todo": "description-spec",
       "deps": [],
       "tags": [
         "pure",
         "compressor"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
     },
     {
       "id": "qiniu",
@@ -131,13 +144,15 @@
       "category": "qiniu",
       "pure": false,
       "needsEnv": [],
-      "description": "Qiniu S3 兼容封装 (list/get/put/delete). ID=128",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. Qiniu S3 兼容封装 (list/get/put/delete). ID=128",
+      "_todo": "description-spec",
       "deps": [],
       "tags": [
         "qiniu",
         "qiniu"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
     },
     {
       "id": "coding",
@@ -146,13 +161,15 @@
       "category": "coder",
       "pure": true,
       "needsEnv": [],
-      "description": "编程工具核心 (read/write/edit/hashEdit/snapshot/restore). ID=256",
+      "description": "Reads, writes, and edits source files with hash-anchored edits. Use when user asks to edit, modify, refactor, create, or delete source code files.",
+      "_todo": "description-spec",
       "deps": [],
       "tags": [
         "coder",
         "coding"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L1.5"
     },
     {
       "id": "dev-aux",
@@ -161,13 +178,15 @@
       "category": "dev",
       "pure": false,
       "needsEnv": [],
-      "description": "auto-commit / project-context / dev-repl. ID=512",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. auto-commit / project-context / dev-repl. ID=512",
+      "_todo": "description-spec",
       "deps": [],
       "tags": [
         "dev",
         "dev-aux"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L1.5"
     },
     {
       "id": "backpressure",
@@ -176,13 +195,15 @@
       "category": "dev",
       "pure": false,
       "needsEnv": [],
-      "description": "背压保护 — Qiniu 慢时请求限流. ID=1024",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. 背压保护 — Qiniu 慢时请求限流. ID=1024",
+      "_todo": "description-spec",
       "deps": [],
       "tags": [
         "dev",
         "backpressure"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
     },
     {
       "id": "multi-session",
@@ -191,13 +212,15 @@
       "category": "dev",
       "pure": false,
       "needsEnv": [],
-      "description": "多会话隔离 — N 个并发会话互不干扰. ID=2048",
+      "description": "Isolates N concurrent sessions so cross-session state never leaks. Use when user mentions multi-session, concurrent chat, session isolation, or parallel conversations.",
+      "_todo": "description-spec",
       "deps": [],
       "tags": [
         "dev",
         "multi-session"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L2+"
     },
     {
       "id": "process-recovery",
@@ -206,13 +229,15 @@
       "category": "dev",
       "pure": false,
       "needsEnv": [],
-      "description": "Bridge 重启后会话不丢. ID=4096",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. Bridge 重启后会话不丢. ID=4096",
+      "_todo": "description-spec",
       "deps": [],
       "tags": [
         "dev",
         "process-recovery"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L2+"
     },
     {
       "id": "code-reviewer",
@@ -221,13 +246,15 @@
       "category": "quality",
       "pure": false,
       "needsEnv": [],
-      "description": "LLM-driven code review engine. ID=8192",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. LLM-driven code review engine. ID=8192",
+      "_todo": "description-spec",
       "deps": [],
       "tags": [
         "quality",
         "code-reviewer"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L1.5"
     },
     {
       "id": "verify-commit",
@@ -236,13 +263,15 @@
       "category": "quality",
       "pure": false,
       "needsEnv": [],
-      "description": "提交前质量门禁 (spec/R4/invariants/白名单). ID=16384",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. 提交前质量门禁 (spec/R4/invariants/白名单). ID=16384",
+      "_todo": "description-spec",
       "deps": [],
       "tags": [
         "quality",
         "verify-commit"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L1"
     },
     {
       "id": "tool-rescue",
@@ -251,13 +280,15 @@
       "category": "guardrails",
       "pure": false,
       "needsEnv": [],
-      "description": "Tool Call 参数校验+自动修复. ID=32768",
+      "description": "Validates and auto-fixes LLM tool-call arguments before execution. Use when user mentions tool rescue, parameter validation, bad arguments, schema mismatch, or auto-fix tool call.",
+      "_todo": "description-spec",
       "deps": [],
       "tags": [
         "guardrails",
         "tool-rescue"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L1.5"
     },
     {
       "id": "step-workflow",
@@ -266,13 +297,15 @@
       "category": "guardrails",
       "pure": false,
       "needsEnv": [],
-      "description": "工作流定义 + 必要步骤强制执行. ID=65536",
+      "description": "Defines multi-step workflows with required steps, retries, abort-on-failure. Use when user asks to /workflow, run a sequence, or chain experiments with guards.",
+      "_todo": "description-spec",
       "deps": [],
       "tags": [
         "guardrails",
         "step-workflow"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L2+"
     },
     {
       "id": "guardrails-pipeline",
@@ -281,14 +314,16 @@
       "category": "guardrails",
       "pure": false,
       "needsEnv": [],
-      "description": "全栈守卫 vs 裸循环比较实验. ID=131072",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. 全栈守卫 vs 裸循环比较实验. ID=131072",
+      "_todo": "description-spec",
       "deps": [],
       "tags": [
         "guardrails",
         "guardrails-pipeline"
       ],
       "status": "paused",
-      "pausedReason": "2026-06-11: 当前需求已用其他路径闭环，暂不需要 18。保留文件以便未来恢复。"
+      "pausedReason": "2026-06-11: 当前需求已用其他路径闭环，暂不需要 18。保留文件以便未来恢复。",
+      "intelligenceLevel": "L2+"
     },
     {
       "id": "guardian",
@@ -297,13 +332,15 @@
       "category": "guardrails",
       "pure": false,
       "needsEnv": [],
-      "description": "守卫层中间件. ID=262144",
+      "description": "Wraps agent tool loops with step enforcement and response validation. Use when user mentions guardian, middleware, wrap agent, validate response, or enforce step.",
+      "_todo": "description-spec",
       "deps": [],
       "tags": [
         "guardrails",
         "guardian"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L1.5"
     },
     {
       "id": "neural-brain",
@@ -312,13 +349,15 @@
       "category": "ml",
       "pure": false,
       "needsEnv": [],
-      "description": "纯 JS 微神经网络 (64→32→8). ID=524288",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. 纯 JS 微神经网络 (64→32→8). ID=524288",
+      "_todo": "description-spec",
       "deps": [],
       "tags": [
         "ml",
         "neural-brain"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L4"
     },
     {
       "id": "teach-me",
@@ -327,7 +366,8 @@
       "category": "llm",
       "pure": false,
       "needsEnv": [],
-      "description": "苏格拉底式交互教学. ID=1048584",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. 苏格拉底式交互教学. ID=1048584",
+      "_todo": "description-spec",
       "deps": [
         "skill-loader"
       ],
@@ -335,7 +375,8 @@
         "llm",
         "teach-me"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L1"
     },
     {
       "id": "tool-loop",
@@ -344,7 +385,8 @@
       "category": "llm",
       "pure": false,
       "needsEnv": [],
-      "description": "多轮工具循环 (provider-kit). ID=2359296",
+      "description": "Runs multi-turn LLM tool-call loops through provider-kit with middleware. Use when user asks to chat, call tools in a loop, run agent, or multi-turn tool use.",
+      "_todo": "description-spec",
       "deps": [
         "guardian"
       ],
@@ -352,7 +394,8 @@
         "llm",
         "tool-loop"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L1.5"
     },
     {
       "id": "code-search",
@@ -361,7 +404,8 @@
       "category": "coder",
       "pure": true,
       "needsEnv": [],
-      "description": "语义搜索 — grep + 跨文件引用追踪. ID=4194305",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. 语义搜索 — grep + 跨文件引用追踪. ID=4194305",
+      "_todo": "description-spec",
       "deps": [
         "config"
       ],
@@ -369,7 +413,8 @@
         "coder",
         "code-search"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
     },
     {
       "id": "edit-advanced",
@@ -378,7 +423,8 @@
       "category": "coder",
       "pure": true,
       "needsEnv": [],
-      "description": "高级编辑 (multi-edit / ast-edit / diff-review). ID=8388864",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. 高级编辑 (multi-edit / ast-edit / diff-review). ID=8388864",
+      "_todo": "description-spec",
       "deps": [
         "coding"
       ],
@@ -386,7 +432,8 @@
         "coder",
         "edit-advanced"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
     },
     {
       "id": "dev-tools",
@@ -395,7 +442,8 @@
       "category": "dev",
       "pure": false,
       "needsEnv": [],
-      "description": "16 个工程工具合集 + 系统健康检查. ID=16777217",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. 16 个工程工具合集 + 系统健康检查. ID=16777217",
+      "_todo": "description-spec",
       "deps": [
         "config"
       ],
@@ -403,7 +451,8 @@
         "dev",
         "dev-tools"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L1.5"
     },
     {
       "id": "retry-guidance",
@@ -412,7 +461,8 @@
       "category": "guardrails",
       "pure": false,
       "needsEnv": [],
-      "description": "工具调用失败的结构化引导. ID=33587200",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. 工具调用失败的结构化引导. ID=33587200",
+      "_todo": "description-spec",
       "deps": [
         "tool-rescue"
       ],
@@ -420,7 +470,8 @@
         "guardrails",
         "retry-guidance"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L1.5"
     },
     {
       "id": "storage",
@@ -429,7 +480,8 @@
       "category": "storage",
       "pure": false,
       "needsEnv": [],
-      "description": "存储/Provider 接线 (persistent-store + provider-service). ID=67108865",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. 存储/Provider 接线 (persistent-store + provider-service). ID=67108865",
+      "_todo": "description-spec",
       "deps": [
         "config"
       ],
@@ -437,7 +489,8 @@
         "storage",
         "storage"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
     },
     {
       "id": "relay",
@@ -446,7 +499,8 @@
       "category": "relay",
       "pure": false,
       "needsEnv": [],
-      "description": "中继 / 消息总线 (bucket-relay + signal-relay + message-bus). ID=134217856",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. 中继 / 消息总线 (bucket-relay + signal-relay + message-bus). ID=134217856",
+      "_todo": "description-spec",
       "deps": [
         "qiniu"
       ],
@@ -454,7 +508,8 @@
         "relay",
         "relay"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
     },
     {
       "id": "p2p",
@@ -463,7 +518,8 @@
       "category": "p2p",
       "pure": false,
       "needsEnv": [],
-      "description": "P2P 直连 + Qiniu 信令. ID=268435584",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. P2P 直连 + Qiniu 信令. ID=268435584",
+      "_todo": "description-spec",
       "deps": [
         "qiniu"
       ],
@@ -471,7 +527,8 @@
         "p2p",
         "p2p"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
     },
     {
       "id": "naming",
@@ -480,7 +537,8 @@
       "category": "chat",
       "pure": false,
       "needsEnv": [],
-      "description": "会话自动命名 (消息数 3/8/16/32/64 触发). ID=536871040",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. 会话自动命名 (消息数 3/8/16/32/64 触发). ID=536871040",
+      "_todo": "description-spec",
       "deps": [
         "qiniu"
       ],
@@ -488,7 +546,8 @@
         "chat",
         "naming"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L1"
     },
     {
       "id": "session-tree",
@@ -497,7 +556,8 @@
       "category": "chat",
       "pure": false,
       "needsEnv": [],
-      "description": "会话树 CRUD (_tree.json 持久化). ID=1073741952",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. 会话树 CRUD (_tree.json 持久化). ID=1073741952",
+      "_todo": "description-spec",
       "deps": [
         "qiniu"
       ],
@@ -505,7 +565,8 @@
         "chat",
         "session-tree"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L1.5"
     },
     {
       "id": "system-exec",
@@ -514,7 +575,8 @@
       "category": "exec",
       "pure": false,
       "needsEnv": [],
-      "description": "宿主机命令安全执行 (白名单+黑名单). ID=2147483712",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. 宿主机命令安全执行 (白名单+黑名单). ID=2147483712",
+      "_todo": "description-spec",
       "deps": [
         "compressor"
       ],
@@ -522,7 +584,8 @@
         "exec",
         "system-exec"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
     },
     {
       "id": "memory",
@@ -531,7 +594,8 @@
       "category": "memory",
       "pure": false,
       "needsEnv": [],
-      "description": "Vector Store — 轻量级向量存储 + 混合检索. ID=4294967297",
+      "description": "Stores vectors with hybrid keyword + similarity search, persisted to JSON files. Use when user mentions memory, vector store, semantic search, embedding search, recall, or retrieve past context.",
+      "_todo": "description-spec",
       "deps": [
         "config"
       ],
@@ -539,7 +603,8 @@
         "memory",
         "memory"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L2+"
     },
     {
       "id": "orchestrator",
@@ -548,7 +613,8 @@
       "category": "multi-turn",
       "pure": false,
       "needsEnv": [],
-      "description": "编排器 — processStream / process / executeGoal. ID=8589934593",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. 编排器 — processStream / process / executeGoal. ID=8589934593",
+      "_todo": "description-spec",
       "deps": [
         "config"
       ],
@@ -556,7 +622,8 @@
         "multi-turn",
         "orchestrator"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L2+"
     },
     {
       "id": "chat-poller",
@@ -565,7 +632,8 @@
       "category": "chat",
       "pure": false,
       "needsEnv": [],
-      "description": "Chat-Poller (walking-skeleton, 轮询+EPC+去重). ID=17182228624",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. Chat-Poller (walking-skeleton, 轮询+EPC+去重). ID=17182228624",
+      "_todo": "description-spec",
       "deps": [
         "qiniu",
         "tool-loop",
@@ -575,7 +643,8 @@
         "chat",
         "chat-poller"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
     },
     {
       "id": "poll-one",
@@ -584,7 +653,8 @@
       "category": "chat",
       "pure": false,
       "needsEnv": [],
-      "description": "复合实验 — qiniu+isolation+agent 拼出单条消息处理. ID=34362097824",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. 复合实验 — qiniu+isolation+agent 拼出单条消息处理. ID=34362097824",
+      "_todo": "description-spec",
       "deps": [
         "qiniu",
         "isolation",
@@ -594,7 +664,8 @@
         "chat",
         "poll-one"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
     },
     {
       "id": "dream-consolidation",
@@ -603,7 +674,8 @@
       "category": "memory",
       "pure": false,
       "needsEnv": [],
-      "description": "后台记忆归并引擎 (24h+5sessions 门控). ID=73014444033",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. 后台记忆归并引擎 (24h+5sessions 门控). ID=73014444033",
+      "_todo": "description-spec",
       "deps": [
         "memory"
       ],
@@ -611,7 +683,8 @@
         "memory",
         "dream-consolidation"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L2+"
     },
     {
       "id": "goal",
@@ -620,7 +693,8 @@
       "category": "multi-turn",
       "pure": false,
       "needsEnv": [],
-      "description": "拆解目标 + 多轮执行. ID=137441312768",
+      "description": "Decomposes a goal into ordered steps and executes them via the tool-loop agent. Use when user asks to 拆目标, 分步执行, execute a goal, multi-step autonomous task, or plan and run.",
+      "_todo": "description-spec",
       "deps": [
         "tool-loop"
       ],
@@ -628,7 +702,8 @@
         "multi-turn",
         "goal"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L2+"
     },
     {
       "id": "waveform-sim",
@@ -637,14 +712,16 @@
       "category": "lingbao",
       "pure": true,
       "needsEnv": [],
-      "description": "灵保 L1/L2 合成数据源. 50Hz 基波 + 漏电分量 + arc 高频 + 过载. ID=274882625536",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. 灵保 L1/L2 合成数据源. 50Hz 基波 + 漏电分量 + arc 高频 + 过载. ID=274882625536",
+      "_todo": "description-spec",
       "deps": [],
       "tags": [
         "lingbao",
         "sim",
         "waveform"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
     },
     {
       "id": "signal-algo",
@@ -653,7 +730,8 @@
       "category": "lingbao",
       "pure": true,
       "needsEnv": [],
-      "description": "灵保 L2 算法层. 互相关定位 / FFT 频谱 / 漏电阈值检测 / 电弧能量. 纯 JS 零依赖. ID=549765251072",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. 灵保 L2 算法层. 互相关定位 / FFT 频谱 / 漏电阈值检测 / 电弧能量. 纯 JS 零依赖. ID=549765251072",
+      "_todo": "description-spec",
       "deps": [
         "waveform-sim"
       ],
@@ -662,7 +740,8 @@
         "algo",
         "signal"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
     },
     {
       "id": "mqtt-push",
@@ -671,14 +750,16 @@
       "category": "lingbao",
       "pure": true,
       "needsEnv": [],
-      "description": "灵保 L3 推送层. in-process EventEmitter 模拟 MQTT, 队列上限 100, handler 异常隔离. ID=1099530502144",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. 灵保 L3 推送层. in-process EventEmitter 模拟 MQTT, 队列上限 100, handler 异常隔离. ID=1099530502144",
+      "_todo": "description-spec",
       "deps": [],
       "tags": [
         "lingbao",
         "push",
         "mqtt"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
     },
     {
       "id": "doc-gen",
@@ -687,14 +768,16 @@
       "category": "lingbao",
       "pure": true,
       "needsEnv": [],
-      "description": "灵保 L4 文档层. 4 种 renderer: report/questionnaire/roi/proposal. 纯字符串, 无外部依赖. ID=4398122008576",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. 灵保 L4 文档层. 4 种 renderer: report/questionnaire/roi/proposal. 纯字符串, 无外部依赖. ID=4398122008576",
+      "_todo": "description-spec",
       "deps": [],
       "tags": [
         "lingbao",
         "doc",
         "report"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
     },
     {
       "id": "calendar-parse",
@@ -703,14 +786,33 @@
       "category": "lingbao",
       "pure": true,
       "needsEnv": [],
-      "description": "灵保 L2 调度层. 5 种 phase (concrete/lifting/finishing/rest/unknown) 硬编码调整规则 + 7 天预告. ID=8796244017152",
+      "description": "TODO(description-spec): rewrite — currently lacks Use when. 灵保 L2 调度层. 5 种 phase (concrete/lifting/finishing/rest/unknown) 硬编码调整规则 + 7 天预告. ID=8796244017152",
+      "_todo": "description-spec",
       "deps": [],
       "tags": [
         "lingbao",
         "calendar",
         "threshold"
       ],
-      "status": "closed-loop"
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
+    },
+    {
+      "id": "diagnose",
+      "file": "51-diagnose/index.mjs",
+      "name": "Diagnose — mattpocock diagnose skill 移植 (Phase 1+3)",
+      "category": "llm",
+      "pure": false,
+      "needsEnv": [],
+      "description": "Diagnoses a failed LLM transcript by matching it against 8 known failure fingerprints and recommending a feedback loop plus 3-5 ranked falsifiable hypotheses. Use when user asks to diagnose, debug, or triage a failed agent run, broken tool loop, or stuck multi-turn conversation.",
+      "deps": [],
+      "tags": [
+        "llm",
+        "diagnose",
+        "mattpocock"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L1.5"
     }
   ]
 }
