@@ -474,20 +474,40 @@
       "intelligenceLevel": "L1.5"
     },
     {
-      "id": "storage",
-      "file": "27.mjs",
-      "name": "存储/Provider 接线 (persistent-store + provider-service)",
+      "id": "storage-noop",
+      "file": "14a-storage-noop/index.mjs",
+      "name": "Storage Noop — in-memory Map (R3-clean throwaway template)",
+      "category": "storage",
+      "pure": true,
+      "needsEnv": [],
+      "persistent": false,
+      "description": "Stores key/value pairs in a process-local in-memory Map with no disk writes. Use when user needs a throwaway cache, scratch state, dedupe set, or counter that does not survive process exit.",
+      "deps": [],
+      "tags": [
+        "storage",
+        "throwaway-template",
+        "r3-clean"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
+    },
+    {
+      "id": "storage-persist",
+      "file": "14b-storage-persist/index.mjs",
+      "name": "Storage Persist — PersistentSessionStore (R3 boundary, intentional violation)",
       "category": "storage",
       "pure": false,
       "needsEnv": [],
-      "description": "TODO(description-spec): rewrite — currently lacks Use when. 存储/Provider 接线 (persistent-store + provider-service). ID=67108865",
-      "_todo": "description-spec",
+      "persistent": true,
+      "r3ExceptionReason": "This experiment tests the persistence boundary itself. Use 14a-storage-noop for in-memory state.",
+      "description": "Reads and writes the persistent session store at ~/.openchat/sessions.json. Use when user asks to inspect, debug, or test cross-process session state, persistent-store.js behavior, or restart recovery.",
       "deps": [
         "config"
       ],
       "tags": [
         "storage",
-        "storage"
+        "persistence-boundary",
+        "r3-exception"
       ],
       "status": "closed-loop",
       "intelligenceLevel": "L0"
