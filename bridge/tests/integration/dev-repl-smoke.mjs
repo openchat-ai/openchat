@@ -408,6 +408,100 @@ const NAME = 'dev-repl-smoke (无 apiKey 端到端)';
   r.ok('/diff 有内容 → 显示带行号');
 }
 
+// === 9. subagent + /task ===
+{
+  const sa = await import('../../src/experiments/lib/subagent.mjs');
+  const sc = await import('../../src/experiments/lib/slash-commands.mjs');
+
+  // 9a. goal 缺失
+  const sa1 = await sa.runSubagent({ goal: '', deps: {} });
+  assert.equal(sa1.ok, false);
+  assert.ok(sa1.error?.includes('goal'));
+  r.ok('subagent goal 缺失 → ok:false');
+
+  // 9b. deps 缺失
+  const sa2 = await sa.runSubagent({ goal: 'do something', deps: { provider: {} } });
+  assert.equal(sa2.ok, false);
+  assert.ok(sa2.error?.includes('deps'));
+  r.ok('subagent deps 缺失 → ok:false');
+
+  // 9c. 工具加载 0 → 返错 (mock loadTools 返空)
+  const sa3 = await sa.runSubagent({ goal: 'g', deps: { provider: { chat: async () => ({ content: 'x', toolCalls: [] }) }, loadTools: async () => ({ tools: [], dispatch: {} }) } });
+  assert.equal(sa3.ok, false);
+  assert.ok(sa3.error?.includes('0 工具') || sa3.error?.includes('opts.tools') || sa3.error?.includes('全部不在'));
+  r.ok('subagent 0 工具 → ok:false');
+
+  // 9d. opts.tools 全部不在 loadTools 返回中 → 返错 (5 件套: 窄化但不能 0)
+  const sa4 = await sa.runSubagent({
+    goal: 'g',
+    deps: { provider: { chat: async () => ({ content: 'x', toolCalls: [] }) }, loadTools: async () => ({ tools: [{ function: { name: 'exec_command' } }], dispatch: { exec: () => '' } }) },
+    opts: { tools: ['read_file', 'edit_file'] },
+  });
+  assert.equal(sa4.ok, false);
+  assert.ok(sa4.error?.includes('全部不在'));
+  r.ok('subagent opts.tools 全部不在 → ok:false (友好提示)');
+
+  // 9e. opts.tools 子集过滤生效 (loadTools 返 3, 传 2 个 name, 留下 1)
+  // mock provider 一次返 toolCall, 一次返 finalAnswer → 走完 2 round 退出
+  let observedToolNames = null;
+  const mockProvider = {
+    chat: async (_m, messages, opts) => {
+      observedToolNames = (opts.tools || []).map(t => t.function?.name || t.name).sort();
+      const last = messages[messages.length - 1];
+      if (last?.role === 'tool') {
+        return { content: 'done', toolCalls: [] };
+      }
+      return { content: '', toolCalls: [{ id: 'tc1', function: { name: 'read_file', arguments: '{"path":"x"}' } }] };
+    },
+  };
+  const tools3 = [
+    { function: { name: 'read_file', description: 'r' } },
+    { function: { name: 'edit_file', description: 'e' } },
+    { function: { name: 'build_run', description: 'b' } },
+  ];
+  const sa5 = await sa.runSubagent({
+    goal: 'read x',
+    deps: { provider: mockProvider, loadTools: async () => ({ tools: tools3, dispatch: { t1: () => 'x' } }) },
+    opts: { tools: ['read_file', 'edit_file'] },
+  });
+  assert.equal(sa5.ok, true);
+  assert.deepEqual(observedToolNames, ['edit_file', 'read_file']);
+  assert.ok(!observedToolNames.includes('build_run'), 'build_run 应被过滤');
+  r.ok('subagent opts.tools 过滤生效 (3→2)');
+
+  // 9f. /task 缺 onTask 回调
+  const t1 = await sc.applySlash({ cmd: 'task', arg: 'g', ctx: {} });
+  assert.ok(t1.reply?.includes('未注入'));
+  r.ok('/task 无 onTask → 提示');
+
+  // 9g. /task 无 goal
+  const t2 = await sc.applySlash({ cmd: 'task', arg: '', ctx: { onTask: async () => ({ ok: true }) } });
+  assert.ok(t2.reply?.includes('用法'));
+  r.ok('/task 无 goal → 提示用法');
+
+  // 9h. /task onTask 返 ok:true → 注入 sideEffect.taskResult
+  let taskCalledWith = null;
+  const t3 = await sc.applySlash({
+    cmd: 'task',
+    arg: 'find all TODOs',
+    ctx: { onTask: async (goal) => { taskCalledWith = goal; return { ok: true, sessionId: 'subagent_abc12345', content: 'found 3 TODOs', rounds: 2, toolCalls: 4, durationMs: 1234 }; } },
+  });
+  assert.equal(taskCalledWith, 'find all TODOs');
+  assert.ok(t3.reply?.includes('subagent 完成'));
+  assert.ok(t3.reply?.includes('subagent_abc12345'));
+  assert.ok(t3.sideEffect?.taskResult);
+  assert.equal(t3.sideEffect.taskResult.sessionId, 'subagent_abc12345');
+  assert.equal(t3.sideEffect.taskResult.goal, 'find all TODOs');
+  assert.equal(t3.sideEffect.taskResult.content, 'found 3 TODOs');
+  r.ok('/task onTask 成功 → ✓ 完成 + 注入 sideEffect.taskResult');
+
+  // 9i. /task onTask 返 ok:false → 提示错误
+  const t4 = await sc.applySlash({ cmd: 'task', arg: 'g', ctx: { onTask: async () => ({ ok: false, error: 'fallback 全死' }) } });
+  assert.ok(t4.reply?.includes('subagent 失败'));
+  assert.ok(t4.reply?.includes('fallback 全死'));
+  r.ok('/task onTask 失败 → ✗ 提示 error');
+}
+
 // === 4. dev-repl 消息流模拟 (核心端到端) ===
 {
   const h = await import('../../src/experiments/lib/repl-history.mjs');

@@ -263,12 +263,15 @@ Rules:
                 // 派生子 agent 跑独立 session, 返回完整 result (由 slash 端再放进 sideEffect)
                 const { runSubagent } = await import('./subagent.mjs');
                 process.stdout.write(`\x1b[36m[/task] 派发 subagent: ${goal.slice(0, 80)}${goal.length > 80 ? '...' : ''}\x1b[0m\n`);
+                // 5 件套第 2 条: 子任务用窄工具集 (4 read/edit + grep) → M3 不再偏 build_run, edit_file 命中率上升
+                const SUBAGENT_TOOLS = ['read_file', 'write_file', 'edit_file', 'hash_edit', 'grep', 'list_directory', 'get_cwd'];
                 const result = await runSubagent({
                   goal,
                   deps: {
                     provider, providerLabel, MODEL, cfg, fallbacks,
-                    pickFirstAlive, loadTools,
+                    pickFirstAlive, loadTools: loadAllTools,
                   },
+                  opts: { tools: SUBAGENT_TOOLS },
                 });
                 if (!result.ok) {
                   process.stdout.write(`\x1b[33m[/task] subagent 失败: ${result.error}\x1b[0m\n`);
