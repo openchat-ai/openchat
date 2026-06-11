@@ -106,6 +106,42 @@ function parseToolCalls(text) {
     const argsBlock = text.match(/<tool_args>([\s\S]*?)<\/tool_args>/);
     try { calls.push({ name, args: argsBlock ? JSON.parse(argsBlock[1]) : {} }); } catch { /* skip */ }
   }
+  // Raw JSON fallback (v6 ac623ffb fix): M3 / 弱模型有时不包 XML envelope, 直接出 raw JSON.
+  // 三层兜底, 依次试, 命中一个就 break. Append-only, 不破坏 XML match 路径.
+  if (calls.length === 0 && text) {
+    const trimmed = text.trim();
+    // 兜底 1: 整段 content 是单个 raw JSON 对象 {"name":..., "args":...}
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+      try {
+        const obj = JSON.parse(trimmed);
+        if (obj && obj.name && obj.args !== undefined) {
+          calls.push({ name: String(obj.name), args: typeof obj.args === 'object' ? obj.args : {} });
+        }
+      } catch { /* fall through */ }
+    }
+    // 兜底 2: ```json code block 嵌入
+    if (calls.length === 0) {
+      const codeMatch = trimmed.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+      if (codeMatch) {
+        try {
+          const obj = JSON.parse(codeMatch[1]);
+          if (obj && obj.name && obj.args !== undefined) {
+            calls.push({ name: String(obj.name), args: typeof obj.args === 'object' ? obj.args : {} });
+          }
+        } catch { /* fall through */ }
+      }
+    }
+    // 兜底 3: 任意位置的 {"name": "...", "args": {...}} inline 匹配
+    if (calls.length === 0) {
+      const inlineMatch = trimmed.match(/\{\s*"name"\s*:\s*"([^"]+)"\s*,\s*"args"\s*:\s*(\{[\s\S]*?\}|\[[\s\S]*?\])\s*\}/);
+      if (inlineMatch) {
+        try {
+          const args = JSON.parse(inlineMatch[2]);
+          calls.push({ name: inlineMatch[1], args: typeof args === 'object' ? args : {} });
+        } catch { /* fall through */ }
+      }
+    }
+  }
   return calls.length ? calls : null;
 }
 
@@ -245,6 +281,7 @@ FIRST-TURN TOOL CALL CONTRACT (硬约束):
 - 第一轮 (用户消息刚到时) 的回复必须是直接的 tool call, 不能先输出任何说明文字/中文分析/<think>.
 - 必须输出严格的 JSON: {"name": "<tool_name>", "args": {...}}, 不要包在 markdown 代码块里, 不要前缀解释.
 - 如果用了 XML 格式, 必须是 <tool_call><invoke name="..."><arg>val</arg></invoke></tool_call> 格式 (parser 在 line 408-414 处理).
+- Tool calls may be issued as raw JSON {"name": "...", "args": {...}} or XML <tool_call><invoke name="..."/></tool_call>. Both are valid (parser 兜底 raw JSON, line 110-149).
 - 不要先说"好的我来分析", 不要"<think>...</think>" 后空 call, 不要在 tool call 前后夹杂任何非 JSON/XML 的解释文字.
 - 唯一例外: 用户消息本身是非技术寒暄 (例如 "/help"、问天气) 时, 可以纯文本回复.`,
   };
@@ -516,6 +553,9 @@ FIRST-TURN TOOL CALL CONTRACT (硬约束):
           if (beforeStrip !== content) process.stdout.write(`\x1b[90m[strip] hallucinated system-reminder removed (${beforeStrip.length - content.length} chars)\x1b[0m\n`);
           const parsed = parseToolCalls(content);
           if (parsed) {
+            // v6 ac623ffb: detect raw JSON fallback path (XML match 0 命中 → 走兜底 1/2/3)
+            const xmlMatched = /<tool_call>[\s\S]*?<\/tool_call>|<tool_name>[\s\S]*?<\/tool_name>/.test(content);
+            if (!xmlMatched && parsed.length) process.stdout.write(`\x1b[36m[parser] raw JSON fallback matched (${parsed.length} tool call(s))\x1b[0m\n`);
             try {
               toolCalls = parsed.map(c => ({ function: { name: c.name, arguments: JSON.stringify(c.args) }, id: `tc_${Date.now()}_${Math.random().toString(36).slice(2, 6)}` }));
               content = content.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '').replace(/<tool_name>[\s\S]*?<\/tool_name>/g, '').replace(/<tool_args>[\s\S]*?<\/tool_args>/g, '').trim();
