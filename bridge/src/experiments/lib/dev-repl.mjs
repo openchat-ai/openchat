@@ -109,6 +109,8 @@ function parseToolCalls(text) {
 
 export async function startDevRepl(modelOverride, chatId) {
   const cfg = JSON.parse(await import('fs/promises').then(fs => fs.readFile(os.homedir() + '/.config/openchat/config.json', 'utf8')));
+  const { CostTracker } = await import('./cost-tracker.mjs');
+  const costTracker = new CostTracker(cfg);
 
   // 构建 provider 降级链：current → openrouter → 其他已配置的
   let fallbacks = [];
@@ -221,6 +223,7 @@ Rules:
               cfg, providerName: providerLabel.split('/')[0], model: MODEL,
               sessionId, cwd: process.cwd(), toolCount: tools.length, historyRounds: 0,
               availableSessions,
+              costSummary: costTracker.formatSummary(),
               onCommit: async () => {
                 // 动态 import (避免启动时强耦合 auto-commit)
                 const ac = await import('./auto-commit.mjs');
@@ -324,6 +327,14 @@ Rules:
         }
         const sec = ((Date.now() - t0) / 1000).toFixed(1);
         content = content.trim();
+
+        // cost 累计 (非 fallback chat 路径, 算本轮)
+        costTracker.recordUsage({
+          messages,
+          responseContent: content,
+          model: MODEL,
+          providerName: providerLabel.split('/')[0],
+        });
 
         // Think stripping
         const tm = content.match(/<think>([\s\S]*?)<\/think>/);

@@ -281,6 +281,75 @@ const NAME = 'dev-repl-smoke (无 apiKey 端到端)';
   r.ok('checkEditedFile 不存在 → ok:true (静默)');
 }
 
+// === 7. cost-tracker ===
+{
+  const { CostTracker, charToToken, lookupCost, run: costRun } = await import('../../src/experiments/lib/cost-tracker.mjs');
+  // 7a. charToToken 边界
+  assert.equal(charToToken(0), 0);
+  assert.equal(charToToken(3), 1);
+  assert.equal(charToToken(4), 1);
+  assert.equal(charToToken(5), 2);
+  assert.equal(charToToken(null), 0);
+  r.ok('charToToken 5 用例');
+
+  // 7b. lookupCost
+  assert.ok(lookupCost('gpt-4o')?.input > 0);
+  assert.equal(lookupCost('unknown-model'), null);
+  assert.equal(lookupCost('gpt-4o', { costPer1k: { input: 0.001, output: 0.002 } })?.input, 0.001);
+  r.ok('lookupCost 3 用例');
+
+  // 7c. 基础 record + summary
+  const t1 = new CostTracker();
+  const r1 = t1.recordUsage({
+    messages: [{ role: 'user', content: 'hello world' }, { role: 'system', content: 'x'.repeat(100) }],
+    responseContent: 'hi there',
+    model: 'gpt-4o',
+    providerName: 'openai',
+  });
+  assert.ok(r1.promptTokens > 0);
+  assert.ok(r1.completionTokens > 0);
+  assert.ok(r1.cost > 0);
+  const s1 = t1.summary();
+  assert.equal(s1.calls, 1);
+  assert.equal(s1.totalTokens, r1.promptTokens + r1.completionTokens);
+  r.ok('CostTracker 基础 record + summary');
+
+  // 7d. 多次 + 多 model
+  t1.recordUsage({ messages: [{ role: 'user', content: 'a'.repeat(400) }], responseContent: 'b'.repeat(200), model: 'gpt-4o', providerName: 'openai' });
+  t1.recordUsage({ messages: [{ role: 'user', content: 'c'.repeat(100) }], responseContent: 'd'.repeat(50), model: 'claude-3-haiku-20240307', providerName: 'anthropic' });
+  const s2 = t1.summary();
+  assert.equal(s2.calls, 3);
+  assert.equal(s2.byModel['gpt-4o']?.calls, 2);
+  assert.equal(s2.byModel['claude-3-haiku-20240307']?.calls, 1);
+  r.ok('CostTracker 多次 + 多 model byModel');
+
+  // 7e. 未知 model → cost 0
+  const t2 = new CostTracker();
+  t2.recordUsage({ messages: [{ role: 'user', content: 'hi' }], responseContent: 'h', model: 'totally-unknown', providerName: 'x' });
+  const s3 = t2.summary();
+  assert.equal(s3.cost, 0);
+  assert.equal(s3.calls, 1);
+  assert.equal(s3.byModel['totally-unknown']?.cost, 0);
+  r.ok('CostTracker 未知 model → cost:0');
+
+  // 7f. formatSummary
+  const t3 = new CostTracker();
+  assert.ok(t3.formatSummary().includes('暂无记录'));
+  t3.recordUsage({ messages: [{ role: 'user', content: 'a'.repeat(400) }], responseContent: 'b', model: 'gpt-4o', providerName: 'openai' });
+  const f = t3.formatSummary();
+  assert.ok(f.includes('calls:'));
+  assert.ok(f.includes('total:'));
+  assert.ok(f.includes('cost:'));
+  r.ok('formatSummary 空 + 有数据');
+
+  // 7g. compose 入口
+  const c1 = await costRun({ inputs: { op: 'new' } });
+  assert.ok(c1.outputs.tracker);
+  const c2 = await costRun({ inputs: { op: 'record', tracker: c1.outputs.tracker, messages: [{role:'user',content:'a'.repeat(400)}], responseContent: 'b', model: 'gpt-4o', providerName: 'openai' } });
+  assert.ok(c2.outputs.promptTokens > 0);
+  r.ok('compose 入口 new + record');
+}
+
 // === 4. dev-repl 消息流模拟 (核心端到端) ===
 {
   const h = await import('../../src/experiments/lib/repl-history.mjs');

@@ -436,3 +436,14 @@
 | **5** | `bridge/src/experiments/lib/slash-commands.mjs` | 顶部加 invariants 块（7 条） |
 | **5** | `bridge/tests/integration/dev-repl-smoke.mjs` | 顶部加 invariants 块（5 条） |
 | — | `MEMORY.md` | 本节 |
+
+### 2026-06-11 提交（1：provider cost 统计）
+
+| 文件 | 作用 |
+|------|------|
+| `bridge/src/experiments/lib/cost-tracker.mjs` | 字符→token 粗估（4 字符/token）+ DEFAULT_COST 主流 model 单价 + user 覆盖（`providers.<name>.costPer1k`）+ CostTracker 类（record/summary/formatSummary/reset）+ compose 入口 |
+| `bridge/src/experiments/lib/cost-tracker.spec.md` | R3 spec |
+| `bridge/src/experiments/lib/dev-repl.mjs` | 启动时 new CostTracker(cfg) + 每轮 chat 后 recordUsage + 注入 ctx.costSummary |
+| `bridge/src/experiments/lib/slash-commands.mjs` | `/status` 加 costSummary 块（多 model 列表） |
+| `bridge/tests/integration/dev-repl-smoke.mjs` | +7 用例：charToToken 5 + lookupCost 3 + 基础 record + 多 model + 未知 model + formatSummary + compose 入口 |
+| `MEMORY.md` | 本节 |

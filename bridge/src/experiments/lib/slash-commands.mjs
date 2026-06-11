@@ -75,6 +75,8 @@ export async function applySlash({ cmd, arg, ctx }) {
           `  cwd:        ${ctx.cwd || process.cwd()}`,
           `  tools:      ${ctx.toolCount}`,
           `  history:    ${ctx.historyRounds} 轮`,
+          '', // 空行
+          typeof ctx.costSummary === 'string' ? ctx.costSummary : '  cost: 暂无记录',
         ].join('\n'),
       };
     case 'clear':
