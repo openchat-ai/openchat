@@ -804,7 +804,7 @@
       "category": "llm",
       "pure": false,
       "needsEnv": [],
-      "description": "Diagnoses a failed LLM transcript by matching it against 8 known failure fingerprints and recommending a feedback loop plus 3-5 ranked falsifiable hypotheses. Use when user asks to diagnose, debug, or triage a failed agent run, broken tool loop, or stuck multi-turn conversation.",
+      "description": "Diagnoses a failed LLM transcript via fingerprints and LLM-driven hypothesis. Use when user asks to diagnose, debug, or triage a failed agent run, broken tool loop, or stuck multi-turn conversation.",
       "deps": [],
       "tags": [
         "llm",
