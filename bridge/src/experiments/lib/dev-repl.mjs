@@ -169,6 +169,9 @@ Tools:\n${toolList}
 
 When the user asks to explore/analyze the project, call tools immediately. Never describe — execute.
 
+Slash commands (user may type):
+- 用户可输入 /workflow <name> 触发 step-workflow (17.mjs), 顺序跑预定义的多步实验, 必要步骤失败会中止.
+
 Notes:
 - This is Windows. For directory listing, use exec_command(command="cmd /c dir /b") not ls.
 - For reading files, use read_file(path="...") for short paths, or exec_command(command="cmd /c type ...") for long Windows paths (JSON may truncate).
@@ -308,6 +311,32 @@ FIRST-TURN TOOL CALL CONTRACT (硬约束):
                   durationMs: result.durationMs,
                 };
               },
+              onWorkflow: async (workflowName) => {
+                // /workflow 派发: 用 17.mjs 跑预定义 step-workflow, 每步走 subagent
+                const { run: runStepWorkflow } = await import('../../experiments/17.mjs');
+                const { runSubagent } = await import('./subagent.mjs');
+                process.stdout.write(`\x1b[36m[/workflow] 派发: ${workflowName}\x1b[0m\n`);
+                const SUBAGENT_TOOLS = ['read_file', 'write_file', 'edit_file', 'hash_edit', 'grep', 'list_directory', 'get_cwd'];
+                const composeRun = async (expId, inputs) => {
+                  const sub = await runSubagent({
+                    goal: `[Experiment ${expId}] ${JSON.stringify(inputs).slice(0, 200)}`,
+                    deps: { provider, providerLabel, MODEL, cfg, fallbacks, pickFirstAlive, loadTools: loadAllTools },
+                    opts: { tools: SUBAGENT_TOOLS },
+                  });
+                  if (!sub.ok) throw new Error(sub.error || 'subagent failed');
+                  return { outputs: { sessionId: sub.sessionId, finalAnswer: sub.finalAnswer, rounds: sub.rounds, toolCalls: sub.toolCalls } };
+                };
+                const wfRes = await runStepWorkflow({ inputs: { op: 'run', workflowName, composeRun } });
+                process.stdout.write(`\x1b[32m[/workflow] 完成: status=${wfRes.outputs.status}${wfRes.outputs.failedStep ? `, failedStep=${wfRes.outputs.failedStep}` : ''}, ${wfRes.outputs.results?.length || 0} 步\x1b[0m\n`);
+                return {
+                  ok: true,
+                  workflowName,
+                  status: wfRes.outputs.status,
+                  failedStep: wfRes.outputs.failedStep,
+                  results: wfRes.outputs.results,
+                  content: `[Workflow "${workflowName}" result]\nStatus: ${wfRes.outputs.status}\nSteps: ${wfRes.outputs.results?.length || 0}\n${wfRes.outputs.failedStep ? `Failed at: ${wfRes.outputs.failedStep}\n` : ''}${wfRes.outputs.error ? `Error: ${wfRes.outputs.error}\n` : ''}\nDetails:\n${JSON.stringify(wfRes.outputs.results, null, 2).slice(0, 4000)}`,
+                };
+              },
             },
           });
           if (result.reply) process.stdout.write(result.reply + '\n');
@@ -334,6 +363,12 @@ FIRST-TURN TOOL CALL CONTRACT (硬约束):
           if (result.sideEffect?.taskResult) {
             // /task 结果: 暂存到 pendingTaskResult, 下一轮 user input 时注入 messages
             pendingTaskResult = result.sideEffect.taskResult;
+            rl.prompt();
+            continue;
+          }
+          if (result.sideEffect?.workflowResult) {
+            // /workflow 结果: 共用 pendingTaskResult 注入槽, 下一轮 user input 时注入 messages
+            pendingTaskResult = result.sideEffect.workflowResult;
             rl.prompt();
             continue;
           }

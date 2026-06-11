@@ -34,6 +34,7 @@ export const COMMANDS = {
   commit:  { arg: '',              desc: '一键 git add + 自动 commit msg (基于 git diff)' },
   diff:    { arg: '',              desc: '显示未提交的 git diff (基于 cwd)' },
   task:    { arg: '<goal>',        desc: '派生子 agent 跑任务 (独立 session, 不污染主历史)' },
+  workflow:{ arg: '<workflowName>', desc: '运行已定义的工作流 (从上下文对话生成)' },
   exit:    { arg: '',              desc: '退出 REPL (alias: /quit)' },
   quit:    { arg: '',              desc: '退出 REPL (alias: /exit)' },
 };
@@ -198,6 +199,28 @@ export async function applySlash({ cmd, arg, ctx }) {
         };
       } catch (e) {
         return { reply: `✗ /task 派发失败: ${e.message?.slice(0, 100)}` };
+      }
+    }
+    case 'workflow': {
+      if (!arg) return { reply: '用法: /workflow <workflowName>\n  运行已定义的工作流 (从上下文对话生成), 必要步骤失败会中止' };
+      if (typeof ctx.onWorkflow !== 'function') {
+        return { reply: '/workflow 不可用: dev-repl 未注入 onWorkflow 回调' };
+      }
+      // 同步调 ctx.onWorkflow(name) (async), 由 dev-repl 跑 step-workflow 并把结果存到 sideEffect
+      // dev-repl 在下一轮 LLM 入口前把 workflowResult.content 注入 messages
+      try {
+        const r = await ctx.onWorkflow(arg);
+        if (!r.ok) {
+          return { reply: `✗ workflow 失败: ${r.error?.slice(0, 150) || '未知'}` };
+        }
+        return {
+          reply: `✓ workflow "${r.workflowName}" 完成: status=${r.status}${r.failedStep ? `, 失败步骤=${r.failedStep}` : ''}, ${r.results?.length || 0} 步\n  结果将作为 system 消息注入下一轮 LLM 输入`,
+          sideEffect: {
+            workflowResult: { workflowName: r.workflowName, status: r.status, failedStep: r.failedStep, results: r.results, content: r.content },
+          },
+        };
+      } catch (e) {
+        return { reply: `✗ /workflow 派发失败: ${e.message?.slice(0, 100)}` };
       }
     }
     case 'exit':
