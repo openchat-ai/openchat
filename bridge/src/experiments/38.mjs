@@ -75,7 +75,7 @@ Return ONLY a JSON array, no other text:
   return { steps: steps.slice(0, MAX_STEPS), p, model, fallbacks };
 }
 
-// [L3 PLAN] 在 /goal 跑前展示 plan — 永远 log, opt-in 阻塞
+// [L3 PLAN] 在 /goal 跑前展示 plan — 永远 log, TTY 模式阻塞
 function _printPlan(description, steps) {
   console.log(`\n[goal] Plan for: "${description}"`);
   console.log(`  ${steps.length} steps:`);
@@ -98,9 +98,9 @@ export async function run({ inputs = {} } = {}) {
   const { provider, model, fallbacks } = await _getProvider();
   const { steps } = await _decompose(description, provider, model, fallbacks, cfg);
 
-  // [L3 PLAN] 拆完先展示 plan, opt-in 阻塞等用户接受 (OPENCHAT_GOAL_PLAN=1)
+  // [L3 PLAN] 拆完先展示 plan, TTY 模式阻塞等用户接受 (bridge 模式无 TTY 静默通过)
   _printPlan(description, steps);
-  if (process.env.OPENCHAT_GOAL_PLAN === '1' && process.stdin.isTTY) {
+  if (process.stdin.isTTY) {
     process.stdout.write('\n  Execute? [y/n/edit] (default y): ');
     let ans = 'y';
     try { ans = require('fs').readFileSync(0, 'utf8').trim().toLowerCase() || 'y'; } catch { ans = 'y'; }

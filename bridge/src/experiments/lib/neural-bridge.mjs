@@ -1,13 +1,13 @@
-// neural-bridge.mjs — 进程内 NeuralBrain 单例 + opt-in 接入层
+// neural-bridge.mjs — 进程内 NeuralBrain 单例 (always-on)
 //
 // 设计 (Step 4, L2 局部):
 //   1. singleton — 进程内 1 个 NeuralBrain 实例, 避免每 call new 8KB 权重
-//   2. opt-in    — env OPENCHAT_NEURAL_BRAIN=1 才启用, 默认 0 行为变化
+//   2. always-on — 默认启用. brain 未训时预测是 noise, 但 22.mjs 已容错 (null 时走 base)
 //   3. 3 API:    predict(text) / adaptTools / adaptMaxRounds / trainOnOutcome
 //   4. 持久化    — NeuralBrain 内部管 ~/.openchat/brain/weights.json
 //
 // 调用方 (22.mjs / tool-loop) 在 processText 入口调 predict, loop 中调 adapt*,
-// 出口调 trainOnOutcome. 未启用时全部 early return, 0 副作用.
+// 出口调 trainOnOutcome. 跑得越多预测越准, 无需 opt-in.
 
 import { NeuralBrain } from '../../core/memory/neural-brain.js';
 
@@ -23,13 +23,11 @@ const READ_ONLY_TOOLS = new Set([
 
 const ROUNDS_BY_DIFFICULTY = [10, 15, 20, 30]; // easy → hard
 
-export function init({ enabled = process.env.OPENCHAT_NEURAL_BRAIN === '1' } = {}) {
+export function init({ enabled = true } = {}) {
   if (_instance) return _instance;
   _enabled = enabled;
   _instance = new NeuralBrain();
-  if (_enabled) {
-    console.log(`[neural-bridge] enabled (samples=${_instance.trainingSamples}, accuracy=${(_instance.accuracy * 100).toFixed(1)}%)`);
-  }
+  console.log(`[neural-bridge] always-on (samples=${_instance.trainingSamples}, accuracy=${(_instance.accuracy * 100).toFixed(1)}%)`);
   return _instance;
 }
 

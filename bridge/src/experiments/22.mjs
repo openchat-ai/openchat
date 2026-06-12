@@ -19,7 +19,7 @@ import {
 } from './lib/neural-bridge.mjs';
 import { checkPermission as permCheck } from './lib/permission-gate.mjs';
 
-brainInit();  // 进程启动一次性, env OPENCHAT_NEURAL_BRAIN=1 才启用
+brainInit();  // 进程启动一次性, always-on
 
 const CWD = process.cwd();
 // 简化 SYSTEM_PROMPT — 原版约束太多 (Call ONE tool at a time + getEditProtocolGuidance), 阻断 M3 多步探索

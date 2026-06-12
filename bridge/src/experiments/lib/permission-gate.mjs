@@ -8,7 +8,7 @@
 //   - 用户答 'always' / 'a' → 写 ~/.openchat/trust.json, 之后不再问
 //   - 用户答 'y' → 这次跑, 不存
 //   - 用户答 'n' → 返 [Denied] 给 LLM, 让它调整
-//   - opt-in: OPENCHAT_PERMISSION=1 才启用, 默认 0 行为变化
+//   - always-on: 默认启用. CLI 首次问, bridge 静默 allow. setEnabled(false) 可关
 //   - bridge 必须不阻塞: 同步 input() 只能在 CLI / standalone; bridge 走 phone 时应 bypass
 //     → 检测到没有 TTY 或 ctx.bridgeMode → 静默 y (跟 user 确认过, 实际是 phone 端鉴权)
 
@@ -19,7 +19,7 @@ import { homedir } from 'os';
 const TRUST_DIR = join(homedir(), '.openchat');
 const TRUST_FILE = join(TRUST_DIR, 'trust.json');
 
-let _enabled = process.env.OPENCHAT_PERMISSION === '1';
+let _enabled = true;
 let _trust = null;  // 懒加载
 
 const TOOL_PERMISSION = {

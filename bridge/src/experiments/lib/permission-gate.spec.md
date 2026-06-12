@@ -22,7 +22,7 @@ listTrust(): { [key]: 'always' }
 
 ## 边界条件
 - 未知 tool → 默认 'confirm' (保守)
-- env OPENCHAT_PERMISSION 未设 / != '1' → 早返 allowed=true (0 行为变化)
+- **always-on** — `setEnabled(false)` 可关 (测试用). CLI 首次问, bridge 静默 allow
 - bridge 模式 (无 stdin.isTTY 或 ctx.bridgeMode) → confirm 静默 allow
 - trust 损坏 / 读失败 → 当成空 trust
 - 用户答非 y/n/always → 当 n
