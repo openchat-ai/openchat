@@ -731,15 +731,15 @@ function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'
     setSignalingContext(this._signalingRooms, this._signalRelay);
 
     return new Promise((resolve, reject) => {
-      try {
-        this.server = this.app.listen(this.port, () => {
-          console.log(`[API] Server running on port ${this.port}`);
-          console.log(`[API] Dev UI:    http://localhost:${this.port}/dev`);
-          resolve(this.server);
-        });
-      } catch (error) {
-        reject(error);
-      }
+      this.server = this.app.listen(this.port);
+      this.server.once('listening', () => {
+        console.log(`[API] Server running on port ${this.port}`);
+        console.log(`[API] Dev UI:    http://localhost:${this.port}/dev`);
+        resolve(this.server);
+      });
+      this.server.once('error', (err) => {
+        reject(err);
+      });
     });
   }
 

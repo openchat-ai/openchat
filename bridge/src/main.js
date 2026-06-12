@@ -267,16 +267,16 @@ export class Bridge {
       this.apiServer = new APIServer({ port: CONFIG.port, swarm: this.p2p, deployEnabled: deployServerEnabled });
       setBridgeContext(this);
       await this.apiServer.start();
-      // 挂载 WebSocket (聊天 + 信令) 到同一个 HTTP 服务
-      this.apiServer.setupWebSocket(this.apiServer.server);
-      // 设置 WS 消息处理器
-      this.apiServer.setWSMessageHandler((ws, msg) => {
-        this.handleWSMessage(ws, msg).catch(e => {
-          try { ws.send(JSON.stringify({ type: 'error', data: { message: e.message } })); } catch (e2) { logger.warn({ err: e2 }, 'WS 发送错误消息失败'); }
+      if (this.apiServer) {
+        this.apiServer.setupWebSocket(this.apiServer.server);
+        this.apiServer.setWSMessageHandler((ws, msg) => {
+          this.handleWSMessage(ws, msg).catch(e => {
+            try { ws.send(JSON.stringify({ type: 'error', data: { message: e.message } })); } catch (e2) { logger.warn({ err: e2 }, 'WS 发送错误消息失败'); }
+          });
         });
-      });
-      console.log(`[API] 统一服务器: http://localhost:${CONFIG.port}`);
-      console.log(`[API] 端点: /api/v1/p2p, /api/v1/updates, /api/v1/skills, /api/v1/versions, /api/v1/resources, /api/v1/voice, /api/v1/signaling`);
+        console.log(`[API] 统一服务器: http://localhost:${CONFIG.port}`);
+        console.log(`[API] 端点: /api/v1/p2p, /api/v1/updates, /api/v1/skills, /api/v1/versions, /api/v1/resources, /api/v1/voice, /api/v1/signaling`);
+      }
 
       // P2P 事件监听
       if (this.p2p) {
@@ -306,12 +306,20 @@ export class Bridge {
         });
       }
     } catch (e) {
-      console.log(`[启动] API 初始化失败: ${e.message}`);
+      if (e.code === 'EADDRINUSE') {
+        console.log(`[启动] 端口 ${CONFIG.port} 已被占用，切换为无网络模式`);
+        CONFIG.headless = true;
+        this.apiServer = null;
+      } else {
+        console.log(`[启动] API 初始化失败: ${e.message}`);
+      }
     }
 
     // 无头模式：日志输出
     if (CONFIG.headless) {
-      // WebSocket 已在统一 API 服务器中启动
+      if (!this.apiServer) {
+        console.log('[无网络] 仅本地设备模式（无 API 服务）');
+      }
 
       // 公网节点自动补全 WS 信令地址（若未显式指定）
       if (!CONFIG.wsSignalingUrl && CONFIG.isPublic) {

@@ -11,9 +11,14 @@ import os from 'os';
 // - edit-quality-gate: edit tool 完成后异步 fire-and-forget, 失败塞 messages+history, 不阻塞 REPL
 // - 全程 never-throw 策略: 所有 catch 静默, gate/pinger 内部保永不抛
 
-// 5 件套 v2 件套 5: 跟 subagent 对齐 30 轮 cap. 之前 100 太高, M3 在长 prompt 下会卡死.
-// 100 是早期预 subagent 时代的值, 留作"足够长"的安全网, 实际 e2e 任务 8-15 轮够用.
+// 5 件套 v2 件套 5: 执行边界 (execution boundary).
+// 两层: (a) MAX_ROUNDS=30 兜底 (cap 总轮数, 防 subagent 卡死),
+// (b) READ_BUDGET=3 软约束 (read-style tool 连续 N 次后注入 phase transition 提示, 防 exploration 链不切到 write).
+// v7 失败模式: M3 跑得动 read→grep 链, 但不会从 read 模式跳到 write 模式. 装 (b) 修这道坎.
 const MAX_ROUNDS = 30;
+const READ_BUDGET = 3;
+const READ_TOOLS = new Set(['read_file', 'grep', 'list_directory', 'get_cwd', 'find_refs', 'list_refs', 'exec_command']);
+const WRITE_TOOLS = new Set(['edit_file', 'write_file', 'hash_edit', 'multi_edit', 'ast_edit']);
 
 const toolModules = [
   { name: 'system_exec', import: () => import('./system-exec.mjs'), toolsKey: 'TOOLS', execKey: 'executeTool' },
@@ -496,8 +501,17 @@ FIRST-TURN TOOL CALL CONTRACT (硬约束):
     const toolCache = new Map(); // session-scoped: cacheKey → result
     let transportHintInjected = false; // Tier 1: round 0 user-prompt 改写已注入
     let tier2RetriesLeft = 2; // Tier 2: server-side retry 硬上限 2 次
+    let readCount = 0; // 件 5 (b): read-style tool 累计, 触发 phase transition 后 reset
+    let writeHappened = false; // 件 5 (b): write-style tool 发生过则短路, 不再 nudge
 
     for (let round = 0; round < MAX_ROUNDS; round++) {
+      // 件 5 (b): read budget 软约束 — 连续 N 次 read-style tool 后, 强制 phase transition nudge
+      if (readCount >= READ_BUDGET && !writeHappened) {
+        const phaseMsg = `[Execution boundary] You have used ${readCount} read-style tool calls (read_file/grep/list_directory/exec_command) without an edit. Either: (a) emit a write tool (edit_file/write_file/hash_edit/multi_edit/ast_edit) NOW with concrete args, OR (b) give a final answer in Chinese stating what additional info is needed. Do NOT issue another read tool.`;
+        messages.push({ role: 'system', content: phaseMsg });
+        process.stdout.write(`\x1b[33m[件5] read budget hit (${readCount} reads), injecting phase transition nudge\x1b[0m\n`);
+        readCount = 0; // 触发后 reset, 防止每轮重复; 模型若仍只 read, 下一轮再 nudge
+      }
       try {
         const t0 = Date.now();
         let content = '';
@@ -587,6 +601,9 @@ FIRST-TURN TOOL CALL CONTRACT (硬约束):
               const n = tc.name;
               const a = Object.keys(tc.args || {}).map(k => `${k}=${String(tc.args[k]).slice(0, 40)}`).join(', ');
               process.stdout.write(`  \x1b[33m→ ${n}(${a})\x1b[0m `);
+              // 件 5 (b): read-style tool 累计, write-style tool 触发 reset
+              if (READ_TOOLS.has(n)) readCount++;
+              if (WRITE_TOOLS.has(n)) { writeHappened = true; readCount = 0; }
               const check = enforcer.check(n);
               if (!check.ok) {
                 process.stdout.write(`\x1b[31m[dependency] ${n} 需要先: ${check.missing.join(', ')}\x1b[0m\n`);
