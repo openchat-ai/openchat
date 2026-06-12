@@ -15,6 +15,8 @@ const isHelp = rawArgs[0] === 'help' || rawArgs[0] === '--help' || rawArgs[0] ==
 const isContinue = rawArgs.includes('-c') || rawArgs.includes('--continue');
 const goalIdx = rawArgs.findIndex(a => a === '--goal' || a === '-g');
 const goalDesc = goalIdx !== -1 ? rawArgs[goalIdx + 1] : null;
+const isPlan = rawArgs.includes('--plan') || rawArgs.includes('-p');
+if (isPlan) process.env.OPENCHAT_GOAL_PLAN = '1';  // /goal 阻塞等用户审查 plan
 
 const toolNames = TOOLS.map(t => t.function.name);
 const firstTool = rawArgs.find(a => toolNames.includes(a));
@@ -30,6 +32,7 @@ Options:
   server              Start bridge only (no REPL)
   -c, --continue      Continue last session
   --goal, -g <desc>   Run goal mode
+  --plan, -p          Pause /goal after plan for review (sets OPENCHAT_GOAL_PLAN=1)
 
 Tools (${TOOLS.length}):`);
   for (const t of TOOLS) {
