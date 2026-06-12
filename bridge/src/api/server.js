@@ -721,6 +721,9 @@ function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'
     this._tcpServer.listen(tcpPort, () => {
       console.log(`[Signaling] TCP server on port ${tcpPort}`);
     });
+    this._tcpServer.once('error', (err) => {
+      console.log(`[Signaling] TCP server port ${tcpPort} ${err.code === 'EADDRINUSE' ? '被占用，跳过' : err.message}`);
+    });
 
     // Init signal relay for Qiniu-based address exchange
     this._signalRelay = new SignalRelay(qiniuSignaling, 'bridge-' + (this.port || 3800));
