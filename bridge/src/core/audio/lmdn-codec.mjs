@@ -1,1 +1,1 @@
-export * from '../../experiments/lib/lmdn-codec.mjs';
+export { default } from '../../experiments/lib/lmdn-codec.mjs';

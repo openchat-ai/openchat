@@ -8,7 +8,7 @@
 - H0 (零假设): PersistentSessionStore doesn't actually roundtrip data through `~/.openchat/sessions.json` — read-after-write fails, file format breaks, etc.
 - H1 (备择假设): PersistentSessionStore correctly persists sessions + providers to JSON files, supports CRUD + save/load + listSessions, and `load()` reconstructs the in-memory Map from disk.
 
-## data flow
+## 数据流
 
 ```
 inputs: { op, key, value }

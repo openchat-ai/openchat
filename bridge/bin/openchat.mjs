@@ -53,9 +53,10 @@ In REPL:
 // ─── Init bridge ───
 async function initBridge() {
   const { startBridge } = await import('../src/main.js');
-  await startBridge([], { headless: true });
+  const bridge = await startBridge([], { headless: true });
   const { setQuiet } = await import('../src/core/chat-poller.mjs').catch(() => ({ setQuiet: () => {} }));
   setQuiet(true);
+  return bridge;
 }
 
 // ─── Execute tool ───
@@ -66,14 +67,25 @@ async function runTool(cmd, args) {
   const paramKeys = Object.keys(params);
   const callArgs = {};
   const posArgs = args.filter(a => !a.startsWith('-'));
+  // 优先识别 k=v 格式 (避免单参数 case 把 "count=3" 当 value)
+  const hasKV = posArgs.some(a => a.indexOf('=') > 0 && paramKeys.includes(a.slice(0, a.indexOf('='))));
   if (paramKeys.length === 0) {
     // no args
+  } else if (hasKV) {
+    for (const a of posArgs) {
+      const eq = a.indexOf('=');
+      if (eq > 0) callArgs[a.slice(0, eq)] = a.slice(eq + 1);
+      else if (paramKeys.length === 1) callArgs[paramKeys[0]] = a;
+    }
   } else if (paramKeys.length === 1 && posArgs.length >= 1) {
     callArgs[paramKeys[0]] = posArgs[0];
   } else if (posArgs.length >= 2 && posArgs.length === paramKeys.length) {
     paramKeys.forEach((k, i) => { callArgs[k] = posArgs[i]; });
   } else if (posArgs.length === 1 && posArgs[0].startsWith('{')) {
     Object.assign(callArgs, JSON.parse(posArgs[0]));
+  } else if (posArgs.length === 1) {
+    // 单 positional → 第一个 param (主参数启发, 适用 read_file/grep 等)
+    callArgs[paramKeys[0]] = posArgs[0];
   } else {
     for (const a of posArgs) {
       const eq = a.indexOf('=');
@@ -82,13 +94,18 @@ async function runTool(cmd, args) {
     }
   }
   const result = await executeTool(cmd, callArgs);
-  console.log(JSON.stringify(result, null, 2));
+  // 字符串结果直接打 (避免 JSON.stringify 双重转义);
+  // 对象/数组/null 走 JSON 美化
+  if (typeof result === 'string') console.log(result);
+  else console.log(JSON.stringify(result, null, 2));
 }
 
 // ─── Interactive REPL ───
 async function repl() {
-  await initBridge();
-  const rl = createInterface({ input: process.stdin, output: process.stdout, prompt: 'openchat> ' });
+  const bridge = await initBridge();
+  // 关闭 bridge 的 SIGINT readline，避免 Windows 双字符
+  if (bridge?.signalRL) { bridge.signalRL.close(); bridge.signalRL = null; }
+  const rl = createInterface({ input: process.stdin, output: process.stdout, prompt: 'openchat> ', terminal: process.platform !== 'win32' });
   console.log('openchat REPL. Type /help for tools, /exit to quit.\n');
   rl.prompt();
   for await (const line of rl) {
@@ -158,9 +175,9 @@ async function main() {
       const sessions = persistentStore.getAllSessions();
       const last = sessions.sort((a, b) => (b.lastActivity || 0) - (a.lastActivity || 0))[0];
       if (last?.cwd) try { process.chdir(last.cwd); } catch {}
-      await startDevRepl(msg, last?.chatId || 'default');
+      await startDevRepl(undefined, last?.chatId || 'default', msg);
     } else {
-      await startDevRepl(msg);
+      await startDevRepl(undefined, undefined, msg);
     }
   }
 }

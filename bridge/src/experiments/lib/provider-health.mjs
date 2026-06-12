@@ -49,10 +49,12 @@ async function readConfig(configPath) {
 // 从 provider-kit 拉预设列表, 拿到 baseUrl + skipAuth
 async function loadPresetMeta() {
   try {
-    const { listPresetProviders } = await import('provider-kit');
-    const list = listPresetProviders();
+    const { PRESET_PROVIDERS, listPresetProviders } = await import('provider-kit');
+    // 直接读 PRESET_PROVIDERS (listPresetProviders 不返回 baseUrl, 是 bug)
     const map = {};
-    for (const p of list) map[p.id] = { baseUrl: p.baseUrl, skipAuth: !!p.skipAuth, name: p.name };
+    for (const [id, p] of Object.entries(PRESET_PROVIDERS)) {
+      map[id] = { baseUrl: p.baseUrl, skipAuth: !!p.skipAuth, name: p.name };
+    }
     return map;
   } catch {
     return {};
@@ -145,7 +147,11 @@ export async function diagnose({ configPath, silent = false } = {}) {
   for (const fb of chain) {
     const pcfg = cfg.json.providers?.[fb.name] || {};
     const preset = presetMeta[fb.name] || {};
-    const baseUrl = pcfg.baseUrl || preset.baseUrl || '';
+    // config 嵌套深: providers.<id>.adapter.<model>.<family>.baseURL
+    // 优先 openai (anthropic 不暴露 /models, ping 必然 404)
+    const modelCfg = pcfg.adapter?.[fb.model] || {};
+    const deepBaseUrl = modelCfg.openai?.baseURL || modelCfg.anthropic?.baseURL || modelCfg.baseURL;
+    const baseUrl = deepBaseUrl || pcfg.baseUrl || preset.baseUrl || '';
     const skipAuth = pcfg.skipAuth ?? preset.skipAuth ?? false;
     const apiKey = pcfg.apiKey || '';
 
@@ -206,7 +212,12 @@ export async function diagnose({ configPath, silent = false } = {}) {
 // 暴露给 failover-picker 复用 (R6: 不在 dev-repl 里重写 baseUrl 拼接)
 export async function pingProvider(name, pcfg = {}, { timeoutMs = 3000 } = {}) {
   const preset = (await loadPresetMeta())[name] || {};
-  const baseUrl = pcfg.baseUrl || preset.baseUrl || '';
+  // config 嵌套深: pcfg.adapter[model].<family>.baseURL (跟 diagnose() 保持一致)
+  // 优先 openai (anthropic 不暴露 /models, ping 必然 404)
+  const modelName = pcfg._model || '';
+  const modelCfg = pcfg.adapter?.[modelName] || {};
+  const deepBaseUrl = modelCfg.openai?.baseURL || modelCfg.anthropic?.baseURL || modelCfg.baseURL;
+  const baseUrl = deepBaseUrl || pcfg.baseUrl || preset.baseUrl || '';
   if (!baseUrl) return { ok: false, status: 0, latencyMs: 0, error: 'no-baseurl', skipPing: true };
   const skipAuth = pcfg.skipAuth ?? preset.skipAuth ?? false;
   const apiKey = pcfg.apiKey || '';
@@ -216,7 +227,8 @@ export async function pingProvider(name, pcfg = {}, { timeoutMs = 3000 } = {}) {
   else pingUrl = baseUrl.replace(/\/+$/, '') + '/models';
   const headers = {};
   if (!skipAuth && apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
-  return await pingEndpoint(pingUrl, { timeoutMs, headers });
+  const result = await pingEndpoint(pingUrl, { timeoutMs, headers });
+  return { ...result, baseUrl };  // 把 baseUrl 带回去供 caller 用
 }
 
 export const META = { id: 'provider-health' };

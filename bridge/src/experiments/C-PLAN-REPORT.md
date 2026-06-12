@@ -90,6 +90,47 @@
 
 ---
 
+## 2.2 openchat 产品化 layer 分类 (2026-06-10 重新定位)
+
+**问题**: §2/§2.1 把 5 件套叙述成 "openchat 产品核心". user 指出 axis 错了: 应该 "openchat 拉到 Claude Code 级别", 不是 "M3 拉到 5 件套级别". 5 件套是给弱模型的脚手架, 不是产品定义.
+
+**新分类** (跟 §2.1 v2 件套不冲突, 是 product 视角的切法):
+
+| Layer | 角色 | 模型相关? | 5 件套对应 |
+|---|---|---|---|
+| **A 产品骨架** | session, history, slash, tool registry, streaming, cost, doctor, subagent 调度, edit-gate | 无关 | (无, 5 件套不覆盖) |
+| **B 健壮性** | provider failover, runtime validation, tool result 截断, MAX_ROUNDS, JSON 修复 | 无关 (强模型也受益) | 件 3 (强契约) + 件 4 (可恢复执行) + 件 5 (执行边界) |
+| **C 弱模型补偿** | raw 工具隐藏, 窄工具集 opts.tools, nudge, step-enforcer, error-tracker, goal-guide | **相关** (M3 等 opt-in) | 件 1 (动作级 tool) + 件 2 (窄工具集) |
+
+**关键 reframe**:
+- 件 3+4+5 实际是 Layer B 产品健壮性, **跟弱模型无关**, 强模型也用
+- 件 1+2 是 Layer C 弱模型补偿, **应改成 opt-in**, 不是产品默认
+
+**当前状态**: Layer C 硬编码 ON, 因为 user 配的是 M3 (`config.json` current.model=MiniMax-M3). 切强模型后可加 env `OPENCHAT_DISABLE_WEAK_MODEL_COMPENSATION=1` 关掉. **当前没做**, 等强模型 user 出现再做 (避免 premature abstraction).
+
+**比肩 Claude Code 视角** — Layer A gap 才是 product 主线:
+
+| Claude Code 等价 | openchat Layer | 状态 |
+|---|---|---|
+| sessions / `--continue` / `/resume` | A | ✓ |
+| slash (`/help` /`commit` /`diff` /`task`) | A | ✓ |
+| 工具 (read/edit/glob/grep/bash) | A | ✓ |
+| 流式 + cost | A | ✓ |
+| Doctor (`claude doctor`) | A | ✓ |
+| Subagent (`Task` tool) | A (subagent.mjs + /task) | ✓ |
+| Permission modes (acceptEdits/plan/bypass) | A | ✗ gap |
+| Plan mode (Tab 切换) | A | ✗ gap |
+| MCP 接入 | A | ✗ gap |
+| Hooks | A | ✗ gap |
+| Tool result 截断 + 上下文压缩 | B | ✓ |
+| Provider 切换 | B | ✓ |
+
+**结论**: 想"比肩 Claude Code" 就补 Layer A 的 4 个 gap (permission/plan/MCP/hooks). Layer C 调整 (弱模型 opt-in) 不影响产品力, 顺手做.
+
+**详见**: `~/.claude/memory/openchat_layers.md`
+
+---
+
 ## 3. 关键决策 (给桥接 / openchat)
 
 ### 3.1 弱模型能力边界

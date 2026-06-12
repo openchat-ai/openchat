@@ -686,6 +686,7 @@ export async function startBridge(detectedTools = [], options = {}) {
 
   const bridge = new Bridge();
   await bridge.start(detectedTools);
+  return bridge;
 }
 
 // 自动启动（当作为主模块运行时）

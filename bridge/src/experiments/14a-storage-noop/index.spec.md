@@ -8,7 +8,7 @@
 - H0 (零假设): most experiments needing Map-shaped state in-process don't need persistence; defaulting to `Map()` is fine, even for "looks like" state.
 - H1 (备择假设): if a new experiment reaches for `fs.writeFileSync`, `~/.openchat/`, or imports `persistent-store.js`, it should be redirected to 14b (and only when the question explicitly involves cross-process state).
 
-## data flow
+## 数据流
 
 ```
 inputs: { op, key, value }
