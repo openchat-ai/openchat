@@ -12,13 +12,23 @@ import os from 'os';
 // - 全程 never-throw 策略: 所有 catch 静默, gate/pinger 内部保永不抛
 
 // 5 件套 v2 件套 5: 执行边界 (execution boundary).
-// 两层: (a) MAX_ROUNDS=30 兜底 (cap 总轮数, 防 subagent 卡死),
-// (b) READ_BUDGET=3 软约束 (read-style tool 连续 N 次后注入 phase transition 提示, 防 exploration 链不切到 write).
-// v7 失败模式: M3 跑得动 read→grep 链, 但不会从 read 模式跳到 write 模式. 装 (b) 修这道坎.
+// 三层: (a) MAX_ROUNDS=30 兜底 (cap 总轮数, 防 subagent 卡死),
+// (b) READ_BUDGET=3 软约束 (read-style tool 连续 N 次后注入 phase transition 提示, 防 exploration 链不切到 write),
+// (c) 决断力 (decision under uncertainty) — systemMsg 显式禁止 surrender/ask user, 强制 unilateral decision.
+// (d) 强倒计时 (diff proposal → must edit) — M3 produce diff 块后, N 轮内必须 emit edit_file, 不允许再问 a/b/c.
+// v7 失败: exploration 链不切到 write 链. (b) 修.
+// v8' 失败: M3 在 (b) 触发后给 plan + ask 2 确认. (c) 修 (改 surrender 为 propose diff).
+// v9 失败: M3 produce diff 但 ask (a/b/c) 选哪个. (d) 修 (强倒计时逼 edit_file).
 const MAX_ROUNDS = 30;
 const READ_BUDGET = 3;
+const DIFF_COUNTDOWN = 2; // 件 5 (d): produce diff 后给 N 轮机会 edit_file
 const READ_TOOLS = new Set(['read_file', 'grep', 'list_directory', 'get_cwd', 'find_refs', 'list_refs', 'exec_command']);
 const WRITE_TOOLS = new Set(['edit_file', 'write_file', 'hash_edit', 'multi_edit', 'ast_edit']);
+
+function detectDiffProposal(text) {
+  if (!text) return false;
+  return /```(?:diff|patch)\b/.test(text) || /^@@\s+-/m.test(text);
+}
 
 const toolModules = [
   { name: 'system_exec', import: () => import('./system-exec.mjs'), toolsKey: 'TOOLS', execKey: 'executeTool' },
@@ -189,7 +199,10 @@ export async function startDevRepl(modelOverride, chatId, initialMessage) {
   }
   let provider = picked.provider;
   let providerLabel = picked.label;
-  let MODEL = providerLabel.split('/')[1] || currentModel;
+  // Bug fix: providerLabel = "<provider>/<model>" 但 model 可能含斜杠 (openrouter "deepseek/deepseek-chat"),
+  // split('/')[1] 拿错的. 用 cfg.current.model 拿, fallback 到 label 的剩余部分.
+  const labelParts = providerLabel.split('/');
+  let MODEL = cfg.current?.model || (labelParts.length > 2 ? labelParts.slice(1).join('/') : labelParts[1]) || currentModel;
   const { tools, dispatch } = await loadAllTools();
 
   tools.push(
@@ -281,6 +294,13 @@ Rules:
 - But aim to read only KEY files (entry point + handler + reply), not every file in the project.
 - For each key file you read, add a comment about what it does.
 - Answer in Chinese, reference specific code lines, explain the flow.
+
+DECISION UNDER UNCERTAINTY (决断力, 件 5 c):
+- 你是自主 agent, 任务来了就做, 默认 make unilateral decision.
+- 禁止 ask user 确认 ("请确认" / "请贴出" / "需要您" / "allow me to read again" 等都是 surrender 信号).
+- 不确定时: 选 best guess → 直接 emit write tool (edit_file/write_file/hash_edit/multi_edit/ast_edit) → 改完报告 diff 让 user review.
+- 实在无 info: 在 final answer 里贴 proposed patch (\`\`\`diff 块), 而不是 ask user. 让 user 看到你的判断, 不是看到你问问题.
+- 例外: 删数据 / rm 命令 / 推 commit 仍需 confirm (safety critical, 见下面 Decision Cheat Sheet). 代码 edit 全部 unilateral.
 
 FIRST-TURN TOOL CALL CONTRACT (硬约束):
 - 第一轮 (用户消息刚到时) 的回复必须是直接的 tool call, 不能先输出任何说明文字/中文分析/<think>.
@@ -503,14 +523,26 @@ FIRST-TURN TOOL CALL CONTRACT (硬约束):
     let tier2RetriesLeft = 2; // Tier 2: server-side retry 硬上限 2 次
     let readCount = 0; // 件 5 (b): read-style tool 累计, 触发 phase transition 后 reset
     let writeHappened = false; // 件 5 (b): write-style tool 发生过则短路, 不再 nudge
+    let diffCountdown = 0; // 件 5 (d): diff proposal 倒计时 (0=未触发, >0=还剩 N 轮必须 emit edit_file)
 
     for (let round = 0; round < MAX_ROUNDS; round++) {
       // 件 5 (b): read budget 软约束 — 连续 N 次 read-style tool 后, 强制 phase transition nudge
+      // 件 5 (c): decision under uncertainty — 禁止 surrender / ask user, 强制 unilateral decision
       if (readCount >= READ_BUDGET && !writeHappened) {
-        const phaseMsg = `[Execution boundary] You have used ${readCount} read-style tool calls (read_file/grep/list_directory/exec_command) without an edit. Either: (a) emit a write tool (edit_file/write_file/hash_edit/multi_edit/ast_edit) NOW with concrete args, OR (b) give a final answer in Chinese stating what additional info is needed. Do NOT issue another read tool.`;
+        const phaseMsg = `[Execution boundary] You have used ${readCount} read-style tool calls (read_file/grep/list_directory/exec_command) without an edit. You are a self-directed agent — DO NOT ask user for confirmation, DO NOT say "请贴出" / "请确认" / "allow me to read again". Either: (a) emit a write tool (edit_file/write_file/hash_edit/multi_edit/ast_edit) NOW with your best-guess concrete args, OR (b) give a final answer with a proposed \`\`\`diff patch\`\`\` block. Do NOT issue another read tool.`;
         messages.push({ role: 'system', content: phaseMsg });
-        process.stdout.write(`\x1b[33m[件5] read budget hit (${readCount} reads), injecting phase transition nudge\x1b[0m\n`);
+        process.stdout.write(`\x1b[33m[件5] read budget hit (${readCount} reads), injecting phase transition nudge (决断力 强制)\x1b[0m\n`);
         readCount = 0; // 触发后 reset, 防止每轮重复; 模型若仍只 read, 下一轮再 nudge
+      }
+      // 件 5 (d): diff proposal 强倒计时 — produce diff 后 N 轮内必须 emit edit_file, 不允许再问 a/b/c
+      if (diffCountdown > 0 && !writeHappened) {
+        const isFinalChance = diffCountdown === 1;
+        const diffMsg = isFinalChance
+          ? `[Diff countdown — FINAL CHANCE] You proposed a diff in a previous response. This is your LAST round to call edit_file. If you emit anything other than edit_file, the loop ends with "uncompleted diff proposal". Use edit_file with the search/replace pair from your diff.`
+          : `[Diff countdown ${DIFF_COUNTDOWN - diffCountdown + 1}/${DIFF_COUNTDOWN}] You proposed a diff in a previous response. You MUST call edit_file in this round using that exact diff — no more questions, no more options (a/b/c). Use edit_file with the search/replace pair from your diff.`;
+        messages.push({ role: 'system', content: diffMsg });
+        process.stdout.write(`\x1b[33m[件5d] diff countdown ${DIFF_COUNTDOWN - diffCountdown + 1}/${DIFF_COUNTDOWN}, forcing edit_file${isFinalChance ? ' (FINAL CHANCE)' : ''}\x1b[0m\n`);
+        diffCountdown--;
       }
       try {
         const t0 = Date.now();
@@ -674,6 +706,16 @@ FIRST-TURN TOOL CALL CONTRACT (硬约束):
               // 强制 round 0 重跑: 把 round 改回 0 (for 循环 round++ 会变 1, 所以手动重置)
               round = -1;
               continue;
+            }
+            // 件 5 (d): 检测 diff proposal — 如果 M3 出了 ```diff 块但没 emit edit_file,
+            // 启动倒计时, 下一轮强制要求 edit_file, 不允许再 break.
+            if (detectDiffProposal(content) && diffCountdown === 0) {
+              diffCountdown = DIFF_COUNTDOWN;
+              process.stdout.write(`\x1b[33m[件5d] diff proposal detected in final answer, starting ${DIFF_COUNTDOWN}-round countdown to force edit_file\x1b[0m\n`);
+              // 把 M3 的 diff proposal 加入 messages 当作 assistant message
+              messages.push({ role: 'assistant', content: content || null });
+              if (content) histAppend(sessionId, { role: 'assistant', content });
+              continue; // 不 break, 让下一轮 (件 5 (d) 倒计时) 逼 edit_file
             }
             finalAnswer = content;
             // assistant 最终回答落盘
