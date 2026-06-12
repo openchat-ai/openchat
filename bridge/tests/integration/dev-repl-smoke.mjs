@@ -58,12 +58,35 @@ const NAME = 'dev-repl-smoke (无 apiKey 端到端)';
 // === 2. slash-commands 全命令 ===
 {
   const sc = await import('../../src/experiments/lib/slash-commands.mjs');
-  // 2a. listCommands 含 8 命令
+  // 2a. listCommands 含 13 命令 (含 /history-clear)
   const list = sc.listCommands();
-  for (const c of ['/help', '/status', '/clear', '/model', '/resume', '/commit', '/exit', '/quit']) {
+  for (const c of ['/help', '/status', '/clear', '/history-clear', '/model', '/resume', '/forget', '/diff', '/commit', '/task', '/workflow', '/exit', '/quit']) {
     assert.ok(list.includes(c), `listCommands 缺 ${c}`);
   }
-  r.ok('listCommands 含 8 命令');
+  r.ok('listCommands 含 13 命令');
+
+  // 2a-2. /history-clear 元数据 (Step 4)
+  assert.ok(sc.COMMANDS['history-clear'], 'COMMANDS["history-clear"] 必须注册');
+  assert.equal(sc.COMMANDS['history-clear'].arg, '');
+  assert.ok(sc.COMMANDS['history-clear'].desc.includes('不退出'));
+  assert.ok(sc.COMMANDS['history-clear'].desc.includes('不清屏'));
+  assert.equal(sc.COMMANDS['history-clear'].permission, 'self');
+  r.ok('/history-clear 元数据完整 (arg/desc/permission)');
+
+  // 2a-3. autocomplete 视图 + 拼写纠错
+  const names = sc.listCommandNames();
+  assert.ok(names.includes('history-clear'));
+  assert.ok(names.length >= 13);
+  const v1 = sc.validateCommandName('history-clear');
+  assert.equal(v1.ok, true);
+  assert.equal(v1.cmd, 'history-clear');
+  const v2 = sc.validateCommandName('history-cle');  // 漏 'ar', 距离 2
+  assert.equal(v2.ok, false);
+  assert.equal(v2.suggestion, '/history-clear');
+  const v3 = sc.validateCommandName('xyz-no-such-thing');
+  assert.equal(v3.ok, false);
+  assert.equal(v3.suggestion, null);
+  r.ok('listCommandNames + validateCommandName 4 用例');
 
   // 2b. parseSlash 7 用例 (与实验 10 一致)
   const cases = [

@@ -9,12 +9,18 @@
 // - 不持久化 model 切换 (运行中内存态, 退出生效)
 // - /resume 接受 id 或序号, 找不到返 "找不到" 不抛
 // - /commit 必依赖 ctx.onCommit, 缺失返 "未注入" 不抛
-//   /help             — 列出所有命令
-//   /status           — 当前 session/provider/model/工具数/历史轮数
-//   /clear            — 清屏 + 重置历史
-//   /model <name|id>  — 切换当前 model (运行中, 写到 ctx.model)
-//   /resume [chatId]  — 列有历史的 session (无参) 或 跳到指定 session (有参)
-//   /exit             — 退出 (alias: /quit)
+//   /help                  — 列出所有命令
+//   /status                — 当前 session/provider/model/工具数/历史轮数
+//   /clear                 — 清屏 + 重置历史
+//   /history-clear         — 清空当前 session 的对话历史 (不退出, 不清屏)
+//   /model <name|id>       — 切换当前 model (运行中, 写到 ctx.model)
+//   /resume [chatId]       — 列有历史的 session (无参) 或 跳到指定 session (有参)
+//   /forget [chatId]       — 列有历史的 session; 或 /forget <id> --force 删除
+//   /diff                  — 显示未提交的 git diff
+//   /commit                — 一键 git add + 自动 commit msg (基于 git diff)
+//   /task <goal>           — 派生子 agent 跑任务 (独立 session)
+//   /workflow <name>       — 运行已定义的工作流
+//   /exit                  — 退出 (alias: /quit)
 //
 // 故意不做 (留给后续 PR): /sessions /compact /cost /bug /init /memory
 // 理由: 这些要新建 storage 子模块, 一次提交 diff 超 500 行 (违反 R4)
@@ -23,12 +29,20 @@
 //   { input, ctx } → { handled: bool, reply?: string, sideEffect?: { setModel?, clearHistory?, resumeTo?: string, exit? } }
 //   ctx 扩展: availableSessions?: [{ id, msgCount, lastActivity, cwd? }]
 //     (由 dev-repl 注入, slash-commands 不硬耦合 repl-history)
+//
+// COMMANDS 字段约定 (供 help/autocomplete/validate 共用):
+//   { name: { arg, desc, permission? } }
+//     - arg:      用法占位符 ('', '<...>', '[...]'), 喂给 /help 文本
+//     - desc:     一行中文说明
+//     - permission: 'self' = 仅影响当前 session (无权限闸); 默认同 'self'
+//                  'git'  = 需要 cwd 在 git 仓库内 (e.g. /commit /diff)
+//   unknown/permission-gate 命令由 applySlash 在运行时判定, 静态注册表只声明元数据
 
 export const COMMANDS = {
   help:    { arg: '',              desc: '列出所有 slash 命令' },
   status:  { arg: '',              desc: '显示 session/provider/model/工具数/历史轮数' },
-  clear:        { arg: '',        desc: '清屏 + 重置对话历史 (不退出)' },
-  'history-clear':{ arg: '',       desc: '清空当前 session 的对话历史 (不退出, 不清屏)' },
+  clear:         { arg: '',         desc: '清屏 + 重置对话历史 (不退出)' },
+  'history-clear':{ arg: '',         desc: '清空当前 session 的对话历史 (不退出, 不清屏)', permission: 'self' },
   model:   { arg: '<name|id>',     desc: '切换当前 model, 写到 cfg.current.model' },
   resume:  { arg: '[chatId]',      desc: '列有历史的 session; 或 /resume <id> 跳到指定' },
   forget:  { arg: '[chatId]',      desc: '列有历史的 session; 或 /forget <id> 删除指定' },
@@ -44,6 +58,51 @@ export function listCommands() {
   return Object.entries(COMMANDS)
     .map(([k, v]) => `  /${k.padEnd(8)} ${v.arg.padEnd(14)} ${v.desc}`)
     .join('\n');
+}
+
+// === 供 autocomplete / 校验 用的只读视图 ===
+// 返回全部已注册命令名 (按插入顺序) — 喂给 readline completer
+export function listCommandNames() {
+  return Object.keys(COMMANDS);
+}
+
+// 校验输入是否是合法命令名 (大小写不敏感)
+// 返回 { ok: true, cmd } 或 { ok: false, suggestion?: string }
+// 供 dev-repl 在 tab 补全 / 拼写纠错时调用
+export function validateCommandName(input) {
+  if (typeof input !== 'string' || !input) return { ok: false };
+  const lower = input.toLowerCase();
+  if (COMMANDS[lower]) return { ok: true, cmd: lower };
+  // 拼写提示: 取 Levenshtein 距离最小的邻居, 距离 ≤ 2 才返回
+  // (放宽到 2 是因为长名 (如 history-clear) 漏 1-2 字符仍属常见 typo)
+  const names = Object.keys(COMMANDS);
+  let best = null, bestDist = Infinity;
+  for (const n of names) {
+    const d = levenshtein(n, lower);
+    if (d < bestDist) { bestDist = d; best = n; }
+  }
+  return { ok: false, suggestion: best && bestDist <= 2 ? `/${best}` : null };
+}
+
+function levenshtein(a, b) {
+  if (a === b) return 0;
+  const m = a.length, n = b.length;
+  if (!m) return n; if (!n) return m;
+  const prev = new Array(n + 1);
+  for (let j = 0; j <= n; j++) prev[j] = j;
+  for (let i = 1; i <= m; i++) {
+    let cur = i;
+    let prevDiag = prev[0];
+    prev[0] = i;
+    for (let j = 1; j <= n; j++) {
+      const tmp = prev[j];
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      cur = Math.min(prev[j] + 1, prev[j - 1] + 1, prevDiag + cost);
+      prevDiag = tmp;
+      prev[j] = cur;
+    }
+  }
+  return prev[n];
 }
 
 export function parseSlash(input) {
@@ -86,6 +145,8 @@ export async function applySlash({ cmd, arg, ctx }) {
       };
     case 'clear':
       return { reply: '\x1b[2J\x1b[H', sideEffect: { clearHistory: true } };
+    case 'history-clear':
+      return { reply: '已清空当前 session 的对话历史。', sideEffect: { clearHistory: true } };
     case 'model': {
       if (!arg) return { reply: '用法: /model <name|id>\n  当前: ' + (ctx.model || '(default)') };
       return { reply: `已切换 model: ${arg}  (下次 LLM 调用生效)`, sideEffect: { setModel: arg } };

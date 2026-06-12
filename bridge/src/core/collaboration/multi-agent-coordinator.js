@@ -95,7 +95,7 @@ export class MultiAgentCoordinator {
       onProgress = () => {}
     } = options;
 
-    const subtasks = this.decomposeTask(task);
+    const subtasks = await this.decomposeTask(task);
     if (subtasks.length === 0) {
       return { success: false, error: 'No subtasks generated' };
     }
