@@ -75,6 +75,18 @@ Return ONLY a JSON array, no other text:
   return { steps: steps.slice(0, MAX_STEPS), p, model, fallbacks };
 }
 
+// [L3 PLAN] 在 /goal 跑前展示 plan — 永远 log, opt-in 阻塞
+function _printPlan(description, steps) {
+  console.log(`\n[goal] Plan for: "${description}"`);
+  console.log(`  ${steps.length} steps:`);
+  for (let i = 0; i < steps.length; i++) {
+    const s = steps[i];
+    const role = pickRole(s.action);
+    console.log(`  ${i + 1}. [${role}] ${s.action}`);
+    if (s.expected) console.log(`     expected: ${s.expected.slice(0, 80)}`);
+  }
+}
+
 // compose 契约入口
 export async function run({ inputs = {} } = {}) {
   const { description, sessionId = 'default' } = inputs;
@@ -85,6 +97,18 @@ export async function run({ inputs = {} } = {}) {
   const cfg = persistentConfig.config;
   const { provider, model, fallbacks } = await _getProvider();
   const { steps } = await _decompose(description, provider, model, fallbacks, cfg);
+
+  // [L3 PLAN] 拆完先展示 plan, opt-in 阻塞等用户接受 (OPENCHAT_GOAL_PLAN=1)
+  _printPlan(description, steps);
+  if (process.env.OPENCHAT_GOAL_PLAN === '1' && process.stdin.isTTY) {
+    process.stdout.write('\n  Execute? [y/n/edit] (default y): ');
+    let ans = 'y';
+    try { ans = require('fs').readFileSync(0, 'utf8').trim().toLowerCase() || 'y'; } catch { ans = 'y'; }
+    if (ans === 'n' || ans === 'no') {
+      return { outputs: { summary: 'Plan rejected by user', steps: [], done: 0, failed: 0, total: 0 } };
+    }
+    // 'edit' / 其他 → 简化为继续 (全功能 edit UI 是未来工作)
+  }
 
   const results = [];
   let done = 0;

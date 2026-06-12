@@ -17,6 +17,7 @@ import {
   adaptMaxRounds as brainAdaptMaxRounds,
   trainOnOutcome as brainTrain,
 } from './lib/neural-bridge.mjs';
+import { checkPermission as permCheck } from './lib/permission-gate.mjs';
 
 brainInit();  // 进程启动一次性, env OPENCHAT_NEURAL_BRAIN=1 才启用
 
@@ -159,6 +160,14 @@ export async function processText(text, chatId = 'default', opts = {}) {
           entry.history.push({ role: 'tool', tool_call_id: tc.id, content: g.ok ? g.result : g.error });
           if (g.bypassedByGuardian) break;
         } else {
+          // [PERMISSION] gate before _execTool — safe 直通, confirm 问/auto, forbidden block
+          let parsedArgs = {};
+          try { parsedArgs = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : (rawArgs || {}); } catch { /* 留给 _execTool 报错 */ }
+          const perm = permCheck(tc.name, parsedArgs, { chatId });
+          if (!perm.allowed) {
+            entry.history.push({ role: 'tool', tool_call_id: tc.id, content: `[Denied: ${perm.reason}]` });
+            continue;
+          }
           const result = await _execTool(tc.name, rawArgs);
           entry.history.push({ role: 'tool', tool_call_id: tc.id, content: result });
         }
