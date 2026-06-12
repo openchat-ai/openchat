@@ -18,6 +18,7 @@ import {
   trainOnOutcome as brainTrain,
 } from './lib/neural-bridge.mjs';
 import { checkPermission as permCheck } from './lib/permission-gate.mjs';
+import { runPre as hookPre, runPost as hookPost } from './lib/agent-hooks.mjs';
 
 brainInit();  // 进程启动一次性, always-on
 
@@ -200,9 +201,13 @@ async function _execTool(name, argsRaw) {
   let args;
   try { args = typeof argsRaw === 'string' ? JSON.parse(argsRaw) : argsRaw; } catch { return `[Error] Invalid JSON: ${String(argsRaw).slice(0, 80)}`; }
   try {
+    // [HOOKS] preTool — permission/限流/撤销 注册的 hook 链, 抛 throw 中止 (Step 6.1 / L3 整车基础)
+    await hookPre(name, args);
     const r = await codingExec(name, args);
     const s = typeof r === 'string' ? r : JSON.stringify(r, null, 2);
-    return s.length > 8000 ? s.slice(0, 8000) + '\n... (truncated)' : s;
+    const truncated = s.length > 8000 ? s.slice(0, 8000) + '\n... (truncated)' : s;
+    // [HOOKS] postTool — log/transform chain, hook 抛 throw 不阻断主流程 (warn 而已)
+    return await hookPost(name, args, truncated);
   } catch (e) {
     return `[Error] ${e.message}`;
   }
