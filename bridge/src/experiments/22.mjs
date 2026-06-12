@@ -9,6 +9,7 @@ import { createProvider } from 'provider-kit';
 import { runPipeline, getEditProtocolGuidance } from './lib/epc-pipeline.mjs';
 import { TOOLS as CODING_TOOLS, executeTool as codingExec } from './lib/coding-tools.mjs';
 import { createGuardian } from './lib/guardian.mjs';
+import { getRole } from './lib/subagent-roles.mjs';
 import {
   init as brainInit,
   predict as brainPredict,
@@ -57,16 +58,27 @@ export async function initProvider() {
   return `${provider}/${model}`;
 }
 
-function _getOrCreateSession(chatId) {
+// === invariants ===
+//   - _provider 必须先调 initProvider() 才能调 processText/run
+//   - 每个 chatId 一份 history (in-memory Map), session 不持久化
+//   - role > brain > base 的优先级: role 决定 prompt/tools/maxRounds 顶, brain 在 role 之上微调
+//   - toolSubset = (role.tools if role else callerTools) ∩ brain-adapt
+// === end invariants ===
+
+function _getOrCreateSession(chatId, systemPrompt = SYSTEM_PROMPT) {
   if (_sessions.has(chatId)) return _sessions.get(chatId);
-  const entry = { history: [{ role: 'system', content: SYSTEM_PROMPT }], sessionId: chatId };
+  const entry = { history: [{ role: 'system', content: systemPrompt }], sessionId: chatId };
   _sessions.set(chatId, entry);
-  console.log(`[tool-loop] new session chatId=${chatId}`);
+  console.log(`[tool-loop] new session chatId=${chatId}${systemPrompt !== SYSTEM_PROMPT ? ' (role)' : ''}`);
   return entry;
 }
 
 export async function processText(text, chatId = 'default', opts = {}) {
   if (!_provider) throw new Error('call initProvider() first');
+
+  // [ROLE] opt-in role override — prompt + tools + maxRounds 一起换
+  const roleDef = opts.role ? getRole(opts.role) : null;
+  if (roleDef) console.log(`[role] ${chatId}: ${roleDef.name} (tools=${roleDef.tools.length}, maxRounds=${roleDef.maxRounds})`);
 
   // [BRAIN] predict — opt-in 读脑预测, 失败/未启 = null
   const brainPred = brainPredict(text);
@@ -74,20 +86,26 @@ export async function processText(text, chatId = 'default', opts = {}) {
     console.log(`[brain] ${chatId}: difficulty=${brainPred.difficulty} domain=${brainPred.domain} canLocal=${brainPred.canLocal} (samples=${brainPred.samples})`);
   }
 
-  const entry = _getOrCreateSession(chatId);
+  const entry = _getOrCreateSession(chatId, roleDef ? roleDef.prompt : undefined);
   entry.history.push({ role: 'user', content: text });
 
   const guardian = opts.guardian !== undefined ? opts.guardian : null;  // 默认关闭 guardian — 它会拒绝 LLM 的合法 tool call, 阻断 M3 多步探索
   // 窄工具集: 调用方传 opts.tools (tool name 数组) → 只暴露这些给 LLM.
   // 默认 = 全 39. M3 在 39 工具下会偏向 build_run/lang_run (通用 shell), 不肯用 edit_file/hash_edit,
   // 浪费 round 在探索, 撞 MAX_ROUNDS. 5-件套原则: 任务越窄, 工具越少越好.
+  // [ROLE] role 优先于 callerTools, callerTools 优先于全集
   const callerTools = (Array.isArray(opts.tools) && opts.tools.length > 0)
     ? CODING_TOOLS.filter(t => opts.tools.includes(t.function?.name))
     : CODING_TOOLS;
+  const roleBase = roleDef
+    ? CODING_TOOLS.filter(t => roleDef.tools.includes(t.function?.name))
+    : callerTools;
   // [BRAIN] adapt tools by predicted domain (code_review → 只读)
-  const toolSubset = brainAdaptTools(callerTools, brainPred?.domain);
+  const toolSubset = brainAdaptTools(roleBase, brainPred?.domain);
   // [BRAIN] adapt max rounds by predicted difficulty
-  const effectiveMaxRounds = brainAdaptMaxRounds(MAX_ROUNDS, brainPred?.difficulty);
+  // [ROLE] role.maxRounds 优先于 brain, brain 优先于 base
+  const baseRounds = roleDef ? roleDef.maxRounds : MAX_ROUNDS;
+  const effectiveMaxRounds = brainAdaptMaxRounds(baseRounds, brainPred?.difficulty);
   let finalText = '';
   const callCount = new Map();
 
@@ -198,6 +216,7 @@ export async function run({ inputs = {}, deps = {} } = {}) {
   const opts = {};
   if (guardianOpt) opts.guardian = guardianOpt;
   if (Array.isArray(inputs.tools) && inputs.tools.length > 0) opts.tools = inputs.tools;
+  if (typeof inputs.role === 'string') opts.role = inputs.role;
   const r = await processText(text, chatId, opts);
   return { outputs: { response: r.response || '', toolCalls: r.toolCalls || [] } };
 }

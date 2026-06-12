@@ -8,6 +8,14 @@ import { run as composeRun } from './compose.mjs';
 import { persistentConfig } from './lib/config.mjs';
 import { createProvider } from 'provider-kit';
 import { initProvider as initToolLoopProvider } from './22.mjs';
+// === invariants ===
+//   - 调 run() 前必须先调 initProvider (model)
+//   - 每 step 独立 chatId: ${sessionId}/step-${i}/${role}, role 隔离 session
+//   - pickRole 找不到 keyword → fallback DEFAULT_ROLE (editor)
+//   - composeRun('tool-loop', ...) 的 role 透传到 22.mjs, 改 prompt/tools/maxRounds
+// === end invariants ===
+
+import { pickRole, ROLES } from './lib/subagent-roles.mjs';
 import assert from 'node:assert';
 
 export const META = { id: 'goal' };
@@ -84,11 +92,16 @@ export async function run({ inputs = {} } = {}) {
 
   for (let i = 0; i < steps.length; i++) {
     const s = steps[i];
+    const role = pickRole(s.action);
     const stepPrompt = `[Goal: ${description}]\nStep ${i + 1}/${steps.length}: ${s.action}\nExpected: ${s.expected}\n\nExecute this step now.`;
     let result = '';
     let status = 'failed';
     try {
-      const r = await composeRun('tool-loop', { text: stepPrompt, chatId: `${sessionId}/step-${i}` });
+      const r = await composeRun('tool-loop', {
+        text: stepPrompt,
+        chatId: `${sessionId}/step-${i}/${role}`,
+        role,
+      });
       result = r?.outputs?.response || '';
       if (result) status = 'done';
     } catch (e) {
@@ -96,7 +109,7 @@ export async function run({ inputs = {} } = {}) {
     }
     if (status === 'done') done++;
     else failed++;
-    results.push({ action: s.action, expected: s.expected, status, result: result.slice(0, 2000) });
+    results.push({ action: s.action, expected: s.expected, status, role, result: result.slice(0, 2000) });
   }
 
   const summary = `Goal "${description}": ${done}/${results.length} steps done, ${failed} failed.`;
