@@ -9,6 +9,15 @@ import { createProvider } from 'provider-kit';
 import { runPipeline, getEditProtocolGuidance } from './lib/epc-pipeline.mjs';
 import { TOOLS as CODING_TOOLS, executeTool as codingExec } from './lib/coding-tools.mjs';
 import { createGuardian } from './lib/guardian.mjs';
+import {
+  init as brainInit,
+  predict as brainPredict,
+  adaptTools as brainAdaptTools,
+  adaptMaxRounds as brainAdaptMaxRounds,
+  trainOnOutcome as brainTrain,
+} from './lib/neural-bridge.mjs';
+
+brainInit();  // 进程启动一次性, env OPENCHAT_NEURAL_BRAIN=1 才启用
 
 const CWD = process.cwd();
 // 简化 SYSTEM_PROMPT — 原版约束太多 (Call ONE tool at a time + getEditProtocolGuidance), 阻断 M3 多步探索
@@ -58,6 +67,13 @@ function _getOrCreateSession(chatId) {
 
 export async function processText(text, chatId = 'default', opts = {}) {
   if (!_provider) throw new Error('call initProvider() first');
+
+  // [BRAIN] predict — opt-in 读脑预测, 失败/未启 = null
+  const brainPred = brainPredict(text);
+  if (brainPred) {
+    console.log(`[brain] ${chatId}: difficulty=${brainPred.difficulty} domain=${brainPred.domain} canLocal=${brainPred.canLocal} (samples=${brainPred.samples})`);
+  }
+
   const entry = _getOrCreateSession(chatId);
   entry.history.push({ role: 'user', content: text });
 
@@ -65,13 +81,17 @@ export async function processText(text, chatId = 'default', opts = {}) {
   // 窄工具集: 调用方传 opts.tools (tool name 数组) → 只暴露这些给 LLM.
   // 默认 = 全 39. M3 在 39 工具下会偏向 build_run/lang_run (通用 shell), 不肯用 edit_file/hash_edit,
   // 浪费 round 在探索, 撞 MAX_ROUNDS. 5-件套原则: 任务越窄, 工具越少越好.
-  const toolSubset = (Array.isArray(opts.tools) && opts.tools.length > 0)
+  const callerTools = (Array.isArray(opts.tools) && opts.tools.length > 0)
     ? CODING_TOOLS.filter(t => opts.tools.includes(t.function?.name))
     : CODING_TOOLS;
+  // [BRAIN] adapt tools by predicted domain (code_review → 只读)
+  const toolSubset = brainAdaptTools(callerTools, brainPred?.domain);
+  // [BRAIN] adapt max rounds by predicted difficulty
+  const effectiveMaxRounds = brainAdaptMaxRounds(MAX_ROUNDS, brainPred?.difficulty);
   let finalText = '';
   const callCount = new Map();
 
-  for (let round = 0; round < MAX_ROUNDS; round++) {
+  for (let round = 0; round < effectiveMaxRounds; round++) {
     const rawResponse = await _provider.chat(_model, entry.history, {
       tools: toolSubset,
     });
@@ -133,6 +153,14 @@ export async function processText(text, chatId = 'default', opts = {}) {
   }
 
   if (!finalText) finalText = '[max rounds reached]';
+
+  // [BRAIN] train on outcome — 失败 → difficulty +1, domain → 'logic'
+  if (brainPred) {
+    const success = !finalText.startsWith('[max rounds') && !finalText.startsWith('[loop aborted');
+    const error = success ? null : finalText;
+    brainTrain({ text, predicted: brainPred, success, error });
+  }
+
   entry.history.push({ role: 'assistant', content: finalText });
 
   const trimmed = [entry.history[0], ...entry.history.slice(-18)];
