@@ -22,6 +22,15 @@ const TRUST_FILE = join(TRUST_DIR, 'trust.json');
 let _enabled = true;
 let _trust = null;  // 懒加载
 
+// === invariants ===
+//   - _enabled 默认 true, setEnabled(false) 是测试 escape hatch
+//   - _trust 懒加载, 损坏/读失败 → 静默重置为空 (主流程不 throw)
+//   - checkPermission 总是返 { allowed, reason }; allowed=false 时 22.mjs 把 reason 当 tool result 返给 LLM
+//   - bridge 模式 (无 process.stdin.isTTY 或 ctx.bridgeMode) → confirm 静默 allow + log, 不阻塞
+//   - 未知 tool → 默认 'confirm' (保守, 走 confirm 路径)
+//   - trust 写失败 → 静默 (不影响 runtime, 不影响本次 allow 决策)
+// === end invariants ===
+
 const TOOL_PERMISSION = {
   // safe = 只读 / 不可逆影响 (读/查/分析)
   read_file: 'safe', grep: 'safe', find_refs: 'safe', code_search: 'safe',
