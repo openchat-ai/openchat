@@ -163,6 +163,7 @@ export function getHistory(chatId) {
 //   deps:   { guardian: { guardian } }
 //   outputs: { response, toolCalls }
 export async function run({ inputs = {}, deps = {} } = {}) {
+  if (!_provider) await initProvider();
   const { text, chatId = 'default' } = inputs;
   if (!text) throw new Error('tool-loop.run: text required');
   const guardianOpt = inputs.guardian || deps.guardian?.guardian;

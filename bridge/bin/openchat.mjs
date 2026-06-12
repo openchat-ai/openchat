@@ -152,8 +152,8 @@ async function main() {
   }
 
   if (goalDesc) {
-    await initBridge();
-    const { run } = await import('../src/experiments/18-goal.mjs');
+    // /goal 用 provider-kit 直连 LLM, 不需要 HTTP/WS 桥, 跳过 initBridge 以避免与已运行的桥端口冲突
+    const { run } = await import('../src/experiments/38.mjs');
     const result = await run({ inputs: { description: goalDesc } });
     if (result.outputs) console.log(JSON.stringify(result.outputs, null, 2));
     return;

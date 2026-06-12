@@ -27,7 +27,8 @@
 export const COMMANDS = {
   help:    { arg: '',              desc: '列出所有 slash 命令' },
   status:  { arg: '',              desc: '显示 session/provider/model/工具数/历史轮数' },
-  clear:   { arg: '',              desc: '清屏 + 重置对话历史 (不退出)' },
+  clear:        { arg: '',        desc: '清屏 + 重置对话历史 (不退出)' },
+  'history-clear':{ arg: '',       desc: '清空当前 session 的对话历史 (不退出, 不清屏)' },
   model:   { arg: '<name|id>',     desc: '切换当前 model, 写到 cfg.current.model' },
   resume:  { arg: '[chatId]',      desc: '列有历史的 session; 或 /resume <id> 跳到指定' },
   forget:  { arg: '[chatId]',      desc: '列有历史的 session; 或 /forget <id> 删除指定' },

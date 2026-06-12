@@ -40,12 +40,51 @@ export async function readFile(filePath, allowExternal) {
   return content;
 }
 
-export async function writeFile(filePath, content) {
+export async function writeFile(filePath, content, opts = {}) {
   const resolved = path.resolve(PROJECT_ROOT, filePath);
   if (!resolved.startsWith(PROJECT_ROOT)) throw new Error('Path traversal denied');
   await fs.mkdir(path.dirname(resolved), { recursive: true });
+
+  // ─── 写文件护栏 (L1.5 教训: DeepSeek V3 4x 重复覆盖 slash-commands.mjs) ───
+  let existed = false;
+  let origSize = 0;
+  let backupPath = null;
+  try {
+    const stat = await fs.stat(resolved);
+    existed = true;
+    origSize = stat.size;
+  } catch { /* new file, no backup needed */ }
+
+  if (existed) {
+    // 1. 自动备份 (给用户后悔的机会)
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    const safeName = filePath.replace(/[\\/]/g, '__');
+    const backupDir = path.join(PROJECT_ROOT, '.openchat', 'backups', 'write_file');
+    await fs.mkdir(backupDir, { recursive: true });
+    backupPath = path.join(backupDir, `${safeName}.${ts}`);
+    await fs.copyFile(resolved, backupPath);
+
+    // 2. 收缩检测: 新内容 < 原 30% 视为疑似破坏, 拒绝 (除非 force=true 或 dry-run 显式确认)
+    if (!opts.force && content.length < origSize * 0.3) {
+      throw new Error(
+        `write_file guardrail: ${filePath} shrunk ${origSize} → ${content.length} bytes ` +
+        `(${(100 * content.length / origSize).toFixed(1)}%). ` +
+        `If intentional, pass force=true. Backup: ${backupPath}`
+      );
+    }
+
+    // 3. 提示: 改文件优先用 edit_file (diff 可见, 出错可逆)
+    console.warn(`[write_file] ${filePath} exists (${origSize} bytes) — consider edit_file for partial changes. Backup: ${backupPath}`);
+  }
+
+  // 4. Dry-run 模式: OPENCHAT_WRITE_DRYRUN=1 时只打印, 不写
+  if (process.env.OPENCHAT_WRITE_DRYRUN === '1') {
+    console.log(`[write_file DRY-RUN] would write ${content.length} bytes to ${filePath}${backupPath ? ` (backup: ${backupPath})` : ''}`);
+    return { path: filePath, bytes: content.length, dryRun: true, backup: backupPath };
+  }
+
   await fs.writeFile(resolved, content, 'utf8');
-  return { path: filePath, bytes: content.length };
+  return { path: filePath, bytes: content.length, backup: backupPath };
 }
 
 // Internal raw edit (no quality gate)
@@ -112,12 +151,13 @@ export const TOOLS = [...SEARCH_TOOLS, ...DEV_TOOLS, ...AST_TOOLS, ...DEEP_TOOLS
     type: 'function',
     function: {
       name: 'write_file',
-      description: 'Write content to a file. Creates directories if needed. Path is relative to project root.',
+      description: 'Write content to a file. Creates directories if needed. Path is relative to project root. Prefer edit_file for partial changes. Pass force=true to bypass shrink-detection guardrail (only if new content is intentionally <30% of original).',
       parameters: {
         type: 'object',
         properties: {
           path: { type: 'string', description: 'Relative file path' },
           content: { type: 'string', description: 'File content' },
+          force: { type: 'boolean', description: 'Bypass shrink-detection guardrail (use only if intentional)' },
         },
         required: ['path', 'content'],
       },
@@ -162,7 +202,7 @@ export const TOOLS = [...SEARCH_TOOLS, ...DEV_TOOLS, ...AST_TOOLS, ...DEEP_TOOLS
 export async function executeTool(name, args) {
   switch (name) {
     case 'read_file': return readFile(args.path, args.allowExternal);
-    case 'write_file': return writeFile(args.path, args.content);
+    case 'write_file': return writeFile(args.path, args.content, { force: !!args.force });
     case 'edit_file': {
       // 协议选用交给 LLM (system prompt 含 getEditProtocolGuidance 引导):
       //   LLM 看 prompt → 大文件单行编辑时主动选 hash_edit

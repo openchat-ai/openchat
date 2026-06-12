@@ -7,6 +7,7 @@ import { create } from './lib/report.mjs';
 import { run as composeRun } from './compose.mjs';
 import { persistentConfig } from './lib/config.mjs';
 import { createProvider } from 'provider-kit';
+import { initProvider as initToolLoopProvider } from './22.mjs';
 import assert from 'node:assert';
 
 export const META = { id: 'goal' };
@@ -71,6 +72,8 @@ export async function run({ inputs = {} } = {}) {
   const { description, sessionId = 'default' } = inputs;
   if (!description) throw new Error('goal.run: description required');
 
+  await initToolLoopProvider();
+
   const cfg = persistentConfig.config;
   const { provider, model, fallbacks } = await _getProvider();
   const { steps } = await _decompose(description, provider, model, fallbacks, cfg);
@@ -86,7 +89,7 @@ export async function run({ inputs = {} } = {}) {
     let status = 'failed';
     try {
       const r = await composeRun('tool-loop', { text: stepPrompt, chatId: `${sessionId}/step-${i}` });
-      result = r?.response || '';
+      result = r?.outputs?.response || '';
       if (result) status = 'done';
     } catch (e) {
       result = `[Error] ${e.message}`;
