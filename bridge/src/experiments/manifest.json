@@ -741,7 +741,7 @@
         "waveform"
       ],
       "status": "closed-loop",
-      "intelligenceLevel": "L0"
+      "intelligenceLevel": null
     },
     {
       "id": "signal-algo",
@@ -761,7 +761,7 @@
         "signal"
       ],
       "status": "closed-loop",
-      "intelligenceLevel": "L0"
+      "intelligenceLevel": null
     },
     {
       "id": "mqtt-push",
@@ -779,7 +779,7 @@
         "mqtt"
       ],
       "status": "closed-loop",
-      "intelligenceLevel": "L0"
+      "intelligenceLevel": null
     },
     {
       "id": "doc-gen",
@@ -797,7 +797,7 @@
         "report"
       ],
       "status": "closed-loop",
-      "intelligenceLevel": "L0"
+      "intelligenceLevel": null
     },
     {
       "id": "calendar-parse",
@@ -815,7 +815,7 @@
         "threshold"
       ],
       "status": "closed-loop",
-      "intelligenceLevel": "L0"
+      "intelligenceLevel": null
     },
     {
       "id": "diagnose",
