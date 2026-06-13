@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-// lab.mjs — 无人参与实验室 CLI (P0 + P1 + P2)
+// lab.mjs — 无人参与实验室 CLI (P0 + P1 + P2 + P4)
 //   P0: goal queue + run-next/run-all
 //   P1: history / aggregate / regression / backfill
 //   P2: failures / escalated / retry-stats
+//   P4: deps / check-affected (改文件 → 知道哪些 experiment 受影响)
 //
 // 用法:
 //   node bin/lab.mjs add "<goal>"       加 goal 到队列
@@ -17,23 +18,26 @@
 //   node bin/lab.mjs failures           看失败 + 分类统计
 //   node bin/lab.mjs escalated          列 escalated 记录
 //   node bin/lab.mjs retry-stats        retry 统计 (transient 自动修好率)
+//   node bin/lab.mjs deps [file]        import 依赖图 (全图 / 单文件)
+//   node bin/lab.mjs check-affected     改文件 → 受影响的 experiment 列表
 //
 // 存储:
 //   ~/.openchat/lab/queue.jsonl       — live 状态
 //   ~/.openchat/lab/history.jsonl     — append-only run log
 //   ~/.openchat/lab/escalated.jsonl   — append-only escalate log (P2)
 //
-// 后续 (P3+):
+// 后续 (L3):
 //   - lab.mjs run-cron (定时跑)
 //   - lab.mjs show <id> (看单个 goal 详情)
-//   - lab.mjs dashboard (P3)
+//   - WebSocket 推 → /lab dashboard
 
 // === invariants ===
-// - argv 路由到 12 命令, 未知 cmd 走 showUsage
+// - argv 路由到 14 命令, 未知 cmd 走 showUsage
 // - exit code 0 总是 (除了 add 缺 description 这种 user error)
 // - 走模块函数, 不直接读 jsonl — 让模块的 spec 负责文件格式
 // - 固定列宽给 list/history/failures/escalated, 给脚本/grep 抓取
 // - 不动 queue.jsonl 的 schema, 加字段走 modules
+// - P4 依赖图: 只扫 src/experiments/ + src/lab/ (其它留 P4 续)
 
 import { addGoal, listGoals, getStatus, listFailed } from '../src/lab/goal-queue.mjs';
 import { runNext, runAll } from '../src/lab/runner.mjs';
@@ -41,6 +45,8 @@ import { listHistory, backfillFromQueue } from '../src/lab/history.mjs';
 import { getExperimentStats } from '../src/lab/aggregator.mjs';
 import { detectRegressions } from '../src/lab/regression.mjs';
 import { listEscalated, getEscalationStats } from '../src/lab/escalate.mjs';
+import { buildGraph, getGraph, getAffectedExperiments, getFileDependents } from '../src/lab/dependency-graph.mjs';
+import { getChangedFiles } from '../src/lab/git-diff.mjs';
 
 const args = process.argv.slice(2);
 const cmd = args[0];
@@ -59,6 +65,8 @@ function showUsage() {
   console.log('  lab.mjs failures           show failed goals + classification stats');
   console.log('  lab.mjs escalated          list escalated records');
   console.log('  lab.mjs retry-stats        retry statistics (transient auto-fix rate)');
+  console.log('  lab.mjs deps [file]        import graph: all files with importers, or file dependents');
+  console.log('  lab.mjs check-affected     show experiments affected by staged+working changes');
 }
 
 if (cmd === 'add') {
@@ -274,6 +282,57 @@ if (cmd === 'add') {
     console.log(`  attempt 1 (initial):  ${perAttempt[1] || 0}`);
     console.log(`  attempt 2 (retry 1):  ${perAttempt[2] || 0}`);
     console.log(`  attempt 3 (retry 2):  ${perAttempt[3] || 0}`);
+  }
+
+} else if (cmd === 'deps') {
+  // P4: import 依赖图
+  // deps [file]  → 单文件 importers
+  // deps         → 全部有 importer 的文件
+  // 用 getGraph() (git toplevel 为 root) — 跟 git-diff 返回的 path 同 namespace
+  const g = getGraph();
+  const target = args[1];
+  if (target) {
+    const norm = target.replace(/\\/g, '/').replace(/^\.\//, '');
+    const deps = getFileDependents(norm);
+    if (deps.length === 0) {
+      console.log(`(no importers of ${norm} — file not in graph or no .mjs imports it)`);
+    } else {
+      console.log(`IMPORTERS OF ${norm}:`);
+      for (const d of deps) console.log(`  ${d}`);
+    }
+  } else {
+    const files = Object.entries(g.files).filter(([_, v]) => v.importers.length > 0);
+    if (files.length === 0) {
+      console.log('(empty graph — no .mjs imports any tracked file)');
+    } else {
+      console.log('FILE                                    IMPORTERS');
+      console.log('--------------------------------------  ----------------------------------------');
+      for (const [f, v] of files.sort((a, b) => b[1].importers.length - a[1].importers.length)) {
+        const fp = f.padEnd(38).slice(0, 38);
+        console.log(`${fp}  ${v.importers.join(', ')}`);
+      }
+      console.log(`\n(showing ${files.length} files with >= 1 importer; scanned: ${g.dirs.join(', ')})`);
+    }
+  }
+
+} else if (cmd === 'check-affected') {
+  // P4: git diff → 受影响的 experiment 列表
+  // 默认 mode='all' (staged + working 都不漏); 也接受 'staged' / 'working' / 'last'
+  const mode = args[1] || 'all';
+  const changed = getChangedFiles(mode);
+  if (changed.length === 0) {
+    console.log(`(no changed files in mode "${mode}")`);
+  } else {
+    console.log(`CHANGED FILES (${mode}, ${changed.length}):`);
+    for (const f of changed) console.log(`  ${f}`);
+    const affected = getAffectedExperiments(changed);
+    console.log(`\nAFFECTED EXPERIMENTS (${affected.length}):`);
+    if (affected.length === 0) {
+      console.log('  (none — no experiment imports any of the changed files, and no experiment itself changed)');
+    } else {
+      for (const a of affected) console.log(`  ${a}`);
+    }
+    console.log(`\nnext: add goal for each, e.g. lab.mjs add "re-verify ${affected[0] || '<path>'}"`);
   }
 
 } else {
