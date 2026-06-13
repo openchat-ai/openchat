@@ -66,6 +66,21 @@ const cliPort = portArgIndex !== -1 ? parseInt(args[portArgIndex].split('=')[1])
 const port = cliPort || savedBridge.port || DEFAULT_PORT;
 const isMain = port === DEFAULT_PORT || process.argv.includes('--main');
 
+// [L1.5] 多 bridge flag: --name / --workdir / --token (手机管理多桥用)
+//   --name=X     桥身份 (默认 bridge-<4位随机>)
+//   --workdir=X  桥工作目录 (默认当前 cwd; chdir 后所有相对路径走这个)
+//   --token=X    桥 token (null = 无鉴权; 写 ~/.openchat/bridges/<name>.token)
+const nameArgIndex = args.findIndex(a => a.startsWith('--name='));
+const workdirArgIndex = args.findIndex(a => a.startsWith('--workdir='));
+const tokenArgIndex = args.findIndex(a => a.startsWith('--token='));
+const cliName = nameArgIndex !== -1 ? args[nameArgIndex].slice(7) : null;
+const cliWorkdir = workdirArgIndex !== -1 ? args[workdirArgIndex].slice(10) : null;
+const cliToken = tokenArgIndex !== -1 ? args[tokenArgIndex].slice(8) : null;
+if (cliWorkdir) {
+  try { process.chdir(cliWorkdir); }
+  catch (e) { console.error(`[Bridge] chdir 失败 (--workdir=${cliWorkdir}): ${e.message}`); process.exit(1); }
+}
+
 const dhtPort = savedBridge.dhtPort || 0;
 const localBootstrap = savedBridge.localBootstrap || [];
 let directListen = savedBridge.directListen || 0;
@@ -80,7 +95,7 @@ const isNesting = args.includes('--nesting');
 if (!directListen && localBootstrap.length === 0 && !args.includes('--no-direct') && !isNesting) {
   directListen = port + 2;
 }
-const bridgeName = savedBridge.name || `bridge-${Math.random().toString(36).substr(2, 4)}`;
+const bridgeName = cliName || savedBridge.name || `bridge-${Math.random().toString(36).substr(2, 4)}`;
 const bridgeRegion = savedBridge.region || process.env.REGION || 'unknown';
 const wsSignalingUrl = savedBridge.wsSignaling || '';
 const advertiseHost = savedBridge.advertiseHost || '';
@@ -146,6 +161,9 @@ const CONFIG = {
   directListen,
   directConnect,
   bridgeName,
+  // [L1.5] 多桥身份
+  workdir: process.cwd(),  // chdir 之后的真实 cwd
+  token: cliToken,         // null = 无 token
   bridgeRegion,
   wsSignalingUrl,
   advertiseHost,
@@ -264,7 +282,13 @@ export class Bridge {
     // 启动统一 REST API 服务器（合并了原始 HTTP 服务）
     try {
       const { default: APIServer, setBridgeContext } = await import('./api/server.js');
-      this.apiServer = new APIServer({ port: CONFIG.port, swarm: this.p2p, deployEnabled: deployServerEnabled });
+      this.apiServer = new APIServer({
+        port: CONFIG.port, swarm: this.p2p, deployEnabled: deployServerEnabled,
+        // [L1.5] 多桥身份透传给 API server, /identity 用
+        name: CONFIG.bridgeName,
+        workdir: CONFIG.workdir,
+        token: CONFIG.token,
+      });
       setBridgeContext(this);
       await this.apiServer.start();
       if (this.apiServer) {

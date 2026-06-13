@@ -41,6 +41,10 @@ class APIServer {
     this.port = options.port || DEFAULT_PORT;
     this.swarm = options.swarm || null;
     this.deployEnabled = options.deployEnabled !== false;
+    // [L1.5] 多桥身份 — /identity 返回用
+    this.name = options.name || 'unnamed';
+    this.workdir = options.workdir || process.cwd();
+    this.token = options.token || null;
     this.app = express();
     this.server = null;
     this.wss = null;
@@ -122,6 +126,19 @@ class APIServer {
   setupRoutes() {
     // 健康检查 + 公开端点（无需认证）
     this.app.use('/health', healthRouter);
+
+    // [L1.5] 桥身份 (手机列表用, 不需鉴权 — token 校验留 L3)
+    this.app.get('/identity', (req, res) => {
+      res.json({
+        name: this.name,
+        port: this.port,
+        workdir: this.workdir,
+        pid: process.pid,
+        uptime: Math.floor(process.uptime()),
+        version: '0.1.0',
+        hasToken: !!this.token,
+      });
+    });
     this.app.get('/favicon.ico', (req, res) => {
       res.setHeader('Content-Type', 'image/gif');
       res.send(Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64'));
