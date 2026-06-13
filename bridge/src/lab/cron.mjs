@@ -17,6 +17,15 @@
 //   - run-all: 一次性 drain 到空, 退出
 //   - run-cron: 永远不退出, 每 interval 触发新 drain
 
+// === invariants ===
+// - pidfile (~/.openchat/lab/cron.pid) 防双开, 双开会拒 (清掉死 pidfile 再开)
+// - cycle 串行: 跑完一个才跑下一个 (跟 runner 一致, lab 假设单用户)
+// - runNext throw → log + break (不 kill cron, 下个 cycle 继续)
+// - 队列空 → break + log "ran 0" (不 busy-loop)
+// - SIGINT/SIGTERM handler + 1s pidfile 轮询双保险, 跨平台都能干净退出
+// - 不重写 queue 状态: 调 runNext, 状态由 runner 管
+// - intervalMs 默认 30min, env: OPENCHAT_LAB_CRON_INTERVAL (ms)
+
 import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';

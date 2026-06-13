@@ -16,40 +16,51 @@
 
 | 级别 | 数量 | 含义 |
 |---|---|---|
-| L0 | 22 | 纯工具/基础（config, coding-tools, qiniu, 存储等） |
-| L1 | 4 | 单依赖编排（provider-kit, skill-loader, codec 等） |
-| L1.5 | 10 | 弱 AI 决策（dev-repl, chat-poller, Teach-Me, guardian 等） |
+| L0 | 17 | 纯工具/基础 |
+| L1 | 4 | 单依赖编排 |
+| L1.5 | 10 | 弱 AI 决策（dev-repl, chat-poller, guardian 等） |
 | L2+ | 8 | 多 agent/长链（orchestrator, dream-consolidation, diagnose 等） |
 | L4 | 1 | 灵保业务层（doc-gen） |
+| null | 5 | 灵保信号处理，不涉及 AI |
 
-## 最新提交
+## 最新功能（最近 15 commits）
 
-```
-a704b36 feat: l1.5 ceiling 验证 — 件 5 c+d + swap-m2.mjs + report
-f17d549 fix(bridge): EADDRINUSE 自动降级无网络模式
-43f49b6 fix(openchat): Windows 双字符 — 关闭 bridge signalRL + terminal:false
-046c000 feat: 51-diagnose — tier2-bare-json fingerprint (m3 raw json tool call)
-64605e3 fix: dev-repl parser — add raw json fallback (3 layers) for non-xml tool call formats
-```
-
-## 关键修复（最近）
-
-| 问题 | 修复 |
+| commit | 功能 |
 |---|---|
-| Windows CLI 双字符 | 关闭 bridge signalRL + `terminal:false` |
-| EADDRINUSE 崩 | 自动降级无网络模式 |
-| dev-repl tool call 解析 | 三层 raw JSON 回退 |
-| L1.5 ceiling 验证 | 5 组件全通过 |
+| 560e438 | **Lab P5** — run-cron 定时跑，真正无人值守 |
+| a456aab | **L3 WS push** — 推替 5s 轮询，dashboard 事件驱动 |
+| 91ea093 | **L3 phone push** — lab escalate 通知 user |
+| e1fdb63 | **Lab P4** — dependency graph + check-affected |
+| 592c1a1 | **Lab P3** — /lab dashboard（8 API + HTML 5-tab） |
+| 59c2d3c | **Lab P2** — failure-analyzer + auto-retry + escalate |
+| 476d285 | **Lab P1** — history/aggregate/regression |
+| 47e9093 | **Lab P0** — goal queue + runner（无人参与第一步） |
+| 1f8b701 | **L1.5 multi-bridge** — 4 flag + /identity |
+| aee8fad | **Step 6** — permission gate + /goal plan 展示 |
+| e6f2cde | **Step 5** — subagent-roles |
+| 7e446c6 | **Step 4** — neural-bridge 接 tool-loop |
+| 63e7e7e | **subagent** — /task 命令 + 5 件套窄工具 |
+| a704b36 | L1.5 ceiling 验证通过 |
+| 98cdeed | EADDRINUSE 全路径修复（API + TCP server） |
 
 ## CLI 入口
 
-- `openchat` — 交互式 REPL（工具/LLM 混合）
+- `openchat` — 交互式 REPL
 - `openchat <tool> <args>` — 单次 executeTool
 - `openchat <message>` — 起 bridge + dev-repl
 - `openchat --goal X` — goal 模式
 - `openchat server` — 只起 bridge
 
-## 已知待办
+## 近期修复
 
-- 18-guardrails 暂停，需重构
-- lingbao L1 硬件 + L3 UI 依赖外部环境（skeleton）
+| 问题 | 修复 |
+|---|---|
+| Windows CLI 双字符 | 关闭 bridge signalRL + `terminal:false` |
+| EADDRINUSE 崩 | API + TCP server 均加 error handler，自动降级 |
+| dev-repl tool call 解析 | 三层 raw JSON 回退 |
+| /goal 路径 4 处 bug | levenshtein + handler case + write_file 护栏 |
+| lingbao 智能分级 | 改为 `null`，只有 openchat 有分级 |
+
+## 未推送
+
+**38 commits 等待推送**。
