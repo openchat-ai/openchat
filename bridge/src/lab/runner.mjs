@@ -15,6 +15,7 @@ import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { getNextPending, updateGoal } from './goal-queue.mjs';
+import { recordRun } from './history.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OPENCHAT_BIN = join(__dirname, '..', '..', 'bin', 'openchat.mjs');
@@ -45,14 +46,34 @@ export async function runNext() {
         finishedAt,
         result,
       });
+      recordRun({
+        goalId: goal.id,
+        description: goal.description,
+        status: code === 0 ? 'done' : 'failed',
+        exitCode: code,
+        signal,
+        durationMs: result.durationMs,
+        finishedAt,
+      });
       resolve({ ok: true, goal, result });
     });
 
     child.on('error', (err) => {
+      const finishedAt = Date.now();
       updateGoal(goal.id, {
         status: 'failed',
-        finishedAt: Date.now(),
+        finishedAt,
         result: { ok: false, error: err.message },
+      });
+      recordRun({
+        goalId: goal.id,
+        description: goal.description,
+        status: 'failed',
+        exitCode: null,
+        signal: null,
+        durationMs: null,
+        finishedAt,
+        error: err.message,
       });
       resolve({ ok: false, goal, error: err.message });
     });

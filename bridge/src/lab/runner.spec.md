@@ -7,7 +7,8 @@
 2. `updateGoal(id, {status: 'running', startedAt})` 标 running
 3. spawn `node bin/openchat.mjs --goal <desc>` (子进程, cwd=process.cwd(), stdio='inherit')
 4. 子进程 exit → 标 done/failed + 写 result {ok, exitCode, signal, durationMs}
-5. resolve `{ok: true, goal, result}`
+5. `recordRun({...})` 写 history.jsonl (append-only, P1 加的)
+6. resolve `{ok: true, goal, result}`
 6. `runAll(maxRuns=100)` → 串行 runNext, 遇到 no pending 就停
 
 ## 接口签名
