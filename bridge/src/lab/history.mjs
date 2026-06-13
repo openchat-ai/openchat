@@ -8,6 +8,7 @@
 import { readFileSync, existsSync, appendFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
+import { labEvents } from './lab-events.mjs';
 
 const LAB_DIR = join(homedir(), '.openchat', 'lab');
 const HISTORY_FILE = join(LAB_DIR, 'history.jsonl');
@@ -31,6 +32,7 @@ export function recordRun(run) {
     retryAttempt: run.retryAttempt ?? null,      // P2: 第几次尝试 (1=初次, 2=retry1, 3=retry2)
   };
   appendFileSync(HISTORY_FILE, JSON.stringify(record) + '\n', 'utf8');
+  labEvents.emit('history', { type: 'added', run: record });
   return record;
 }
 

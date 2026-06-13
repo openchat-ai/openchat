@@ -12,6 +12,7 @@ import { readFileSync, existsSync, appendFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
 import { notifyFireAndForget } from './notifier.mjs';
+import { labEvents } from './lab-events.mjs';
 
 const LAB_DIR = join(homedir(), '.openchat', 'lab');
 const ESCALATED_FILE = join(LAB_DIR, 'escalated.jsonl');
@@ -32,6 +33,8 @@ export function escalate(goal, classification, attempts) {
   appendFileSync(ESCALATED_FILE, JSON.stringify(record) + '\n', 'utf8');
   // L3: fire-and-forget 通知, 不阻塞主流程
   notifyFireAndForget(record);
+  // WS: dashboard 推
+  labEvents.emit('escalate', { record });
   return record;
 }
 

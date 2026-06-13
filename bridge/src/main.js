@@ -298,6 +298,11 @@ export class Bridge {
             try { ws.send(JSON.stringify({ type: 'error', data: { message: e.message } })); } catch (e2) { logger.warn({ err: e2 }, 'WS 发送错误消息失败'); }
           });
         });
+        // [L3-WS] /lab WebSocket 推 (替代 5s 轮询) — 走中央 upgrade 派发
+        const { attachLabWS } = await import('./api/ws-lab.mjs');
+        attachLabWS(this.apiServer, this.apiServer.server);
+        this.apiServer.startWSDispatch(this.apiServer.server);
+        console.log(`[API] /lab ws:   ws://localhost:${CONFIG.port}/lab/ws`);
         console.log(`[API] 统一服务器: http://localhost:${CONFIG.port}`);
         console.log(`[API] 端点: /api/v1/p2p, /api/v1/updates, /api/v1/skills, /api/v1/versions, /api/v1/resources, /api/v1/voice, /api/v1/signaling`);
       }

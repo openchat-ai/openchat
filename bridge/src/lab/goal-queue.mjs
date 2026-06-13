@@ -13,6 +13,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
+import { labEvents } from './lab-events.mjs';
 
 const LAB_DIR = join(homedir(), '.openchat', 'lab');
 const QUEUE_FILE = join(LAB_DIR, 'queue.jsonl');
@@ -54,6 +55,7 @@ export function addGoal(description, opts = {}) {
   const lines = readAllLines();
   lines.push(goal);
   writeAllLines(lines);
+  labEvents.emit('queue', { type: 'added', goal });
   return goal;
 }
 
@@ -76,6 +78,7 @@ export function updateGoal(id, patch) {
   if (idx === -1) return null;
   lines[idx] = { ...lines[idx], ...patch };
   writeAllLines(lines);
+  labEvents.emit('queue', { type: 'updated', goal: lines[idx] });
   return lines[idx];
 }
 

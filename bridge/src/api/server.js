@@ -535,8 +535,14 @@ function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'
     // Track connected clients (used by route-handlers for P2P forwarding)
     this.clients = new Set();
 
+    // === L3-fix: 全部用 noServer=true, 走中央 upgrade 派发 ===
+    // 原 {server} 模式多个 WSS 会冲突 (第一个绑的会 abort 别人)
+    // 现在 _wsUpgraders 收 path→WSS, 由 _wsDispatchUpgrade 中央分发
+    this._wsUpgraders = new Map();
+
     // Chat WebSocket
-    this.wss = new WebSocketServer({ server, path: '/ws' });
+    this.wss = new WebSocketServer({ noServer: true });
+    this._wsUpgraders.set('/ws', this.wss);
     this.wss.on('connection', (ws) => {
       console.log('[WS] client connected');
       ws._peerId = 'ws-' + Date.now().toString(36);
@@ -557,7 +563,8 @@ function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'
     });
 
     // WebRTC 信令 WebSocket
-    this.signalingWss = new WebSocketServer({ server, path: '/signaling' });
+    this.signalingWss = new WebSocketServer({ noServer: true });
+    this._wsUpgraders.set('/signaling', this.signalingWss);
     this.signalingWss.on('connection', (ws) => {
       let registeredPeerId = null;
       console.log('[Signaling] 客户端已连接 via Express');
@@ -614,6 +621,42 @@ function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'
         if (this.swarm && registeredPeerId) {
           this.swarm.broadcast({ type: 'peer_left', peerId: registeredPeerId });
         }
+      });
+    });
+  }
+
+  /**
+   * L3: 注册新 WSS 到中央 upgrade 派发器
+   * 外部模块 (e.g. ws-lab.mjs) 调这个
+   */
+  registerWebSocket(path, wss) {
+    if (!this._wsUpgraders) {
+      throw new Error('setupWebSocket() must be called first');
+    }
+    if (this._wsUpgraders.has(path)) {
+      throw new Error(`path "${path}" already registered`);
+    }
+    this._wsUpgraders.set(path, wss);
+  }
+
+  /**
+   * L3: 启动中央 upgrade 派发
+   * 绑 httpServer.on('upgrade', ...) 一次, 按 path 找 WSS handleUpgrade
+   */
+  startWSDispatch(httpServer) {
+    if (!this._wsUpgraders) {
+      throw new Error('setupWebSocket() must be called first');
+    }
+    httpServer.on('upgrade', (req, socket, head) => {
+      const url = req.url || '';
+      const path = url.split('?')[0];
+      const wss = this._wsUpgraders.get(path);
+      if (!wss) {
+        socket.destroy();
+        return;
+      }
+      wss.handleUpgrade(req, socket, head, (ws) => {
+        wss.emit('connection', ws, req);
       });
     });
   }

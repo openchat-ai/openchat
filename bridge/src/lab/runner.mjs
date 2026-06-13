@@ -26,6 +26,7 @@ import { getNextPending, updateGoal } from './goal-queue.mjs';
 import { recordRun } from './history.mjs';
 import { classify } from './failure-analyzer.mjs';
 import { escalate } from './escalate.mjs';
+import { labEvents } from './lab-events.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OPENCHAT_BIN = join(__dirname, '..', '..', 'bin', 'openchat.mjs');
@@ -37,6 +38,7 @@ export async function runNext() {
 
   const startedAt = Date.now();
   updateGoal(goal.id, { status: 'running', startedAt });
+  labEvents.emit('runner', { type: 'start', goalId: goal.id, description: goal.description, startedAt });
 
   return new Promise((resolve) => {
     const child = spawn('node', [OPENCHAT_BIN, '--goal', goal.description], {

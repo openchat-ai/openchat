@@ -1,6 +1,6 @@
 // lab-dashboard.mjs — /lab web UI + 8 JSON API
 //
-//   GET /lab                    → HTML dashboard (5 tab, 5s poll, time window filter)
+//   GET /lab                    → HTML dashboard (5 tab, WebSocket 推, time window filter)
 //   GET /lab/api/status         → queue 状态计数
 //   GET /lab/api/queue          → listGoals
 //   GET /lab/api/history        → listHistory (?sinceMs=X)
@@ -9,9 +9,10 @@
 //   GET /lab/api/regressions    → detectRegressions
 //   GET /lab/api/aggregate      → getExperimentStats
 //   GET /lab/api/retry-stats    → 算自 history
+//   WS  /lab/ws                 → labEvents 推 (queue/history/escalate/runner)
 //
-// 后续 (L3): 加 WebSocket 推 (现在 5s poll 够用)
-// 不做: 交互式 (restart goal, retry 等) — 走 lab.mjs CLI, 留 P4
+// L3-WS: 5s 轮询 → WebSocket 推 (queue/history/escalate/runner 改动 → 客户端 re-fetch 当前 tab)
+// 不做: 交互式 (restart goal, retry 等) — 走 lab.mjs CLI
 //
 // auth: 无 (跟随 /identity 同样假设, L1.5 桥内 trust 域)
 
@@ -21,7 +22,7 @@
 // - HTML 不缓存 (no-store) — 改 JS 立刻见效
 // - sinceMs 是相对 (ms, 客户端 Date.now()-sinceMs → since) — 不是绝对时间戳
 // - 颜色: green=ok, red=failed, yellow=transient/running, orange=config, gray=pending/unknown
-// - 5s poll, 不 WebSocket — 留 L3
+// - WS 重连: 断线 3s 后自动重连, 期间不刷新 (避免拼老数据)
 // - 错误返 500 JSON {error}, HTML 显示红色 banner, 不刷死
 
 import { Router } from 'express';
@@ -99,7 +100,7 @@ router.get('/api/retry-stats', (req, res) => {
 // === HTML page ===
 
 router.get('/', (req, res) => {
-  res.set('Content-Security-Policy', "default-src 'self';script-src 'self' 'unsafe-inline';style-src 'self' 'unsafe-inline';connect-src 'self';img-src 'self' data:");
+  res.set('Content-Security-Policy', "default-src 'self';script-src 'self' 'unsafe-inline';style-src 'self' 'unsafe-inline';connect-src 'self' ws:;img-src 'self' data:");
   res.set('Cache-Control', 'no-store');
   res.send(HTML_PAGE);
 });
@@ -137,6 +138,8 @@ tr:hover{background:#1a1a2e}
 .win-pick{background:#1a1a2e;color:#e0e0e0;border:1px solid #333;padding:4px 8px;border-radius:4px;font-size:12px}
 .error{color:#ff6b6b;padding:8px}
 .refresh{color:#666;font-size:11px;margin-left:auto}
+.refresh.live{color:#51cf66}
+.refresh.dead{color:#ff6b6b}
 .btn{background:#7c8aff;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px}
 .btn:hover{opacity:.85}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
@@ -148,7 +151,7 @@ tr:hover{background:#1a1a2e}
 </style>
 </head>
 <body>
-<h1>Lab Dashboard <span class="refresh" id="refresh">refresh in 5s</span></h1>
+<h1>Lab Dashboard <span class="refresh" id="ws-status">connecting…</span></h1>
 <div class="bar">
   <span class="stat" id="stat-total"><b>total</b>--</span>
   <span class="stat" id="stat-pending"><b>pending</b>--</span>
@@ -187,7 +190,6 @@ async function fetchJson(url) {
 function sinceQuery() { return _sinceMs > 0 ? '?sinceMs='+(Date.now()-_sinceMs) : ''; }
 
 async function refresh() {
-  $('#refresh').textContent = 'refreshing...';
   try {
     const s = await fetchJson('/lab/api/status');
     $('#stat-total').innerHTML = '<b>total</b>'+s.total;
@@ -197,7 +199,6 @@ async function refresh() {
     $('#stat-failed').innerHTML = '<b>failed</b>'+s.failed;
     await renderTab();
   } catch (e) { $('#content').innerHTML = '<div class="error">'+esc(e.message)+'</div>'; }
-  $('#refresh').textContent = 'refresh in 5s';
 }
 
 async function renderTab() {
@@ -310,8 +311,27 @@ document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () =>
   renderTab();
 }));
 $('#win').addEventListener('change', e => { _sinceMs = Number(e.target.value); renderTab(); });
+
+// === L3-WS: 推替代 5s 轮询 ===
+// 收到任何事件 → refresh 当前 tab
+// 断线 → 3s 重连 (期间不刷新, 避免拼老数据)
+let _ws = null;
+function setStatus(text, cls) {
+  const el = $('#ws-status');
+  el.textContent = text;
+  el.className = 'refresh ' + (cls || '');
+}
+function connectWS() {
+  setStatus('connecting…', '');
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  _ws = new WebSocket(proto + '://' + location.host + '/lab/ws');
+  _ws.onopen = () => setStatus('● live', 'live');
+  _ws.onclose = () => { setStatus('● offline (retry 3s)', 'dead'); setTimeout(connectWS, 3000); };
+  _ws.onerror = () => _ws.close();
+  _ws.onmessage = () => refresh();  // 任何事件都 re-fetch 当前 tab
+}
 refresh();
-setInterval(refresh, 5000);
+connectWS();
 </script>
 </body>
 </html>`;
