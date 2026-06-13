@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-// lab.mjs — 无人参与实验室 CLI (P0 + P1 + P2 + P4)
+// lab.mjs — 无人参与实验室 CLI (P0 + P1 + P2 + P4 + L3-push)
 //   P0: goal queue + run-next/run-all
 //   P1: history / aggregate / regression / backfill
 //   P2: failures / escalated / retry-stats
 //   P4: deps / check-affected (改文件 → 知道哪些 experiment 受影响)
+//   L3: notify-test (验 phone push 配置, 调 notifier.mjs)
 //
 // 用法:
 //   node bin/lab.mjs add "<goal>"       加 goal 到队列
@@ -20,6 +21,7 @@
 //   node bin/lab.mjs retry-stats        retry 统计 (transient 自动修好率)
 //   node bin/lab.mjs deps [file]        import 依赖图 (全图 / 单文件)
 //   node bin/lab.mjs check-affected     改文件 → 受影响的 experiment 列表
+//   node bin/lab.mjs notify-test        发一条假 escalation, 验 notify 配置
 //
 // 存储:
 //   ~/.openchat/lab/queue.jsonl       — live 状态
@@ -32,12 +34,13 @@
 //   - WebSocket 推 → /lab dashboard
 
 // === invariants ===
-// - argv 路由到 14 命令, 未知 cmd 走 showUsage
+// - argv 路由到 15 命令, 未知 cmd 走 showUsage
 // - exit code 0 总是 (除了 add 缺 description 这种 user error)
 // - 走模块函数, 不直接读 jsonl — 让模块的 spec 负责文件格式
 // - 固定列宽给 list/history/failures/escalated, 给脚本/grep 抓取
 // - 不动 queue.jsonl 的 schema, 加字段走 modules
 // - P4 依赖图: 只扫 src/experiments/ + src/lab/ (其它留 P4 续)
+// - L3 notify: 默认 off, opt-in via env (OPENCHAT_LAB_NOTIFY=server|webhook)
 
 import { addGoal, listGoals, getStatus, listFailed } from '../src/lab/goal-queue.mjs';
 import { runNext, runAll } from '../src/lab/runner.mjs';
@@ -47,6 +50,7 @@ import { detectRegressions } from '../src/lab/regression.mjs';
 import { listEscalated, getEscalationStats } from '../src/lab/escalate.mjs';
 import { buildGraph, getGraph, getAffectedExperiments, getFileDependents } from '../src/lab/dependency-graph.mjs';
 import { getChangedFiles } from '../src/lab/git-diff.mjs';
+import { notify } from '../src/lab/notifier.mjs';
 
 const args = process.argv.slice(2);
 const cmd = args[0];
@@ -334,6 +338,24 @@ if (cmd === 'add') {
     }
     console.log(`\nnext: add goal for each, e.g. lab.mjs add "re-verify ${affected[0] || '<path>'}"`);
   }
+
+} else if (cmd === 'notify-test') {
+  // L3: 发一条假 escalation, 验 notify 配置 (Server酱 / webhook)
+  // 不写 escalated.jsonl (只是测通道, 不是真挂)
+  const mode = process.env.OPENCHAT_LAB_NOTIFY || '(unset)';
+  console.log(`OPENCHAT_LAB_NOTIFY = ${mode}`);
+  if (mode === 'server') console.log(`OPENCHAT_LAB_SENDKEY = ${process.env.OPENCHAT_LAB_SENDKEY ? '***set***' : '(unset)'}`);
+  if (mode === 'webhook') console.log(`OPENCHAT_LAB_WEBHOOK = ${process.env.OPENCHAT_LAB_WEBHOOK ? '***set***' : '(unset)'}`);
+  console.log('sending test notification...');
+  const fakeRecord = {
+    goalId: 'goal-test-notify',
+    description: 'L3 notify-test (no real failure)',
+    classification: { category: 'config', reason: 'this is a test', retryable: false },
+    attempts: 1,
+    escalatedAt: Date.now(),
+  };
+  const r = await notify(fakeRecord);
+  console.log(`result: ${JSON.stringify(r, null, 2)}`);
 
 } else {
   showUsage();

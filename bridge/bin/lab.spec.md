@@ -1,6 +1,6 @@
 # spec: lab.mjs CLI
 
-> lab P0 + P1 + P2 + P4 — 无人参与实验室 CLI 入口
+> lab P0 + P1 + P2 + P4 + L3-push — 无人参与实验室 CLI 入口
 
 ## 命令
 ```
@@ -25,10 +25,13 @@ node bin/lab.mjs retry-stats              retry 统计 (transient 自动修好�
 # P4
 node bin/lab.mjs deps [file]              import 依赖图: 全图 / 单文件 importers
 node bin/lab.mjs check-affected [mode]    git diff → 受影响的 experiment 列表
+
+# L3 (phone push)
+node bin/lab.mjs notify-test              发假 escalation, 验 notify 配置 (server|webhook)
 ```
 
 ## 数据流
-1. CLI 解析 argv, 路由到 14 个 case
+1. CLI 解析 argv, 路由到 15 个 case
 2. add → goal-queue.addGoal(desc)
 3. list/status/failures → goal-queue.listGoals / getStatus / listFailed
 4. run-next/run-all → runner.runNext / runner.runAll
@@ -42,6 +45,7 @@ node bin/lab.mjs check-affected [mode]    git diff → 受影响的 experiment �
 11. retry-stats → history 算 transient 救回率 + 尝试次数分布
 12. deps [file] → dependency-graph.buildGraph() (git toplevel 为 root) + getFileDependents
 13. check-affected [mode] → git-diff.getChangedFiles + dependency-graph.getAffectedExperiments
+14. notify-test → notifier.notify (假 record, 验 server/webhook 通道)
 
 ## 接口签名
 ```
@@ -63,6 +67,7 @@ cmd:
   deps [file]        → dependency-graph: 单文件 importers, 或全图 (P4)
   check-affected [m] → git-diff + dependency-graph: 列出受影响 experiments (P4)
                        mode ∈ {staged, working, all, last}, 默认 all
+  notify-test        → notifier.notify (假 record, 验 server|webhook 通道) (L3)
 ```
 
 详细接口签名见各模块的 spec.md:
@@ -75,6 +80,7 @@ cmd:
 - escalate: src/lab/escalate.spec.md
 - dependency-graph: src/lab/dependency-graph.spec.md (P4)
 - git-diff: src/lab/git-diff.spec.md (P4)
+- notifier: src/lab/notifier.spec.md (L3)
 
 ## 边界条件
 - `add` 无 description → 退出码 1 + 提示 "Usage: lab.mjs add ..."
@@ -93,6 +99,9 @@ cmd:
 - `deps <file>` 文件不在图 → 打 `(no importers of <path>)`
 - `check-affected` mode=all/staged/working/last 都接受, 无效 mode → git-diff 抛错
 - `check-affected` 无 changed files → 打 `(no changed files in mode "<mode>")`
+- `notify-test` 不配 env → 返 `{sent: false, reason: 'notify disabled'}`
+- `notify-test` 配 server 缺 SENDKEY → 返 `{sent: false, reason: 'OPENCHAT_LAB_SENDKEY not set'}`
+- `notify-test` 配 webhook URL 不可达 → 返 `{sent: false, reason: 'curl exit...'}` (含 1 次重试)
 
 ## 输出格式
 list 用固定列宽 (status 10 / id 22 / time 19 / desc 60-):
@@ -172,8 +181,28 @@ AFFECTED EXPERIMENTS (0):
 next: add goal for each, e.g. lab.mjs add "re-verify bridge/src/lab/goal-queue.mjs"
 ```
 
+notify-test (L3):
+```
+OPENCHAT_LAB_NOTIFY = (unset)
+sending test notification...
+result: {
+  "sent": false,
+  "reason": "notify disabled"
+}
+```
+或配好 SENDKEY 后:
+```
+OPENCHAT_LAB_NOTIFY = server
+OPENCHAT_LAB_SENDKEY = ***set***
+sending test notification...
+result: {
+  "sent": true,
+  "mode": "server"
+}
+```
+
 ## 决策记录
-- **不用 commander/yargs** — 14 个命令, argv 解析够用, 装依赖不值
+- **不用 commander/yargs** — 15 个命令, argv 解析够用, 装依赖不值
 - **list 不用 JSON** — 人读多, 固定列宽更好
 - **run-all max 100** — 防死循环, 实际数据 < 10
 - **status 输出 JSON** — 机器读多 (后续 P3 dashboard 抓这接口)
@@ -185,20 +214,24 @@ next: add goal for each, e.g. lab.mjs add "re-verify bridge/src/lab/goal-queue.m
 - **retry-stats 只看 history** — 不读 queue, 也不读 escalated; 简单, history 够用
 - **deps 用 getGraph() (git toplevel 为 root)** — 跟 git-diff 输出同 namespace, 避免 bridge/ 前缀 mismatch
 - **check-affected 默认 mode=all** — staged + working 都不漏, 用户改完直接跑就能看到全部 affected
+- **notify 默认 off** — opt-in via env, 不配等静默 (lab 主流程零依赖)
+- **notify 用 curl 不是 fetch** — 跨平台一致, 走系统代理, IPv4/IPv6 不用管
+- **notify fire-and-forget** — escalate() 不 await, notify 失败只 warn 不抛
 
 ## 文件清单
 | 文件 | 职责 | 行数上限 |
 |------|------|---------|
-| `bin/lab.mjs` | CLI 入口, 14 命令 | 320 |
+| `bin/lab.mjs` | CLI 入口, 15 命令 | 360 |
 | `src/lab/goal-queue.mjs` | queue CRUD + listFailed | 100 |
 | `src/lab/runner.mjs` | runNext + runAll + _finalize (auto-retry + escalate) | 140 |
 | `src/lab/history.mjs` | append-only run log | 100 |
 | `src/lab/aggregator.mjs` | per-experiment 统计 | 50 |
 | `src/lab/regression.mjs` | baseline vs recent 回归检测 | 120 |
 | `src/lab/failure-analyzer.mjs` | classify (P2 新) | 50 |
-| `src/lab/escalate.mjs` | escalated log (P2 新) | 70 |
+| `src/lab/escalate.mjs` | escalated log + notify hook (P2 + L3) | 75 |
 | `src/lab/dependency-graph.mjs` | import 图 + getAffectedExperiments (P4 新) | 150 |
 | `src/lab/git-diff.mjs` | getChangedFiles wrapper (P4 新) | 50 |
+| `src/lab/notifier.mjs` | server|webhook 推送 (L3 新) | 100 |
 | `bin/openchat.mjs` (现有) | --goal 模式 | (不动) |
 
 ## 不做

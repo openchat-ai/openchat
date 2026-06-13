@@ -5,14 +5,13 @@
 //   - runner.mjs: 跑完一 goal, 分类为 code/config/unknown OR 超过 MAX_RETRIES 的 transient
 //   - 直接 escalate(goal, classification, attempts)
 //
-// 后续 (L3 整车): 可以接 multi-bridge phone push 通知 user
-// 现在 (P2): 只写 log, 不发通知 — 让 `lab.mjs escalated` 看到
-//
+// L3: 写完 log 后, fire-and-forget 调 notifier — user 配置了 OPENCHAT_LAB_NOTIFY 就发推送
 // 不覆盖 goal-queue 的 status (还是 done/failed), 只额外写一份 escalated 记录
 
 import { readFileSync, existsSync, appendFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
+import { notifyFireAndForget } from './notifier.mjs';
 
 const LAB_DIR = join(homedir(), '.openchat', 'lab');
 const ESCALATED_FILE = join(LAB_DIR, 'escalated.jsonl');
@@ -31,6 +30,8 @@ export function escalate(goal, classification, attempts) {
     escalatedAt: Date.now(),
   };
   appendFileSync(ESCALATED_FILE, JSON.stringify(record) + '\n', 'utf8');
+  // L3: fire-and-forget 通知, 不阻塞主流程
+  notifyFireAndForget(record);
   return record;
 }
 
