@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-// lab.mjs — 无人参与实验室 CLI (P0 + P1)
+// lab.mjs — 无人参与实验室 CLI (P0 + P1 + P2)
 //   P0: goal queue + run-next/run-all
 //   P1: history / aggregate / regression / backfill
+//   P2: failures / escalated / retry-stats
 //
 // 用法:
 //   node bin/lab.mjs add "<goal>"       加 goal 到队列
@@ -13,22 +14,33 @@
 //   node bin/lab.mjs aggregate          per-experiment pass/fail 表
 //   node bin/lab.mjs regression         baseline vs recent 回归检测
 //   node bin/lab.mjs backfill           从 queue.jsonl 补 history (P0→P1 一次)
+//   node bin/lab.mjs failures           看失败 + 分类统计
+//   node bin/lab.mjs escalated          列 escalated 记录
+//   node bin/lab.mjs retry-stats        retry 统计 (transient 自动修好率)
 //
 // 存储:
-//   ~/.openchat/lab/queue.jsonl   — live 状态 (goal-queue.mjs 管)
-//   ~/.openchat/lab/history.jsonl — append-only run log (history.mjs 管)
+//   ~/.openchat/lab/queue.jsonl       — live 状态
+//   ~/.openchat/lab/history.jsonl     — append-only run log
+//   ~/.openchat/lab/escalated.jsonl   — append-only escalate log (P2)
 //
-// 后续 (P2+):
+// 后续 (P3+):
 //   - lab.mjs run-cron (定时跑)
 //   - lab.mjs show <id> (看单个 goal 详情)
-//   - lab.mjs retry <id> (失败重置回 pending)
 //   - lab.mjs dashboard (P3)
 
-import { addGoal, listGoals, getStatus } from '../src/lab/goal-queue.mjs';
+// === invariants ===
+// - argv 路由到 12 命令, 未知 cmd 走 showUsage
+// - exit code 0 总是 (除了 add 缺 description 这种 user error)
+// - 走模块函数, 不直接读 jsonl — 让模块的 spec 负责文件格式
+// - 固定列宽给 list/history/failures/escalated, 给脚本/grep 抓取
+// - 不动 queue.jsonl 的 schema, 加字段走 modules
+
+import { addGoal, listGoals, getStatus, listFailed } from '../src/lab/goal-queue.mjs';
 import { runNext, runAll } from '../src/lab/runner.mjs';
 import { listHistory, backfillFromQueue } from '../src/lab/history.mjs';
 import { getExperimentStats } from '../src/lab/aggregator.mjs';
 import { detectRegressions } from '../src/lab/regression.mjs';
+import { listEscalated, getEscalationStats } from '../src/lab/escalate.mjs';
 
 const args = process.argv.slice(2);
 const cmd = args[0];
@@ -44,6 +56,9 @@ function showUsage() {
   console.log('  lab.mjs aggregate          per-experiment pass/fail table');
   console.log('  lab.mjs regression         detect regressions vs baseline');
   console.log('  lab.mjs backfill           import queue done/failed into history');
+  console.log('  lab.mjs failures           show failed goals + classification stats');
+  console.log('  lab.mjs escalated          list escalated records');
+  console.log('  lab.mjs retry-stats        retry statistics (transient auto-fix rate)');
 }
 
 if (cmd === 'add') {
@@ -160,6 +175,106 @@ if (cmd === 'add') {
 } else if (cmd === 'backfill') {
   const r = backfillFromQueue();
   console.log(`backfill: imported ${r.imported} run(s) from queue.jsonl`);
+
+} else if (cmd === 'failures') {
+  const failed = listFailed();
+  if (failed.length === 0) {
+    console.log('(no failed goals — clean run!)');
+  } else {
+    // 按 classification.category 分组
+    const byCategory = {};
+    for (const g of failed) {
+      const cat = g.classification?.category || 'unclassified';
+      byCategory[cat] = (byCategory[cat] || 0) + 1;
+    }
+    console.log('FAILED GOALS BY CATEGORY:');
+    for (const [cat, count] of Object.entries(byCategory).sort((a, b) => b[1] - a[1])) {
+      console.log(`  ${cat.padEnd(12)} ${count}`);
+    }
+    console.log(`\nFAILED GOAL LIST (${failed.length}):`);
+    console.log('ID                       RETRY  CATEGORY    REASON                              DESCRIPTION');
+    console.log('------------------------  -----  ----------  ----------------------------------  ----------------------------------------');
+    for (const g of failed) {
+      const id = g.id.padEnd(22);
+      const retry = String(g.retryCount || 0).padStart(5);
+      const cat = (g.classification?.category || 'unclassified').padEnd(10);
+      const reason = (g.classification?.reason || '').slice(0, 32).padEnd(34);
+      const desc = g.description.length > 50 ? g.description.slice(0, 47) + '...' : g.description;
+      console.log(`${id}  ${retry}  ${cat}  ${reason}  ${desc}`);
+    }
+  }
+
+} else if (cmd === 'escalated') {
+  const records = listEscalated();
+  const stats = getEscalationStats();
+  if (records.length === 0) {
+    console.log('(no escalations)');
+  } else {
+    console.log(`ESCALATION STATS:`);
+    console.log(`  total: ${stats.total}`);
+    for (const [cat, count] of Object.entries(stats.byCategory)) {
+      console.log(`  ${cat}: ${count}`);
+    }
+    if (stats.byDescription.length > 0) {
+      console.log(`\nTOP ESCALATED EXPERIMENTS:`);
+      for (const d of stats.byDescription.slice(0, 5)) {
+        console.log(`  ${String(d.count).padStart(3)}x  ${d.description.slice(0, 60)}`);
+      }
+    }
+    console.log(`\nRECENT ESCALATIONS (last 10):`);
+    console.log('ESCALATED            ATTEMPTS  CATEGORY    GOAL-ID               DESCRIPTION');
+    console.log('-------------------  --------  ----------  --------------------   ----------------------------------------');
+    for (const r of records.slice(-10).reverse()) {
+      const time = new Date(r.escalatedAt).toISOString().slice(0, 19).replace('T', ' ');
+      const att = String(r.attempts).padStart(8);
+      const cat = (r.classification?.category || 'unclassified').padEnd(10);
+      const id = r.goalId.padEnd(22);
+      const desc = r.description.length > 50 ? r.description.slice(0, 47) + '...' : r.description;
+      console.log(`${time}  ${att}  ${cat}  ${id}  ${desc}`);
+    }
+  }
+
+} else if (cmd === 'retry-stats') {
+  // 看 history 里所有 transient failure, 算 auto-retry 救回率
+  const all = listHistory();
+  if (all.length === 0) {
+    console.log('(no history yet)');
+  } else {
+    let transientFails = 0;       // 至少一次 transient
+    let transientSucceeded = 0;   // 后续 retry 成功
+    let transientExhausted = 0;   // retry 用尽还挂
+    const perAttempt = { 1: 0, 2: 0, 3: 0 };  // 按 retryAttempt 分桶
+    for (const r of all) {
+      if (r.classification?.category === 'transient') perAttempt[r.retryAttempt] = (perAttempt[r.retryAttempt] || 0) + 1;
+    }
+    // 收集每个 goal 的所有 record, 算最终状态
+    const goalHistory = new Map();
+    for (const r of all) {
+      if (!goalHistory.has(r.goalId)) goalHistory.set(r.goalId, []);
+      goalHistory.get(r.goalId).push(r);
+    }
+    for (const records of goalHistory.values()) {
+      const hitTransient = records.some(r => r.classification?.category === 'transient');
+      if (!hitTransient) continue;
+      transientFails++;
+      // 取最后一条 (按 finishedAt)
+      const last = records.sort((a, b) => a.finishedAt - b.finishedAt).pop();
+      if (last.status === 'done') transientSucceeded++;
+      else transientExhausted++;
+    }
+    console.log('RETRY STATS:');
+    console.log(`  goals that hit transient at least once: ${transientFails}`);
+    console.log(`  eventually succeeded (auto-retry saved): ${transientSucceeded}`);
+    console.log(`  exhausted retries (still failed):        ${transientExhausted}`);
+    if (transientFails > 0) {
+      const saveRate = ((transientSucceeded / transientFails) * 100).toFixed(0);
+      console.log(`  save rate: ${saveRate}%`);
+    }
+    console.log(`\nATTEMPTS DISTRIBUTION (history):`);
+    console.log(`  attempt 1 (initial):  ${perAttempt[1] || 0}`);
+    console.log(`  attempt 2 (retry 1):  ${perAttempt[2] || 0}`);
+    console.log(`  attempt 3 (retry 2):  ${perAttempt[3] || 0}`);
+  }
 
 } else {
   showUsage();

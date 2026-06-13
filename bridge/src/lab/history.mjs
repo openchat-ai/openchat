@@ -27,6 +27,8 @@ export function recordRun(run) {
     durationMs: run.durationMs ?? null,
     finishedAt: run.finishedAt,
     error: run.error ?? null,
+    classification: run.classification ?? null,  // P2: failure-analyzer 输出
+    retryAttempt: run.retryAttempt ?? null,      // P2: 第几次尝试 (1=初次, 2=retry1, 3=retry2)
   };
   appendFileSync(HISTORY_FILE, JSON.stringify(record) + '\n', 'utf8');
   return record;

@@ -47,6 +47,9 @@ export function addGoal(description, opts = {}) {
     startedAt: null,
     finishedAt: null,
     result: null,
+    retryCount: 0,            // P2: auto-retry 计数器
+    classification: null,      // P2: failure-analyzer 输出
+    escalatedAt: null,         // P2: 何时被 escalate
   };
   const lines = readAllLines();
   lines.push(goal);
@@ -81,4 +84,9 @@ export function getStatus() {
   const s = { total: all.length, pending: 0, running: 0, done: 0, failed: 0 };
   for (const g of all) s[g.status] = (s[g.status] || 0) + 1;
   return s;
+}
+
+export function listFailed() {
+  // P2: 给 failures 命令用
+  return readAllLines().filter(g => g.status === 'failed');
 }

@@ -27,6 +27,8 @@ backfillFromQueue(): { imported: number }
   durationMs: number | null,
   finishedAt: number,  // Date.now()
   error: string | null,
+  classification: { category, reason, retryable } | null,  // P2
+  retryAttempt: number | null,                            // P2: 1=初次, 2=retry1, 3=retry2
 }
 ```
 
@@ -42,6 +44,7 @@ backfillFromQueue(): { imported: number }
 - **每个 status=done|failed 都写** — 不论成功失败, 失败也是数据
 - **不存 description 之外的 context** — experiment 维度的 metadata (e.g. domain) 后续 P2 加
 - **backfill 是一次性** — P0 那 2 个 done 当时没 history, 跑一次 lab.mjs backfill 补上, 之后就靠 recordRun 自动写
+- **P2: classification + retryAttempt 写历史** — 跟 P0/P1 加的字段一起, 失败原因可追溯; 之前的 backfill 数据没这俩字段, 保持 null (老格式兼容)
 
 ## 文件清单
 | 文件 | 职责 | 行数上限 |
