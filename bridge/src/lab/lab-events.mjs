@@ -23,10 +23,9 @@
 //   labEvents.on('queue', (evt) => { ... });
 
 import { EventEmitter } from 'events';
-import { watch } from 'fs';
+import { watch, statSync, existsSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
-import { existsSync } from 'fs';
 
 const LAB_DIR = join(homedir(), '.openchat', 'lab');
 
@@ -68,7 +67,6 @@ class LabEvents extends EventEmitter {
         if (eventType === 'change') {
           // 检查 size 变化避免 debounce 期间重复
           // (fs.watch 在某些平台上会重复 fire)
-          const { statSync } = require('fs');
           let size = 0;
           try { size = statSync(fullPath).size; } catch {}
           if (this._lastSize[fullPath] === size) return;
