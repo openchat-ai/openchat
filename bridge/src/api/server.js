@@ -35,6 +35,7 @@ import metricsRouter from './routes/metrics.js';
 import healthRouter from './routes/health.js';
 import voiceRouter from './routes/voice.js';
 import signalingRouter from './routes/signaling.js';
+import labDashboardRouter from './routes/lab-dashboard.mjs';
 
 class APIServer {
   constructor(options = {}) {
@@ -488,6 +489,9 @@ function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'
     // Voice API (语音房间管理)
     this.app.use('/api/v1/voice', voiceRouter);
     this.app.use('/api/v1/signaling', signalingRouter);
+
+    // Lab Dashboard (P3) — /lab HTML + 8 JSON API endpoints
+    this.app.use('/lab', labDashboardRouter);
 
     // Chat Session API
     this.app.delete('/api/v1/chat/:chatId', async (req, res) => {
