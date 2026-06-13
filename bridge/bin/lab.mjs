@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-// lab.mjs — 无人参与实验室 CLI (P0 + P1 + P2 + P4 + L3-push)
+// lab.mjs — 无人参与实验室 CLI (P0 + P1 + P2 + P4 + P5 + L3-push)
 //   P0: goal queue + run-next/run-all
 //   P1: history / aggregate / regression / backfill
 //   P2: failures / escalated / retry-stats
 //   P4: deps / check-affected (改文件 → 知道哪些 experiment 受影响)
+//   P5: run-cron / cron-status / cron-stop (定时跑, 真正无人值守)
 //   L3: notify-test (验 phone push 配置, 调 notifier.mjs)
 //
 // 用法:
@@ -21,6 +22,9 @@
 //   node bin/lab.mjs retry-stats        retry 统计 (transient 自动修好率)
 //   node bin/lab.mjs deps [file]        import 依赖图 (全图 / 单文件)
 //   node bin/lab.mjs check-affected     改文件 → 受影响的 experiment 列表
+//   node bin/lab.mjs run-cron [ms]      启 cron, 每 N ms 跑一轮 (默认 30 min)
+//   node bin/lab.mjs cron-status        看 cron 是否在跑
+//   node bin/lab.mjs cron-stop          给 cron 进程发 SIGINT
 //   node bin/lab.mjs notify-test        发一条假 escalation, 验 notify 配置
 //
 // 存储:
@@ -29,17 +33,17 @@
 //   ~/.openchat/lab/escalated.jsonl   — append-only escalate log (P2)
 //
 // 后续 (L3):
-//   - lab.mjs run-cron (定时跑)
 //   - lab.mjs show <id> (看单个 goal 详情)
-//   - WebSocket 推 → /lab dashboard
+//   - WebSocket 推 → /lab dashboard (已接 L3-WS)
 
 // === invariants ===
-// - argv 路由到 15 命令, 未知 cmd 走 showUsage
+// - argv 路由到 17 命令, 未知 cmd 走 showUsage
 // - exit code 0 总是 (除了 add 缺 description 这种 user error)
 // - 走模块函数, 不直接读 jsonl — 让模块的 spec 负责文件格式
 // - 固定列宽给 list/history/failures/escalated, 给脚本/grep 抓取
 // - 不动 queue.jsonl 的 schema, 加字段走 modules
 // - P4 依赖图: 只扫 src/experiments/ + src/lab/ (其它留 P4 续)
+// - P5 cron: pidfile 防双开, 默认 interval 30min (env: OPENCHAT_LAB_CRON_INTERVAL)
 // - L3 notify: 默认 off, opt-in via env (OPENCHAT_LAB_NOTIFY=server|webhook)
 
 import { addGoal, listGoals, getStatus, listFailed } from '../src/lab/goal-queue.mjs';
@@ -51,6 +55,7 @@ import { listEscalated, getEscalationStats } from '../src/lab/escalate.mjs';
 import { buildGraph, getGraph, getAffectedExperiments, getFileDependents } from '../src/lab/dependency-graph.mjs';
 import { getChangedFiles } from '../src/lab/git-diff.mjs';
 import { notify } from '../src/lab/notifier.mjs';
+import { startCron, stopCron, isCronRunning, getCronPid } from '../src/lab/cron.mjs';
 
 const args = process.argv.slice(2);
 const cmd = args[0];
@@ -71,6 +76,9 @@ function showUsage() {
   console.log('  lab.mjs retry-stats        retry statistics (transient auto-fix rate)');
   console.log('  lab.mjs deps [file]        import graph: all files with importers, or file dependents');
   console.log('  lab.mjs check-affected     show experiments affected by staged+working changes');
+  console.log('  lab.mjs run-cron [ms]      start cron, run every N ms (default 30 min, or env OPENCHAT_LAB_CRON_INTERVAL)');
+  console.log('  lab.mjs cron-status        show cron running state');
+  console.log('  lab.mjs cron-stop          send SIGINT to cron process');
 }
 
 if (cmd === 'add') {
@@ -356,6 +364,41 @@ if (cmd === 'add') {
   };
   const r = await notify(fakeRecord);
   console.log(`result: ${JSON.stringify(r, null, 2)}`);
+
+} else if (cmd === 'run-cron') {
+  // P5: 启 cron, 持续循环拉 runNext
+  // 用法: lab.mjs run-cron            (默认 30 min, 或 env OPENCHAT_LAB_CRON_INTERVAL)
+  //      lab.mjs run-cron 60000       (override 1 min, 调试用)
+  const argMs = args[1] ? parseInt(args[1], 10) : null;
+  const opts = {};
+  if (argMs) opts.intervalMs = argMs;
+  const h = startCron(opts);
+  if (!h.ok) {
+    console.log(`(refused: ${h.reason}${h.pid ? `, existing pid=${h.pid}` : ''})`);
+    process.exit(1);
+  }
+  console.log(`cron started (pid=${h.pid}, interval=${(h.intervalMs/1000).toFixed(0)}s)`);
+  console.log(`OPENCHAT_LAB_CRON_INTERVAL env: ${process.env.OPENCHAT_LAB_CRON_INTERVAL || '(unset)'}`);
+  console.log('SIGINT (Ctrl-C) to stop.');
+  // cron 自己接管 SIGINT, 退出由 SIGINT/SIGTERM 触发
+  // 这里保持进程 alive — 不让 top-level await 走完
+
+} else if (cmd === 'cron-status') {
+  // P5: 看 cron 状态
+  if (!isCronRunning()) {
+    console.log('cron: not running');
+  } else {
+    const pid = getCronPid();
+    console.log(`cron: running (pid=${pid || '(unknown)'})`);
+  }
+  // 显式退出 (lab-events 的 fs.watch 默认 keep-alive)
+  process.exit(0);
+
+} else if (cmd === 'cron-stop') {
+  // P5: 给 cron 进程发 SIGINT
+  const r = stopCron();
+  console.log(`cron-stop: ${JSON.stringify(r)}`);
+  process.exit(0);
 
 } else {
   showUsage();

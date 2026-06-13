@@ -91,7 +91,13 @@ class LabEvents extends EventEmitter {
 
 export const labEvents = new LabEvents();
 
-// 启动时自动 watch 3 个 jsonl 文件
-labEvents.startWatcher('queue.jsonl', 'queue');
-labEvents.startWatcher('history.jsonl', 'history');
-labEvents.startWatcher('escalated.jsonl', 'escalate');
+// 不在 module 顶层自动 startWatcher — 留给 initLabWatchers()
+// (lab.mjs CLI 不需要 watcher, 自动启会让 process 不退出)
+let _initialized = false;
+export function initLabWatchers() {
+  if (_initialized) return;
+  _initialized = true;
+  labEvents.startWatcher('queue.jsonl', 'queue');
+  labEvents.startWatcher('history.jsonl', 'history');
+  labEvents.startWatcher('escalated.jsonl', 'escalate');
+}

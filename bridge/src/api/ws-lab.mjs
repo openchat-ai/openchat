@@ -18,9 +18,11 @@
 //   - 压缩 (lab 事件量小, 没必要)
 
 import { WebSocketServer } from 'ws';
-import { labEvents } from '../lab/lab-events.mjs';
+import { labEvents, initLabWatchers } from '../lab/lab-events.mjs';
 
 export function attachLabWS(apiServer, httpServer) {
+  // 桥进程需要 watcher (CLI 跨进程改 jsonl 时推 WS)
+  initLabWatchers();
   // 用 apiServer.registerWebSocket(path, wss) 让中央 dispatcher 接管 upgrade
   // — 避免跟 /ws, /signaling 抢 upgrade 事件
   const wss = new WebSocketServer({ noServer: true });
