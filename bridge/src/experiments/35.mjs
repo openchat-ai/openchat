@@ -199,14 +199,7 @@ async function test() {
       qiniuPut: async (key, data) => { stored[key] = JSON.parse(data.toString('utf8')); },
       processText: async (text, chatId) => { agentCalled = true; return { response: 'voice reply', toolCalls: [] }; },
     });
-    // 拿 codec
-    const LmdnCodec = poller._getDeps().LmdnCodec;
-    const codec = new LmdnCodec();
-    await codec.initialize();
-    // 注入 codec 到模块内私有 _codec
-    // (handleVoice 用的是模块内 _codec，需要直接赋值 — 用 _setDeps 不行)
-    // 替代: 临时把 codec 暴露到 module — 这里通过修改 module 的内部变量比较曲折
-    // 简化: 跳过 codec，测 EPC 头校验路径（无效头 → null）
+    // handleVoice 坏 EPC 头路径: 无需 codec
     const invalid = await poller.handleVoice('oc/chat/c1/x.enc', Buffer.from([0xFF, 0xFF, 0xFF]));
     if (invalid === null) ok('handleVoice 坏 EPC 头 → null');
     else ng(`坏 EPC 头应 null: ${JSON.stringify(invalid)}`);

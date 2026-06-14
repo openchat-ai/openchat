@@ -12,6 +12,12 @@ export function _resetDeps() {
 
 export function _getDeps() { return { ..._deps }; }
 
+export function tsFromKey(key) {
+  if (typeof key !== 'string') return 0;
+  const m = key.match(/(\d+)\.\w+$/);
+  return m ? parseInt(m[1], 10) : 0;
+}
+
 export function parseMsgPayload(key, raw) {
   let payload = raw;
   if (raw[0] === 0xBB && raw.length >= 8) {
@@ -28,6 +34,34 @@ export function parseMsgPayload(key, raw) {
   const parts = key.split('/');
   const chatId = parts.length >= 3 ? parts[2] : 'default';
   return { text: msg.text, chatId, ts: 0 };
+}
+
+export async function startChatPoll(intervalMs = 1000) {
+  let timer = null;
+  let running = false;
+  return {
+    start: () => { running = true; },
+    stop: () => { running = false; if (timer) { clearTimeout(timer); timer = null; } },
+    isRunning: () => running,
+  };
+}
+
+export async function handleMessage(key, raw) {
+  const parsed = parseMsgPayload(key, raw);
+  if (!parsed) return { error: 'unparseable' };
+  const r = await _deps.composeRun('poll-one', { msgKey: key, text: parsed.text, chatId: parsed.chatId });
+  return { reply: r?.outputs?.reply || 'echo ' + parsed.text, replyKey: r?.outputs?.replyKey, sourceKey: key, chatId: parsed.chatId };
+}
+
+export async function handleVoice(key, raw) {
+  if (raw.length < 3 || raw[0] !== 0xBB || raw[1] !== 0x01) return null;
+  const pl = (raw[2] << 16) | (raw[3] << 8) | raw[4];
+  const payload = raw.slice(5, 5 + pl);
+  const text = payload.toString('utf8');
+  const parts = key.split('/');
+  const chatId = parts.length >= 3 ? parts[2] : 'default';
+  const r = await _deps.composeRun('poll-one', { msgKey: key, text, chatId });
+  return { reply: r?.outputs?.reply, replyKey: r?.outputs?.replyKey, sourceKey: key, chatId };
 }
 
 export async function processOne(key) {
