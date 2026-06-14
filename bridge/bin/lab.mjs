@@ -87,6 +87,11 @@ function showUsage() {
   console.log('  lab.mjs run-cron [ms]      start cron, run every N ms (default 30 min, or env OPENCHAT_LAB_CRON_INTERVAL)');
   console.log('  lab.mjs cron-status        show cron running state');
   console.log('  lab.mjs cron-stop          send SIGINT to cron process');
+  console.log('  lab.mjs digest [N]         analyze last N runs, show trend/degradation');
+  console.log('  lab.mjs digest --llm [N]   same + LLM natural language report');
+  console.log('  lab.mjs explore            discover untested dep combinations');
+  console.log('  lab.mjs costs              per-experiment cost breakdown (from history)');
+  console.log('  lab.mjs heal-auto          auto-diagnose + auto-patch all failed goals');
 }
 
 if (cmd === 'add') {
@@ -595,6 +600,75 @@ if (cmd === 'add') {
     for (const p of m.preferences.slice(-3)) console.log(`    ${p.key}=${p.value}`);
     console.log(`  patterns: ${m.learnedPatterns.length}`);
   }
+
+} else if (cmd === 'heal-auto') {
+  const { healGoal } = await import('../src/lab/auto-heal.mjs');
+  const { listGoals } = await import('../src/lab/goal-queue.mjs');
+  const failed = listGoals().filter(g => g.status === 'failed');
+  if (failed.length === 0) { console.log('heal-auto: no failed goals'); process.exit(0); }
+  let patched = 0;
+  for (const g of failed) {
+    console.log(`  diagnosing ${g.id}...`);
+    const h = await healGoal(g.id);
+    if (h.patch) {
+      console.log(`    → patch: ${h.patch.file} (${h.patch.patch.slice(0, 60)})`);
+      const app = await h.patch.apply();
+      if (app.ok) {
+        const { updateGoal } = await import('../src/lab/goal-queue.mjs');
+        updateGoal(g.id, { status: 'pending', result: null, finishedAt: null, escalatedAt: null });
+        patched++;
+        console.log(`    → applied, reset to pending`);
+      }
+    } else {
+      console.log(`    → ${h.diagnosis?.suggestion || 'no auto-fix available (severity: ' + h.diagnosis?.severity + ')'}`);
+    }
+  }
+  console.log(`heal-auto: ${patched}/${failed.length} goals auto-patched and reset`);
+
+} else if (cmd === 'digest') {
+  const N = parseInt(args[1] && args[1] !== '--llm' ? args[1] : args[2] || '20', 10);
+  const useLLM = args.includes('--llm');
+  const { computeDigest, formatDigestText, llmDigest } = await import('../src/lab/digest.mjs');
+  const digest = useLLM ? await llmDigest(N) : { text: formatDigestText(computeDigest(N)) };
+  console.log(digest.text);
+  if (digest.ok === false) console.log(`  (digest limited: ${digest.reason})`);
+
+} else if (cmd === 'explore') {
+  const { explore, formatExplorerText } = await import('../src/lab/path-explorer.mjs');
+  const result = explore();
+  console.log(formatExplorerText(result));
+  if (result.recommendations.length > 0) {
+    const { question } = await import('./openchat.mjs');
+    for (const r of result.recommendations.slice(0, 3)) {
+      // 自动添加为 goal
+      addGoal(r.suggestion);
+      console.log(`  → added as goal: ${r.suggestion.slice(0, 70)}`);
+    }
+  }
+
+} else if (cmd === 'costs') {
+  const { listHistory } = await import('../src/lab/history.mjs');
+  const all = listHistory();
+  if (all.length === 0) { console.log('costs: no history'); process.exit(0); }
+  const byExp = {};
+  for (const r of all) {
+    const desc = r.description || 'unknown';
+    if (!byExp[desc]) byExp[desc] = { runs: 0, success: 0, failed: 0, totalDurationMs: 0, totalCost: 0 };
+    byExp[desc].runs++;
+    if (r.status === 'done') byExp[desc].success++;
+    else byExp[desc].failed++;
+    byExp[desc].totalDurationMs += (r.durationMs || 0);
+    byExp[desc].totalCost += (r.cost || 0);
+  }
+  const grandTotal = Object.values(byExp).reduce((s, e) => s + e.totalCost, 0);
+  console.log(`\n💰 Cost Breakdown (${all.length} runs)`);
+  const sorted = Object.entries(byExp).sort((a, b) => b[1].totalCost - a[1].totalCost);
+  for (const [desc, s] of sorted) {
+    const avg = s.runs > 0 ? s.totalCost / s.runs : 0;
+    const rate = s.runs > 0 ? (s.success / s.runs * 100).toFixed(0) : '-';
+    console.log(`  ${s.totalCost.toFixed(4)} USD  (avg ${avg.toFixed(4)})  ${rate}%  ${desc.slice(0, 50)}`);
+  }
+  console.log(`  ───────────────────────────`);
 
 } else if (cmd === 'watch') {
   const watchDir = args[1] || resolve(dirname(fileURLToPath(import.meta.url)), '../src/experiments');

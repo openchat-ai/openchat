@@ -30,6 +30,7 @@ export function recordRun(run) {
     error: run.error ?? null,
     classification: run.classification ?? null,  // P2: failure-analyzer 输出
     retryAttempt: run.retryAttempt ?? null,      // P2: 第几次尝试 (1=初次, 2=retry1, 3=retry2)
+    cost: run.cost ?? null,                      // P5: token cost for this run (in USD)
   };
   appendFileSync(HISTORY_FILE, JSON.stringify(record) + '\n', 'utf8');
   labEvents.emit('history', { type: 'added', run: record });
