@@ -88,6 +88,7 @@ function showUsage() {
   console.log('  lab.mjs run-cron [ms]      start cron, run every N ms (default 30 min, or env OPENCHAT_LAB_CRON_INTERVAL)');
   console.log('  lab.mjs cron-status        show cron running state');
   console.log('  lab.mjs cron-stop          send SIGINT to cron process');
+  console.log('  lab.mjs cron-interval <ms>  change cron interval on the fly (e.g. 60000 = 1 min)');
   console.log('  lab.mjs housekeeping [ms]  manually run recoverStaleRunning + purgePollution');
   console.log('  lab.mjs digest [N]         analyze last N runs, show trend/degradation');
   console.log('  lab.mjs digest --llm [N]   same + LLM natural language report');
@@ -534,6 +535,20 @@ if (cmd === 'add') {
   // P5: 给 cron 进程发 SIGINT
   const r = stopCron();
   console.log(`cron-stop: ${JSON.stringify(r)}`);
+  process.exit(0);
+
+} else if (cmd === 'cron-interval') {
+  // 中途改 interval: 写文件, cron 下 cycle 读到后生效
+  const ms = parseInt(args[1], 10);
+  if (!ms || ms < 1000) { console.log('usage: lab.mjs cron-interval <ms> (min 1000)'); process.exit(1); }
+  const { join } = await import('path');
+  const { homedir } = await import('os');
+  const { writeFileSync } = await import('fs');
+  const dir = join(homedir(), '.openchat', 'lab');
+  const { mkdirSync, existsSync } = await import('fs');
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, 'cron-interval.txt'), String(ms), 'utf8');
+  console.log(`cron-interval: written ${ms}ms (will take effect next cycle)`);
   process.exit(0);
 
 } else if (cmd === 'auto-discover') {
