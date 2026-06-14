@@ -58,6 +58,20 @@ const PATTERNS = [
     test: (msg) => /AssertionError|assert\.strictEqual|assert\.deepStrictEqual|expected.*actual|not ok/i.test(msg),
     fix: async () => ({ severity: 'auto', suggestion: 'Review test assertion — expected value mismatch', confidence: 'medium' }),
   },
+  {
+    name: 'spawn-url-error',
+    test: (msg) => /Only URLs with a schema|spawn error/i.test(msg),
+    fix: async () => ({
+      severity: 'manual',
+      suggestion: 'Check provider URL in ~/.openchat/config.json — must have http:// or https:// scheme',
+      confidence: 'high',
+    }),
+  },
+  {
+    name: 'exit-code-143',
+    test: (msg) => /exit code 143|SIGTERM.*timeout/i.test(msg),
+    fix: async () => ({ severity: 'retry', suggestion: 'Transient SIGTERM — retry with longer timeout', confidence: 'high' }),
+  },
 ];
 
 export async function diagnose(result) {

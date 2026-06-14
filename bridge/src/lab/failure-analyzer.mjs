@@ -28,6 +28,15 @@ export function classify(runResult) {
   if (runResult.exitCode === 0) {
     return { category: 'success', reason: 'exit 0', retryable: false };
   }
+  // exit code 143 = 128 + SIGTERM(15) — 子进程被系统 kill, 大概率超时/OOM
+  // 归为 transient 以触发 auto-retry
+  if (runResult.exitCode === 143) {
+    return {
+      category: 'transient',
+      reason: 'exit code 143 (SIGTERM) — likely timeout / OOM',
+      retryable: true,
+    };
+  }
   if (runResult.exitCode === null) {
     // 没 exit code 也没 signal — 异常
     return { category: 'unknown', reason: 'no exit code or signal', retryable: false };
