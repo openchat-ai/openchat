@@ -46,7 +46,7 @@
 // - P5 cron: pidfile 防双开, 默认 interval 30min (env: OPENCHAT_LAB_CRON_INTERVAL)
 // - L3 notify: 默认 off, opt-in via env (OPENCHAT_LAB_NOTIFY=server|webhook)
 
-import { addGoal, listGoals, getStatus, listFailed } from '../src/lab/goal-queue.mjs';
+import { addGoal, listGoals, getStatus, listFailed, getNextPending, updateGoal } from '../src/lab/goal-queue.mjs';
 import { runNext, runAll } from '../src/lab/runner.mjs';
 import { listHistory, backfillFromQueue } from '../src/lab/history.mjs';
 import { getExperimentStats } from '../src/lab/aggregator.mjs';
@@ -68,6 +68,8 @@ function showUsage() {
   console.log('  lab.mjs run-next           pick first pending, run it');
   console.log('  lab.mjs run-all            drain all pending');
   console.log('  lab.mjs history            show last 20 run records');
+  console.log('  lab.mjs bench              run all closed-loop experiments as benchmark');
+  console.log('  lab.mjs run-concurrent [N]  run N pending goals in parallel (default 3)');
   console.log('  lab.mjs aggregate          per-experiment pass/fail table');
   console.log('  lab.mjs regression         detect regressions vs baseline');
   console.log('  lab.mjs backfill           import queue done/failed into history');
@@ -128,6 +130,57 @@ if (cmd === 'add') {
   for (const r of results) {
     console.log(`  ${r.goal.id}: ${r.result?.ok ? 'OK' : 'FAIL'}`);
   }
+
+} else if (cmd === 'run-concurrent') {
+  const concurrency = parseInt(args[1], 10) || 3;
+  const allResults = [];
+  let running = 0;
+  let idx = 0;
+  const pending = listGoals().filter(g => g.status === 'pending');
+  if (pending.length === 0) { console.log('(no pending goals)'); process.exit(0); }
+  console.log(`run-concurrent: ${pending.length} pending, concurrency=${concurrency}`);
+  const next = () => {
+    if (idx >= pending.length) return;
+    const goal = pending[idx++];
+    running++;
+    runNext(goal.id).then(r => {
+      allResults.push(r);
+      const sec = r.result ? (r.result.durationMs / 1000).toFixed(1) : '?';
+      console.log(`  ${r.result?.ok ? '✅' : '❌'} ${sec}s  ${r.goal.description.slice(0, 50)}`);
+      running--;
+      if (idx < pending.length) next();
+      else if (running === 0) {
+        const pass = allResults.filter(x => x.result?.ok).length;
+        console.log(`\nconcurrent done: ${allResults.length} runs, ${pass}/${allResults.length} pass`);
+      }
+    });
+  };
+  for (let i = 0; i < Math.min(concurrency, pending.length); i++) next();
+
+} else if (cmd === 'bench') {
+  const { readFileSync, existsSync } = await import('fs');
+  const manifestPath = new URL('../src/experiments/manifest.json', import.meta.url);
+  if (!existsSync(manifestPath)) { console.error('manifest.json not found'); process.exit(1); }
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  const experiments = manifest.experiments || [];
+  const existing = listGoals().map(g => g.description);
+  const toRun = [];
+  for (const exp of experiments) {
+    if (exp.status !== 'closed-loop') continue;
+    const desc = `实验 ${exp.file.replace(/\.mjs$/, '')}: ${exp.name}`;
+    if (!existing.includes(desc)) addGoal(desc);
+    toRun.push(desc);
+  }
+  const allResults = await runAll();
+  const pass = allResults.filter(r => r.result?.ok).length;
+  const fail = allResults.filter(r => !r.result?.ok).length;
+  console.log(`\n📊 Benchmark: ${allResults.length} experiments, ${pass} pass, ${fail} fail`);
+  for (const r of allResults) {
+    const sec = r.result ? (r.result.durationMs / 1000).toFixed(1) : '?';
+    const status = r.result?.ok ? '✅' : '❌';
+    console.log(`  ${status} ${sec}s  ${r.goal.description.slice(0, 60)}`);
+  }
+  console.log(`\n💰 Total: ${allResults.length} runs, ${pass}/${allResults.length} pass (${allResults.length > 0 ? Math.round(pass/allResults.length*100) : 0}%)`);
 
 } else if (cmd === 'history') {
   const runs = listHistory();

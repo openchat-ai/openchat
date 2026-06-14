@@ -67,3 +67,4 @@ flowchart TD
 | 38 | 38.mjs | goal | 1 | 22 | - |
 | 39 | 39.mjs | mcp-server | 0 | - | - |
 | 40 | 40.mjs | hooks-plugin | 0 | - | - |
+| 41 | 41.mjs | e2e-chat-pipeline | 2 | 35, 36, 37, 38 | - |

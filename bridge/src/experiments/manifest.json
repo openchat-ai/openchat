@@ -321,8 +321,7 @@
         "guardrails",
         "guardrails-pipeline"
       ],
-      "status": "paused",
-      "pausedReason": "2026-06-11: 当前需求已用其他路径闭环，暂不需要 18。保留文件以便未来恢复。",
+      "status": "closed-loop",
       "intelligenceLevel": "L2+"
     },
     {
@@ -857,6 +856,19 @@
       "description": "Registers preTool/postTool hooks for permission, logging, rate-limit. Wired into dev-repl + subagent + tool-loop. Use when user mentions hooks, plugin, permission gate, rate limit, or tool logging.",
       "deps": [],
       "tags": ["guardrails", "hooks", "plugin"],
+      "status": "closed-loop",
+      "intelligenceLevel": "L1.5"
+    },
+    {
+      "id": "e2e-chat-pipeline",
+      "file": "41.mjs",
+      "name": "端到端聊天管线集成测试 — 35+36+37+38 串联",
+      "category": "chat",
+      "pure": false,
+      "needsEnv": [],
+      "description": "Chains 4 experiments (chat-poller, poll-one, dream-consolidation, goal) into one e2e pipeline. Use when validating the full chat pipeline end-to-end.",
+      "deps": [],
+      "tags": ["chat", "e2e", "integration"],
       "status": "closed-loop",
       "intelligenceLevel": "L1.5"
     }

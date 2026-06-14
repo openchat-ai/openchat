@@ -307,6 +307,18 @@ export class Bridge {
         console.log(`[API] 端点: /api/v1/p2p, /api/v1/updates, /api/v1/skills, /api/v1/versions, /api/v1/resources, /api/v1/voice, /api/v1/signaling`);
       }
 
+      // [auto-lab] OPENCHAT_AUTO_LAB=1 时自动启动 lab cron
+      if (process.env.OPENCHAT_AUTO_LAB === '1' || process.env.OPENCHAT_AUTO_LAB === 'true') {
+        try {
+          const { startCron } = await import('./lab/cron.mjs');
+          const interval = parseInt(process.env.OPENCHAT_LAB_CRON_INTERVAL || '1800000', 10);
+          const r = startCron(interval);
+          console.log(`[auto-lab] cron started (pid=${r?.pid || '?'}, interval=${(interval/1000).toFixed(0)}s)`);
+        } catch (e) {
+          console.error(`[auto-lab] start failed: ${e.message}`);
+        }
+      }
+
       // P2P 事件监听
       if (this.p2p) {
         this.p2p.on('peer-connected', (peerId) => {
