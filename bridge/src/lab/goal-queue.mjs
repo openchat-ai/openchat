@@ -9,6 +9,7 @@
 // 用途:
 //   - bin/lab.mjs add/list/status/run-next 调这里
 //   - cron/手动 run-next 拉下一个 pending goal, 喂 openchat --goal
+//   - housekeeping: recoverStaleRunning + purgePollution (自治, 不靠人清)
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
@@ -92,4 +93,105 @@ export function getStatus() {
 export function listFailed() {
   // P2: 给 failures 命令用
   return readAllLines().filter(g => g.status === 'failed');
+}
+
+// === 自治 housekeeping ===
+
+const POLLUTION_PATTERNS = [
+  /\bWS (test|broadcast|watcher)\b/i,
+  /\bin-process test\b/i,
+  /\bTEST_OK_/,
+  /\becho (cron|cron-pickup|debug)/i,
+  /\bDEBUG_/,
+  /\bsmoke( -|_)test/i,
+];
+
+/**
+ * 检测 description 是不是 debug fixture (pollution)
+ * 模式: WS test 类, in-process test, echo/test 调试
+ * 返回: { pollution: bool, reason: string|null }
+ */
+export function detectPollution(description) {
+  if (!description) return { pollution: false, reason: null };
+  for (const re of POLLUTION_PATTERNS) {
+    if (re.test(description)) {
+      return { pollution: true, reason: re.source };
+    }
+  }
+  return { pollution: false, reason: null };
+}
+
+/**
+ * 恢复卡在 running 的 goal (parent 被砍 / 子进程 timeout / SIGKILL 残留)
+ * 启发式: status=running 且 startedAt < now - thresholdMs
+ * 重置: status=pending, 清 startedAt/finishedAt, retryCount 不重置 (让原有 retry 计数继续生效)
+ * 返回: 被恢复的 goal 列表
+ */
+export function recoverStaleRunning(thresholdMs = 30 * 60 * 1000) {
+  const now = Date.now();
+  const lines = readAllLines();
+  const recovered = [];
+  for (let i = 0; i < lines.length; i++) {
+    const g = lines[i];
+    if (g.status !== 'running') continue;
+    if (!g.startedAt) continue;
+    if (now - g.startedAt < thresholdMs) continue;
+    lines[i] = {
+      ...g,
+      status: 'pending',
+      startedAt: null,
+      finishedAt: null,
+    };
+    recovered.push({ id: g.id, description: g.description, stuckMs: now - g.startedAt });
+  }
+  if (recovered.length > 0) {
+    writeAllLines(lines);
+    for (const r of recovered) {
+      labEvents.emit('queue', { type: 'updated', goal: lines.find(l => l.id === r.id), recovery: 'stale-running' });
+    }
+  }
+  return recovered;
+}
+
+/**
+ * 把 pollution goals 标 failed (不再被 runNext pick)
+ * 留 queue 里 (历史可查), 但不消耗 cron 时间
+ * 返回: 被 purge 的 goal 列表
+ */
+export function purgePollution() {
+  const lines = readAllLines();
+  const purged = [];
+  for (let i = 0; i < lines.length; i++) {
+    const g = lines[i];
+    if (g.status === 'done' || g.status === 'failed') continue;  // 不动已结束的
+    const det = detectPollution(g.description);
+    if (!det.pollution) continue;
+    lines[i] = {
+      ...g,
+      status: 'failed',
+      finishedAt: Date.now(),
+      classification: { category: 'code', reason: `auto-purged pollution (pattern: ${det.reason})`, retryable: false },
+      escalatedAt: null,
+    };
+    purged.push({ id: g.id, description: g.description, pattern: det.reason });
+  }
+  if (purged.length > 0) {
+    writeAllLines(lines);
+    for (const p of purged) {
+      labEvents.emit('queue', { type: 'updated', goal: lines.find(l => l.id === p.id), recovery: 'purged-pollution' });
+    }
+  }
+  return purged;
+}
+
+/**
+ * 一次性 housekeeping: 先恢复 stale running, 再清 pollution
+ * 返回: { recovered: [...], purged: [...] }
+ */
+export function housekeeping(opts = {}) {
+  const thresholdMs = opts.thresholdMs ?? 30 * 60 * 1000;
+  const skipPurge = opts.skipPurge === true;
+  const recovered = recoverStaleRunning(thresholdMs);
+  const purged = skipPurge ? [] : purgePollution();
+  return { recovered, purged };
 }

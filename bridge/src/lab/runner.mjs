@@ -23,7 +23,7 @@
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname, join, resolve } from 'path';
-import { getNextPending, updateGoal } from './goal-queue.mjs';
+import { getNextPending, updateGoal, housekeeping } from './goal-queue.mjs';
 import { recordRun } from './history.mjs';
 import { classify } from './failure-analyzer.mjs';
 import { escalate } from './escalate.mjs';
@@ -59,6 +59,9 @@ async function _isPureGoal(description) {
 }
 
 export async function runNext(turbo = false) {
+  // 自治 housekeeping: 卡 running 太久 → 重置 pending; pollution → 标 failed
+  // 任何 runNext (manual / cron / bench) 都先 self-clean
+  _housekeep();
   const goal = getNextPending();
   if (!goal) return { ok: false, reason: 'no pending goal' };
 
@@ -190,6 +193,31 @@ function _finalize(goal, result, classification, attempt, finishedAt) {
     escalate(goal, classification, attempt);
   }
   return { retried: false, attempt, classification, escalated: escalationNeeded };
+}
+
+// === 自治 housekeeping ===
+// 每次 runNext 入口调一次, 防止上一次 (parent 被砍 / 子进程 timeout / SIGKILL)
+// 把 goal 留在 running 状态. 也清 WS test 之类的 pollution.
+// 默认 30min threshold — 留出长 LLM 调用余量.
+let _lastHousekeepAt = 0;
+const _HOUSEKEEP_INTERVAL_MS = 60 * 1000;  // 1 分钟内不重复 (multi-goal cycle)
+function _housekeep() {
+  const now = Date.now();
+  if (now - _lastHousekeepAt < _HOUSEKEEP_INTERVAL_MS) return;
+  _lastHousekeepAt = now;
+  const r = housekeeping();
+  if (r.recovered.length > 0) {
+    console.log(`[runner] housekeeping: recovered ${r.recovered.length} stale running goal(s)`);
+    for (const x of r.recovered) {
+      console.log(`[runner]   reset ${x.id} (stuck ${(x.stuckMs/1000/60).toFixed(0)} min): ${x.description.slice(0, 50)}`);
+    }
+  }
+  if (r.purged.length > 0) {
+    console.log(`[runner] housekeeping: purged ${r.purged.length} pollution goal(s)`);
+    for (const x of r.purged) {
+      console.log(`[runner]   marked failed ${x.id} (pattern: ${x.pattern}): ${x.description.slice(0, 50)}`);
+    }
+  }
 }
 
 export async function runAll(maxRuns = 100, turbo = true) {

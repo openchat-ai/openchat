@@ -25,6 +25,7 @@
 //   node bin/lab.mjs run-cron [ms]      启 cron, 每 N ms 跑一轮 (默认 30 min)
 //   node bin/lab.mjs cron-status        看 cron 是否在跑
 //   node bin/lab.mjs cron-stop          给 cron 进程发 SIGINT
+//   node bin/lab.mjs housekeeping       手动 recoverStaleRunning + purgePollution
 //   node bin/lab.mjs notify-test        发一条假 escalation, 验 notify 配置
 //
 // 存储:
@@ -46,7 +47,7 @@
 // - P5 cron: pidfile 防双开, 默认 interval 30min (env: OPENCHAT_LAB_CRON_INTERVAL)
 // - L3 notify: 默认 off, opt-in via env (OPENCHAT_LAB_NOTIFY=server|webhook)
 
-import { addGoal, listGoals, getStatus, listFailed, getNextPending, updateGoal } from '../src/lab/goal-queue.mjs';
+import { addGoal, listGoals, getStatus, listFailed, getNextPending, updateGoal, housekeeping } from '../src/lab/goal-queue.mjs';
 import { runNext, runAll } from '../src/lab/runner.mjs';
 import { listHistory, backfillFromQueue } from '../src/lab/history.mjs';
 import { getExperimentStats } from '../src/lab/aggregator.mjs';
@@ -87,6 +88,7 @@ function showUsage() {
   console.log('  lab.mjs run-cron [ms]      start cron, run every N ms (default 30 min, or env OPENCHAT_LAB_CRON_INTERVAL)');
   console.log('  lab.mjs cron-status        show cron running state');
   console.log('  lab.mjs cron-stop          send SIGINT to cron process');
+  console.log('  lab.mjs housekeeping [ms]  manually run recoverStaleRunning + purgePollution');
   console.log('  lab.mjs digest [N]         analyze last N runs, show trend/degradation');
   console.log('  lab.mjs digest --llm [N]   same + LLM natural language report');
   console.log('  lab.mjs explore            discover untested dep combinations');
@@ -462,6 +464,24 @@ if (cmd === 'add') {
     }
     console.log(`\nnext: add goal for each, e.g. lab.mjs add "re-verify ${affected[0] || '<path>'}"`);
   }
+
+} else if (cmd === 'housekeeping') {
+  // 自治 housekeeping: 手动跑 (runNext 也会自动调)
+  // 用法: lab.mjs housekeeping         (默认 30min threshold)
+  //      lab.mjs housekeeping 600000   (override threshold)
+  //      lab.mjs housekeeping --no-purge  (只 recover, 不删 pollution)
+  const argMs = args[1] && !args[1].startsWith('--') ? parseInt(args[1], 10) : null;
+  const skipPurge = args.includes('--no-purge');
+  const r = housekeeping({ thresholdMs: argMs, skipPurge });
+  console.log(`recovered: ${r.recovered.length} stale running goal(s)`);
+  for (const x of r.recovered) {
+    console.log(`  ${x.id} (stuck ${(x.stuckMs/1000/60).toFixed(0)} min): ${x.description.slice(0, 60)}`);
+  }
+  console.log(`purged: ${r.purged.length} pollution goal(s)`);
+  for (const x of r.purged) {
+    console.log(`  ${x.id} (pattern: ${x.pattern}): ${x.description.slice(0, 60)}`);
+  }
+  if (r.recovered.length === 0 && r.purged.length === 0) console.log('(nothing to clean)');
 
 } else if (cmd === 'notify-test') {
   // L3: 发一条假 escalation, 验 notify 配置 (Server酱 / webhook)
