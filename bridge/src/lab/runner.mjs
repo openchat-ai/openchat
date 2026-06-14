@@ -28,6 +28,7 @@ import { recordRun } from './history.mjs';
 import { classify } from './failure-analyzer.mjs';
 import { escalate } from './escalate.mjs';
 import { labEvents } from './lab-events.mjs';
+import { addFact } from '../experiments/lib/agent-memory.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OPENCHAT_BIN = join(__dirname, '..', '..', 'bin', 'openchat.mjs');
@@ -181,6 +182,9 @@ function _finalize(goal, result, classification, attempt, finishedAt) {
     classification,
     retryAttempt: attempt,
   });
+
+  // 写入 agent memory (fire-and-forget)
+  addFact(`实验 ${goal.description.slice(0, 40)} → ${finalStatus} (${(result.durationMs / 1000).toFixed(1)}s)`).catch(() => {});
 
   if (escalationNeeded) {
     escalate(goal, classification, attempt);

@@ -72,6 +72,9 @@ function showUsage() {
   console.log('  lab.mjs bench              run all closed-loop experiments as benchmark');
   console.log('  lab.mjs heal <goal-id>     diagnose and suggest fix for a failed goal');
   console.log('  lab.mjs extract            extract knowledge from latest run results into MEMORY.md');
+  console.log('  lab.mjs watch [dir]        watch experiment files, auto-rerun affected on change');
+  console.log('  lab.mjs memory             show agent memory summary (facts/preferences/patterns)');
+  console.log('  lab.mjs memory --clear     clear agent memory');
   console.log('  lab.mjs run-concurrent [N]  run N pending goals in parallel (default 3)');
   console.log('  lab.mjs aggregate          per-experiment pass/fail table');
   console.log('  lab.mjs regression         detect regressions vs baseline');
@@ -161,29 +164,60 @@ if (cmd === 'add') {
   for (let i = 0; i < Math.min(concurrency, pending.length); i++) next();
 
 } else if (cmd === 'bench') {
-  const { readFileSync, existsSync } = await import('fs');
+  const _benchModel = (() => {
+    const idx = args.indexOf('--model');
+    return idx >= 0 && args[idx + 1] ? args[idx + 1] : null;
+  })();
+  const { readFileSync, writeFileSync, existsSync } = await import('fs');
+  // 如果指定了 --model，临时修改 config
+  let originalConfig = null;
+  if (_benchModel) {
+    try {
+      const config = await import('./lib/config.mjs');
+      const cfg = config.persistentConfig.config;
+      originalConfig = { model: cfg.current?.model, provider: cfg.current?.provider };
+      if (!cfg.current) cfg.current = {};
+      cfg.current.model = _benchModel;
+      config.persistentConfig.save(cfg);
+      console.log(`bench: switched model to "${_benchModel}"`);
+    } catch (e) {
+      console.error(`bench: failed to switch model: ${e.message}`);
+      process.exit(1);
+    }
+  }
   const manifestPath = new URL('../src/experiments/manifest.json', import.meta.url);
   if (!existsSync(manifestPath)) { console.error('manifest.json not found'); process.exit(1); }
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
   const experiments = manifest.experiments || [];
   const existing = listGoals().map(g => g.description);
-  const toRun = [];
   for (const exp of experiments) {
     if (exp.status !== 'closed-loop') continue;
     const desc = `实验 ${exp.file.replace(/\.mjs$/, '')}: ${exp.name}`;
     if (!existing.includes(desc)) addGoal(desc);
-    toRun.push(desc);
   }
   const allResults = await runAll();
+  // 恢复 original model
+  if (originalConfig) {
+    try {
+      const config = await import('./lib/config.mjs');
+      const cfg = config.persistentConfig.config;
+      cfg.current = cfg.current || {};
+      cfg.current.model = originalConfig.model;
+      cfg.current.provider = originalConfig.provider;
+      config.persistentConfig.save(cfg);
+      console.log(`bench: restored model to "${originalConfig.model || '(default)'}"`);
+    } catch {}
+  }
+  const modelTag = _benchModel ? ` [model:${_benchModel}]` : '';
   const pass = allResults.filter(r => r.result?.ok).length;
   const fail = allResults.filter(r => !r.result?.ok).length;
-  console.log(`\n📊 Benchmark: ${allResults.length} experiments, ${pass} pass, ${fail} fail`);
+  console.log(`\n📊 Benchmark${modelTag}: ${allResults.length} experiments, ${pass} pass, ${fail} fail`);
   for (const r of allResults) {
     const sec = r.result ? (r.result.durationMs / 1000).toFixed(1) : '?';
     const status = r.result?.ok ? '✅' : '❌';
     console.log(`  ${status} ${sec}s  ${r.goal.description.slice(0, 60)}`);
   }
-  console.log(`\n💰 Total: ${allResults.length} runs, ${pass}/${allResults.length} pass (${allResults.length > 0 ? Math.round(pass/allResults.length*100) : 0}%)`);
+  console.log(`\n💰 Total${modelTag}: ${allResults.length} runs, ${pass}/${allResults.length} pass (${allResults.length > 0 ? Math.round(pass/allResults.length*100) : 0}%)`);
 
 } else if (cmd === 'history') {
   const runs = listHistory();
@@ -541,6 +575,65 @@ if (cmd === 'add') {
       console.log(`  → ${a.file}: ${a.name}`);
     }
   }
+
+} else if (cmd === 'memory') {
+  const { load, save, summary } = await import('../src/experiments/lib/agent-memory.mjs');
+  if (args.includes('--clear')) {
+    const { writeFile } = await import('fs/promises');
+    const { resolve } = await import('path');
+    const { fileURLToPath } = await import('url');
+    const h = process.env.HOME || process.env.USERPROFILE;
+    const p = resolve(h || process.cwd(), '.openchat', 'agent-memory.json');
+    await writeFile(p, JSON.stringify({ facts: [], preferences: [], learnedPatterns: [], createdAt: Date.now(), updatedAt: Date.now() }, null, 2), 'utf8');
+    console.log('memory cleared');
+  } else {
+    const m = await load();
+    console.log(`Agent Memory (${new Date(m.updatedAt).toISOString().slice(0, 19)}):`);
+    console.log(`  facts: ${m.facts.length}`);
+    for (const f of m.facts.slice(-5)) console.log(`    - ${f.text.slice(0, 70)}`);
+    console.log(`  preferences: ${m.preferences.length}`);
+    for (const p of m.preferences.slice(-3)) console.log(`    ${p.key}=${p.value}`);
+    console.log(`  patterns: ${m.learnedPatterns.length}`);
+  }
+
+} else if (cmd === 'watch') {
+  const watchDir = args[1] || resolve(dirname(fileURLToPath(import.meta.url)), '../src/experiments');
+  const fs = await import('fs');
+  console.log(`watch: watching ${watchDir}`);
+  console.log('watch: press Ctrl-C to stop');
+  const debounce = {};
+  fs.watch(watchDir, { recursive: true }, async (event, filename) => {
+    if (!filename || !filename.endsWith('.mjs')) return;
+    const key = filename;
+    if (debounce[key]) clearTimeout(debounce[key]);
+    debounce[key] = setTimeout(async () => {
+      console.log(`\nwatch: ${filename} changed, checking affected...`);
+      try {
+        const changed = [filename];
+        const affected = getAffectedExperiments(changed);
+        if (!affected.length) { console.log('watch: no affected experiments'); return; }
+        let added = 0;
+        const existing = listGoals().map(g => g.description);
+        for (const a of affected) {
+          const desc = `实验 ${a.file.replace(/\.mjs$/, '')}: ${a.name}`;
+          if (existing.includes(desc)) continue;
+          addGoal(desc);
+          added++;
+        }
+        if (added === 0) { console.log('watch: affected experiments already in queue'); return; }
+        console.log(`watch: ${added} new goal(s) added, running...`);
+        const results = await runAll();
+        for (const r of results) {
+          const sec = r.result ? (r.result.durationMs / 1000).toFixed(1) : '?';
+          console.log(`  ${r.result?.ok ? '✅' : '❌'} ${sec}s  ${r.goal.description.slice(0, 50)}`);
+        }
+      } catch (e) {
+        console.error(`watch error: ${e.message}`);
+      }
+    }, 500);
+  });
+  // keep alive
+  await new Promise(() => {});
 
 } else {
   showUsage();
