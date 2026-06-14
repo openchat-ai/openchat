@@ -56,6 +56,7 @@ import { buildGraph, getGraph, getAffectedExperiments, getFileDependents } from 
 import { getChangedFiles } from '../src/lab/git-diff.mjs';
 import { notify } from '../src/lab/notifier.mjs';
 import { startCron, stopCron, isCronRunning, getCronPid } from '../src/lab/cron.mjs';
+import { diagnose } from '../src/lab/auto-heal.mjs';
 
 const args = process.argv.slice(2);
 const cmd = args[0];
@@ -69,6 +70,8 @@ function showUsage() {
   console.log('  lab.mjs run-all            drain all pending');
   console.log('  lab.mjs history            show last 20 run records');
   console.log('  lab.mjs bench              run all closed-loop experiments as benchmark');
+  console.log('  lab.mjs heal <goal-id>     diagnose and suggest fix for a failed goal');
+  console.log('  lab.mjs extract            extract knowledge from latest run results into MEMORY.md');
   console.log('  lab.mjs run-concurrent [N]  run N pending goals in parallel (default 3)');
   console.log('  lab.mjs aggregate          per-experiment pass/fail table');
   console.log('  lab.mjs regression         detect regressions vs baseline');
@@ -276,6 +279,27 @@ if (cmd === 'add') {
       console.log(`${id}  ${retry}  ${cat}  ${reason}  ${desc}`);
     }
   }
+
+} else if (cmd === 'heal') {
+  const goalId = args[1];
+  if (!goalId) { console.error('Usage: lab.mjs heal <goal-id>'); process.exit(1); }
+  const { healGoal } = await import('../src/lab/auto-heal.mjs');
+  const r = await healGoal(goalId);
+  if (!r.ok) { console.error(`heal failed: ${r.error}`); process.exit(1); }
+  console.log(`Goal: ${r.goal.description.slice(0, 60)}`);
+  console.log(`Status: ${r.goal.status}`);
+  console.log(`Pattern: ${r.diagnosis?.pattern || 'unknown'}`);
+  console.log(`Severity: ${r.diagnosis?.severity || '?'}`);
+  console.log(`Suggestion: ${r.diagnosis?.suggestion || 'none'}`);
+  console.log(`Confidence: ${r.diagnosis?.confidence || 'low'}`);
+
+} else if (cmd === 'extract') {
+  const runs = listHistory().slice(-50);
+  if (runs.length === 0) { console.log('no history to extract'); process.exit(0); }
+  const { extract } = await import('../src/lab/knowledge-extract.mjs');
+  const r = await extract(runs);
+  if (r.wrote) console.log(`extracted ${r.linesAdded} lines to ${r.path}`);
+  else console.log('nothing to extract');
 
 } else if (cmd === 'escalated') {
   const records = listEscalated();
