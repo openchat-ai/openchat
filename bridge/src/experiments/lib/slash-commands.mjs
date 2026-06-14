@@ -22,7 +22,7 @@
 //   /workflow <name>       — 运行已定义的工作流
 //   /exit                  — 退出 (alias: /quit)
 //
-// 故意不做 (留给后续 PR): /sessions /compact /cost /bug /init /memory
+// 故意不做 (留给后续 PR): /sessions /cost /bug /init /memory
 // 理由: 这些要新建 storage 子模块, 一次提交 diff 超 500 行 (违反 R4)
 //
 // I/O (compose 契约, 供实验 10 dev-aux 测试):
@@ -46,6 +46,7 @@ export const COMMANDS = {
   model:   { arg: '<name|id>',     desc: '切换当前 model, 写到 cfg.current.model' },
   resume:  { arg: '[chatId]',      desc: '列有历史的 session; 或 /resume <id> 跳到指定' },
   forget:  { arg: '[chatId]',      desc: '列有历史的 session; 或 /forget <id> 删除指定' },
+  compact: { arg: '',              desc: '重置 token 累积计数器 (释放 token 阈值警告)' },
   commit:  { arg: '',              desc: '一键 git add + 自动 commit msg (基于 git diff)' },
   diff:    { arg: '',              desc: '显示未提交的 git diff (基于 cwd)' },
   task:    { arg: '<goal>',        desc: '派生子 agent 跑任务 (独立 session, 不污染主历史)' },
@@ -205,6 +206,17 @@ export async function applySlash({ cmd, arg, ctx }) {
         return { reply: `✓ 已删除 session: ${target.id}` };
       } catch (e) {
         return { reply: `✗ 删除异常: ${e.message?.slice(0, 100)}` };
+      }
+    }
+    case 'compact': {
+      if (typeof ctx.onCompact !== 'function') {
+        return { reply: '/compact 不可用: dev-repl 未注入 onCompact 回调' };
+      }
+      try {
+        const r = await ctx.onCompact();
+        return { reply: r.ok ? '✓ 已重置 token 计数器。' : `✗ 重置失败: ${r.error || '未知'}` };
+      } catch (e) {
+        return { reply: `✗ /compact 失败: ${e.message?.slice(0, 100)}` };
       }
     }
     case 'diff': {

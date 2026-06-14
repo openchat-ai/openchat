@@ -362,6 +362,10 @@ FIRST-TURN TOOL CALL CONTRACT (硬约束):
               sessionId, cwd: process.cwd(), toolCount: tools.length, historyRounds: 0,
               availableSessions,
               costSummary: costTracker.formatSummary(),
+              onCompact: async () => {
+                costTracker.reset();
+                return { ok: true };
+              },
               onForget: async (cid) => {
                 // 1. 删历史文件 (repl-history)
                 histClear(cid);

@@ -400,6 +400,71 @@ if (cmd === 'add') {
   console.log(`cron-stop: ${JSON.stringify(r)}`);
   process.exit(0);
 
+} else if (cmd === 'auto-discover') {
+  const { readFileSync, existsSync } = await import('fs');
+  const manifestPath = new URL('../src/experiments/manifest.json', import.meta.url);
+  if (!existsSync(manifestPath)) { console.error('manifest.json not found'); process.exit(1); }
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  const experiments = manifest.experiments || [];
+  const existing = listGoals().map(g => g.description);
+  let added = 0;
+  for (const exp of experiments) {
+    if (exp.status !== 'closed-loop') continue;
+    const desc = `实验 ${exp.file.replace(/\.mjs$/, '')}: ${exp.name}`;
+    if (existing.includes(desc)) continue;
+    addGoal(desc);
+    added++;
+  }
+  const totalClosed = experiments.filter(e => e.status === 'closed-loop').length;
+  const matched = existing.filter(d => d.startsWith('实验 ')).length;
+  console.log(`auto-discover: added ${added} goal(s) (${totalClosed} closed-loop, ${matched} already matched in queue, ${totalClosed - added - matched} skipped)`);
+
+} else if (cmd === 'sync') {
+  const { readFileSync, existsSync } = await import('fs');
+  const manifestPath = new URL('../src/experiments/manifest.json', import.meta.url);
+  if (!existsSync(manifestPath)) { console.error('manifest.json not found'); process.exit(1); }
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  const experiments = manifest.experiments || [];
+  const existing = listGoals().map(g => g.description);
+  let added = 0;
+  for (const exp of experiments) {
+    if (exp.status !== 'closed-loop') continue;
+    const desc = `实验 ${exp.file.replace(/\.mjs$/, '')}: ${exp.name}`;
+    if (existing.includes(desc)) continue;
+    addGoal(desc);
+    added++;
+  }
+  const totalClosed = experiments.filter(e => e.status === 'closed-loop').length;
+  const matched = existing.filter(d => d.startsWith('实验 ')).length;
+  console.log(`sync: added ${added} new goal(s) (${totalClosed} closed-loop, ${matched} already matched, ${totalClosed - added - matched} skipped)`);
+  if (added > 0) {
+    const results = await runAll();
+    console.log(`\nsync: ran ${results.length} goal(s)`);
+    for (const r of results) {
+      console.log(`  ${r.goal.id}: ${r.result?.ok ? 'OK' : 'FAIL'}`);
+    }
+  } else { console.log('sync: nothing new to run'); }
+
+} else if (cmd === 'verify-affected') {
+  const changed = await getChangedFiles();
+  if (!changed.length) { console.log('verify-affected: no changed files'); process.exit(0); }
+  const affected = getAffectedExperiments(changed);
+  const existing = listGoals().map(g => g.description);
+  let added = 0;
+  for (const a of affected) {
+    const desc = `实验 ${a.file.replace(/\.mjs$/, '')}: ${a.name}`;
+    if (existing.includes(desc)) continue;
+    addGoal(desc);
+    added++;
+  }
+  console.log(`verify-affected: ${affected.length} affected experiment(s), added ${added} new goal(s)`);
+  if (added > 0) {
+    for (const a of affected) {
+      if (existing.includes(`实验 ${a.file.replace(/\.mjs$/, '')}: ${a.name}`)) continue;
+      console.log(`  → ${a.file}: ${a.name}`);
+    }
+  }
+
 } else {
   showUsage();
 }

@@ -115,6 +115,29 @@ export class CostTracker {
     };
   }
 
+  compactThreshold() {
+    return 125_000;
+  }
+
+  compactWarning() {
+    const s = this.summary();
+    if (s.totalTokens < this.compactThreshold()) return null;
+    const pct = Math.round((s.totalTokens / this.compactThreshold()) * 100);
+    return `  ⚠ 当前会话已用 ${s.totalTokens.toLocaleString()} tokens (${pct}% of ${this.compactThreshold().toLocaleString()} 阈值)。建议 /compact 重置累积。`;
+  }
+
+  burnRate() {
+    // 算平均每轮 token 消耗, 预估剩余对话轮数
+    const s = this.summary();
+    if (s.calls === 0) return { avgPerRound: 0, estimatedRoundsLeft: 0 };
+    if (!this._startTime) this._startTime = Date.now();
+    const elapsed = (Date.now() - this._startTime) / 1000 / 60; // 分钟
+    const avgPerRound = Math.round(s.totalTokens / s.calls);
+    const remaining = this.compactThreshold() - s.totalTokens;
+    const estimatedRoundsLeft = remaining > 0 && avgPerRound > 0 ? Math.floor(remaining / avgPerRound) : 0;
+    return { avgPerRound, estimatedRoundsLeft, totalTokens: s.totalTokens };
+  }
+
   formatSummary() {
     const s = this.summary();
     if (s.calls === 0) return '  cost: 暂无记录 (跑一轮对话后看)';
@@ -130,6 +153,13 @@ export class CostTracker {
       lines.push('  by model:');
       for (const [m, v] of models) lines.push(`    ${m}: ${v.promptTokens + v.completionTokens} tok, $${v.cost.toFixed(4)}`);
     }
+    const burn = this.burnRate();
+    if (burn.avgPerRound > 0) {
+      lines.push(`  avg/round: ${burn.avgPerRound} tokens`);
+      if (burn.estimatedRoundsLeft > 0) lines.push(`  ~${burn.estimatedRoundsLeft} rounds until compact threshold`);
+    }
+    const warn = this.compactWarning();
+    if (warn) lines.push(warn);
     return lines.join('\n');
   }
 }
