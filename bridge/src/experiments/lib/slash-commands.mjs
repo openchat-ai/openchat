@@ -46,6 +46,7 @@ export const COMMANDS = {
   model:   { arg: '<name|id>',     desc: '切换当前 model, 写到 cfg.current.model' },
   resume:  { arg: '[chatId]',      desc: '列有历史的 session; 或 /resume <id> 跳到指定' },
   forget:  { arg: '[chatId]',      desc: '列有历史的 session; 或 /forget <id> 删除指定' },
+  hooks:   { arg: '',              desc: '列出已注册的 agent hook (preTool/postTool) 插件' },
   compact: { arg: '',              desc: '重置 token 累积计数器 (释放 token 阈值警告)' },
   commit:  { arg: '',              desc: '一键 git add + 自动 commit msg (基于 git diff)' },
   diff:    { arg: '',              desc: '显示未提交的 git diff (基于 cwd)' },
@@ -217,6 +218,24 @@ export async function applySlash({ cmd, arg, ctx }) {
         return { reply: r.ok ? '✓ 已重置 token 计数器。' : `✗ 重置失败: ${r.error || '未知'}` };
       } catch (e) {
         return { reply: `✗ /compact 失败: ${e.message?.slice(0, 100)}` };
+      }
+    }
+    case 'hooks': {
+      if (typeof ctx.onListHooks !== 'function') {
+        return { reply: '/hooks 不可用: dev-repl 未注入 onListHooks 回调' };
+      }
+      try {
+        const r = await ctx.onListHooks();
+        const entries = Object.entries(r);
+        if (!entries.length) return { reply: '  (no hooks registered)' };
+        const lines = ['已注册的 agent hook:'];
+        for (const [event, names] of entries) {
+          lines.push(`  ${event}:`);
+          for (const n of names) lines.push(`    - ${n}`);
+        }
+        return { reply: lines.join('\n') };
+      } catch (e) {
+        return { reply: `✗ /hooks 失败: ${e.message?.slice(0, 100)}` };
       }
     }
     case 'diff': {

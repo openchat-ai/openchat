@@ -833,6 +833,32 @@
       ],
       "status": "closed-loop",
       "intelligenceLevel": "L1.5"
+    },
+    {
+      "id": "mcp-server",
+      "file": "39.mjs",
+      "name": "MCP Server — Model Context Protocol 接入 (tools/list + tools/call)",
+      "category": "llm",
+      "pure": false,
+      "needsEnv": [],
+      "description": "Exposes openchat tools via MCP stdio transport. Use when user mentions MCP, Model Context Protocol, external AI tools, or connecting to AI editors.",
+      "deps": [],
+      "tags": ["llm", "mcp", "integration"],
+      "status": "closed-loop",
+      "intelligenceLevel": "L1.5"
+    },
+    {
+      "id": "hooks-plugin",
+      "file": "40.mjs",
+      "name": "Hooks Plugin System — pre/post tool hooks with built-in plugins",
+      "category": "guardrails",
+      "pure": false,
+      "needsEnv": [],
+      "description": "Registers preTool/postTool hooks for permission, logging, rate-limit. Wired into dev-repl + subagent + tool-loop. Use when user mentions hooks, plugin, permission gate, rate limit, or tool logging.",
+      "deps": [],
+      "tags": ["guardrails", "hooks", "plugin"],
+      "status": "closed-loop",
+      "intelligenceLevel": "L1.5"
     }
   ]
 }

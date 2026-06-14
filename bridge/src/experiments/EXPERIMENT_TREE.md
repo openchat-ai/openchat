@@ -65,3 +65,5 @@ flowchart TD
 | 36 | 36.mjs | poll-one | 2 | 08, 06, 22 | - |
 | 37 | 37.mjs | dream-consolidation | 1 | 33 | - |
 | 38 | 38.mjs | goal | 1 | 22 | - |
+| 39 | 39.mjs | mcp-server | 0 | - | - |
+| 40 | 40.mjs | hooks-plugin | 0 | - | - |

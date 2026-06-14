@@ -212,10 +212,14 @@ async function execTool(tc, dispatch) {
   let args;
   try { args = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : rawArgs; }
   catch { args = {}; }
+  // [HOOKS] preTool — permission/限流/日志 注册的 hook 链
+  const { runPre: hPre, runPost: hPost } = await import('./agent-hooks.mjs');
+  try { await hPre(name, args); } catch (e) { return `[Hook denied] ${e.message?.slice(0, 200) || 'preTool hook rejected call'}`; }
   let lastError = '';
   for (const fn of Object.values(dispatch)) {
     try {
-      const r = await fn(name, args);
+      let r = await fn(name, args);
+      r = await hPost(name, args, r);
       const s = typeof r === 'string' ? r : JSON.stringify(r, null, 2);
       const lines = s.split('\n');
       if (lines.length > 80) return lines.slice(0, 60).join('\n') + `\n... (${lines.length - 60} more lines)`;

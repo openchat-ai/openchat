@@ -1,5 +1,6 @@
 import { createInterface } from 'readline';
 import os from 'os';
+import { runPre as hookPre, runPost as hookPost, listHooks as listAgentHooks } from './agent-hooks.mjs';
 
 // === invariants ===
 // - startDevRepl 入口先调 provider-health.diagnose + failover-picker 选 alive provider
@@ -71,10 +72,14 @@ async function execTool(tc, dispatch) {
   let args;
   try { args = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : rawArgs; }
   catch { args = typeof rawArgs === 'string' ? JSON.parse(_repairJSON(rawArgs)) : rawArgs; }
+  // [HOOKS] preTool — permission/限流/日志 注册的 hook 链, 抛 throw 中止
+  try { await hookPre(name, args); } catch (e) { return `[Hook denied] ${e.message?.slice(0, 200) || 'preTool hook rejected call'}`; }
   let lastError = '';
   for (const fn of Object.values(dispatch)) {
     try {
-      const r = await fn(name, args);
+      let r = await fn(name, args);
+      // [HOOKS] postTool — log/transform chain
+      r = await hookPost(name, args, r);
       const s = typeof r === 'string' ? r : JSON.stringify(r, null, 2);
       const lines = s.split('\n');
       if (lines.length > 80) return lines.slice(0, 60).join('\n') + `\n... (${lines.length - 60} more lines)`;
@@ -362,6 +367,7 @@ FIRST-TURN TOOL CALL CONTRACT (硬约束):
               sessionId, cwd: process.cwd(), toolCount: tools.length, historyRounds: 0,
               availableSessions,
               costSummary: costTracker.formatSummary(),
+              onListHooks: () => listAgentHooks(),
               onCompact: async () => {
                 costTracker.reset();
                 return { ok: true };
