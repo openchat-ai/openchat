@@ -654,6 +654,11 @@ if (cmd === 'add') {
         patched++;
         console.log(`    → applied, reset to pending`);
       }
+    } else if (h.diagnosis?.severity === 'retry') {
+      const { updateGoal } = await import('../src/lab/goal-queue.mjs');
+      updateGoal(g.id, { status: 'pending', result: null, finishedAt: null, escalatedAt: null });
+      patched++;
+      console.log(`    → ${h.diagnosis.suggestion} → reset to pending`);
     } else {
       console.log(`    → ${h.diagnosis?.suggestion || 'no auto-fix available (severity: ' + h.diagnosis?.severity + ')'}`);
     }

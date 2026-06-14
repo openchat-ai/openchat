@@ -59,17 +59,26 @@ const PATTERNS = [
     fix: async () => ({ severity: 'auto', suggestion: 'Review test assertion — expected value mismatch', confidence: 'medium' }),
   },
   {
-    name: 'spawn-url-error',
-    test: (msg) => /Only URLs with a schema|spawn error/i.test(msg),
+    name: 'auto-purged-pollution',
+    test: (msg) => /auto-purged pollution/i.test(msg),
     fix: async () => ({
       severity: 'manual',
-      suggestion: 'Check provider URL in ~/.openchat/config.json — must have http:// or https:// scheme',
+      suggestion: 'Remove this goal — it was auto-purged WS test garbage',
+      confidence: 'high',
+    }),
+  },
+  {
+    name: 'spawn-url-error',
+    test: (msg) => /Only URLs with a scheme|Received protocol|spawn error/i.test(msg),
+    fix: async () => ({
+      severity: 'manual',
+      suggestion: 'Check provider URL in config — Windows path needs file:// prefix or use forward slashes',
       confidence: 'high',
     }),
   },
   {
     name: 'exit-code-143',
-    test: (msg) => /exit code 143|SIGTERM.*timeout/i.test(msg),
+    test: (msg) => /exit code 143|SIGTERM/i.test(msg),
     fix: async () => ({ severity: 'retry', suggestion: 'Transient SIGTERM — retry with longer timeout', confidence: 'high' }),
   },
 ];
@@ -92,8 +101,10 @@ export async function healGoal(goalId) {
   const goal = goals.find(g => g.id === goalId);
   if (!goal) return { ok: false, error: 'goal not found' };
   if (goal.status !== 'failed') return { ok: false, error: 'goal not failed' };
-  const result = goal.result || {};
-  const diag = await diagnose({ ok: result.ok, error: result.error || (result.ok ? '' : 'FAIL'), goal });
+  const r = goal.result || {};
+  // 构造诊断用的 errorMsg: 优先 classification.reason, 其次 result.error, 其次 'FAIL'
+  const errorMsg = goal.classification?.reason || r.error || (r.ok ? '' : 'FAIL');
+  const diag = await diagnose({ ok: r.ok, error: errorMsg, goal });
   if (!diag.ok && diag.diagnosis && diag.diagnosis.severity === 'auto') {
     const patch = await generatePatch(goal, diag.diagnosis);
     return { ok: true, goal, ...diag, patch };
