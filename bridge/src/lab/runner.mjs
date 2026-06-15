@@ -20,7 +20,7 @@
 // - MAX_RETRIES 默认 2 (共 3 次尝试)
 // - 失败 escalate 是 fire-and-forget, 不等返回
 
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { dirname, join, resolve } from 'path';
 import { getNextPending, updateGoal, housekeeping } from './goal-queue.mjs';
 import { recordRun } from './history.mjs';
@@ -72,8 +72,8 @@ async function _runTurbo(goal) {
     const m = goal.description.match(/实验\s+(\S+):/);
     const file = m ? m[1] : null;
     let mod;
-    if (file && file.includes('/')) mod = await import(resolve(EXP_DIR, file));
-    else if (file) mod = await import(resolve(EXP_DIR, file + '.mjs'));
+    if (file && file.includes('/')) mod = await import(pathToFileURL(resolve(EXP_DIR, file)));
+    else if (file) mod = await import(pathToFileURL(resolve(EXP_DIR, file + '.mjs')));
     else mod = null;
     const testFn = mod && (typeof mod.test === 'function' ? mod.test : null);
     if (!testFn) throw new Error(`no test() in ${file || goal.description}`);

@@ -119,4 +119,4 @@ async function testTokenSaving() {
   report(NAME);
 }
 
-;
+export { testTokenSaving, testTokenSaving as test };

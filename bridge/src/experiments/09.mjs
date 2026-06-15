@@ -286,4 +286,4 @@ async function testCoding() {
   r.report(NAME);
 }
 
-;
+export { testCoding, testCoding as test };

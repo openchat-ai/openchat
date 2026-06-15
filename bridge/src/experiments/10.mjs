@@ -177,4 +177,4 @@ async function testDevAux() {
   r.report(NAME);
 }
 
-;
+export { testDevAux, testDevAux as test };

@@ -85,4 +85,4 @@ async function testEditAdvanced() {
   r.report(NAME);
 }
 
-;
+export { testEditAdvanced, testEditAdvanced as test };
