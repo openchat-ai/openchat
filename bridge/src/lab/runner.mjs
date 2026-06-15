@@ -29,10 +29,25 @@ import { classify } from './failure-analyzer.mjs';
 import { escalate } from './escalate.mjs';
 import { labEvents } from './lab-events.mjs';
 import { addFact } from '../experiments/lib/agent-memory.mjs';
+import { registerRun, unregisterRun, appendOutput } from './active-runs.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OPENCHAT_BIN = join(__dirname, '..', '..', 'bin', 'openchat.mjs');
 const MAX_RETRIES = 2;
+
+// 自动启动 supervisor（只一次）
+let _supervisorStarted = false;
+async function _ensureSupervisor() {
+  if (_supervisorStarted) return;
+  _supervisorStarted = true;
+  try {
+    const { startSupervisor } = await import('./supervisor.mjs');
+    const h = await startSupervisor();
+    globalThis._supervisorHandle = h;
+  } catch (e) {
+    console.error(`[runner] supervisor start failed: ${e.message}`);
+  }
+}
 
 let _manifestPromise = null;
 async function _getManifest() {
@@ -62,6 +77,8 @@ export async function runNext(turbo = false) {
   // 自治 housekeeping: 卡 running 太久 → 重置 pending; pollution → 标 failed
   // 任何 runNext (manual / cron / bench) 都先 self-clean
   _housekeep();
+  // 确保 supervisor 已启动（fire-and-forget）
+  _ensureSupervisor();
   const goal = getNextPending();
   if (!goal) return { ok: false, reason: 'no pending goal' };
 
@@ -77,10 +94,23 @@ export async function runNext(turbo = false) {
   return new Promise((resolve) => {
     const child = spawn('node', [OPENCHAT_BIN, '--goal', goal.description], {
       cwd: process.cwd(),
-      stdio: 'inherit',
+      stdio: ['inherit', 'pipe', 'inherit'],
     });
 
+    // 捕获 stdout 供 supervisor 分析
+    const runReg = registerRun(goal.id, { child, description: goal.description });
+    if (child.stdout) {
+      child.stdout.on('data', (chunk) => {
+        process.stdout.write(chunk); // 还是输出到终端
+        const lines = chunk.toString().split('\n');
+        for (const line of lines) {
+          if (line.trim()) appendOutput(goal.id, line);
+        }
+      });
+    }
+
     child.on('exit', (code, signal) => {
+      unregisterRun(goal.id);
       const finishedAt = Date.now();
       const result = {
         ok: code === 0,
@@ -95,6 +125,7 @@ export async function runNext(turbo = false) {
     });
 
     child.on('error', (err) => {
+      unregisterRun(goal.id);
       const finishedAt = Date.now();
       const result = { ok: false, exitCode: null, signal: null, durationMs: null, error: err.message };
       const classification = classify({ exitCode: null, signal: null, error: err.message });
@@ -109,6 +140,11 @@ async function _runTurbo(goal) {
   const startedAt = Date.now();
   updateGoal(goal.id, { status: 'running', startedAt });
   labEvents.emit('runner', { type: 'start', goalId: goal.id, description: goal.description, startedAt });
+
+  // 可取消包装
+  let cancelled = false;
+  const cancel = () => { cancelled = true; };
+  registerRun(goal.id, { description: goal.description, cancel });
   try {
     const m = goal.description.match(/实验\s+(\S+):/);
     const file = m ? `${m[1]}` : null;
@@ -119,11 +155,16 @@ async function _runTurbo(goal) {
     else mod = null;
     const testFn = mod && (typeof mod.test === 'function' ? mod.test : null);
     if (!testFn) throw new Error(`no test() in ${file}`);
-    const testResult = await testFn();
+    // 可取消：与 cancel promise race
+    const cancelPromise = new Promise((_, reject) => {
+      const iv = setInterval(() => { if (cancelled) { clearInterval(iv); reject(new Error('cancelled by supervisor')); } }, 500);
+    });
+    const testResult = await Promise.race([testFn(), cancelPromise]);
     const finishedAt = Date.now();
     const result = { ok: testResult?.ok !== false, exitCode: 0, signal: null, durationMs: finishedAt - startedAt };
     const classification = classify({ exitCode: 0 });
     const attempt = (goal.retryCount || 0) + 1;
+    unregisterRun(goal.id);
     _finalize(goal, result, classification, attempt, finishedAt);
     return { ok: true, goal, result, classification };
   } catch (e) {
@@ -131,6 +172,7 @@ async function _runTurbo(goal) {
     const result = { ok: false, exitCode: null, signal: null, durationMs: finishedAt - startedAt, error: e.message };
     const classification = classify({ exitCode: null, signal: null, error: e.message });
     const attempt = (goal.retryCount || 0) + 1;
+    unregisterRun(goal.id);
     _finalize(goal, result, classification, attempt, finishedAt);
     return { ok: false, goal, error: e.message, classification };
   }

@@ -89,6 +89,9 @@ function showUsage() {
   console.log('  lab.mjs cron-status        show cron running state');
   console.log('  lab.mjs cron-stop          send SIGINT to cron process');
   console.log('  lab.mjs cron-interval <ms>  change cron interval on the fly (e.g. 60000 = 1 min)');
+  console.log('  lab.mjs supervisor [ms]     start supervisor loop (default 30s check interval)');
+  console.log('  lab.mjs supervisor-stop     stop supervisor');
+  console.log('  lab.mjs supervisor-status   show supervisor state');
   console.log('  lab.mjs housekeeping [ms]  manually run recoverStaleRunning + purgePollution');
   console.log('  lab.mjs digest [N]         analyze last N runs, show trend/degradation');
   console.log('  lab.mjs digest --llm [N]   same + LLM natural language report');
@@ -549,6 +552,32 @@ if (cmd === 'add') {
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, 'cron-interval.txt'), String(ms), 'utf8');
   console.log(`cron-interval: written ${ms}ms (will take effect next cycle)`);
+  process.exit(0);
+
+} else if (cmd === 'supervisor') {
+  const ms = args[1] ? parseInt(args[1], 10) : null;
+  const { startSupervisor } = await import('../src/lab/supervisor.mjs');
+  const h = await startSupervisor(ms ? { checkIntervalMs: ms } : {});
+  console.log(`supervisor started (interval ${(h.getStatus().checkIntervalMs / 1000).toFixed(0)}s)`);
+  // keep alive
+  await new Promise(() => {});
+
+} else if (cmd === 'supervisor-stop') {
+  if (globalThis._supervisorHandle) {
+    globalThis._supervisorHandle.stop();
+    console.log('supervisor stopped');
+  } else {
+    console.log('supervisor: not running');
+  }
+  process.exit(0);
+
+} else if (cmd === 'supervisor-status') {
+  if (globalThis._supervisorHandle) {
+    const s = globalThis._supervisorHandle.getStatus();
+    console.log(`supervisor: running (interval ${(s.checkIntervalMs / 1000).toFixed(0)}s)`);
+  } else {
+    console.log('supervisor: not running');
+  }
   process.exit(0);
 
 } else if (cmd === 'auto-discover') {
