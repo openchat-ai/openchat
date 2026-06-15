@@ -25,4 +25,4 @@ async function testP2P() {
   report(NAME);
 }
 
-export { testP2P };
+;

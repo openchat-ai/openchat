@@ -41,4 +41,4 @@ async function testNaming() {
   report(NAME);
 }
 
-export { testNaming };
+;

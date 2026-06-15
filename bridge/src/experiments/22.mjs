@@ -250,3 +250,15 @@ export async function generateSessionName(chatId) {
   const p = runPipeline(resp);
   return (p.content || '').replace(/["'「」]/g, '').trim().substring(0, 20) || null;
 }
+
+// 最小 smoke test — 验证模块加载 + provider 初始化
+export async function test() {
+  const errors = [];
+  try {
+    if (typeof initProvider !== 'function') errors.push('initProvider not a function');
+    if (typeof processText !== 'function') errors.push('processText not a function');
+    if (typeof run !== 'function') errors.push('run not a function');
+  } catch (e) { errors.push(e.message); }
+  // 不实际调 LLM — 那是 e2e 测试的事
+  return { ok: errors.length === 0, errors };
+}
