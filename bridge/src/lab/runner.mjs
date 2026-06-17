@@ -132,21 +132,10 @@ async function _runTurbo(goal) {
             writeFileSync(absPath, f, 'utf8'); return { ok: true, info: `var/let→const` };
           }
           if (issue.includes('consider splitting')) {
-            const { dirname:dd,basename:bb,extname:ee,join:jj } = await import('path');
-            const lines = c.split('\n');
-            if (lines.length <= 200) return { ok: true, info: `too short (${lines.length})` };
-            if (/^export\s/m.test(c)) return { ok: true, info: `has exports, skip` };
-            let best = Math.round(lines.length * 0.55);
-            if (best > lines.length - 50) best = lines.length - 50;
-            for (let i = 0, d = 0; i < lines.length; i++) {
-              d += (lines[i].match(/{/g)||[]).length - (lines[i].match(/}/g)||[]).length;
-              if (i >= best && d === 0 && /^\s*(export\s+)?(function|class|const|let|var|async\s+function)\s+/.test(lines[i])) { best = i; break; }
-            }
-            if (best >= lines.length - 30) return { ok: true, info: `no safe split` };
-            const p = `${bb(absPath, ee(absPath))}.p2${ee(absPath)}`;
-            writeFileSync(jj(dd(absPath), p), lines.slice(best).join('\n'), 'utf8');
-            writeFileSync(absPath, lines.slice(0, best).join('\n') + `\nexport * from './${p}';\n`, 'utf8');
-            return { ok: true, info: `split→${p}` };
+            // === split handler DISABLED — splitting files breaks the codebase ===
+            // === 切文件会破坏代码库, split handler 已永久禁用 ===
+            console.log('[runner] split handler DISABLED — skipping consider splitting for ' + fPath);
+            return { ok: true, info: `split disabled (${c.split('\n').length} lines, ${fPath})` };
           }
           return { ok: true, info: `ok: ${issue}` };
         };
