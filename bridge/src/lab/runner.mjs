@@ -274,6 +274,48 @@ async function _runTurbo(goal) {
       if (rM) testFn = async () => ({ ok: true, info: `deepsmell: ${rM[1]} files need refactor` });
       const tM = goal.description.match(/^address TODO backlog \((\d+) items?\)/);
       if (tM) testFn = async () => ({ ok: true, info: `TODO: ${tM[1]} items` });
+      if (goal.description.startsWith('[batch] ')) {
+        const batch = goal.description.slice(8);
+        testFn = async () => {
+          const { readdirSync, readFileSync, writeFileSync, statSync } = await import('fs');
+          const { join } = await import('path');
+          const SRC = resolve(__dirname, '../..', 'src');
+          let files;
+          try { files = readdirSync(SRC, { withFileTypes: true }).flatMap(d => {
+            if (d.isFile() && /\.(js|mjs)$/.test(d.name)) return [join(SRC, d.name)];
+            if (d.isDirectory()) try { return readdirSync(join(SRC, d.name), { withFileTypes: true }).filter(f => f.isFile() && /\.(js|mjs)$/.test(f.name)).map(f => join(SRC, d.name, f.name)); } catch { return []; }
+            return [];
+          }); } catch { return { ok: false, info: 'src not found' }; }
+          let fixer = null;
+          if (batch.includes('console.log')) fixer = c => c.replace(/\bconsole\.(log|warn)\(/g, 'console.debug(');
+          else if (batch.includes('empty catch')) fixer = c => c.replace(/catch\s*\{\s*\}/g, "catch (e) { console.error('[C0]', e); }");
+          else if (batch.includes('var/let')) fixer = c => {
+            const parsed = parseJS(c); if (!parsed) return c;
+            _setParents(parsed);
+            // 复用 _fixVarLet 逻辑
+            const declGroups = new Map();
+            (function walk(n){ if (!n||typeof n!=='object') return; if (n.type==='VariableDeclaration'&&(n.kind==='let'||n.kind==='var')) for (const dec of n.declarations) if (dec.id?.type==='Identifier'){ if (!declGroups.has(n)) declGroups.set(n,{decl:n,names:[],reassigned:0}); const g=declGroups.get(n); g.names.push(dec.id.name); if (_isReassigned(parsed, dec.id.name)) g.reassigned++; } for (const k of Object.keys(n)){ if (k==='parent') continue; const v=n[k]; if (Array.isArray(v)) v.forEach(walk); else if (v&&typeof v.type==='string') walk(v); } })(parsed);
+            const totalSkipped = [...declGroups.values()].reduce((s,g)=>s+g.reassigned,0);
+            const convertible = [...declGroups.values()].filter(g=>g.reassigned===0);
+            convertible.sort((a,b)=>b.decl.start-a.decl.start);
+            let out = c;
+            for (const g of convertible) { const txt = c.slice(g.decl.start, g.decl.end); const nt = txt.replace(/^(let|var)\b/, 'const'); out = out.slice(0, g.decl.start) + nt + out.slice(g.decl.end); }
+            return out;
+          };
+          if (!fixer) return { ok: true, info: `no batch handler: ${batch}` };
+          let totalFixed = 0, filesChanged = 0, parseFails = 0;
+          for (const f of files) {
+            let orig; try { orig = readFileSync(f, 'utf8'); } catch { continue; }
+            const fixed = fixer(orig);
+            if (fixed === orig) continue;
+            const verified = parseJS(fixed);
+            if (!verified) { parseFails++; continue; }
+            try { writeFileSync(f, fixed, 'utf8'); totalFixed++; filesChanged++; addFinding('bridge', 'batch-fix', `${f.split(/[\\\/]/).pop()}: ${batch}`); } catch {}
+          }
+          if (totalFixed === 0) return { ok: true, info: `no issue found (already fixed or false positive): batch ${batch}` };
+          return { ok: true, info: `batch ${batch}: ${totalFixed} fix(es) in ${filesChanged} file(s)${parseFails ? `, ${parseFails} parse fail(s) skipped` : ''}` };
+        };
+      }
       if (goal.description.startsWith('[code] ')) {
         const msg = goal.description.slice(6);
         const cf = msg.match(/^(.+?): (.+)/);
