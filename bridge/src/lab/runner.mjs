@@ -29,6 +29,8 @@ import { escalate } from './escalate.mjs';
 import { labEvents } from './lab-events.mjs';
 import { addFact } from '../experiments/lib/agent-memory.mjs';
 import { registerRun, unregisterRun } from './active-runs.mjs';
+import { addFinding } from './findings.mjs';
+import { parseJS } from '../experiments/lib/ast-search.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const EXP_DIR = resolve(__dirname, '../experiments');
@@ -46,6 +48,124 @@ async function _ensureSupervisor() {
   } catch (e) {
     console.error(`[runner] supervisor start failed: ${e.message}`);
   }
+}
+
+// === [code] fixers — 备份 + 改 + acorn 验证 + 失败回滚 ===
+// === invariants ===
+// - 所有 fixer 先返回 {code, changed, info}，由 _applyCodeFix 统一做落盘 + parse 验证
+// - parse 验证失败 → 原样写回, 返回 {ok:false}
+// - 同一文件连续 fix 互不干扰 (每次 _applyCodeFix 独立读盘)
+
+function _setParents(ast) {
+  function walk(node, parent) {
+    if (!node || typeof node !== 'object') return;
+    node.parent = parent;
+    for (const k of Object.keys(node)) {
+      if (k === 'parent') continue;
+      const v = node[k];
+      if (Array.isArray(v)) for (const c of v) walk(c, node);
+      else if (v && typeof v.type === 'string') walk(v, node);
+    }
+  }
+  walk(ast, null);
+}
+
+function _isReassigned(ast, name) {
+  let yes = false;
+  function walk(node) {
+    if (!node || typeof node !== 'object' || yes) return;
+    if (node.type === 'AssignmentExpression' && node.left && node.left.type === 'Identifier' && node.left.name === name) {
+      yes = true; return;
+    }
+    if (node.type === 'UpdateExpression' && node.argument && node.argument.type === 'Identifier' && node.argument.name === name) {
+      yes = true; return;
+    }
+    for (const k of Object.keys(node)) {
+      if (k === 'parent') continue;
+      const v = node[k];
+      if (Array.isArray(v)) for (const c of v) walk(c);
+      else if (v && typeof v.type === 'string') walk(v);
+    }
+  }
+  walk(ast);
+  return yes;
+}
+
+function _fixEmptyCatch(code) {
+  const re = /catch\s*\{\s*\}/g;
+  const m = code.match(re);
+  if (!m) return { code, changed: false, info: 'no empty catch' };
+  return { code: code.replace(re, "catch (e) { console.error('[C0]', e); }"), changed: true, info: `fixed ${m.length} empty catch` };
+}
+
+function _fixConsoleLog(code) {
+  const re = /\bconsole\.(log|warn)\(/g;
+  const m = code.match(re);
+  if (!m) return { code, changed: false, info: 'no console.log/warn' };
+  return { code: code.replace(re, 'console.debug('), changed: true, info: `${m.length} console.log/warn→debug` };
+}
+
+function _fixVarLet(code) {
+  const parsed = parseJS(code);
+  if (!parsed) return { code, changed: false, info: 'parse failed (pre-check)' };
+  _setParents(parsed);
+  const declGroups = new Map();
+  function walk(node) {
+    if (!node || typeof node !== 'object') return;
+    if (node.type === 'VariableDeclaration' && (node.kind === 'let' || node.kind === 'var')) {
+      for (const dec of node.declarations) {
+        if (dec.id && dec.id.type === 'Identifier') {
+          if (!declGroups.has(node)) declGroups.set(node, { decl: node, names: [], reassigned: 0 });
+          const g = declGroups.get(node);
+          g.names.push(dec.id.name);
+          if (_isReassigned(parsed, dec.id.name)) g.reassigned++;
+        }
+      }
+    }
+    for (const k of Object.keys(node)) {
+      if (k === 'parent') continue;
+      const v = node[k];
+      if (Array.isArray(v)) for (const c of v) walk(c);
+      else if (v && typeof v.type === 'string') walk(v);
+    }
+  }
+  walk(parsed);
+  if (declGroups.size === 0) return { code, changed: false, info: 'no let/var' };
+  let totalSkipped = 0;
+  for (const g of declGroups.values()) totalSkipped += g.reassigned;
+  const convertible = [...declGroups.values()].filter(g => g.reassigned === 0);
+  if (convertible.length === 0) {
+    return { code, changed: false, info: `skipped: var/let reassigned in scope (${totalSkipped})` };
+  }
+  convertible.sort((a, b) => b.decl.start - a.decl.start);
+  let newCode = code;
+  for (const g of convertible) {
+    const txt = code.slice(g.decl.start, g.decl.end);
+    const nt = txt.replace(/^(let|var)\b/, 'const');
+    newCode = newCode.slice(0, g.decl.start) + nt + newCode.slice(g.decl.end);
+  }
+  const info = `${convertible.length}→const` + (totalSkipped ? `, ${totalSkipped} skipped (reassigned)` : '');
+  return { code: newCode, changed: true, info };
+}
+
+async function _applyCodeFix(absPath, issue) {
+  const { readFileSync, writeFileSync, existsSync } = await import('fs');
+  if (!existsSync(absPath)) return { ok: false, info: `no ${absPath}` };
+  const orig = readFileSync(absPath, 'utf8');
+  let fixer = null;
+  if (issue.includes('empty catch')) fixer = _fixEmptyCatch;
+  else if (issue.includes('console.log')) fixer = _fixConsoleLog;
+  else if (issue.includes('uses var/let')) fixer = _fixVarLet;
+  if (!fixer) return { ok: true, info: `no-op: ${issue}` };
+  const r = fixer(orig);
+  if (!r.changed) return { ok: false, info: r.info };
+  const verified = parseJS(r.code);
+  if (!verified) {
+    writeFileSync(absPath, orig, 'utf8');
+    return { ok: false, info: `parse failed after fix, rolled back` };
+  }
+  writeFileSync(absPath, r.code, 'utf8');
+  return { ok: true, info: r.info };
 }
 
 export async function runNext(turbo = true) {
@@ -105,9 +225,34 @@ async function _runTurbo(goal) {
       const sM = goal.description.match(/evaluate switching from (.+) to (.+) \([0-9.]+x\)/);
       if (sM) testFn = async () => ({ ok: true, info: `consider ${sM[1]}→${sM[2]}` });
       const iM = goal.description.match(/^investigate: switch (\S+) to (\S+) \(downloads ratio ([0-9.]+)\)/);
-      if (iM) testFn = async () => ({ ok: true, info: `consider ${iM[1]}→${iM[2]} (${iM[3]}x downloads)` });
+      if (iM) testFn = async () => {
+        const [, from, to] = iM;
+        try {
+          const r = await fetch(`https://registry.npmjs.org/${encodeURIComponent(to)}/latest`, { signal: AbortSignal.timeout(8000) });
+          if (!r.ok) return { ok: true, info: `${from}→${to}: registry HTTP ${r.status}` };
+          const meta = await r.json();
+          const deps = meta.dependencies ? Object.keys(meta.dependencies).length : 0;
+          return { ok: true, info: `${from}→${to}: ${(meta.description || '').slice(0, 80)} (deps: ${deps}, version: ${meta.version}, ratio: ${iM[3]}x)` };
+        } catch (e) {
+          return { ok: true, info: `${from}→${to}: lookup failed: ${e.message}` };
+        }
+      };
       const cM = goal.description.match(/^compose: test (.+) \+ (.+) together/);
-      if (cM) testFn = async () => ({ ok: true, info: `composite: ${cM[1]}+${cM[2]} (untested pair)` });
+      if (cM) testFn = async () => {
+        const [, a, b] = cM;
+        try {
+          const { run: composeRun } = await import('../experiments/compose.mjs');
+          const ta = Date.now();
+          const ra = await composeRun(a, {}).catch(e => ({ __err: e.message }));
+          const tb = Date.now();
+          const rb = await composeRun(b, {}).catch(e => ({ __err: e.message }));
+          const te = Date.now();
+          const summary = (r, ms) => r && r.__err ? `err(${r.__err.slice(0,40)})` : (r === null ? 'no run()' : `ok(${ms}ms)`);
+          return { ok: true, info: `${a}=${summary(ra, tb-ta)} | ${b}=${summary(rb, te-tb)}` };
+        } catch (e) {
+          return { ok: true, info: `compose ${a}+${b} failed: ${e.message}` };
+        }
+      };
       const nM = goal.description.match(/^npm upgrade batch \((\d+) minor\/patch available\)/);
       if (nM) testFn = async () => ({ ok: true, info: `batch: ${nM[1]} upgrades available` });
       const rM = goal.description.match(/^refactor: (\d+) deepsmell files/);
@@ -124,30 +269,15 @@ async function _runTurbo(goal) {
           const { readFileSync, writeFileSync } = await import('fs');
           const absPath = resolve(__dirname, '../..', fPath);
           if (fPath.match(/\.p2\.(mjs|js)$/)) return { ok: true, info: `skip .p2` };
-          let c;
-          try { c = readFileSync(absPath, 'utf8'); } catch { return { ok: false, info: `no ${fPath}` }; }
-          if (issue.includes('empty catch')) {
-            const f = c.replace(/catch\s*\{[\s]*\}/g, `catch (e) { console.error('[C0]', e); }`);
-            if (f === c) return { ok: false, info: `no empty catch` };
-            writeFileSync(absPath, f, 'utf8'); return { ok: true, info: `fixed empty catch` };
-          }
-          if (issue.includes('console.log')) {
-            const f = c.replace(/console\.(log|warn)\(/g, 'console.debug(');
-            if (f === c) return { ok: false, info: `no console.log` };
-            writeFileSync(absPath, f, 'utf8'); return { ok: true, info: `console.log→debug` };
-          }
-          if (issue.includes('uses var/let')) {
-            const f = c.replace(/(^|\n)(\s*)(?:let|var)\s+(?!for\s*\()(?=\S)/g, '$1$2const ');
-            if (f === c) return { ok: false, info: `no let/var` };
-            writeFileSync(absPath, f, 'utf8'); return { ok: true, info: `var/let→const` };
-          }
           if (issue.includes('consider splitting')) {
             // === split handler DISABLED — splitting files breaks the codebase ===
-            // === 切文件会破坏代码库, split handler 已永久禁用 ===
             console.log('[runner] split handler DISABLED — skipping consider splitting for ' + fPath);
-            return { ok: true, info: `split disabled (${c.split('\n').length} lines, ${fPath})` };
+            let lineCount = 0; try { lineCount = readFileSync(absPath, 'utf8').split('\n').length; } catch {}
+            return { ok: true, info: `split disabled (${lineCount} lines, ${fPath})` };
           }
-          return { ok: true, info: `ok: ${issue}` };
+          const r = _applyCodeFix(absPath, issue);
+          if (r.ok) addFinding('bridge', 'fix', `fixed ${issue} in ${fPath}`);
+          return r;
         };
       }
     }
@@ -159,6 +289,7 @@ async function _runTurbo(goal) {
     const testResult = await Promise.race([testFn(), cancelPromise]);
     const finishedAt = Date.now();
     const result = { ok: testResult?.ok !== false, exitCode: 0, signal: null, durationMs: finishedAt - startedAt };
+    if (testResult && testResult.info) result.info = testResult.info;
     const classification = classify({ exitCode: 0 });
     const attempt = (goal.retryCount || 0) + 1;
     unregisterRun(goal.id);
