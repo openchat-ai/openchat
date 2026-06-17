@@ -346,12 +346,11 @@ async function _runTurbo(goal) {
     const testResult = await Promise.race([testFn(), cancelPromise]);
     const finishedAt = Date.now();
 
-    // "no issue found" = 目标已修/误报, 直接从队列删除, 不污染 done 统计
+    // "no issue found" = 目标已修/误报, 直接从队列删除, 不落盘任何记录
     if (testResult?.info?.includes('no issue found')) {
       const { removeGoal } = await import('./goal-queue.mjs');
       removeGoal(goal.id);
       unregisterRun(goal.id);
-      addFinding('bridge', 'noop', `${goal.description}: ${testResult.info}`);
       return { ok: true, goal, removed: true, result: { info: testResult.info } };
     }
     const result = { ok: testResult?.ok !== false, exitCode: 0, signal: null, durationMs: finishedAt - startedAt };
