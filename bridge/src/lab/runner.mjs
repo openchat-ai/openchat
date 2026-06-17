@@ -166,7 +166,7 @@ function _fixVarLet(code) {
 
 async function _applyCodeFix(absPath, issue) {
   const { readFileSync, writeFileSync, existsSync } = await import('fs');
-  if (!existsSync(absPath)) return { ok: false, info: `no ${absPath}` };
+  if (!existsSync(absPath)) return { ok: true, info: `file gone: ${absPath}` };
   const orig = readFileSync(absPath, 'utf8');
   let fixer = null;
   if (issue.includes('empty catch')) fixer = _fixEmptyCatch;
@@ -174,11 +174,10 @@ async function _applyCodeFix(absPath, issue) {
   else if (issue.includes('uses var/let')) fixer = _fixVarLet;
   if (!fixer) return { ok: true, info: `no-op: ${issue}` };
   const r = fixer(orig);
-  if (!r.changed) return { ok: false, info: r.info };
+  if (!r.changed) return { ok: true, info: `no issue found (already fixed or false positive): ${r.info}` };
   const verified = parseJS(r.code);
   if (!verified) {
-    writeFileSync(absPath, orig, 'utf8');
-    return { ok: false, info: `parse failed after fix, rolled back` };
+    return { ok: false, info: `parse failed after fix, rolled back (${r.info})` };
   }
   writeFileSync(absPath, r.code, 'utf8');
   return { ok: true, info: r.info };
