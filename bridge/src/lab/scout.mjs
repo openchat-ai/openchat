@@ -81,32 +81,28 @@ async function fetchJson(url) {
 // === P5: Code review — file quality scan ===
 function codeReviewP5(projectRoot, projectName) {
   const files = scanDir(join(projectRoot, 'src'));
-  let goals = 0;
+  let newGoals = 0, dup = 0;
   for (const f of files) {
     try {
       const content = readFileSync(f, 'utf8');
       const relPath = f.replace(projectRoot + '/', '');
       const lines = content.split('\n');
-      if (lines.length > 200) {
-        addGoal(`[code] ${relPath}: consider splitting for readability (${lines.length} lines)`, { priority: 5 });
-        goals++;
-      }
-      if (/catch\s*\{[\s]*\}/.test(content)) {
-        addGoal(`[code] ${relPath}: empty catch block`, { priority: 5 });
-        goals++;
-      }
-      if (/console\.(log|warn)\(/.test(content)) {
-        addGoal(`[code] ${relPath}: console.log left in production code`, { priority: 5 });
-        goals++;
-      }
-      if (/(?:^|\n)\s*(let|var)\s+(?!for\s*\()/.test(content)) {
-        addGoal(`[code] ${relPath}: uses var/let instead of const`, { priority: 5 });
-        goals++;
+      const checks = [
+        { re: lines.length > 200, desc: `[code] ${relPath}: consider splitting for readability (${lines.length} lines)` },
+        { re: /catch\s*\{[\s]*\}/.test(content), desc: `[code] ${relPath}: empty catch block` },
+        { re: /console\.(log|warn)\(/.test(content), desc: `[code] ${relPath}: console.log left in production code` },
+        { re: /(?:^|\n)\s*(let|var)\s+(?!for\s*\()/.test(content), desc: `[code] ${relPath}: uses var/let instead of const` },
+      ];
+      for (const c of checks) {
+        if (!c.re) continue;
+        const g = addGoal(c.desc, { priority: 5 });
+        if (g.status === 'pending') newGoals++;
+        else dup++;
       }
     } catch (e) { console.error('[C0]', e); }
   }
-  if (goals > 0) addFinding(projectName, 'codesmell', `${goals} code issue(s) enqueued`);
-  return goals;
+  if (newGoals > 0) addFinding(projectName, 'codesmell', `${newGoals} new code issue(s) enqueued (${dup} dedup'd)`);
+  return newGoals;
 }
 
 // === P1/P2: queue level guards ===

@@ -88,6 +88,17 @@ export function updateGoal(id, patch) {
   return lines[idx];
 }
 
+export function removeGoal(id) {
+  const lines = readAllLines();
+  const idx = lines.findIndex(g => g.id === id);
+  if (idx === -1) return null;
+  const removed = lines[idx];
+  lines.splice(idx, 1);
+  writeAllLines(lines);
+  labEvents.emit('queue', { type: 'removed', goal: removed });
+  return removed;
+}
+
 export function getStatus() {
   const all = readAllLines();
   const s = { total: all.length, pending: 0, running: 0, done: 0, failed: 0 };
