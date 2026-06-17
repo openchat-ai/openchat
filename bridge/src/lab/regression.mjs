@@ -13,6 +13,9 @@
 
 import { listHistory } from './history.mjs';
 
+// === invariants ===
+// - 事件发射使用 fire-and-forget，不阻塞调用方
+
 const SUCCESS_RATE_DROP_THRESHOLD = 0.2;
 const DURATION_MULTIPLIER_THRESHOLD = 2.0;
 const MIN_BASELINE_DURATION_MS = 1000;

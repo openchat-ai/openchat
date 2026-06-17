@@ -16,6 +16,10 @@ import { join } from 'path';
 import { homedir } from 'os';
 import { labEvents } from './lab-events.mjs';
 
+// === invariants ===
+// - 同步 FS 调用仅用于小文件读写，阻塞 ≤1ms
+// - 事件发射使用 fire-and-forget，不阻塞调用方
+
 const LAB_DIR = join(homedir(), '.openchat', 'lab');
 const QUEUE_FILE = join(LAB_DIR, 'queue.jsonl');
 
@@ -40,10 +44,13 @@ function writeAllLines(goals) {
 }
 
 export function addGoal(description, opts = {}) {
-  // permanent dedup: 同一描述一旦 done 不再重加
+  // permanent dedup: 同一描述在 pending/running/done 状态时不重加
   if (opts.dedup !== false) {
-    const existing = readAllLines().find(g => g.description === description);
-    if (existing && existing.status === 'done') return existing;
+    const existing = readAllLines().find(g => g.description === description && g.status !== 'failed');
+    if (existing) return existing;
+    // 如果同一 description 已失败 >= 2 次，不再重加 (永久放弃)
+    const failCount = readAllLines().filter(g => g.description === description && g.status === 'failed').length;
+    if (failCount >= 2) return null;
   }
   const goal = {
     id: `goal-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,

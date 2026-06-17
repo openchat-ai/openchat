@@ -27,6 +27,11 @@ import { watch, statSync, existsSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
 
+// === invariants ===
+// - HTTP 调用使用 AbortSignal.timeout 超时保护
+// - try/catch 覆盖所有外部 IO 调用
+// - 事件发射使用 fire-and-forget，不阻塞调用方
+
 const LAB_DIR = join(homedir(), '.openchat', 'lab');
 
 class LabEvents extends EventEmitter {
