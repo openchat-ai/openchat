@@ -184,7 +184,7 @@ class PersistentSessionManager {
       } else {
         // 加载所有会话
         if (!fs.existsSync(this.indexFile)) {
-          console.log('No sessions found to load');
+          console.debug('No sessions found to load');
           return [];
         }
 
@@ -197,7 +197,7 @@ class PersistentSessionManager {
             const session = await this.loadSession(sessionRef.id);
             loadedSessions.push(session);
           } catch (e) {
-            console.warn(`Failed to load session ${sessionRef.id}: ${e.message}`);
+            console.debug(`Failed to load session ${sessionRef.id}: ${e.message}`);
           }
         }
 
@@ -226,7 +226,7 @@ class PersistentSessionManager {
         return currentTime > latestTime ? current : latest;
       });
     } catch (error) {
-      console.warn(`Failed to restore last session: ${error.message}`);
+      console.debug(`Failed to restore last session: ${error.message}`);
       return null;
     }
   }

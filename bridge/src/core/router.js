@@ -14,7 +14,7 @@ export class Router {
    */
   registerGateway(id, gateway) {
     this.gateways.set(id, gateway);
-    console.log(`[Router] Gateway registered: ${id}`);
+    console.debug(`[Router] Gateway registered: ${id}`);
   }
 
   /**
@@ -22,7 +22,7 @@ export class Router {
    */
   registerPlugin(id, plugin) {
     this.plugins.set(id, plugin);
-    console.log(`[Router] Plugin registered: ${id}`);
+    console.debug(`[Router] Plugin registered: ${id}`);
   }
 
   /**
@@ -32,7 +32,7 @@ export class Router {
    */
   async dispatch(gatewayId, payload) {
     const { type, data, sessionId } = payload;
-    console.log(`[Router] Dispatching ${type} from ${gatewayId} (Session: ${sessionId})`);
+    console.debug(`[Router] Dispatching ${type} from ${gatewayId} (Session: ${sessionId})`);
 
     // This will be expanded to a more complex pipeline:
     // Gateway -> Middleware (Auth/Session) -> Memory -> Agent/Router -> Provider/Tool -> Response

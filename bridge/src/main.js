@@ -10,7 +10,7 @@ import { sessionManager } from './session/session-manager.js';
 
 // 新增：REST API 服务器（31 个端点）
 // 使用动态 import 加载 CommonJS 模块
-let apiServer = null;
+const apiServer = null;
 import { executeCommand, commands } from './cli/commands.js';
 import { MessageBuilder, MessageType } from './protocol/message.js';
 import { router } from './core/router.js';
@@ -37,7 +37,7 @@ async function fetchLocalModelsFromBridge(providerName) {
       return json.models || [];
     }
   } catch (e) {
-    console.log(`[fetchLocalModels] provider models error: ${e.message}`);
+    console.debug(`[fetchLocalModels] provider models error: ${e.message}`);
   }
   return [];
 }
@@ -84,7 +84,7 @@ if (cliWorkdir) {
 const dhtPort = savedBridge.dhtPort || 0;
 const localBootstrap = savedBridge.localBootstrap || [];
 let directListen = savedBridge.directListen || 0;
-let directConnect = savedBridge.directConnect || [];
+const directConnect = savedBridge.directConnect || [];
 // 支持 --directListen CLI 参数
 const directListenIdx = args.findIndex(a => a.startsWith('--directListen='));
 if (directListenIdx !== -1) {
@@ -145,7 +145,7 @@ if (args.includes('--save-config')) {
     qiniuEnabled, cores,
     topic: bridgeTopic
   });
-  console.log(`[Config] 已保存到 ${path.join(os.homedir(), '.openchat', 'config.json')}`);
+  console.debug(`[Config] 已保存到 ${path.join(os.homedir(), '.openchat', 'config.json')}`);
 }
 
 const CONFIG_HOST = isPublic ? '0.0.0.0' : 'localhost';
@@ -275,7 +275,7 @@ export class Bridge {
         });
       } catch (e) {
         const detail = e.stderr ? e.stderr.toString().split('\n').filter(l => l.trim()).slice(0, 3).join('; ') : '';
-        console.log(`[Deploy] build 跳过${detail ? ': ' + detail : ''}`);
+        console.debug(`[Deploy] build 跳过${detail ? ': ' + detail : ''}`);
       }
     }
 
@@ -302,9 +302,9 @@ export class Bridge {
         const { attachLabWS } = await import('./api/ws-lab.mjs');
         attachLabWS(this.apiServer, this.apiServer.server);
         this.apiServer.startWSDispatch(this.apiServer.server);
-        console.log(`[API] /lab ws:   ws://localhost:${CONFIG.port}/lab/ws`);
-        console.log(`[API] 统一服务器: http://localhost:${CONFIG.port}`);
-        console.log(`[API] 端点: /api/v1/p2p, /api/v1/updates, /api/v1/skills, /api/v1/versions, /api/v1/resources, /api/v1/voice, /api/v1/signaling`);
+        console.debug(`[API] /lab ws:   ws://localhost:${CONFIG.port}/lab/ws`);
+        console.debug(`[API] 统一服务器: http://localhost:${CONFIG.port}`);
+        console.debug(`[API] 端点: /api/v1/p2p, /api/v1/updates, /api/v1/skills, /api/v1/versions, /api/v1/resources, /api/v1/voice, /api/v1/signaling`);
       }
 
       // [auto-lab] OPENCHAT_AUTO_LAB=1 时自动启动 lab cron
@@ -313,7 +313,7 @@ export class Bridge {
           const { startCron } = await import('./lab/cron.mjs');
           const interval = parseInt(process.env.OPENCHAT_LAB_CRON_INTERVAL || '1800000', 10);
           const r = startCron(interval);
-          console.log(`[auto-lab] cron started (pid=${r?.pid || '?'}, interval=${(interval/1000).toFixed(0)}s)`);
+          console.debug(`[auto-lab] cron started (pid=${r?.pid || '?'}, interval=${(interval/1000).toFixed(0)}s)`);
         } catch (e) {
           console.error(`[auto-lab] start failed: ${e.message}`);
         }
@@ -322,10 +322,10 @@ export class Bridge {
       // P2P 事件监听
       if (this.p2p) {
         this.p2p.on('peer-connected', (peerId) => {
-          console.log(`[P2P] Peer 已连接: ${peerId?.slice(0, 8) || peerId}...`);
+          console.debug(`[P2P] Peer 已连接: ${peerId?.slice(0, 8) || peerId}...`);
         });
         this.p2p.on('peer-disconnected', (peerId) => {
-          console.log(`[P2P] Peer 已断开: ${peerId?.slice(0, 8) || peerId}...`);
+          console.debug(`[P2P] Peer 已断开: ${peerId?.slice(0, 8) || peerId}...`);
         });
 
         // P2P 信令中继：从其他 Bridge 转发来的音频/信令数据
@@ -334,7 +334,7 @@ export class Bridge {
           if (payload.raw && this.apiServer) {
             const raw = Buffer.from(payload.raw, 'base64');
             for (const s of this.apiServer._signalingRooms.values()) {
-              try { s.write(raw); } catch {}
+              try { s.write(raw); } catch (e) { console.error('[C0]', e); }
             }
             return;
           }
@@ -342,24 +342,24 @@ export class Bridge {
           if (!targetPeerId || !this.apiServer) return;
           const target = this.apiServer._signalingRooms?.get(targetPeerId);
           if (target) {
-            try { target.write(Buffer.from(JSON.stringify({ type: 'signaling_message', data: payload.data }))); } catch {}
+            try { target.write(Buffer.from(JSON.stringify({ type: 'signaling_message', data: payload.data }))); } catch (e) { console.error('[C0]', e); }
           }
         });
       }
     } catch (e) {
       if (e.code === 'EADDRINUSE') {
-        console.log(`[启动] 端口 ${CONFIG.port} 已被占用，切换为无网络模式`);
+        console.debug(`[启动] 端口 ${CONFIG.port} 已被占用，切换为无网络模式`);
         CONFIG.headless = true;
         this.apiServer = null;
       } else {
-        console.log(`[启动] API 初始化失败: ${e.message}`);
+        console.debug(`[启动] API 初始化失败: ${e.message}`);
       }
     }
 
     // 无头模式：日志输出
     if (CONFIG.headless) {
       if (!this.apiServer) {
-        console.log('[无网络] 仅本地设备模式（无 API 服务）');
+        console.debug('[无网络] 仅本地设备模式（无 API 服务）');
       }
 
       // 公网节点自动补全 WS 信令地址（若未显式指定）
@@ -371,23 +371,23 @@ export class Bridge {
         }
       }
       const host = CONFIG.host === '0.0.0.0' ? '0.0.0.0' : 'localhost';
-      console.log('');
-      console.log(`[HTTP] API: http://${host}:${CONFIG.port}`);
-      console.log(`[WS]   Chat: ws://${host}:${CONFIG.port}/ws`);
+      console.debug('');
+      console.debug(`[HTTP] API: http://${host}:${CONFIG.port}`);
+      console.debug(`[WS]   Chat: ws://${host}:${CONFIG.port}/ws`);
       const sigUrl = CONFIG.wsSignalingUrl || `ws://${host}:${CONFIG.port}/signaling`;
-      console.log(`[WS]   Voice: ${sigUrl}${CONFIG.wsSignalingUrl ? '' : ' (未配置 wsSignaling, 仅本地)'}`);
+      console.debug(`[WS]   Voice: ${sigUrl}${CONFIG.wsSignalingUrl ? '' : ' (未配置 wsSignaling, 仅本地)'}`);
       if (CONFIG.host === 'localhost') {
-        console.log('[提示] 仅监听本地连接（自动检测未发现公网 IP）');
+        console.debug('[提示] 仅监听本地连接（自动检测未发现公网 IP）');
       }
-      console.log('');
-      console.log('[Bridge] 运行中... (Ctrl+C 停止)');
-      console.log('[提示] 使用 --cli 参数进入交互模式');
+      console.debug('');
+      console.debug('[Bridge] 运行中... (Ctrl+C 停止)');
+      console.debug('[提示] 使用 --cli 参数进入交互模式');
 
       // Headless 模式的信号处理
       this.setupHeadlessSignalHandlers();
     } else {
       // CLI 模式 - startCLI 内部处理信号
-      console.log('');
+      console.debug('');
       this.startCLI();
     }
   }
@@ -421,7 +421,7 @@ export class Bridge {
       try {
         await memoryManager.initialize();
       } catch (e) {
-        console.log(`[WS] memory init error: ${e.message}`);
+        console.debug(`[WS] memory init error: ${e.message}`);
       }
     }
 
@@ -495,7 +495,7 @@ export class Bridge {
       try {
         await this.handleWSChatDebug(ws, msg);
       } catch (e) {
-        try { ws.send(JSON.stringify({ type: 'error', data: { message: e.message }, sessionId })); } catch {}
+        try { ws.send(JSON.stringify({ type: 'error', data: { message: e.message }, sessionId })); } catch (e) { console.error('[C0]', e); }
       }
       return;
     }
@@ -520,7 +520,7 @@ export class Bridge {
       return;
     }
 
-    let providerName = persistentConfig.getCurrentProvider();
+    const providerName = persistentConfig.getCurrentProvider();
     const apiKey = persistentConfig.getApiKey(providerName);
     const model = persistentConfig.getPreference('currentModel');
     if (!providerName || !apiKey) {
@@ -602,10 +602,10 @@ export class Bridge {
 
     // Print welcome once
     const pname = this.getPrompt();
-    console.log('');
-    console.log('  OPENCHAT BRIDGE v0.1.0');
-    if (pname) console.log(`  [${pname}]`);
-    console.log('  输入 /help 查看命令列表，或直接开始聊天\n');
+    console.debug('');
+    console.debug('  OPENCHAT BRIDGE v0.1.0');
+    if (pname) console.debug(`  [${pname}]`);
+    console.debug('  输入 /help 查看命令列表，或直接开始聊天\n');
 
     // 使用 readline 模块处理交互输入
     // crlfDelay 确保 Windows 换行符正确处理
@@ -638,7 +638,7 @@ export class Bridge {
     });
 
     this.rl.on('close', () => {
-      console.log('\n[CLI] 再见!');
+      console.debug('\n[CLI] 再见!');
       process.exit(0);
     });
 
@@ -674,7 +674,7 @@ export class Bridge {
   }
 
   async shutdown() {
-    console.log('\n[Bridge] 正在关闭...');
+    console.debug('\n[Bridge] 正在关闭...');
 
     const sessions = sessionManager.listSessions();
     for (const session of sessions) {
@@ -710,20 +710,20 @@ export class Bridge {
     // 停止 P2P 网络
     if (this.p2p) await this.p2p.stop();
 
-    console.log('[Bridge] 已退出，再见!');
+    console.debug('[Bridge] 已退出，再见!');
     process.exit(0);
   }
 
   _printBanner() {
     const mode = CONFIG.isSandbox ? 'SANDBOX' : CONFIG.headless ? 'HEADLESS' : 'CLI';
-    console.log('');
-    console.log('╔═══════════════════════════════════════════════════════════╗');
-    console.log('║                                                          ║');
-    console.log('║                   OPENCHAT BRIDGE                        ║');
-    console.log(`║                   [${mode} MODE]                          ║`);
-    console.log('║                                                          ║');
-    console.log('╚═══════════════════════════════════════════════════════════╝');
-    console.log('');
+    console.debug('');
+    console.debug('╔═══════════════════════════════════════════════════════════╗');
+    console.debug('║                                                          ║');
+    console.debug('║                   OPENCHAT BRIDGE                        ║');
+    console.debug(`║                   [${mode} MODE]                          ║`);
+    console.debug('║                                                          ║');
+    console.debug('╚═══════════════════════════════════════════════════════════╝');
+    console.debug('');
   }
 }
 

@@ -7,7 +7,7 @@ import IntelligenceCollector from '../memory/intelligence-collector.js';
 import Monitor from '../monitoring/monitor.js';
 
 async function runPhase34IntegrationTests() {
-  console.log('🧪 开始 Phase 3-4 集成测试...\n');
+  console.debug('🧪 开始 Phase 3-4 集成测试...\n');
   let testsPassed = 0;
   let testsFailed = 0;
 
@@ -18,13 +18,13 @@ async function runPhase34IntegrationTests() {
     const autoRestart = new AutoRestartManager(process.cwd());
     const stats = autoRestart.getStats();
     if (stats && stats.isRunning !== undefined) {
-      console.log('✅ AutoRestartManager 初始化 - 通过');
+      console.debug('✅ AutoRestartManager 初始化 - 通过');
       testsPassed++;
     } else {
       throw new Error('状态获取失败');
     }
   } catch (error) {
-    console.log('❌ AutoRestartManager 初始化 - 失败:', error.message);
+    console.debug('❌ AutoRestartManager 初始化 - 失败:', error.message);
     testsFailed++;
   }
 
@@ -33,13 +33,13 @@ async function runPhase34IntegrationTests() {
     const sandbox = new SandboxManager();
     const sb = await sandbox.createSandbox();
     if (sb && sb.id && sb.port) {
-      console.log('✅ SandboxManager 创建沙箱 - 通过');
+      console.debug('✅ SandboxManager 创建沙箱 - 通过');
       testsPassed++;
     } else {
       throw new Error('沙箱创建失败');
     }
   } catch (error) {
-    console.log('❌ SandboxManager 创建沙箱 - 失败:', error.message);
+    console.debug('❌ SandboxManager 创建沙箱 - 失败:', error.message);
     testsFailed++;
   }
 
@@ -49,13 +49,13 @@ async function runPhase34IntegrationTests() {
     const sb = await sandbox.createSandbox();
     const result = await sandbox.startSandbox(sb.id);
     if (result.success) {
-      console.log('✅ SandboxManager 启动沙箱 - 通过');
+      console.debug('✅ SandboxManager 启动沙箱 - 通过');
       testsPassed++;
     } else {
       throw new Error('沙箱启动失败');
     }
   } catch (error) {
-    console.log('❌ SandboxManager 启动沙箱 - 失败:', error.message);
+    console.debug('❌ SandboxManager 启动沙箱 - 失败:', error.message);
     testsFailed++;
   }
 
@@ -64,13 +64,13 @@ async function runPhase34IntegrationTests() {
     const rollback = new AutoRollbackManager();
     const stats = rollback.getStats();
     if (stats && stats.totalRollbacks === 0) {
-      console.log('✅ AutoRollbackManager 初始化 - 通过');
+      console.debug('✅ AutoRollbackManager 初始化 - 通过');
       testsPassed++;
     } else {
       throw new Error('初始化失败');
     }
   } catch (error) {
-    console.log('❌ AutoRollbackManager 初始化 - 失败:', error.message);
+    console.debug('❌ AutoRollbackManager 初始化 - 失败:', error.message);
     testsFailed++;
   }
 
@@ -84,13 +84,13 @@ async function runPhase34IntegrationTests() {
     });
     const stats = orchestrator.getStats();
     if (stats && stats.totalExecutions !== undefined) {
-      console.log('✅ TestOrchestrator 配置 - 通过');
+      console.debug('✅ TestOrchestrator 配置 - 通过');
       testsPassed++;
     } else {
       throw new Error('配置失败');
     }
   } catch (error) {
-    console.log('❌ TestOrchestrator 配置 - 失败:', error.message);
+    console.debug('❌ TestOrchestrator 配置 - 失败:', error.message);
     testsFailed++;
   }
 
@@ -101,13 +101,13 @@ async function runPhase34IntegrationTests() {
     const collector = new IntelligenceCollector();
     const result = await collector.collect();
     if (result.status === 'success' && result.totalItems > 0) {
-      console.log('✅ IntelligenceCollector 收集 - 通过');
+      console.debug('✅ IntelligenceCollector 收集 - 通过');
       testsPassed++;
     } else {
       throw new Error('收集失败');
     }
   } catch (error) {
-    console.log('❌ IntelligenceCollector 收集 - 失败:', error.message);
+    console.debug('❌ IntelligenceCollector 收集 - 失败:', error.message);
     testsFailed++;
   }
 
@@ -117,13 +117,13 @@ async function runPhase34IntegrationTests() {
     await collector.collect();
     const githubItems = collector.getIntelligence({ type: 'github' });
     if (Array.isArray(githubItems)) {
-      console.log('✅ IntelligenceCollector 过滤 - 通过');
+      console.debug('✅ IntelligenceCollector 过滤 - 通过');
       testsPassed++;
     } else {
       throw new Error('过滤失败');
     }
   } catch (error) {
-    console.log('❌ IntelligenceCollector 过滤 - 失败:', error.message);
+    console.debug('❌ IntelligenceCollector 过滤 - 失败:', error.message);
     testsFailed++;
   }
 
@@ -133,13 +133,13 @@ async function runPhase34IntegrationTests() {
     monitor.recordRequest({ latency: 100, model: 'claude' });
     const metrics = monitor.getMetrics();
     if (metrics.totalRequests === 1) {
-      console.log('✅ Monitor 记录请求 - 通过');
+      console.debug('✅ Monitor 记录请求 - 通过');
       testsPassed++;
     } else {
       throw new Error('记录失败');
     }
   } catch (error) {
-    console.log('❌ Monitor 记录请求 - 失败:', error.message);
+    console.debug('❌ Monitor 记录请求 - 失败:', error.message);
     testsFailed++;
   }
 
@@ -149,13 +149,13 @@ async function runPhase34IntegrationTests() {
     monitor.recordError({ message: 'Test error', severity: 'high' });
     const metrics = monitor.getMetrics();
     if (metrics.totalErrors === 1) {
-      console.log('✅ Monitor 记录错误 - 通过');
+      console.debug('✅ Monitor 记录错误 - 通过');
       testsPassed++;
     } else {
       throw new Error('记录失败');
     }
   } catch (error) {
-    console.log('❌ Monitor 记录错误 - 失败:', error.message);
+    console.debug('❌ Monitor 记录错误 - 失败:', error.message);
     testsFailed++;
   }
 
@@ -165,13 +165,13 @@ async function runPhase34IntegrationTests() {
     monitor.triggerAlert('test_alert', 'Test alert message', 'high');
     const alerts = monitor.getAlerts();
     if (alerts.length === 1) {
-      console.log('✅ Monitor 告警触发 - 通过');
+      console.debug('✅ Monitor 告警触发 - 通过');
       testsPassed++;
     } else {
       throw new Error('告警触发失败');
     }
   } catch (error) {
-    console.log('❌ Monitor 告警触发 - 失败:', error.message);
+    console.debug('❌ Monitor 告警触发 - 失败:', error.message);
     testsFailed++;
   }
 
@@ -188,13 +188,13 @@ async function runPhase34IntegrationTests() {
       system.intelligenceCollector &&
       system.monitor
     ) {
-      console.log('✅ EvolutionSystem 包含新模块 - 通过');
+      console.debug('✅ EvolutionSystem 包含新模块 - 通过');
       testsPassed++;
     } else {
       throw new Error('模块缺失');
     }
   } catch (error) {
-    console.log('❌ EvolutionSystem 包含新模块 - 失败:', error.message);
+    console.debug('❌ EvolutionSystem 包含新模块 - 失败:', error.message);
     testsFailed++;
   }
 
@@ -203,13 +203,13 @@ async function runPhase34IntegrationTests() {
     const system = new EvolutionSystem();
     await system.initialize();
     if (system.isInitialized) {
-      console.log('✅ EvolutionSystem 初始化 - 通过');
+      console.debug('✅ EvolutionSystem 初始化 - 通过');
       testsPassed++;
     } else {
       throw new Error('初始化失败');
     }
   } catch (error) {
-    console.log('❌ EvolutionSystem 初始化 - 失败:', error.message);
+    console.debug('❌ EvolutionSystem 初始化 - 失败:', error.message);
     testsFailed++;
   }
 
@@ -219,13 +219,13 @@ async function runPhase34IntegrationTests() {
     await system.initialize();
     const report = await system.generateReport();
     if (report && report.includes('自动化系统') && report.includes('监控系统')) {
-      console.log('✅ EvolutionSystem 完整报告 - 通过');
+      console.debug('✅ EvolutionSystem 完整报告 - 通过');
       testsPassed++;
     } else {
       throw new Error('报告生成失败');
     }
   } catch (error) {
-    console.log('❌ EvolutionSystem 完整报告 - 失败:', error.message);
+    console.debug('❌ EvolutionSystem 完整报告 - 失败:', error.message);
     testsFailed++;
   }
 
@@ -242,22 +242,22 @@ async function runPhase34IntegrationTests() {
       status.intelligenceCollector &&
       status.monitor
     ) {
-      console.log('✅ EvolutionSystem 完整状态 - 通过');
+      console.debug('✅ EvolutionSystem 完整状态 - 通过');
       testsPassed++;
     } else {
       throw new Error('状态获取失败');
     }
   } catch (error) {
-    console.log('❌ EvolutionSystem 完整状态 - 失败:', error.message);
+    console.debug('❌ EvolutionSystem 完整状态 - 失败:', error.message);
     testsFailed++;
   }
 
   // 输出测试结果
-  console.log('\n' + '='.repeat(50));
-  console.log(`总计: ${testsPassed + testsFailed} 个测试`);
-  console.log(`✅ 通过: ${testsPassed}`);
-  console.log(`❌ 失败: ${testsFailed}`);
-  console.log('='.repeat(50));
+  console.debug('\n' + '='.repeat(50));
+  console.debug(`总计: ${testsPassed + testsFailed} 个测试`);
+  console.debug(`✅ 通过: ${testsPassed}`);
+  console.debug(`❌ 失败: ${testsFailed}`);
+  console.debug('='.repeat(50));
 
   return testsFailed === 0;
 }

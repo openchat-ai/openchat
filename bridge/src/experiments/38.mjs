@@ -77,13 +77,13 @@ Return ONLY a JSON array, no other text:
 
 // [L3 PLAN] 在 /goal 跑前展示 plan — 永远 log, opt-in 阻塞 (--plan / OPENCHAT_GOAL_PLAN=1)
 function _printPlan(description, steps) {
-  console.log(`\n[goal] Plan for: "${description}"`);
-  console.log(`  ${steps.length} steps:`);
+  console.debug(`\n[goal] Plan for: "${description}"`);
+  console.debug(`  ${steps.length} steps:`);
   for (let i = 0; i < steps.length; i++) {
     const s = steps[i];
     const role = pickRole(s.action);
-    console.log(`  ${i + 1}. [${role}] ${s.action}`);
-    if (s.expected) console.log(`     expected: ${s.expected.slice(0, 80)}`);
+    console.debug(`  ${i + 1}. [${role}] ${s.action}`);
+    if (s.expected) console.debug(`     expected: ${s.expected.slice(0, 80)}`);
   }
 }
 

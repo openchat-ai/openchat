@@ -31,7 +31,7 @@ export async function depGraph(rootDir = '.') {
             const target = m[1] || m[2];
             if (target && !target.startsWith('.')) graph.edges.push({ from: rel, to: target, type: 'external' });
           }
-        } catch {}
+        } catch (e) { console.error('[C0]', e); }
       }
     }
   }

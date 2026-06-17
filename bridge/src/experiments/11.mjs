@@ -63,14 +63,14 @@ export async function test() {
   let pass = true;
   try {
     ok(o.backpressured > 0, `backpressure should trigger (got ${o.backpressured})`);
-    console.log(`  ✓ backpressure: ${o.backpressured}/${o.total} requests rejected`);
+    console.debug(`  ✓ backpressure: ${o.backpressured}/${o.total} requests rejected`);
     ok(o.normalRejected === 0, `normal load should pass (got ${o.normalRejected} rejected)`);
-    console.log(`  ✓ backpressure: normal load (${o.normalPassed}) passes`);
+    console.debug(`  ✓ backpressure: normal load (${o.normalPassed}) passes`);
     pass = true;
   } catch (e) {
     console.error(`  ✗ ${e.message}`);
     pass = false;
   }
-  console.log(`\n${pass ? '✓' : '✗'} ${NAME}`);
+  console.debug(`\n${pass ? '✓' : '✗'} ${NAME}`);
   return pass;
 }

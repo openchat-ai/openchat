@@ -78,7 +78,7 @@ export async function notify(record) {
       else await _sendWebhook(record, process.env.OPENCHAT_LAB_WEBHOOK);
       return { sent: true, mode, retried: true };
     } catch (err2) {
-      console.warn(`[lab-notify] failed (${mode}): ${err2.message?.slice(0, 200)}`);
+      console.debug(`[lab-notify] failed (${mode}): ${err2.message?.slice(0, 200)}`);
       return { sent: false, reason: err2.message };
     }
   }
@@ -87,6 +87,6 @@ export async function notify(record) {
 // 同步入口 (lab 主流程用 fire-and-forget, 但不 await — 避免阻塞)
 export function notifyFireAndForget(record) {
   notify(record).catch(err => {
-    console.warn(`[lab-notify] uncaught: ${err.message?.slice(0, 200)}`);
+    console.debug(`[lab-notify] uncaught: ${err.message?.slice(0, 200)}`);
   });
 }

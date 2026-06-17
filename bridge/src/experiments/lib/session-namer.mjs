@@ -71,9 +71,9 @@ export async function autoNameIfNeeded(chatId, messageCount, generatorFn) {
     meta.autoNamed = true;
     meta.updatedAt = Date.now();
     await writeMeta(chatId, meta);
-    console.log(`[session-namer] auto-named chatId=${chatId} -> "${clean}" (msg#${messageCount})`);
+    console.debug(`[session-namer] auto-named chatId=${chatId} -> "${clean}" (msg#${messageCount})`);
   } catch (e) {
-    console.warn(`[session-namer] name gen failed for ${chatId}: ${e.message}`);
+    console.debug(`[session-namer] name gen failed for ${chatId}: ${e.message}`);
   }
   return meta;
 }

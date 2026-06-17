@@ -168,12 +168,12 @@ const data = {
 };
 
 const r = await docRun({ inputs: { op: 'render', kind: 'report', data, meta: { author: '灵保实验组', date: '2026-06-10' } } });
-console.log(r.outputs.content);
-console.log(`\n=== 验收 ===`);
-console.log(`输出 ${r.outputs.bytes} 字节, ext=${r.outputs.ext}`);
-console.log(`BOM ${BOM.length} 项, 总价 ${BOM.reduce((s, b) => s + b.qty * b.price, 0)} 元`);
-console.log(`验收项 ${ACCEPTANCE.length} 条`);
+console.debug(r.outputs.content);
+console.debug(`\n=== 验收 ===`);
+console.debug(`输出 ${r.outputs.bytes} 字节, ext=${r.outputs.ext}`);
+console.debug(`BOM ${BOM.length} 项, 总价 ${BOM.reduce((s, b) => s + b.qty * b.price, 0)} 元`);
+console.debug(`验收项 ${ACCEPTANCE.length} 条`);
 
 const ok = r.outputs.bytes > 1000 && r.outputs.content.includes('DDSU666') && r.outputs.content.includes('cross_correlate');
-console.log(`=== ${ok ? 'PASS' : 'FAIL'} ===`);
+console.debug(`=== ${ok ? 'PASS' : 'FAIL'} ===`);
 process.exit(ok ? 0 : 1);

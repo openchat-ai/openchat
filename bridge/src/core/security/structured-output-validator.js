@@ -807,7 +807,7 @@ export class StructuredOutputValidator {
       return transformed;
     };
 
-    let transformedData = transformValue(data, schema, 'root', data);
+    const transformedData = transformValue(data, schema, 'root', data);
     const validation = this.validate(transformedData, schema);
 
     return {

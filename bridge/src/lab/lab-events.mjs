@@ -68,7 +68,7 @@ class LabEvents extends EventEmitter {
           // 检查 size 变化避免 debounce 期间重复
           // (fs.watch 在某些平台上会重复 fire)
           let size = 0;
-          try { size = statSync(fullPath).size; } catch {}
+          try { size = statSync(fullPath).size; } catch (e) { console.error('[C0]', e); }
           if (this._lastSize[fullPath] === size) return;
           this._lastSize[fullPath] = size;
           this.emit(channel, { type: 'changed', fromWatcher: true });
@@ -83,7 +83,7 @@ class LabEvents extends EventEmitter {
 
   stopAllWatchers() {
     for (const w of this._watchers.values()) {
-      try { w.close(); } catch {}
+      try { w.close(); } catch (e) { console.error('[C0]', e); }
     }
     this._watchers.clear();
   }

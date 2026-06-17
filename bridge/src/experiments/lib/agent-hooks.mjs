@@ -55,7 +55,7 @@ export async function runPost(tool, args, result) {
     try {
       cur = await fn(tool, args, cur);
     } catch (e) {
-      console.warn(`[agent-hooks] postTool "${name}" failed: ${e.message}`);
+      console.debug(`[agent-hooks] postTool "${name}" failed: ${e.message}`);
     }
   }
   return cur;

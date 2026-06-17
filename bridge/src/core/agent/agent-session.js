@@ -11,7 +11,7 @@ import { StructuredOutputValidator } from '../security/structured-output-validat
 
 const MAX_GLOBAL_CONCURRENT = parseInt(process.env.MAX_GLOBAL_CONCURRENT_REQUESTS, 10) || 4;
 let _globalConcurrent = 0;
-let _globalWaiting = 0;
+const _globalWaiting = 0;
 const _globalQueue = [];
 import { StreamingValidator, ValidationErrorExplainer } from '../security/streaming-validator.js';
 import { SchemaAutoGenerator, SchemaVersionManager, FormatConverter } from '../quality/schema-manager.js';

@@ -31,7 +31,7 @@ class TopicRegistry extends EventEmitter {
           }
         }
       } catch (e) {
-        console.warn('[TopicRegistry] remote query failed:', e.message);
+        console.debug('[TopicRegistry] remote query failed:', e.message);
       }
     }
     return local;

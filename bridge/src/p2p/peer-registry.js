@@ -43,7 +43,7 @@ class PeerRegistry {
     );
     for (const r of results) {
       if (r.status === 'rejected') {
-        console.log(`[PeerRegistry] publish failed: ${r.reason?.message || r.reason}`);
+        console.debug(`[PeerRegistry] publish failed: ${r.reason?.message || r.reason}`);
       }
     }
   }
@@ -57,7 +57,7 @@ class PeerRegistry {
     );
     for (const r of results) {
       if (r.status === 'rejected') {
-        console.log(`[PeerRegistry] unpublish failed: ${r.reason?.message || r.reason}`);
+        console.debug(`[PeerRegistry] unpublish failed: ${r.reason?.message || r.reason}`);
       }
     }
   }

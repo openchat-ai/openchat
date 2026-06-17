@@ -57,7 +57,7 @@ function _writePid(pid) {
 }
 
 function _clearPid() {
-  try { if (existsSync(PID_FILE)) unlinkSync(PID_FILE); } catch {}
+  try { if (existsSync(PID_FILE)) unlinkSync(PID_FILE); } catch (e) { console.error('[C0]', e); }
 }
 
 function _pidAlive(pid) {
@@ -105,7 +105,7 @@ export function startCron(opts = {}) {
   let lastRunAt = null;
   let lastError = null;
 
-  const log = (msg) => console.log(`[cron] ${new Date().toISOString()} ${msg}`);
+  const log = (msg) => console.debug(`[cron] ${new Date().toISOString()} ${msg}`);
 
   log(`started (pid=${process.pid}, interval=${(intervalMs/1000).toFixed(0)}s)`);
 
@@ -130,10 +130,10 @@ export function startCron(opts = {}) {
         if (n > 0 && n !== intervalMs) {
           intervalMs = n;
           log(`interval updated to ${(intervalMs/1000).toFixed(0)}s`);
-          try { unlinkSync(INTERVAL_FILE); } catch {}
+          try { unlinkSync(INTERVAL_FILE); } catch (e) { console.error('[C0]', e); }
         }
       }
-    } catch {}
+    } catch (e) { console.error('[C0]', e); }
     cycleCount++;
     const cycleStart = Date.now();
     log(`cycle #${cycleCount} start`);

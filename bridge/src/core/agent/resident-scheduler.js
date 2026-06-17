@@ -305,7 +305,7 @@ const residents = residentManager.list(null);
 
       // 诊断 + 自愈
       let diagnosis = '一切正常';
-      let healed = [];
+      const healed = [];
 
       if (report.待解问题数 > 3) {
         // 问题积压 → 清理过期问题

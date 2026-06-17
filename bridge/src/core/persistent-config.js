@@ -30,7 +30,7 @@ function loadNewConfig() {
     if (fs.existsSync(NEW_CONFIG_FILE)) {
       return JSON.parse(fs.readFileSync(NEW_CONFIG_FILE, 'utf8'));
     }
-  } catch {}
+  } catch (e) { console.error('[C0]', e); }
   return null;
 }
 

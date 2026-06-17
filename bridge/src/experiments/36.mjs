@@ -107,7 +107,7 @@ export async function test() {
     const msgKey = `oc/chat/${chatId}/${ts}.msg`;
     const replyKey = `${msgKey.replace(/\.msg$/, '-reply.json')}`;
     const badKey = `oc/chat/${chatId}/${ts}-bad.msg`;
-    let cleanup = true;
+    const cleanup = true;
 
     try {
       // 上传测试 .msg
@@ -134,7 +134,7 @@ export async function test() {
       else ng(`坏 JSON 错: ${rBad.outputs.error}`);
     } finally {
       // 无论测试成功还是崩溃，都清理
-      const del = async k => { try { await q.qiniuDelete(k); } catch {} };
+      const del = async k => { try { await q.qiniuDelete(k); } catch (e) { console.error('[C0]', e); } };
       await del(msgKey);
       await del(replyKey);
       await del(badKey);

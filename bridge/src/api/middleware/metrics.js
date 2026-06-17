@@ -210,7 +210,7 @@ class MetricsCollector {
       p95: [],
       p99: []
     }
-    console.log('[Metrics] Hourly reset completed')
+    console.debug('[Metrics] Hourly reset completed')
   }
 
   /**

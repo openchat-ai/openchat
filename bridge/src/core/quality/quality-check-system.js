@@ -404,10 +404,10 @@ class MessageHandler {
   async handle(message, session) {
     try {
       // 第 1 步: 调用 LLM（无需任何前置约束）
-      let response = await session.llm.call(message);
+      const response = await session.llm.call(message);
 
       // 第 2 步: 检查质量
-      let check = await this.checker.check(response);
+      const check = await this.checker.check(response);
 
       this.logger.info('quality_check', {
         score: check.score,

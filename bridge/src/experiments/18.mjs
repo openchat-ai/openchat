@@ -671,7 +671,7 @@ async function test() {
     const tokStr = `${d.token > 0 ? '+' : ''}${d.token}`;
     const errStr = `${d.errors > 0 ? '+' : ''}${d.errors.toFixed(1)}`;
     const rndStr = `${d.rounds > 0 ? '+' : ''}${d.rounds.toFixed(1)}`;
-    console.log(`  ▸ ${sid}: token=${tokStr}  err=${errStr}  rnd=${rndStr}`);
+    console.debug(`  ▸ ${sid}: token=${tokStr}  err=${errStr}  rnd=${rndStr}`);
   }
 
   if (componentPass) ok('组件测试全通过');

@@ -62,18 +62,18 @@ export async function test() {
   let pass = true;
   try {
     ok(o.isolated, `isolation errors: ${o.isolationErrors.join(', ') || 'none'}`);
-    console.log(`  ✓ multi-session: ${o.sessionCount} sessions × ${o.totalMessages / (o.sessionCount * 2)} msgs, all isolated`);
+    console.debug(`  ✓ multi-session: ${o.sessionCount} sessions × ${o.totalMessages / (o.sessionCount * 2)} msgs, all isolated`);
     ok(o.ordered, `order errors: ${o.orderErrors.join(', ') || 'none'}`);
-    console.log('  ✓ multi-session: chronological ordering preserved');
+    console.debug('  ✓ multi-session: chronological ordering preserved');
     const keys = ['oc/chat/a/1.msg', 'oc/chat/b/2.msg', 'oc/chat/c/3.msg'];
     const chatIds = keys.map(k => k.split('/')[2]);
     deepStrictEqual(chatIds, ['a', 'b', 'c']);
-    console.log('  ✓ multi-session: chatId path isolation');
+    console.debug('  ✓ multi-session: chatId path isolation');
   } catch (e) {
     console.error(`  ✗ ${e.message}`);
     pass = false;
   }
-  console.log(`\n${pass ? '✓' : '✗'} ${NAME}`);
+  console.debug(`\n${pass ? '✓' : '✗'} ${NAME}`);
   return pass;
 }
 

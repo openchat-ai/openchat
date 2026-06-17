@@ -25,7 +25,7 @@ class SessionEvents {
 
     const subs = this.subscribers.get(sessionId);
     if (subs) for (const cb of subs) {
-      try { cb(enriched); } catch {}
+      try { cb(enriched); } catch (e) { console.error('[C0]', e); }
     }
   }
 
@@ -37,7 +37,7 @@ class SessionEvents {
     // 立刻回放历史
     const hist = this.history.get(sessionId) || [];
     for (const ev of hist) {
-      try { callback(ev); } catch {}
+      try { callback(ev); } catch (e) { console.error('[C0]', e); }
     }
     return () => this.unsubscribe(sessionId, callback);
   }

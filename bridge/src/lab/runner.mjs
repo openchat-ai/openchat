@@ -72,13 +72,29 @@ function _setParents(ast) {
 
 function _isReassigned(ast, name) {
   let yes = false;
+  function checkPattern(pat) {
+    if (!pat) return;
+    if (pat.type === 'Identifier' && pat.name === name) { yes = true; return; }
+    if (pat.type === 'ArrayPattern' || pat.type === 'ObjectPattern') {
+      for (const e of pat.elements || []) if (e) checkPattern(e);
+      for (const p of pat.properties || []) checkPattern(p.value || p);
+      if (pat.type === 'ObjectPattern' && pat.rest) checkPattern(pat.rest);
+    }
+    if (pat.type === 'RestElement') checkPattern(pat.argument);
+    if (pat.type === 'AssignmentPattern') checkPattern(pat.left);
+  }
   function walk(node) {
     if (!node || typeof node !== 'object' || yes) return;
-    if (node.type === 'AssignmentExpression' && node.left && node.left.type === 'Identifier' && node.left.name === name) {
-      yes = true; return;
+    if (node.type === 'AssignmentExpression' && node.left) {
+      checkPattern(node.left);
+      if (yes) return;
     }
     if (node.type === 'UpdateExpression' && node.argument && node.argument.type === 'Identifier' && node.argument.name === name) {
       yes = true; return;
+    }
+    if (node.type === 'ForInStatement' || node.type === 'ForOfStatement') {
+      if (node.left) checkPattern(node.left);
+      if (yes) return;
     }
     for (const k of Object.keys(node)) {
       if (k === 'parent') continue;
@@ -218,7 +234,7 @@ async function _runTurbo(goal) {
           await new Promise((res, rej) => exec(`npm install ${dep}@${latest}`,{cwd:root,timeout:120000},e=>e?rej(e):res()));
           await new Promise(r => exec('npm test',{cwd:root,timeout:120000},()=>r()));
           const out = await new Promise(r => exec('npm outdated --json',{cwd:root,timeout:15000},(e,s)=>r(e?e.stdout||'{}':s||'{}')));
-          try { const o = JSON.parse(out); if (o[dep]) return { ok: false, info: `${dep} stuck at ${o[dep].current}` }; } catch {}
+          try { const o = JSON.parse(out); if (o[dep]) return { ok: false, info: `${dep} stuck at ${o[dep].current}` }; } catch (e) { console.error('[C0]', e); }
           return { ok: true, info: `upgraded ${dep} to ${latest}` };
         };
       }
@@ -271,8 +287,8 @@ async function _runTurbo(goal) {
           if (fPath.match(/\.p2\.(mjs|js)$/)) return { ok: true, info: `skip .p2` };
           if (issue.includes('consider splitting')) {
             // === split handler DISABLED — splitting files breaks the codebase ===
-            console.log('[runner] split handler DISABLED — skipping consider splitting for ' + fPath);
-            let lineCount = 0; try { lineCount = readFileSync(absPath, 'utf8').split('\n').length; } catch {}
+            console.debug('[runner] split handler DISABLED — skipping consider splitting for ' + fPath);
+            let lineCount = 0; try { lineCount = readFileSync(absPath, 'utf8').split('\n').length; } catch (e) { console.error('[C0]', e); }
             return { ok: true, info: `split disabled (${lineCount} lines, ${fPath})` };
           }
           const r = _applyCodeFix(absPath, issue);
@@ -375,15 +391,15 @@ function _housekeep() {
   _lastHousekeepAt = now;
   const r = housekeeping();
   if (r.recovered.length > 0) {
-    console.log(`[runner] housekeeping: recovered ${r.recovered.length} stale running goal(s)`);
+    console.debug(`[runner] housekeeping: recovered ${r.recovered.length} stale running goal(s)`);
     for (const x of r.recovered) {
-      console.log(`[runner]   reset ${x.id} (stuck ${(x.stuckMs/1000/60).toFixed(0)} min): ${x.description.slice(0, 50)}`);
+      console.debug(`[runner]   reset ${x.id} (stuck ${(x.stuckMs/1000/60).toFixed(0)} min): ${x.description.slice(0, 50)}`);
     }
   }
   if (r.purged.length > 0) {
-    console.log(`[runner] housekeeping: purged ${r.purged.length} pollution goal(s)`);
+    console.debug(`[runner] housekeeping: purged ${r.purged.length} pollution goal(s)`);
     for (const x of r.purged) {
-      console.log(`[runner]   marked failed ${x.id} (pattern: ${x.pattern}): ${x.description.slice(0, 50)}`);
+      console.debug(`[runner]   marked failed ${x.id} (pattern: ${x.pattern}): ${x.description.slice(0, 50)}`);
     }
   }
 }

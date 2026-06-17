@@ -7,12 +7,12 @@ export function create() {
     ng(msg, err) { result.fail++; result.details.push(`  ✗ ${msg}${err ? ': ' + (err?.message || err) : ''}`); },
     skip(msg) { result.skip++; result.details.push(`  - ${msg} (skip)`); },
     report(name) {
-      console.log(`\n╔══ ${'═'.repeat(name.length + 4)}╗`);
-      console.log(`║    ${name}    ║`);
-      console.log(`╚══ ${'═'.repeat(name.length + 4)}╝`);
-      result.details.forEach(d => console.log(d));
+      console.debug(`\n╔══ ${'═'.repeat(name.length + 4)}╗`);
+      console.debug(`║    ${name}    ║`);
+      console.debug(`╚══ ${'═'.repeat(name.length + 4)}╝`);
+      result.details.forEach(d => console.debug(d));
       const total = result.pass + result.fail + result.skip;
-      console.log(`\n${result.pass}/${total} passed, ${result.fail} failed, ${result.skip} skipped`);
+      console.debug(`\n${result.pass}/${total} passed, ${result.fail} failed, ${result.skip} skipped`);
       return result.fail === 0;
     },
   };

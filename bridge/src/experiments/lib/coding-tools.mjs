@@ -74,12 +74,12 @@ export async function writeFile(filePath, content, opts = {}) {
     }
 
     // 3. 提示: 改文件优先用 edit_file (diff 可见, 出错可逆)
-    console.warn(`[write_file] ${filePath} exists (${origSize} bytes) — consider edit_file for partial changes. Backup: ${backupPath}`);
+    console.debug(`[write_file] ${filePath} exists (${origSize} bytes) — consider edit_file for partial changes. Backup: ${backupPath}`);
   }
 
   // 4. Dry-run 模式: OPENCHAT_WRITE_DRYRUN=1 时只打印, 不写
   if (process.env.OPENCHAT_WRITE_DRYRUN === '1') {
-    console.log(`[write_file DRY-RUN] would write ${content.length} bytes to ${filePath}${backupPath ? ` (backup: ${backupPath})` : ''}`);
+    console.debug(`[write_file DRY-RUN] would write ${content.length} bytes to ${filePath}${backupPath ? ` (backup: ${backupPath})` : ''}`);
     return { path: filePath, bytes: content.length, dryRun: true, backup: backupPath };
   }
 

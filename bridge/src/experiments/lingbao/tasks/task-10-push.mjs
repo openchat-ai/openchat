@@ -104,11 +104,11 @@ async function main() {
 }
 
 const task = await main();
-console.log(JSON.stringify(task, null, 2));
+console.debug(JSON.stringify(task, null, 2));
 
 // 验收判定
 const ok = task.results.every(r => r.delivery.deliveryId && r.steps.total < 3000);
-console.log(`\n=== 验收: ${ok ? 'PASS' : 'FAIL'} ===`);
-console.log(`推送 ${task.results.length} 个事件, 端到端最长 ${Math.max(...task.results.map(r => r.steps.total))}ms`);
-console.log(`bus 总投递: ${task.stats.totalDelivered}, channels: ${task.stats.channels}`);
+console.debug(`\n=== 验收: ${ok ? 'PASS' : 'FAIL'} ===`);
+console.debug(`推送 ${task.results.length} 个事件, 端到端最长 ${Math.max(...task.results.map(r => r.steps.total))}ms`);
+console.debug(`bus 总投递: ${task.stats.totalDelivered}, channels: ${task.stats.channels}`);
 process.exit(ok ? 0 : 1);

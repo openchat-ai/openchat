@@ -105,13 +105,13 @@ export function checkPermission(toolName, args = {}, ctx = {}) {
   // 3. 问用户 (TTY 检查)
   if (!process.stdin.isTTY || ctx.bridgeMode) {
     // bridge 模式: 静默 allow (phone 端鉴权), log 一下
-    console.log(`[permission] ${toolName} (auto-allow bridge mode) args=${JSON.stringify(args).slice(0, 80)}`);
+    console.debug(`[permission] ${toolName} (auto-allow bridge mode) args=${JSON.stringify(args).slice(0, 80)}`);
     return { allowed: true, reason: 'bridge mode auto-allow' };
   }
 
   // 4. CLI 模式: 真问
-  console.log(`\n[permission] Tool '${toolName}' wants to run.`);
-  console.log(`  args: ${JSON.stringify(args).slice(0, 200)}`);
+  console.debug(`\n[permission] Tool '${toolName}' wants to run.`);
+  console.debug(`  args: ${JSON.stringify(args).slice(0, 200)}`);
   process.stdout.write('  Allow? [y/n/always] (default n): ');
   let answer = '';
   try {

@@ -44,26 +44,26 @@ const data = {
 };
 
 const r = await docRun({ inputs: { op: 'render', kind: 'proposal', data, meta: { version: 'v0.1.0', projectName: '阳光花园 20 万平住宅项目' } } });
-console.log(r.outputs.content);
+console.debug(r.outputs.content);
 
 // 排期联动: 用 45 给出接下来 3 个 phase 的阈值调整
 const calOut = await calRun({ inputs: { op: 'suggest', calendar: CALENDAR, currentDate: '2026-07-15' } });
-console.log('\n\n## 6. 阈值动态调整建议 (联动 45.calendar-parse)\n');
+console.debug('\n\n## 6. 阈值动态调整建议 (联动 45.calendar-parse)\n');
 for (const s of calOut.outputs.suggestions) {
-  console.log(`- ${s.date} [${s.phaseName}]: ${s.action} | ${s.reason}`);
-  console.log(`  - 调整值: leakMa=${s.adjusted.leakMa}mA, arcEnergy=${s.adjusted.arcEnergy}, overloadKw=${s.adjusted.overloadKw}kW`);
+  console.debug(`- ${s.date} [${s.phaseName}]: ${s.action} | ${s.reason}`);
+  console.debug(`  - 调整值: leakMa=${s.adjusted.leakMa}mA, arcEnergy=${s.adjusted.arcEnergy}, overloadKw=${s.adjusted.overloadKw}kW`);
 }
 
 // 投资回收期计算
 const totalCost = EQUIPMENT.reduce((s, e) => s + e.qty * e.price, 0);
 const monthlySaving = 800 * 12 + 50000; // 工时 + 事故
 const paybackMonths = (totalCost / monthlySaving * 12).toFixed(1);
-console.log(`\n=== 投资测算 ===`);
-console.log(`设备投入: ${totalCost} 元`);
-console.log(`年节省: ${monthlySaving * 12} 元 (工时 9600 + 事故 50000)`);
-console.log(`投资回收期: ${paybackMonths} 个月`);
+console.debug(`\n=== 投资测算 ===`);
+console.debug(`设备投入: ${totalCost} 元`);
+console.debug(`年节省: ${monthlySaving * 12} 元 (工时 9600 + 事故 50000)`);
+console.debug(`投资回收期: ${paybackMonths} 个月`);
 
 const ok = r.outputs.bytes > 1000 && calOut.outputs.suggestions.length > 0;
-console.log(`\n=== ${ok ? 'PASS' : 'FAIL'} ===`);
-console.log(`方案书 ${r.outputs.bytes}B, 设备 ${EQUIPMENT.length} 项, 总价 ${totalCost} 元, 建议 ${calOut.outputs.suggestions.length} 条`);
+console.debug(`\n=== ${ok ? 'PASS' : 'FAIL'} ===`);
+console.debug(`方案书 ${r.outputs.bytes}B, 设备 ${EQUIPMENT.length} 项, 总价 ${totalCost} 元, 建议 ${calOut.outputs.suggestions.length} 条`);
 process.exit(ok ? 0 : 1);

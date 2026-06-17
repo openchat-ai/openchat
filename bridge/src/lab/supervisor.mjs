@@ -36,7 +36,7 @@ function _medianDuration(description) {
   try {
     const { listHistory } = require('fs');
     // 动态 import 避免循环依赖
-  } catch {}
+  } catch (e) { console.error('[C0]', e); }
   return null;
 }
 
@@ -62,21 +62,21 @@ async function _intervene(run, detection, opts = {}) {
 
   const tail = getTail(goalId, 15);
   const tailText = tail.join('\n');
-  console.log(`[supervisor] detecting ${goalId}: ${detection.reason}`);
+  console.debug(`[supervisor] detecting ${goalId}: ${detection.reason}`);
 
   // 1. 软干涉：发 SIGINT / 设 cancel flag
   if (child && child.pid && !child.killed) {
-    try { process.kill(child.pid, 'SIGINT'); } catch {}
+    try { process.kill(child.pid, 'SIGINT'); } catch (e) { console.error('[C0]', e); }
     // 等 5s 看进程是否退出
     await new Promise(r => setTimeout(r, 5000));
     if (child.exitCode === null && !child.killed) {
       // 没反应 → SIGTERM
-      try { process.kill(child.pid, 'SIGTERM'); } catch {}
+      try { process.kill(child.pid, 'SIGTERM'); } catch (e) { console.error('[C0]', e); }
       await new Promise(r => setTimeout(r, 2000));
     }
   }
   if (cancel) {
-    try { cancel(); } catch {}
+    try { cancel(); } catch (e) { console.error('[C0]', e); }
   }
 
   // 2. 用 auto-heal 诊断 tail
@@ -118,7 +118,7 @@ async function _intervene(run, detection, opts = {}) {
     classification: null,
     escalatedAt: null,
   });
-  console.log(`[supervisor] ${goalId}: ${detection.reason} → reset to pending (hint: ${suggestion || 'retry'})`);
+  console.debug(`[supervisor] ${goalId}: ${detection.reason} → reset to pending (hint: ${suggestion || 'retry'})`);
 }
 
 export async function startSupervisor(opts = {}) {
@@ -176,10 +176,10 @@ export async function startSupervisor(opts = {}) {
   }
 
   setTimeout(check, checkIntervalMs);
-  console.log(`[supervisor] started (every ${(checkIntervalMs / 1000).toFixed(0)}s)`);
+  console.debug(`[supervisor] started (every ${(checkIntervalMs / 1000).toFixed(0)}s)`);
 
   return {
-    stop: () => { stopped = true; console.log('[supervisor] stopped'); },
+    stop: () => { stopped = true; console.debug('[supervisor] stopped'); },
     getStatus: () => ({ running: !stopped, checkIntervalMs }),
   };
 }

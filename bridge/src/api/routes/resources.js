@@ -8,7 +8,7 @@ import express from 'express'
 const router = express.Router()
 
 // 资源状态
-let resourceStatus = {
+const resourceStatus = {
   network: {
     mode: 'WiFi',
     compression: 'gzip',
@@ -30,7 +30,7 @@ let resourceStatus = {
 }
 
 // 资源策略
-let resourcePolicy = {
+const resourcePolicy = {
   compression: 'gzip',
   cacheEnabled: true,
   networkMode: 'Auto',

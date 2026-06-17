@@ -32,7 +32,7 @@ export class SessionManager {
     await provider.connect(effectiveKey);
     this.providers.set(type, provider);
 
-    console.log(`✓ Connected to ${provider.name}`);
+    console.debug(`✓ Connected to ${provider.name}`);
     return provider;
   }
 
@@ -43,7 +43,7 @@ export class SessionManager {
     }
     await provider.disconnect();
     this.providers.delete(type);
-    console.log(`✗ Disconnected from ${provider.name}`);
+    console.debug(`✗ Disconnected from ${provider.name}`);
   }
 
   addProviderDirect(provider) {
@@ -82,7 +82,7 @@ export class SessionManager {
 
     persistentStore.setSession(sessionId, session);
     persistentConfig.addSessionToHistory(sessionId, providerType, model);
-    console.log(`✓ Created session ${sessionId} with ${provider.name}/${model}`);
+    console.debug(`✓ Created session ${sessionId} with ${provider.name}/${model}`);
     return session;
   }
 
@@ -190,7 +190,7 @@ export class SessionManager {
     const session = persistentStore.getSession(sessionId);
     if (session) {
       persistentStore.deleteSession(sessionId);
-      console.log(`✗ Closed session ${sessionId}`);
+      console.debug(`✗ Closed session ${sessionId}`);
       return true;
     }
     return false;

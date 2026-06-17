@@ -19,7 +19,7 @@ describe('EvolutionMemory', () => {
   });
 
   after(() => {
-    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (e) { console.error('[C0]', e); }
   });
 
   describe('remember / recall', () => {

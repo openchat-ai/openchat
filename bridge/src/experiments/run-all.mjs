@@ -25,21 +25,21 @@ let skeletonCount = 0, referenceCount = 0;
 for (const exp of MANIFEST.experiments) {
   const status = exp.status || 'closed-loop';  // 默认 closed-loop (向后兼容)
   const label = `${exp.id.padEnd(15)} ${exp.name}`;
-  console.log(`\n▶ ${label}  [${status}]`);
+  console.debug(`\n▶ ${label}  [${status}]`);
 
   if (status === 'skeleton') {
-    console.log(`  ⏭  skipped (skeleton: 缺行为断言或无 test 函数，需补或挪走)`);
+    console.debug(`  ⏭  skipped (skeleton: 缺行为断言或无 test 函数，需补或挪走)`);
     skeletonCount++;
     continue;
   }
   if (status === 'reference-only') {
-    console.log(`  ⏭  skipped (reference-only: 参考实现，不进 run-all)`);
+    console.debug(`  ⏭  skipped (reference-only: 参考实现，不进 run-all)`);
     referenceCount++;
     continue;
   }
   if (status === 'paused') {
     const reason = exp.pausedReason || '';
-    console.log(`  ⏸  paused (${reason})`);
+    console.debug(`  ⏸  paused (${reason})`);
     continue;
   }
 
@@ -52,7 +52,7 @@ for (const exp of MANIFEST.experiments) {
     } else if (exp.file.endsWith('/test.mjs')) {
       // dir/test.mjs: side-effect-only, import 上面已经跑完
     } else {
-      console.log(`  ⚠ ${exp.id}: 无 test 函数，被 run-all 跳过`);
+      console.debug(`  ⚠ ${exp.id}: 无 test 函数，被 run-all 跳过`);
     }
     closedLoopPass++;
   } catch (e) {
@@ -61,13 +61,13 @@ for (const exp of MANIFEST.experiments) {
   }
 }
 
-console.log(`\n${'═'.repeat(50)}`);
-console.log(`closed-loop:  ${closedLoopPass}/${closedLoopTotal} passed`);
-console.log(`skeleton:     ${skeletonCount} skipped (待补断言或挪走)`);
-console.log(`reference:    ${referenceCount} skipped (参考实现)`);
+console.debug(`\n${'═'.repeat(50)}`);
+console.debug(`closed-loop:  ${closedLoopPass}/${closedLoopTotal} passed`);
+console.debug(`skeleton:     ${skeletonCount} skipped (待补断言或挪走)`);
+console.debug(`reference:    ${referenceCount} skipped (参考实现)`);
 if (allPass && closedLoopPass === closedLoopTotal) {
-  console.log('\n所有 closed-loop 实验通过 ✓');
+  console.debug('\n所有 closed-loop 实验通过 ✓');
 } else {
-  console.log('\n部分 closed-loop 实验失败或被跳过 ✗');
+  console.debug('\n部分 closed-loop 实验失败或被跳过 ✗');
 }
 process.exit(allPass ? 0 : 1);

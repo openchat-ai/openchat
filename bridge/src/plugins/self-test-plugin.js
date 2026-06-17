@@ -15,7 +15,7 @@ class SelfTestPlugin {
         name: 'run_llm_judge',
         description: 'Executes the LLM-as-a-Judge suite to get a professional score on the task execution quality.',
         execute: async ({ testCaseId }) => {
-          console.log(`[SelfTest] Evaluating quality for case: ${testCaseId || 'Full Suite'}`);
+          console.debug(`[SelfTest] Evaluating quality for case: ${testCaseId || 'Full Suite'}`);
           try {
             // Execute the judge script
             const { stdout } = await execPromise('npm run test:llm-judge');
@@ -35,7 +35,7 @@ class SelfTestPlugin {
         name: 'run_chaos_test',
         description: 'Injects faults into the system to test resilience and error recovery capabilities.',
         execute: async () => {
-          console.log('[SelfTest] Injecting chaos to verify robustness...');
+          console.debug('[SelfTest] Injecting chaos to verify robustness...');
           try {
             const { stdout } = await execPromise('npm run test:chaos');
             const reportMatch = stdout.match(/📊 混沌工程测试报告:([\s\S]*)/);
@@ -52,7 +52,7 @@ class SelfTestPlugin {
         name: 'run_property_test',
         description: 'Generates random action sequences to find edge-case crashes (Fuzzing).',
         execute: async () => {
-          console.log('[SelfTest] Running property-based fuzzing...');
+          console.debug('[SelfTest] Running property-based fuzzing...');
           try {
             const { stdout } = await execPromise('npm run test:property');
             const reportMatch = stdout.match(/📊 基于属性测试结果: (\{.*})/s);

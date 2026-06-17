@@ -56,7 +56,7 @@ export async function initProvider() {
   _provider = createProvider(provider, apiKey);
   await _provider.connect(apiKey);
   _model = model;
-  console.log(`[tool-loop] init OK: ${provider}/${model} (via provider-kit)`);
+  console.debug(`[tool-loop] init OK: ${provider}/${model} (via provider-kit)`);
   return `${provider}/${model}`;
 }
 
@@ -71,7 +71,7 @@ function _getOrCreateSession(chatId, systemPrompt = SYSTEM_PROMPT) {
   if (_sessions.has(chatId)) return _sessions.get(chatId);
   const entry = { history: [{ role: 'system', content: systemPrompt }], sessionId: chatId };
   _sessions.set(chatId, entry);
-  console.log(`[tool-loop] new session chatId=${chatId}${systemPrompt !== SYSTEM_PROMPT ? ' (role)' : ''}`);
+  console.debug(`[tool-loop] new session chatId=${chatId}${systemPrompt !== SYSTEM_PROMPT ? ' (role)' : ''}`);
   return entry;
 }
 
@@ -80,12 +80,12 @@ export async function processText(text, chatId = 'default', opts = {}) {
 
   // [ROLE] opt-in role override — prompt + tools + maxRounds 一起换
   const roleDef = opts.role ? getRole(opts.role) : null;
-  if (roleDef) console.log(`[role] ${chatId}: ${roleDef.name} (tools=${roleDef.tools.length}, maxRounds=${roleDef.maxRounds})`);
+  if (roleDef) console.debug(`[role] ${chatId}: ${roleDef.name} (tools=${roleDef.tools.length}, maxRounds=${roleDef.maxRounds})`);
 
   // [BRAIN] predict — opt-in 读脑预测, 失败/未启 = null
   const brainPred = brainPredict(text);
   if (brainPred) {
-    console.log(`[brain] ${chatId}: difficulty=${brainPred.difficulty} domain=${brainPred.domain} canLocal=${brainPred.canLocal} (samples=${brainPred.samples})`);
+    console.debug(`[brain] ${chatId}: difficulty=${brainPred.difficulty} domain=${brainPred.domain} canLocal=${brainPred.canLocal} (samples=${brainPred.samples})`);
   }
 
   const entry = _getOrCreateSession(chatId, roleDef ? roleDef.prompt : undefined);

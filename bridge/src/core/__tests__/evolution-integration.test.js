@@ -24,7 +24,7 @@ describe('EvolutionEngine Integration', () => {
     assert.ok(fs.existsSync(skillPath), 'skill file created on disk');
 
     // cleanup
-    try { fs.unlinkSync(skillPath); } catch {}
+    try { fs.unlinkSync(skillPath); } catch (e) { console.error('[C0]', e); }
   });
 
   test('load saved skill', async () => {
@@ -46,7 +46,7 @@ describe('EvolutionEngine Integration', () => {
 
     // cleanup
     const skillPath = engine.skillManager.getStoragePath();
-    try { fs.unlinkSync(skillPath); } catch {}
+    try { fs.unlinkSync(skillPath); } catch (e) { console.error('[C0]', e); }
   });
 
   test('skill manager tracks skills', () => {

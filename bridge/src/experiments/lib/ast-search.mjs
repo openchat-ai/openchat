@@ -127,7 +127,7 @@ export function renameSymbol(index, oldName, newName) {
   const results = [];
   for (const file of index.files) {
     try {
-      let code = fs.readFileSync(path.resolve(PROJECT_ROOT, file.file), 'utf8');
+      const code = fs.readFileSync(path.resolve(PROJECT_ROOT, file.file), 'utf8');
       const ast = parseJS(code);
       if (!ast) continue;
       const changes = astWalker.renameIdentifier(ast, oldName, newName);

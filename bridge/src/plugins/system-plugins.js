@@ -20,7 +20,7 @@ export const ShellPlugin = {
         command: { type: 'string', description: 'The command to run' }
       },
       execute: async ({ command }, context) => {
-        console.log(`[Shell] Executing: ${command}`);
+        console.debug(`[Shell] Executing: ${command}`);
         try {
           const { stdout, stderr } = await execPromise(command);
           return {

@@ -120,11 +120,11 @@ export class MemoryManager {
           metadata: { ...metadata, timestamp: factData.timestamp }
         });
       } catch (e) {
-        console.warn('[MemoryManager] Failed to index fact:', e.message);
+        console.debug('[MemoryManager] Failed to index fact:', e.message);
       }
     }
 
-    console.log(`[Memory] Fact saved for user ${userId}: ${fact}`);
+    console.debug(`[Memory] Fact saved for user ${userId}: ${fact}`);
     return factId;
   }
 
@@ -149,7 +149,7 @@ export class MemoryManager {
       });
       return results;
     } catch (e) {
-      console.warn('[MemoryManager] Query failed, fallback to keyword:', e.message);
+      console.debug('[MemoryManager] Query failed, fallback to keyword:', e.message);
       const user = this.longTerm.get(userId);
       if (!user) return [];
       return user.facts.filter(f => f.content.includes(query));
@@ -161,7 +161,7 @@ export class MemoryManager {
    */
   async retrieveRelevantContext(query, options = {}) {
     if (!this.useRAG || !this.initialized) {
-      console.log('[MemoryManager] RAG not available, skipping retrieval');
+      console.debug('[MemoryManager] RAG not available, skipping retrieval');
       return [];
     }
 
@@ -183,7 +183,7 @@ export class MemoryManager {
         timestamp: r.metadata?.timestamp
       }));
     } catch (e) {
-      console.warn('[MemoryManager] Retrieval failed:', e.message);
+      console.debug('[MemoryManager] Retrieval failed:', e.message);
       return [];
     }
   }
@@ -254,7 +254,7 @@ export class MemoryManager {
         }
       });
     } catch (e) {
-      console.warn('[MemoryManager] Failed to index message:', e.message);
+      console.debug('[MemoryManager] Failed to index message:', e.message);
     }
   }
 
@@ -281,7 +281,7 @@ export class MemoryManager {
         }
       });
     } catch (e) {
-      console.warn('[MemoryManager] Failed to archive message:', e.message);
+      console.debug('[MemoryManager] Failed to archive message:', e.message);
     }
   }
 
@@ -311,11 +311,11 @@ export class MemoryManager {
           metadata: skillData
         });
       } catch (e) {
-        console.warn('[MemoryManager] Failed to index skill:', e.message);
+        console.debug('[MemoryManager] Failed to index skill:', e.message);
       }
     }
 
-    console.log(`[Memory] New Skill stored: ${name}`);
+    console.debug(`[Memory] New Skill stored: ${name}`);
   }
 
   /**

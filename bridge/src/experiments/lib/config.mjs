@@ -10,7 +10,7 @@ function loadNewConfig() {
       return JSON.parse(fs.readFileSync(NEW_CONFIG_FILE, 'utf8'));
     }
   } catch (e) {
-    if (e.code !== 'ENOENT') console.warn('[config] load error:', e.message);
+    if (e.code !== 'ENOENT') console.debug('[config] load error:', e.message);
   }
   return null;
 }

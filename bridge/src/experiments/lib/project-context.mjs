@@ -31,7 +31,7 @@ export async function findRelatedFiles(filePath) {
       // spec/test files for this module
       if ((eBase === `${base}.spec` || eBase === `${base}.test`) && !related.includes(e)) related.push(e);
     }
-  } catch {}
+  } catch (e) { console.error('[C0]', e); }
   return related.map(f => path.join(path.dirname(filePath), f).replace(/\\/g, '/'));
 }
 

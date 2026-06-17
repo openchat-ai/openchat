@@ -47,14 +47,14 @@ await mkdir(outDir, { recursive: true });
 await writeFile(join(outDir, 'questionnaire-10q.csv'), q.outputs.content, 'utf8');
 await writeFile(join(outDir, 'roi-template.csv'), roi.outputs.content, 'utf8');
 
-console.log('=== 问卷 (10 题) ===');
-console.log(q.outputs.content);
-console.log(`\n=== ROI 模板 (${ROI_ROWS.length} 行) ===`);
-console.log(roi.outputs.content);
+console.debug('=== 问卷 (10 题) ===');
+console.debug(q.outputs.content);
+console.debug(`\n=== ROI 模板 (${ROI_ROWS.length} 行) ===`);
+console.debug(roi.outputs.content);
 
 const ok = q.outputs.bytes > 100 && q.outputs.content.includes('Q10') === false && QUESTIONS.length === 10
   && roi.outputs.bytes > 100 && ROI_ROWS.length >= 8;
-console.log(`\n=== ${ok ? 'PASS' : 'FAIL'} ===`);
-console.log(`问卷: ${q.outputs.bytes}B → output/questionnaire-10q.csv`);
-console.log(`ROI: ${roi.outputs.bytes}B → output/roi-template.csv`);
+console.debug(`\n=== ${ok ? 'PASS' : 'FAIL'} ===`);
+console.debug(`问卷: ${q.outputs.bytes}B → output/questionnaire-10q.csv`);
+console.debug(`ROI: ${roi.outputs.bytes}B → output/roi-template.csv`);
 process.exit(ok ? 0 : 1);

@@ -98,10 +98,10 @@ function listProviders() {
   const config = loadConfig();
   const providers = loadProviders();
 
-  console.log('\n📋 可用的 AI 服务商:\n');
-  console.log('┌─────────────────┬──────────────────────┬─────────────┬──────────────┐');
-  console.log('│ ID              │ 名称                 │ 协议        │ API Key 状态 │');
-  console.log('├─────────────────┼──────────────────────┼─────────────┼──────────────┤');
+  console.debug('\n📋 可用的 AI 服务商:\n');
+  console.debug('┌─────────────────┬──────────────────────┬─────────────┬──────────────┐');
+  console.debug('│ ID              │ 名称                 │ 协议        │ API Key 状态 │');
+  console.debug('├─────────────────┼──────────────────────┼─────────────┼──────────────┤');
 
   for (const [id, providerConfig] of Object.entries(providers)) {
     const hasKey = !!config.apiKeys[id];
@@ -112,20 +112,20 @@ function listProviders() {
     const keyStatus = hasKey ? '✅ 已配置' : '❌ 未配置';
     const prefix = isCurrent ? '👉 ' : '   ';
 
-    console.log(`│ ${prefix}${id.padEnd(13)} │ ${name.padEnd(20)} │ ${protocol.padEnd(11)} │ ${keyStatus.padEnd(12)} │`);
+    console.debug(`│ ${prefix}${id.padEnd(13)} │ ${name.padEnd(20)} │ ${protocol.padEnd(11)} │ ${keyStatus.padEnd(12)} │`);
   }
 
-  console.log('└─────────────────┴──────────────────────┴─────────────┴──────────────┘\n');
+  console.debug('└─────────────────┴──────────────────────┴─────────────┴──────────────┘\n');
 
   if (config.preferences.currentProvider) {
-    console.log(`✨ 当前使用: ${config.preferences.currentProvider}`);
+    console.debug(`✨ 当前使用: ${config.preferences.currentProvider}`);
     if (config.preferences.currentModel) {
-      console.log(`📦 当前模型: ${config.preferences.currentModel}`);
+      console.debug(`📦 当前模型: ${config.preferences.currentModel}`);
     }
   } else {
-    console.log('⚠️  尚未设置默认服务商，请使用: node manage-providers.js switch <provider-id>');
+    console.debug('⚠️  尚未设置默认服务商，请使用: node manage-providers.js switch <provider-id>');
   }
-  console.log('');
+  console.debug('');
 }
 
 /**
@@ -143,7 +143,7 @@ function addApiKey(providerId, apiKey) {
   // 检查服务商是否存在
   if (!providers[providerId]) {
     console.error(`❌ 服务商 "${providerId}" 不存在`);
-    console.log('💡 使用 "node manage-providers.js list" 查看可用服务商');
+    console.debug('💡 使用 "node manage-providers.js list" 查看可用服务商');
     return;
   }
 
@@ -154,8 +154,8 @@ function addApiKey(providerId, apiKey) {
   config.apiKeys[providerId] = apiKey;
 
   if (saveConfig(config)) {
-    console.log(`✅ 已添加 ${providerId} 的 API Key`);
-    console.log(`💡 使用 "node manage-providers.js test ${providerId}" 测试连接`);
+    console.debug(`✅ 已添加 ${providerId} 的 API Key`);
+    console.debug(`💡 使用 "node manage-providers.js test ${providerId}" 测试连接`);
   }
 }
 
@@ -174,10 +174,10 @@ function removeApiKey(providerId) {
     delete config.apiKeys[providerId];
 
     if (saveConfig(config)) {
-      console.log(`✅ 已删除 ${providerId} 的 API Key`);
+      console.debug(`✅ 已删除 ${providerId} 的 API Key`);
     }
   } else {
-    console.log(`⚠️  ${providerId} 没有配置 API Key`);
+    console.debug(`⚠️  ${providerId} 没有配置 API Key`);
   }
 }
 
@@ -201,11 +201,11 @@ async function testProvider(providerId) {
   const apiKey = config.apiKeys[providerId];
   if (!apiKey) {
     console.error(`❌ 未配置 ${providerId} 的 API Key`);
-    console.log(`💡 使用 "node manage-providers.js add ${providerId} <api-key>" 添加`);
+    console.debug(`💡 使用 "node manage-providers.js add ${providerId} <api-key>" 添加`);
     return;
   }
 
-  console.log(`\n🔄 正在测试 ${providerId} 连接...\n`);
+  console.debug(`\n🔄 正在测试 ${providerId} 连接...\n`);
 
   const providerConfig = providers[providerId];
   const transport = providerConfig.transport || 'openai_chat';
@@ -248,10 +248,10 @@ async function testOpenAIConnection(providerConfig, apiKey) {
   const data = await response.json();
   const reply = data.choices?.[0]?.message?.content || '(无响应)';
 
-  console.log('✅ 连接成功!');
-  console.log(`📦 模型: ${data.model || providerConfig.defaultModel}`);
-  console.log(`💬 测试响应: ${reply}`);
-  console.log('');
+  console.debug('✅ 连接成功!');
+  console.debug(`📦 模型: ${data.model || providerConfig.defaultModel}`);
+  console.debug(`💬 测试响应: ${reply}`);
+  console.debug('');
 }
 
 /**
@@ -282,10 +282,10 @@ async function testAnthropicConnection(providerConfig, apiKey) {
   const data = await response.json();
   const reply = data.content?.[0]?.text || '(无响应)';
 
-  console.log('✅ 连接成功!');
-  console.log(`📦 模型: ${data.model || providerConfig.defaultModel}`);
-  console.log(`💬 测试响应: ${reply}`);
-  console.log('');
+  console.debug('✅ 连接成功!');
+  console.debug(`📦 模型: ${data.model || providerConfig.defaultModel}`);
+  console.debug(`💬 测试响应: ${reply}`);
+  console.debug('');
 }
 
 /**
@@ -307,7 +307,7 @@ function switchProvider(providerId) {
 
   if (!config.apiKeys[providerId]) {
     console.error(`⚠️  警告: ${providerId} 尚未配置 API Key`);
-    console.log(`💡 使用 "node manage-providers.js add ${providerId} <api-key>" 添加`);
+    console.debug(`💡 使用 "node manage-providers.js add ${providerId} <api-key>" 添加`);
   }
 
   if (!config.preferences) {
@@ -318,8 +318,8 @@ function switchProvider(providerId) {
   config.preferences.currentModel = providers[providerId].defaultModel;
 
   if (saveConfig(config)) {
-    console.log(`✅ 已切换到 ${providerId}`);
-    console.log(`📦 默认模型: ${config.preferences.currentModel}`);
+    console.debug(`✅ 已切换到 ${providerId}`);
+    console.debug(`📦 默认模型: ${config.preferences.currentModel}`);
   }
 }
 
@@ -331,7 +331,7 @@ function showCurrent() {
   const providers = loadProviders();
 
   if (!config.preferences.currentProvider) {
-    console.log('⚠️  尚未设置默认服务商');
+    console.debug('⚠️  尚未设置默认服务商');
     return;
   }
 
@@ -339,24 +339,24 @@ function showCurrent() {
   const providerConfig = providers[providerId];
 
   if (!providerConfig) {
-    console.log('❌ 当前服务商配置不存在');
+    console.debug('❌ 当前服务商配置不存在');
     return;
   }
 
-  console.log('\n📌 当前配置:\n');
-  console.log(`  服务商: ${providerConfig.nameCn || providerConfig.name}`);
-  console.log(`  ID: ${providerId}`);
-  console.log(`  协议: ${providerConfig.transport === 'anthropic_messages' ? 'Anthropic' : 'OpenAI'}`);
-  console.log(`  模型: ${config.preferences.currentModel || providerConfig.defaultModel}`);
-  console.log(`  API Key: ${config.apiKeys[providerId] ? '✅ 已配置' : '❌ 未配置'}`);
-  console.log('');
+  console.debug('\n📌 当前配置:\n');
+  console.debug(`  服务商: ${providerConfig.nameCn || providerConfig.name}`);
+  console.debug(`  ID: ${providerId}`);
+  console.debug(`  协议: ${providerConfig.transport === 'anthropic_messages' ? 'Anthropic' : 'OpenAI'}`);
+  console.debug(`  模型: ${config.preferences.currentModel || providerConfig.defaultModel}`);
+  console.debug(`  API Key: ${config.apiKeys[providerId] ? '✅ 已配置' : '❌ 未配置'}`);
+  console.debug('');
 }
 
 /**
  * 显示帮助
  */
 function showHelp() {
-  console.log(`
+  console.debug(`
 OpenChat Provider 管理工具
 
 用法:
@@ -429,6 +429,6 @@ switch (command) {
       showHelp();
     } else {
       console.error(`❌ 未知命令: ${command}`);
-      console.log('💡 使用 "node manage-providers.js help" 查看帮助');
+      console.debug('💡 使用 "node manage-providers.js help" 查看帮助');
     }
 }

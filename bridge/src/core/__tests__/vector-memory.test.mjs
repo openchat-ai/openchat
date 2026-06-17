@@ -7,7 +7,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 const DATA_FILE = path.join(os.homedir(), '.openchat', 'vector-memory', 'vectors.json');
-try { fs.rmSync(path.dirname(DATA_FILE), { recursive: true, force: true }); } catch {}
+try { fs.rmSync(path.dirname(DATA_FILE), { recursive: true, force: true }); } catch (e) { console.error('[C0]', e); }
 
 describe('VectorMemory', () => {
   const vm = new VectorMemory();

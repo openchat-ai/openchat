@@ -8,7 +8,7 @@ export async function run({ inputs = {} } = {}) {
   try {
     await import('../core/persistent-store.js');
     persistentStoreExists = true;
-  } catch {}
+  } catch (e) { console.error('[C0]', e); }
 
   const mockReplies = {
     'oc/chat/t1/1-reply.json': JSON.stringify({ sourceKey: 'oc/chat/t1/1.msg', text: 'ok' }),
@@ -48,13 +48,13 @@ export async function test() {
   let pass = true;
   try {
     ok(o.parseOk, 'msg payload parse works after mock restart');
-    console.log('  ✓ recovery: msg payload parse works after mock restart');
+    console.debug('  ✓ recovery: msg payload parse works after mock restart');
     ok(o.persistentStoreExists, 'persistent-store.js should exist');
-    console.log('  ✓ recovery: persistent-store.js exists');
+    console.debug('  ✓ recovery: persistent-store.js exists');
   } catch (e) {
     console.error(`  ✗ ${e.message}`);
     pass = false;
   }
-  console.log(`\n${pass ? '✓' : '✗'} ${NAME}`);
+  console.debug(`\n${pass ? '✓' : '✗'} ${NAME}`);
   return pass;
 }

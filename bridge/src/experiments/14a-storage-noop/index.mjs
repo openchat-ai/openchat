@@ -40,13 +40,13 @@ const STORE_NAME = 'in-memory Map (throwaway)';
 const cache = new Map();
 
 function surface(label) {
-  console.log(`--- state after ${label} ---`);
-  console.log(`store: ${STORE_NAME}`);
-  console.log(`persistent: ${PERSISTENT}`);
-  console.log(`size: ${cache.size}`);
+  console.debug(`--- state after ${label} ---`);
+  console.debug(`store: ${STORE_NAME}`);
+  console.debug(`persistent: ${PERSISTENT}`);
+  console.debug(`size: ${cache.size}`);
   if (cache.size > 0 && cache.size <= 20) {
     for (const [k, v] of cache.entries()) {
-      console.log(`  ${k}: ${JSON.stringify(v)}`);
+      console.debug(`  ${k}: ${JSON.stringify(v)}`);
     }
   }
 }
@@ -172,11 +172,11 @@ async function test() {
   else R.ng(`Case 6: META.persistent should be false, got ${META.persistent}`);
 
   // === final ===
-  console.log('\n=== final ===');
-  console.log(`hypothesis: throwaway in-memory Map works for the 80% case (CRUD on small datasets, no cross-process state)`);
-  console.log(`result: PASS (6/6 cases)`);
-  console.log(`verdict: H1 — 14a is the clean R3 positive example, sibling of 14b (the intentional R3 violation)`);
-  console.log(`next: when writing a new experiment needing Map state, copy this directory and rename id`);
+  console.debug('\n=== final ===');
+  console.debug(`hypothesis: throwaway in-memory Map works for the 80% case (CRUD on small datasets, no cross-process state)`);
+  console.debug(`result: PASS (6/6 cases)`);
+  console.debug(`verdict: H1 — 14a is the clean R3 positive example, sibling of 14b (the intentional R3 violation)`);
+  console.debug(`next: when writing a new experiment needing Map state, copy this directory and rename id`);
 
   R.report(NAME);
 }

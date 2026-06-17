@@ -80,7 +80,7 @@ router.get('/sessions/:id/stream', (req, res) => {
   res.write(`data: ${JSON.stringify({ type: 'subscribed', sessionId: id, ts: Date.now() })}\n\n`);
 
   const unsubscribe = sessionEvents.subscribe(id, (event) => {
-    try { res.write(`data: ${JSON.stringify(event)}\n\n`); } catch {}
+    try { res.write(`data: ${JSON.stringify(event)}\n\n`); } catch (e) { console.error('[C0]', e); }
   });
   req.on('close', unsubscribe);
 });
@@ -95,7 +95,7 @@ router.get('/sessions/stream', (req, res) => {
   // 收集已缓存的历史
   const allHistory = sessionEvents.list().flatMap(s => sessionEvents.getHistory(s.sessionId));
   for (const ev of allHistory.slice(-50)) {
-    try { res.write(`data: ${JSON.stringify(ev)}\n\n`); } catch {}
+    try { res.write(`data: ${JSON.stringify(ev)}\n\n`); } catch (e) { console.error('[C0]', e); }
   }
 
   // 订阅所有 session
@@ -103,7 +103,7 @@ router.get('/sessions/stream', (req, res) => {
   const onNewSession = (sessionId, event) => {
     if (cbs.has(sessionId)) return;
     const cb = (ev) => {
-      try { res.write(`data: ${JSON.stringify(ev)}\n\n`); } catch {}
+      try { res.write(`data: ${JSON.stringify(ev)}\n\n`); } catch (e) { console.error('[C0]', e); }
     };
     cbs.set(sessionId, cb);
     const unsub = sessionEvents.subscribe(sessionId, cb);
@@ -196,7 +196,7 @@ router.post('/probe', async (req, res, next) => {
         // 检测格式
         const c = result.content || '';
         if (c.trim().startsWith('{')) {
-          try { JSON.parse(c); tests[tests.length-1].is_json = true; } catch {}
+          try { JSON.parse(c); tests[tests.length-1].is_json = true; } catch (e) { console.error('[C0]', e); }
         }
         if (c.includes('ACTION:') || c.includes('<tool_call>')) tests[tests.length-1].is_action = true;
         if (c.includes('FINAL:')) tests[tests.length-1].is_final = true;
@@ -410,7 +410,7 @@ router.post('/implement', async (req, res, next) => {
         let existingContent = '';
         try {
           existingContent = await fs.readFile(fullPath, 'utf8');
-        } catch {}
+        } catch (e) { console.error('[C0]', e); }
 
         const prompt = `你是一个代码实现助手。请根据以下 SPEC 实现任务：
 
@@ -577,7 +577,7 @@ ${f.content}
         path: path.relative(workspacePath, path.join(workspacePath, String(e))),
         type: e.endsWith('.patch') ? 'patch' : 'source'
       }));
-    } catch {}
+    } catch (e) { console.error('[C0]', e); }
 
     res.json({
       spec: spec.substring(0, 200),
@@ -688,7 +688,7 @@ router.get('/code/:project', async (req, res, next) => {
     let currentSpec = '';
     try {
       currentSpec = await fs.readFile(path.join(projectPath, `${project}.spec.md`), 'utf8');
-    } catch {}
+    } catch (e) { console.error('[C0]', e); }
 
     res.json({ project, path: projectPath, isCLI, currentSpec: currentSpec?.substring(0, 300) });
   } catch (e) {
@@ -823,7 +823,7 @@ ${f.content}
         path: path.relative(workspacePath, path.join(workspacePath, String(e))),
         type: e.endsWith('.patch') ? 'patch' : 'source'
       }));
-    } catch {}
+    } catch (e) { console.error('[C0]', e); }
 
     res.json({
       description,
@@ -885,7 +885,7 @@ router.post('/chat', async (req, res, next) => {
     const { message, sessionId } = req.body;
     if (!message) return res.status(400).json({ error: 'MESSAGE_REQUIRED' });
 
-    let providerName = persistentConfig.getCurrentProvider();
+    const providerName = persistentConfig.getCurrentProvider();
     const apiKey = persistentConfig.getApiKey(providerName);
     const model = persistentConfig.getPreference('currentModel');
     if (!providerName || !apiKey) return res.status(400).json({ error: 'NO_API_KEY' });
@@ -957,7 +957,7 @@ router.post('/chat/debug', async (req, res, next) => {
     const { message, sessionId } = req.body;
     if (!message) return res.status(400).json({ error: 'MESSAGE_REQUIRED' });
 
-    let providerName = persistentConfig.getCurrentProvider();
+    const providerName = persistentConfig.getCurrentProvider();
     const apiKey = persistentConfig.getApiKey(providerName);
     const model = persistentConfig.getPreference('currentModel');
     if (!providerName || !apiKey) return res.status(400).json({ error: 'NO_API_KEY' });
@@ -980,13 +980,13 @@ router.post('/chat/debug', async (req, res, next) => {
       try {
         const payload = { ...event, ts: Date.now() };
         res.write(`data: ${JSON.stringify(payload)}\n\n`);
-      } catch {}
+      } catch (e) { console.error('[C0]', e); }
     });
 
     res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
     res.end();
   } catch (e) {
-    try { res.write(`data: ${JSON.stringify({ type: 'error', error: e.message })}\n\n`); res.end(); } catch {}
+    try { res.write(`data: ${JSON.stringify({ type: 'error', error: e.message })}\n\n`); res.end(); } catch (e) { console.error('[C0]', e); }
   }
 });
 

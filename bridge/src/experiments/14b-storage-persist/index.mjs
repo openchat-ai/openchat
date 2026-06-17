@@ -35,12 +35,12 @@ const STORE_NAME = 'PersistentSessionStore (~/.openchat/sessions.json)';
 const TEST_KEY_PREFIX = '__14b_test_';
 
 function surface(label) {
-  console.log(`--- state after ${label} ---`);
-  console.log(`store: ${STORE_NAME}`);
-  console.log(`persistent: ${PERSISTENT} (R3 INTENTIONALLY VIOLATED — this is the boundary test)`);
-  console.log(`sessions: ${persistentStore.getAllSessions().length}`);
+  console.debug(`--- state after ${label} ---`);
+  console.debug(`store: ${STORE_NAME}`);
+  console.debug(`persistent: ${PERSISTENT} (R3 INTENTIONALLY VIOLATED — this is the boundary test)`);
+  console.debug(`sessions: ${persistentStore.getAllSessions().length}`);
   const providers = persistentStore.getAllProviders().length;
-  console.log(`providers: ${providers}`);
+  console.debug(`providers: ${providers}`);
 }
 
 function isTestKey(k) {
@@ -172,12 +172,12 @@ async function test() {
   await run({ inputs: { op: 'clear' } });
 
   // === final ===
-  console.log('\n=== final ===');
-  console.log(`hypothesis: PersistentSessionStore roundtrips data through ~/.openchat/sessions.json correctly`);
-  console.log(`result: PASS (5/5 cases, no user data lost)`);
-  console.log(`verdict: H1 — persistence boundary verified, R3 violated-by-design, R6 enforced (clear is test-key-only)`);
-  console.log(`boundary cost: any test failure between set and clear will leave __14b_test_* keys in ~/.openchat/sessions.json`);
-  console.log(`next: any new experiment wanting persistence should copy THIS directory, not 14a`);
+  console.debug('\n=== final ===');
+  console.debug(`hypothesis: PersistentSessionStore roundtrips data through ~/.openchat/sessions.json correctly`);
+  console.debug(`result: PASS (5/5 cases, no user data lost)`);
+  console.debug(`verdict: H1 — persistence boundary verified, R3 violated-by-design, R6 enforced (clear is test-key-only)`);
+  console.debug(`boundary cost: any test failure between set and clear will leave __14b_test_* keys in ~/.openchat/sessions.json`);
+  console.debug(`next: any new experiment wanting persistence should copy THIS directory, not 14a`);
 
   R.report(NAME);
 }

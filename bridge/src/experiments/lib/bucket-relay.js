@@ -64,7 +64,7 @@ class BucketRelay {
         await this.qs.readFrom(b, key);
         const rLat = Date.now() - rStart;
         this._readLatency.set(b.name, rLat);
-      } catch {}
+      } catch (e) { console.error('[C0]', e); }
     }
   }
 
@@ -106,7 +106,7 @@ class BucketRelay {
     } catch {
       // Fallback: try all buckets
       for (const fb of this._buckets) {
-        try { return await this.qs.readFrom(fb, key); } catch {}
+        try { return await this.qs.readFrom(fb, key); } catch (e) { console.error('[C0]', e); }
       }
       throw new Error('audio not found in any bucket');
     }

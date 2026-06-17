@@ -544,7 +544,7 @@ function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'
     this.wss = new WebSocketServer({ noServer: true });
     this._wsUpgraders.set('/ws', this.wss);
     this.wss.on('connection', (ws) => {
-      console.log('[WS] client connected');
+      console.debug('[WS] client connected');
       ws._peerId = 'ws-' + Date.now().toString(36);
       this.clients.add(ws);
       ws.on('message', (data) => {
@@ -557,7 +557,7 @@ function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'
       });
       ws.on('close', () => {
         this.clients.delete(ws);
-        console.log('[WS] client disconnected');
+        console.debug('[WS] client disconnected');
       });
       ws.send(JSON.stringify({ type: 'bridge_handshake', data: { version: 2, peerId: ws._peerId } }));
     });
@@ -567,7 +567,7 @@ function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'
     this._wsUpgraders.set('/signaling', this.signalingWss);
     this.signalingWss.on('connection', (ws) => {
       let registeredPeerId = null;
-      console.log('[Signaling] 客户端已连接 via Express');
+      console.debug('[Signaling] 客户端已连接 via Express');
       ws.on('message', (data) => {
         // Binary frame → forward to target peer as-is
         if (Buffer.isBuffer(data)) {
@@ -695,11 +695,11 @@ function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'
         if (data) {
           for (const [id, s] of this._signalingRooms) {
             if (id !== peerId) {
-              try { s.write(data); } catch {}
+              try { s.write(data); } catch (e) { console.error('[C0]', e); }
             }
           }
         }
-      } catch {}
+      } catch (e) { console.error('[C0]', e); }
     });
   }
 
@@ -743,7 +743,7 @@ function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'
               this.swarm.topicRegistry.announce('users', registeredPeerId, { connected: true, ts: Date.now() });
             }
             socket.write(Buffer.from([0xBB, 0x01, 0x02, 0x00, 0x00, 0x03, 0x7E]));
-            console.log('[TCP] Peer:', registeredPeerId?.slice(0, 8));
+            console.debug('[TCP] Peer:', registeredPeerId?.slice(0, 8));
             continue;
           }
 
@@ -751,7 +751,7 @@ function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'
           if ((cmd === 0x01 || cmd === 0x02) && registeredPeerId) {
             for (const [id, s] of this._signalingRooms) {
               if (id !== registeredPeerId) {
-                try { s.write(frame); } catch {}
+                try { s.write(frame); } catch (e) { console.error('[C0]', e); }
               }
             }
             if (this.swarm) {
@@ -774,7 +774,7 @@ function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'
           if (this.swarm && this.swarm.topicRegistry) {
             this.swarm.topicRegistry.leave('users', registeredPeerId);
           }
-          console.log('[TCP] Peer left:', registeredPeerId?.slice(0, 8));
+          console.debug('[TCP] Peer left:', registeredPeerId?.slice(0, 8));
         }
       });
 
@@ -783,10 +783,10 @@ function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'
 
     const tcpPort = this.port + 1;
     this._tcpServer.listen(tcpPort, () => {
-      console.log(`[Signaling] TCP server on port ${tcpPort}`);
+      console.debug(`[Signaling] TCP server on port ${tcpPort}`);
     });
     this._tcpServer.once('error', (err) => {
-      console.log(`[Signaling] TCP server port ${tcpPort} ${err.code === 'EADDRINUSE' ? '被占用，跳过' : err.message}`);
+      console.debug(`[Signaling] TCP server port ${tcpPort} ${err.code === 'EADDRINUSE' ? '被占用，跳过' : err.message}`);
     });
 
     // Init signal relay for Qiniu-based address exchange
@@ -800,8 +800,8 @@ function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'
     return new Promise((resolve, reject) => {
       this.server = this.app.listen(this.port);
       this.server.once('listening', () => {
-        console.log(`[API] Server running on port ${this.port}`);
-        console.log(`[API] Dev UI:    http://localhost:${this.port}/dev`);
+        console.debug(`[API] Server running on port ${this.port}`);
+        console.debug(`[API] Dev UI:    http://localhost:${this.port}/dev`);
         resolve(this.server);
       });
       this.server.once('error', (err) => {
@@ -817,7 +817,7 @@ function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'
       if (this._tcpServer) this._tcpServer.close();
       return new Promise((resolve) => {
         this.server.close(() => {
-          console.log('[API] Server stopped');
+          console.debug('[API] Server stopped');
           resolve();
         });
       });

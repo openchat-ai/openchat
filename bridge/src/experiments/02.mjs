@@ -40,10 +40,10 @@ let _remoteCache = null;
 let _diskCache = null;
 let _initialized = false;
 let _initPromise = null;
-let _pendingExposures = new Set();
-let _loggedExposures = new Set();
-let _listeners = [];
-let _refreshTimer = null;
+const _pendingExposures = new Set();
+const _loggedExposures = new Set();
+const _listeners = [];
+const _refreshTimer = null;
 
 // ── 内部解析 ──
 
@@ -93,7 +93,7 @@ async function _loadDiskCache() {
       _diskCache = JSON.parse(raw);
       return;
     }
-  } catch {}
+  } catch (e) { console.error('[C0]', e); }
   _diskCache = null;
 }
 
@@ -101,7 +101,7 @@ async function _saveDiskCache() {
   try {
     await mkdir(CACHE_DIR, { recursive: true });
     await writeFile(CACHE_FILE, JSON.stringify(_remoteCache || {}, null, 2), 'utf8');
-  } catch {}
+  } catch (e) { console.error('[C0]', e); }
 }
 
 // ── 远程评估（模拟） ──
@@ -119,7 +119,7 @@ async function _fetchRemote() {
 
 function _notifyListeners() {
   for (const fn of _listeners) {
-    try { fn(); } catch {}
+    try { fn(); } catch (e) { console.error('[C0]', e); }
   }
 }
 

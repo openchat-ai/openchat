@@ -76,7 +76,7 @@ async function _runExp(meta, inputs) {
 
   // 无 run() — compose 拿不到 outputs。test() 由 run-all.mjs 显式跑，不在此触发。
   if (typeof mod.test === 'function') {
-    console.warn(`[compose] ${meta.id} 无 run() — outputs=null, 跑测试请用 run-all.mjs`);
+    console.debug(`[compose] ${meta.id} 无 run() — outputs=null, 跑测试请用 run-all.mjs`);
   }
   return { outputs: null, durationMs: Date.now() - t0 };
 }

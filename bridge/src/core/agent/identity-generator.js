@@ -207,7 +207,7 @@ export class IdentityGenerator {
     // 尝试匹配各种分段方式
     for (const way of SEGMENT_WAYS) {
       if (way.reduce((a, b) => a + b, 0) === 16) {
-        let segments = [];
+        const segments = [];
         let pos = 0;
         
         // 首位

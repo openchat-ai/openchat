@@ -305,7 +305,7 @@ priority: 50
     try {
       const { rm } = await import('fs/promises');
       await rm(tmpDir, { recursive: true, force: true });
-    } catch {}
+    } catch (e) { console.error('[C0]', e); }
     _registry.clear();
     _scanCache.clear();
   }

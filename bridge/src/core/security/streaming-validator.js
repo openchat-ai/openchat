@@ -357,7 +357,7 @@ export class ValidationErrorExplainer {
     if (!error.path) return null;
 
     const parts = error.path.split('.');
-    let example = {};
+    const example = {};
 
     let current = example;
     for (let i = 0; i < parts.length - 1; i++) {

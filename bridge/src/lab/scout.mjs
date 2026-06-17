@@ -18,12 +18,12 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const PROJECT_ROOT = resolve(__dirname, '../..');
 const LAB_DIR = join(process.env.HOME || process.env.USERPROFILE, '.openchat', 'lab');
 const PROJECTS_FILE = join(LAB_DIR, 'projects.json');
-const CONCURRENCY = 3;
+const CONCURRENCY = 20;
 const MIN_PENDING = 10;
 const FETCH_TIMEOUT = 5000;
 
 function log(msg) {
-  console.log(`[scout] ${new Date().toISOString()} ${msg}`);
+  console.debug(`[scout] ${new Date().toISOString()} ${msg}`);
 }
 
 async function safe(name, fn) {
@@ -51,7 +51,7 @@ function scanDir(dir, results = []) {
       if (e.isDirectory()) scanDir(full, results);
       else if (['.js', '.mjs', '.cjs'].includes(extname(e.name))) results.push(full);
     }
-  } catch {}
+  } catch (e) { console.error('[C0]', e); }
   return results;
 }
 
@@ -63,7 +63,7 @@ async function mapLimit(items, limit, fn) {
     while (true) {
       const idx = i++;
       if (idx >= items.length) break;
-      try { out[idx] = await fn(items[idx], idx); } catch {}
+      try { out[idx] = await fn(items[idx], idx); } catch (e) { console.error('[C0]', e); }
     }
   });
   await Promise.all(workers);
@@ -103,7 +103,7 @@ function codeReviewP5(projectRoot, projectName) {
         addGoal(`[code] ${relPath}: uses var/let instead of const`, { priority: 5 });
         goals++;
       }
-    } catch {}
+    } catch (e) { console.error('[C0]', e); }
   }
   if (goals > 0) addFinding(projectName, 'codesmell', `${goals} code issue(s) enqueued`);
   return goals;
@@ -291,7 +291,7 @@ async function scanCodesmell() {
         findings++;
         addFinding('bridge', 'codesmell', `${f.replace(PROJECT_ROOT + '/', '')}: TODO/FIXME`);
       }
-    } catch {}
+    } catch (e) { console.error('[C0]', e); }
   }
   if (findings > 10) addGoal(`address TODO backlog (${findings} items)`, { priority: 3 });
   return findings;
@@ -354,7 +354,7 @@ async function scanDeepsmell() {
         addFinding('bridge', 'deepsmell', `${f.replace(PROJECT_ROOT + '/', '')}: body=${bodyLen} nest=${nest} cyclo=${cyclo}`);
         findings++;
       }
-    } catch {}
+    } catch (e) { console.error('[C0]', e); }
   }
   if (findings > 5) addGoal(`refactor: ${findings} deepsmell files`, { priority: 3 });
   return findings;

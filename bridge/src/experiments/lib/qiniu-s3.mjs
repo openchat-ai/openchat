@@ -65,7 +65,7 @@ async function qiniuList(prefix) {
   const resp = await fetch(url);
   if (!resp.ok) {
     const body = await resp.text().catch(() => '');
-    console.warn(`[qiniuList] HTTP ${resp.status} for prefix="${prefix}": ${body.slice(0, 200)}`);
+    console.debug(`[qiniuList] HTTP ${resp.status} for prefix="${prefix}": ${body.slice(0, 200)}`);
     return [];
   }
   const xml = await resp.text();

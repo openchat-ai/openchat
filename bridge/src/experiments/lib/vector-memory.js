@@ -104,9 +104,9 @@ function vectorCosineSim(a, b) {
 
 // ---- Embedding API ----
 
-let _embedApiKey = process.env.SILICONFLOW_API_KEY || '';
-let _embedCache = new Map();
-let _embedInflight = new Map();
+const _embedApiKey = process.env.SILICONFLOW_API_KEY || '';
+const _embedCache = new Map();
+const _embedInflight = new Map();
 const EMBED_CACHE_MAX = 1000;
 
 async function _callEmbedAPI(texts, retries = 2) {

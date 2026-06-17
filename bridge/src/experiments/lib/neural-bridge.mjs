@@ -27,7 +27,7 @@ export function init({ enabled = true } = {}) {
   if (_instance) return _instance;
   _enabled = enabled;
   _instance = new NeuralBrain();
-  console.log(`[neural-bridge] always-on (samples=${_instance.trainingSamples}, accuracy=${(_instance.accuracy * 100).toFixed(1)}%)`);
+  console.debug(`[neural-bridge] always-on (samples=${_instance.trainingSamples}, accuracy=${(_instance.accuracy * 100).toFixed(1)}%)`);
   return _instance;
 }
 

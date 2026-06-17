@@ -36,7 +36,7 @@ export function parseCliArgs(argv = process.argv) {
   const localBootstrap = savedBridge.localBootstrap || [];
   // 绔彛鍙樻洿鏃讹紝涓㈠純鏃х鍙ｄ綋绯荤殑鐩磋繛閰嶇疆
   let directListen = (portChanged ? 0 : savedBridge.directListen) || 0;
-  let directConnect = portChanged ? [] : (savedBridge.directConnect || []);
+  const directConnect = portChanged ? [] : (savedBridge.directConnect || []);
   // 鏀寔 --directListen CLI 鍙傛暟
   const directListenIdx = args.findIndex(a => a.startsWith('--directListen='));
   if (directListenIdx !== -1) {

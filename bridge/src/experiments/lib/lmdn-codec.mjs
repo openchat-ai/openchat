@@ -132,7 +132,7 @@ class LmdnCodec {
         }
       }
 
-      let X = mdct(fr);
+      const X = mdct(fr);
       for (let b = 0; b < BANDS; b++) {
         const bi = this._bits[b]; if (bi === 0) continue;
         const scale = 1 << (bi - 1);

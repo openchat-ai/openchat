@@ -321,7 +321,7 @@ export class ResidentManager extends EventEmitter {
     const MAX_ITERATIONS = 10;
     const ITERATION_TIMEOUT = Math.max(Math.floor((timeout || 30000) / MAX_ITERATIONS), 5000);
     const MAX_ACCUMULATED_TOKENS = (maxTokens || 2048) * MAX_ITERATIONS;
-    let accumulatedTokens = { prompt: 0, completion: 0, total: 0 };
+    const accumulatedTokens = { prompt: 0, completion: 0, total: 0 };
 
     for (let i = 0; i < MAX_ITERATIONS; i++) {
       const response = await this._llmCall(cotMessages, model, temperature, Math.min(maxTokens || 2048, MAX_ACCUMULATED_TOKENS - accumulatedTokens.total), ITERATION_TIMEOUT);
@@ -475,7 +475,7 @@ export class ResidentManager extends EventEmitter {
    */
   list(statusFilter) {
     const residents = readAll();
-    let filtered = statusFilter
+    const filtered = statusFilter
       ? residents.filter(r => r.status === statusFilter)
       : residents;
     return filtered.map(({ activities, ...rest }) => ({

@@ -63,7 +63,7 @@ export async function run({ inputs = {} } = {}) {
       try {
         const { tsFromKey, parseMsgPayload } = await import('../core/chat-poller.mjs');
         pollerOk = typeof tsFromKey === 'function' && typeof parseMsgPayload === 'function';
-      } catch {}
+      } catch (e) { console.error('[C0]', e); }
       return {
         outputs: {
           maxInFlight: defaultMax,
@@ -93,7 +93,7 @@ export async function run({ inputs = {} } = {}) {
       const sessionsFile = join(homedir(), '.openchat', 'sessions.json');
       const fs = await import('fs/promises');
       let fileExists = false;
-      try { await fs.access(sessionsFile); fileExists = true; } catch {}
+      try { await fs.access(sessionsFile); fileExists = true; } catch (e) { console.error('[C0]', e); }
       return {
         outputs: {
           sessionsFileExists: fileExists,
@@ -215,7 +215,7 @@ export async function test() {
 
   // Step 7: 构建 (dry run)
   {
-    const build = tools.buildRun('node -e "console.log(\'build ok\')"');
+    const build = tools.buildRun('node -e "console.debug(\'build ok\')"');
     assert.ok(build.success);
     R.ok('buildRun: 构建执行');
   }

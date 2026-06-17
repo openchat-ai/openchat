@@ -316,9 +316,9 @@ FIRST-TURN TOOL CALL CONTRACT (硬约束):
 - 唯一例外: 用户消息本身是非技术寒暄 (例如 "/help"、问天气) 时, 可以纯文本回复.`,
   };
 
-  console.log(`\n  openchat bridge — dev mode (${providerLabel})`);
-  console.log(`  ${tools.length} tool(s) loaded · cwd ${process.cwd()}`);
-  console.log(`  输入 /help 查看命令, /status 看状态, /exit 退出\n`);
+  console.debug(`\n  openchat bridge — dev mode (${providerLabel})`);
+  console.debug(`  ${tools.length} tool(s) loaded · cwd ${process.cwd()}`);
+  console.debug(`  输入 /help 查看命令, /status 看状态, /exit 退出\n`);
 
   // 持久化 session（记录 chatId + cwd）
   const sessionId = chatId || `repl_${Date.now()}`;
@@ -376,7 +376,7 @@ FIRST-TURN TOOL CALL CONTRACT (硬约束):
                 // 1. 删历史文件 (repl-history)
                 histClear(cid);
                 // 2. 删 persistentStore 元数据
-                try { persistentStore?.deleteSession(cid); } catch {}
+                try { persistentStore?.deleteSession(cid); } catch (e) { console.error('[C0]', e); }
                 return { ok: true };
               },
               onDiff: async () => {
@@ -503,9 +503,9 @@ FIRST-TURN TOOL CALL CONTRACT (硬约束):
     persistentStore?.setSession(sessionId, { chatId: sessionId, cwd: process.cwd(), lastActivity: Date.now(), type: 'repl' });
 
     // Memory context recall (via experiment 43) — 死代码, mem 模块在 line 456 也是死代码, 一并删除
-    let memoryCtx = '';
+    const memoryCtx = '';
     try {
-    } catch {}
+    } catch (e) { console.error('[C0]', e); }
 
     // Auto goal detection: complex diagnostic tasks get step-by-step guidance
     const isComplex = input.length > 60 || /为什么|什么原因|debug|diagnose|investigate|分析|排查|项目|看看|怎么回事/.test(input);
@@ -666,7 +666,7 @@ FIRST-TURN TOOL CALL CONTRACT (硬约束):
                 enforcer.complete(n);
                 // Store successful results in memory (via experiment 43) — 死代码, mem 模块未注册
                 try {
-                } catch {}
+                } catch (e) { console.error('[C0]', e); }
               } catch (e) {
                 const msg = e.message || String(e);
                 let guidance = '';
@@ -769,10 +769,10 @@ FIRST-TURN TOOL CALL CONTRACT (硬约束):
     }
 
     // finalAnswer: 流式分支已实时打印 content, 跳过; 非流式分支才补打
-    if (finalAnswer && !lastStreamed) console.log(`\n${finalAnswer}\n`);
-    try { rl.prompt(); } catch {}
+    if (finalAnswer && !lastStreamed) console.debug(`\n${finalAnswer}\n`);
+    try { rl.prompt(); } catch (e) { console.error('[C0]', e); }
   }
 
   rl.close();
-  console.log('bye.');
+  console.debug('bye.');
 }

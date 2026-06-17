@@ -41,7 +41,7 @@ async function _releaseLock(lockDir) {
   const lockPath = resolve(lockDir, LOCK_FILE);
   try {
     await unlink(lockPath);
-  } catch {}
+  } catch (e) { console.error('[C0]', e); }
 }
 
 async function _isLocked(lockDir) {
@@ -102,7 +102,7 @@ async function _loadMemdir(memdir) {
         });
       }
     }
-  } catch {}
+  } catch (e) { console.error('[C0]', e); }
 
   return entries;
 }
@@ -120,7 +120,7 @@ async function _consolidate(entries, memdir) {
   }
 
   const consolidated = [];
-  let summaryLines = [];
+  const summaryLines = [];
 
   for (const [topic, group] of Object.entries(topics)) {
     if (group.length < 2) continue; // 单一文件无需归并
@@ -330,7 +330,7 @@ export async function test() {
     try {
       const { rm } = await import('fs/promises');
       await rm(tmpDir, { recursive: true, force: true });
-    } catch {}
+    } catch (e) { console.error('[C0]', e); }
   }
 
   report(NAME);

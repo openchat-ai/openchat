@@ -28,7 +28,7 @@ export class PersistentSessionStore {
         this.sessions = new Map(Object.entries(data));
       }
     } catch (e) {
-      console.log(`Warning: Failed to load sessions: ${e.message}`);
+      console.debug(`Warning: Failed to load sessions: ${e.message}`);
     }
 
     try {
@@ -37,7 +37,7 @@ export class PersistentSessionStore {
         this.providers = new Map(Object.entries(data));
       }
     } catch (e) {
-      console.log(`Warning: Failed to load providers: ${e.message}`);
+      console.debug(`Warning: Failed to load providers: ${e.message}`);
     }
   }
 
@@ -47,13 +47,13 @@ export class PersistentSessionStore {
     try {
       fs.writeFileSync(SESSIONS_FILE, JSON.stringify(Object.fromEntries(this.sessions)));
     } catch (e) {
-      console.log(`Warning: Failed to save sessions: ${e.message}`);
+      console.debug(`Warning: Failed to save sessions: ${e.message}`);
     }
 
     try {
       fs.writeFileSync(PROVIDERS_FILE, JSON.stringify(Object.fromEntries(this.providers)));
     } catch (e) {
-      console.log(`Warning: Failed to save providers: ${e.message}`);
+      console.debug(`Warning: Failed to save providers: ${e.message}`);
     }
   }
 

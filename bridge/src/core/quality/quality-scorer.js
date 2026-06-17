@@ -1534,15 +1534,15 @@ export class QualityScorer {
     let am = 1;
     let bm = 1;
     let az = 1;
-    let qab = a + b;
-    let qap = a + 1;
-    let qam = a - 1;
+    const qab = a + b;
+    const qap = a + 1;
+    const qam = a - 1;
     let bz = 1 - qab * x / qap;
     
     for (let m = 1; m <= maxIterations; m++) {
       const em = m;
       const tem = em + em;
-      let d = em * (b - m) * x / ((qam + tem) * (a + tem));
+      const d = em * (b - m) * x / ((qam + tem) * (a + tem));
       const ap = az + am * d;
       const bp = bz + am * d * bz;
       const aap = ap / bp;
