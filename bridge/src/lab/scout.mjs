@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, existsSync, statSync } from 'fs';
+import { readFileSync, readdirSync, existsSync } from 'fs';
 import { resolve, join, extname, relative } from 'path';
 import { fileURLToPath } from 'url';
 import { addGoal, listGoals, updateGoal } from './goal-queue.mjs';
@@ -14,8 +14,10 @@ import { parseJS } from '../experiments/lib/ast-search.mjs';
 // - 全部 try/catch 静默失败, scout 不该 crash
 // - 文件扫描仅限 bridge/src, 深度 ≤ 10
 // - 单次 cycle < 30s (即使所有网络失败)
-// - 15 scanner 全部独立 try/catch, 1 个失败不影响其他
-// - 15 scanner 全部返回 number (0 表示"无", N 表示"有多少")
+// - 13 scanner 全部独立 try/catch, 1 个失败不影响其他
+// - 13 scanner 全部返回 number (0 表示"无", N 表示"有多少")
+// - 每个 scanner 至少过 1 条 3 原则 (faster/cheaper/higher return)
+// - 3 原则: faster=减少延迟, cheaper=省资源, higher return=给用户更多价值
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const PROJECT_ROOT = resolve(__dirname, '../..');
@@ -91,6 +93,7 @@ async function fetchJson(url) {
   } catch { return null; }
 }
 
+// 原则: higher return - 删残留 .p2. 引用, 避免运行时失败
 // === P1: leftover .p2. file references (有无 = 0/有) ===
 function scanForLeftoverP2() {
   const files = scanDir(SRC_DIR);
@@ -110,6 +113,7 @@ function scanForLeftoverP2() {
   return count;
 }
 
+// 原则: higher return - 修语法错, 阻塞实验运行
 // === P2: syntax errors (有无 = pass/fail, count = 多少文件有) ===
 function scanForSyntaxErrors() {
   const files = scanDir(SRC_DIR);
@@ -133,6 +137,7 @@ function scanForSyntaxErrors() {
   return count;
 }
 
+// 原则: higher return - 找更好替代品, 提升能力
 // === 1. altExists: 是否有 >2x 流行度的替代品 (有无 + 数值) ===
 async function scanAltExists(project) {
   const root = project.path || project.root;
@@ -167,6 +172,7 @@ async function scanAltExists(project) {
   return findings;
 }
 
+// 原则: higher return - 找持续失败实验, 修复可解锁价值
 // === 2. degradation: 实验是否连续失败 (有无 + 次数) ===
 async function scanDegradation() {
   const all = listHistory();
@@ -194,6 +200,7 @@ async function scanDegradation() {
   return findings;
 }
 
+// 原则: higher return - 测未组合的实验对, 探索新能力
 // === 3. explore: untested dep pairs (有无组合 + 量化) ===
 async function scanExplore() {
   const mf = MANIFEST_FILE;
@@ -220,6 +227,7 @@ async function scanExplore() {
   return pick.length;
 }
 
+// 原则: higher return - 升级 major 版本, 获取新能力/bug 修复
 // === 4. newVersion: 是否有 major 升级 (有无 + 版本号) ===
 async function scanNewVersion(project) {
   const root = project.path || project.root;
@@ -244,6 +252,7 @@ async function scanNewVersion(project) {
   return count;
 }
 
+// 原则: cheaper - 应用 minor/patch, 减少维护成本和漏洞
 // === 5. patch: 是否有 minor/patch 升级 (有无 + 次数) ===
 async function scanPatch(project) {
   const root = project.path || project.root;
@@ -270,13 +279,13 @@ async function scanPatch(project) {
   return count;
 }
 
-// === 6. newModule: 新文件未注册到 manifest (有无 = 缺多少) ===
+// 原则: faster - 找被引用的新文件, 提升可发现性 (孤立文件无价值)
+// === 6. newModule: 新文件未注册到 manifest 且被其他模块引用 (有无 = 缺多少) ===
 function scanNewModule() {
   if (!existsSync(MANIFEST_FILE)) return 0;
   let manifest;
   try { manifest = JSON.parse(readFileSync(MANIFEST_FILE, 'utf8')); } catch { return 0; }
   const registered = new Set((manifest.experiments || []).map(e => e.file));
-  // lingbao 目录实验独立
   const lingbaoDir = join(EXP_DIR, 'lingbao');
   try {
     if (existsSync(lingbaoDir)) {
@@ -285,31 +294,56 @@ function scanNewModule() {
       }
     }
   } catch {}
-  let count = 0;
+  // 收集未注册候选
+  const candidates = [];
   try {
     for (const e of readdirSync(EXP_DIR)) {
-      if (e.endsWith('.mjs') && !registered.has(e)) {
-        count++;
-        addFinding('bridge', 'newModule', `experiments/${e}: not in manifest.json`);
-        addGoal(`register: experiments/${e} in manifest.json`, { priority: 2 });
-      }
+      if (e.endsWith('.mjs') && !registered.has(e)) candidates.push(e);
     }
-  } catch {}
+  } catch { return 0; }
+  if (candidates.length === 0) return 0;
+  // 扫 SRC_DIR 所有 import, 统计每个候选被引用次数
+  const files = scanDir(SRC_DIR);
+  const refCount = {};
+  for (const c of candidates) refCount[c] = 0;
+  const baseName = (c) => c.replace(/\.(mjs|js|cjs)$/, '');
+  for (const f of files) {
+    try {
+      const txt = readFileSync(f, 'utf8');
+      for (const c of candidates) {
+        const stem = baseName(c);
+        // 匹配: from './foo' / from './foo.mjs' / from '../experiments/foo'
+        const re = new RegExp(`from\\s+['"][^'"]*${stem.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}(?:\\.mjs)?['"]`, 'g');
+        const m = txt.match(re);
+        if (m) refCount[c] += m.length;
+      }
+    } catch {}
+  }
+  // 只 flag 引用 >= 1 次的 (孤立文件不算)
+  let count = 0;
+  for (const c of candidates) {
+    if (refCount[c] >= 1) {
+      count++;
+      addFinding('bridge', 'newModule', `experiments/${c}: not in manifest.json, referenced ${refCount[c]}x`);
+      addGoal(`register: experiments/${c} in manifest.json`, { priority: 2 });
+    }
+  }
   return count;
 }
 
-// === 7. testCoverage: manifest 实验无 test() 函数 (有无 = 缺多少) ===
+// 原则: higher return - closed-loop 实验是真实验, 必须有 test() 才能验证
+// === 7. testCoverage: closed-loop 实验无 test() 函数 (有无 = 缺多少) ===
 function scanTestCoverage() {
   if (!existsSync(MANIFEST_FILE)) return 0;
   let manifest;
   try { manifest = JSON.parse(readFileSync(MANIFEST_FILE, 'utf8')); } catch { return 0; }
-  const exps = (manifest.experiments || []).filter(e => e.status !== 'paused');
+  const exps = (manifest.experiments || []).filter(e => e.status === 'closed-loop');
   let count = 0;
   for (const e of exps) {
     const file = join(EXP_DIR, e.file);
     if (!existsSync(file)) {
       count++;
-      addFinding('bridge', 'testCoverage', `${e.id}: file ${e.file} missing`);
+      addFinding('bridge', 'testCoverage', `${e.id}: file ${e.file} missing (closed-loop)`);
       addGoal(`write test() for ${e.id} (file missing)`, { priority: 2 });
       continue;
     }
@@ -320,7 +354,7 @@ function scanTestCoverage() {
         || /export\s+(?:async\s+)?function\s+test\b/.test(content);
       if (!hasTest) {
         count++;
-        addFinding('bridge', 'testCoverage', `${e.id}: no test() in ${e.file}`);
+        addFinding('bridge', 'testCoverage', `${e.id}: no test() in ${e.file} (closed-loop)`);
         addGoal(`write test() for ${e.id}`, { priority: 2 });
       }
     } catch {}
@@ -328,7 +362,8 @@ function scanTestCoverage() {
   return count;
 }
 
-// === 8. depsParity: 跨项目功能对照 (有无 = 缺口数) ===
+// 原则: higher return - 引用 ≥3 次的模块是真高价值, 单引用可能是死代码
+// === 8. depsParity: 跨项目模块引用 >=3 次的缺口 (有无 = 缺口数) ===
 function scanDepsParity() {
   const candidates = ['F:/openliems', 'F:/openhxcc', 'F:/openchat-flutter/lib'];
   const ourModules = new Set();
@@ -340,25 +375,48 @@ function scanDepsParity() {
       }
     }
   } catch {}
-  let gaps = 0;
+  // 收集所有 missing 模块的引用计数
+  const refCount = {}; // name -> { project, count }
   for (const proj of candidates) {
     if (!existsSync(proj)) continue;
     try {
-      for (const f of scanDir(proj, [], 3)) {
-        const name = f.split(/[\\/]/).pop().replace(/\.(js|mjs|cjs)$/, '');
-        if (name && !name.startsWith('_') && !name.includes('.spec.') && !name.includes('.json') && !ourModules.has(name)) {
-          gaps++;
-          addFinding('bridge', 'depsParity', `${name} in ${proj.split(/[\\/]/).pop()} not in openchat`);
-          if (gaps <= 10) {
-            addGoal(`adopt: ${name} from ${proj.split(/[\\/]/).pop()}`, { priority: 3 });
+      const files = scanDir(proj, [], 3);
+      for (const f of files) {
+        try {
+          const txt = readFileSync(f, 'utf8');
+          // 匹配 import ... from './name' 或 from './name.js'
+          const importRe = /from\s+['"](?:\.\.?\/|\.\.?\/.*?\/)([a-zA-Z_$][\w$-]*)(?:\.[a-z]+)?['"]/g;
+          let m;
+          while ((m = importRe.exec(txt)) !== null) {
+            const name = m[1];
+            if (ourModules.has(name)) continue;
+            if (name.startsWith('_')) continue;
+            refCount[name] = refCount[name] || { sources: new Set(), total: 0 };
+            refCount[name].sources.add(proj);
+            refCount[name].total++;
           }
-        }
+        } catch {}
       }
     } catch {}
   }
+  // 只 flag 跨项目引用 >= 3 次
+  let gaps = 0;
+  const flagged = [];
+  for (const [name, info] of Object.entries(refCount)) {
+    if (info.total >= 3) {
+      gaps++;
+      const srcNames = Array.from(info.sources).map(s => s.split(/[\\/]/).pop()).join(',');
+      addFinding('bridge', 'depsParity', `${name} (imported ${info.total}x across ${srcNames})`);
+      flagged.push(name);
+    }
+  }
+  flagged.slice(0, 10).forEach((name) => {
+    addGoal(`adopt: ${name} (referenced ${refCount[name].total}x in other projects)`, { priority: 3 });
+  });
   return gaps;
 }
 
+// 原则: higher return - 加 schema 校验, 防止配置错误导致运行时崩溃
 // === 9. configSchema: 配置 key 缺 schema 校验 (有无 = 缺多少) ===
 function scanConfigSchema() {
   if (!existsSync(PERSISTENT_CONFIG)) return 0;
@@ -411,99 +469,8 @@ function scanConfigSchema() {
   return 0;
 }
 
-// === 10. errorHandler: throw 缺 catch (有无 = 缺多少) ===
-function scanErrorHandler() {
-  const files = scanDir(SRC_DIR);
-  let count = 0;
-  for (const f of files) {
-    if (count >= 50) break;
-    try {
-      const content = readFileSync(f, 'utf8');
-      // 状态机: 跟踪 try/catch 嵌套
-      const lines = content.split('\n');
-      let tryDepth = 0;
-      let lineNo = 0;
-      for (const line of lines) {
-        lineNo++;
-        // 更新 try 深度
-        const tryOpen = (line.match(/\btry\s*\{/g) || []).length;
-        const tryClose = (line.match(/\}\s*catch\b/g) || []).length;
-        tryDepth += tryOpen - tryClose;
-        if (tryDepth < 0) tryDepth = 0;
-        // 顶层 throw
-        const trimmed = line.trim();
-        if (tryDepth === 0
-          && /\bthrow\s+/.test(line)
-          && !trimmed.startsWith('//')
-          && !trimmed.startsWith('*')
-          && !trimmed.startsWith('/*')) {
-          count++;
-          addFinding('bridge', 'errorHandler', `${relPath(f)}:${lineNo}: throw without catch`);
-          if (count <= 10) {
-            addGoal(`add try/catch at ${relPath(f)}:${lineNo}`, { priority: 2 });
-          }
-        }
-      }
-    } catch {}
-  }
-  return count;
-}
-
-// === 11. missingFeatures: 跨项目功能对照 - 别人有 openchat 没有 (有无 = 缺口数) ===
-function scanMissingFeatures() {
-  const projects = readProjects();
-  const ourFeatures = new Set();
-  try {
-    const ourSrc = join(PROJECT_ROOT, 'bridge/src');
-    if (existsSync(ourSrc)) {
-      for (const e of readdirSync(ourSrc, { withFileTypes: true })) {
-        if (e.isDirectory() && !e.name.startsWith('.') && !['__tests__', 'node_modules'].includes(e.name)) {
-          ourFeatures.add(e.name);
-        }
-      }
-    }
-  } catch {}
-  const skipDirs = new Set(['bin', 'target', 'cmd', 'tests', 'test', 'docs', 'static', 'templates', 'plans', 'migrations', 'tools', 'node_modules', 'dist', 'build', 'vendor', 'uploads', 'uploadfiles', 'templates', 'static', 'docs', 'fonts', 'css', 'js', 'images', 'data', 'result', 'openchat.db', 'CHZ', 'xslt']);
-  let gaps = 0;
-  for (const proj of projects) {
-    if (!proj || !proj.name || proj.name === 'openchat' || proj.name === 'openchat-flutter') continue;
-    const root = proj.path || proj.root;
-    if (!root || !existsSync(root)) continue;
-    const candidates = [join(root, 'src'), join(root, 'bridge/src'), join(root, 'internal'), root];
-    let otherSrc = null;
-    for (const c of candidates) {
-      try {
-        if (existsSync(c) && statSync(c).isDirectory()) {
-          const has = readdirSync(c).some(n => {
-            try { return statSync(join(c, n)).isDirectory(); } catch { return false; }
-          });
-          if (has) { otherSrc = c; break; }
-        }
-      } catch {}
-    }
-    if (!otherSrc) continue;
-    try {
-      const otherFeatures = new Set();
-      for (const e of readdirSync(otherSrc, { withFileTypes: true })) {
-        if (!e.isDirectory()) continue;
-        if (e.name.startsWith('.') || e.name.startsWith('__')) continue;
-        if (skipDirs.has(e.name)) continue;
-        otherFeatures.add(e.name);
-      }
-      for (const feat of otherFeatures) {
-        if (ourFeatures.has(feat)) continue;
-        gaps++;
-        addFinding(proj.name, 'missingFeatures', `${feat}/ (in ${proj.name}, not in openchat)`);
-        if (gaps <= 10) {
-          addGoal(`adopt: ${feat} module from ${proj.name} (gap=missing)`, { priority: 3 });
-        }
-      }
-    } catch {}
-  }
-  return gaps;
-}
-
-// === 12. bench: 性能是否退化 (有无 = 退化实验数) ===
+// 原则: cheaper - 检测性能退化, 及时优化保速度
+// === 9. bench: 性能是否退化 (有无 = 退化实验数) ===
 async function scanBench() {
   const all = listHistory();
   if (all.length < 50) return 0;
@@ -529,7 +496,8 @@ async function scanBench() {
   return findings;
 }
 
-// === 13. rerun: 是否需要重置 failed goal (有无 = 多少可重置) ===
+// 原则: higher return - 重置失败 goal, 保留有价值实验再跑机会
+// === 10. rerun: 是否需要重置 failed goal (有无 = 多少可重置) ===
 async function scanRerun() {
   const failed = listGoals({ status: 'failed' });
   const pendingDesc = new Set(listGoals({ pending: true }).map(g => g.description));
@@ -564,8 +532,6 @@ export async function runScoutRound() {
   const testCoverage = await safe('testCoverage', scanTestCoverage);
   const depsParity = await safe('depsParity', scanDepsParity);
   const configSchema = await safe('configSchema', scanConfigSchema);
-  const errorHandler = await safe('errorHandler', scanErrorHandler);
-  const missingFeatures = await safe('missingFeatures', scanMissingFeatures);
   const bench = await safe('bench', scanBench);
   const rerun = await safe('rerun', scanRerun);
 
@@ -589,7 +555,7 @@ export async function runScoutRound() {
     p1, p2,
     altExists, newVersion, patch,
     explore, degradation,
-    newModule, testCoverage, depsParity, configSchema, errorHandler, missingFeatures,
+    newModule, testCoverage, depsParity, configSchema,
     bench, rerun,
   };
   log(`round end ${JSON.stringify(result)}`);
