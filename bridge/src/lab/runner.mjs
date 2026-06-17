@@ -127,7 +127,7 @@ async function _runTurbo(goal) {
             writeFileSync(absPath, f, 'utf8'); return { ok: true, info: `console.log→debug` };
           }
           if (issue.includes('uses var/let')) {
-            const f = c.replace(/(?:^|\n)(\s*)(?:let|var)\s+(?!for\s*\()(?=\S)/g, '$1const ');
+            const f = c.replace(/(^|\n)(\s*)(?:let|var)\s+(?!for\s*\()(?=\S)/g, '$1$2const ');
             if (f === c) return { ok: false, info: `no let/var` };
             writeFileSync(absPath, f, 'utf8'); return { ok: true, info: `var/let→const` };
           }
