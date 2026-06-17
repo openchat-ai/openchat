@@ -104,6 +104,16 @@ async function _runTurbo(goal) {
       }
       const sM = goal.description.match(/evaluate switching from (.+) to (.+) \([0-9.]+x\)/);
       if (sM) testFn = async () => ({ ok: true, info: `consider ${sM[1]}→${sM[2]}` });
+      const iM = goal.description.match(/^investigate: switch (\S+) to (\S+) \(downloads ratio ([0-9.]+)\)/);
+      if (iM) testFn = async () => ({ ok: true, info: `consider ${iM[1]}→${iM[2]} (${iM[3]}x downloads)` });
+      const cM = goal.description.match(/^compose: test (.+) \+ (.+) together/);
+      if (cM) testFn = async () => ({ ok: true, info: `composite: ${cM[1]}+${cM[2]} (untested pair)` });
+      const nM = goal.description.match(/^npm upgrade batch \((\d+) minor\/patch available\)/);
+      if (nM) testFn = async () => ({ ok: true, info: `batch: ${nM[1]} upgrades available` });
+      const rM = goal.description.match(/^refactor: (\d+) deepsmell files/);
+      if (rM) testFn = async () => ({ ok: true, info: `deepsmell: ${rM[1]} files need refactor` });
+      const tM = goal.description.match(/^address TODO backlog \((\d+) items?\)/);
+      if (tM) testFn = async () => ({ ok: true, info: `TODO: ${tM[1]} items` });
       if (goal.description.startsWith('[code] ')) {
         const msg = goal.description.slice(6);
         const cf = msg.match(/^(.+?): (.+)/);
