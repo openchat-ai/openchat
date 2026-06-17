@@ -22,10 +22,12 @@
 //   node bin/lab.mjs retry-stats        retry 统计 (transient 自动修好率)
 //   node bin/lab.mjs deps [file]        import 依赖图 (全图 / 单文件)
 //   node bin/lab.mjs check-affected     改文件 → 受影响的 experiment 列表
-//   node bin/lab.mjs run-cron [ms]      启 cron, 每 N ms 跑一轮 (默认 30 min)
+//   node bin/lab.mjs run-cron [ms]     启 cron, 每 N ms 跑一轮 (默认 30 min)
 //   node bin/lab.mjs cron-status        看 cron 是否在跑
 //   node bin/lab.mjs cron-stop          给 cron 进程发 SIGINT
 //   node bin/lab.mjs housekeeping       手动 recoverStaleRunning + purgePollution
+//   node bin/lab.mjs reset              reset all failed to pending
+//   node bin/lab.mjs clear [--force]    wipe entire queue
 //   node bin/lab.mjs notify-test        发一条假 escalation, 验 notify 配置
 //
 // 存储:
@@ -47,6 +49,8 @@
 // - P5 cron: pidfile 防双开, 默认 interval 30min (env: OPENCHAT_LAB_CRON_INTERVAL)
 // - L3 notify: 默认 off, opt-in via env (OPENCHAT_LAB_NOTIFY=server|webhook)
 
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { addGoal, listGoals, getStatus, listFailed, getNextPending, updateGoal, housekeeping } from '../src/lab/goal-queue.mjs';
 import { runNext, runAll } from '../src/lab/runner.mjs';
 import { listHistory, backfillFromQueue } from '../src/lab/history.mjs';
@@ -65,7 +69,7 @@ const cmd = args[0];
 function showUsage() {
   console.log('Usage:');
   console.log('  lab.mjs add "<goal>"       add goal to queue');
-  console.log('  lab.mjs list               list all goals');
+  console.log('  lab.mjs list [--failed|--pending|--done|--running|--json]   list goals, --json for structured output');
   console.log('  lab.mjs status             show counts');
   console.log('  lab.mjs run-next           pick first pending, run it');
   console.log('  lab.mjs run-all            drain all pending');
@@ -97,6 +101,10 @@ function showUsage() {
   console.log('  lab.mjs digest --llm [N]   same + LLM natural language report');
   console.log('  lab.mjs explore            discover untested dep combinations');
   console.log('  lab.mjs costs              per-experiment cost breakdown (from history)');
+  console.log('  lab.mjs findings            show scout findings (degradation/codesmell/web)');
+  console.log('  lab.mjs project [ls|add|rm]  manage scout-monitored projects');
+  console.log('  lab.mjs reset              reset all failed goals to pending');
+  console.log('  lab.mjs clear [--force]    wipe entire queue');
   console.log('  lab.mjs heal-auto          auto-diagnose + auto-patch all failed goals');
 }
 
@@ -112,7 +120,15 @@ if (cmd === 'add') {
   console.log(`  queue: ${JSON.stringify(getStatus())}`);
 
 } else if (cmd === 'list' || cmd === 'ls') {
-  const goals = listGoals();
+  let goals = listGoals();
+  if (args.includes('--failed')) goals = goals.filter(g => g.status === 'failed');
+  if (args.includes('--pending')) goals = goals.filter(g => g.status === 'pending');
+  if (args.includes('--done')) goals = goals.filter(g => g.status === 'done');
+  if (args.includes('--running')) goals = goals.filter(g => g.status === 'running');
+  if (args.includes('--json')) {
+    console.log(JSON.stringify(goals, null, 2));
+    process.exit(0);
+  }
   if (goals.length === 0) {
     console.log('(empty queue)');
   } else {
@@ -130,7 +146,9 @@ if (cmd === 'add') {
   }
 
 } else if (cmd === 'status') {
-  console.log(JSON.stringify(getStatus(), null, 2));
+  const s = getStatus();
+  if (args.includes('--json')) console.log(JSON.stringify(s, null, 2));
+  else console.log(JSON.stringify(s, null, 2));
 
 } else if (cmd === 'run-next') {
   const r = await runNext();
@@ -150,6 +168,7 @@ if (cmd === 'add') {
 
 } else if (cmd === 'run-concurrent') {
   const concurrency = parseInt(args[1], 10) || 3;
+  const { runGoalById } = await import('../src/lab/runner.mjs');
   const allResults = [];
   let running = 0;
   let idx = 0;
@@ -160,7 +179,7 @@ if (cmd === 'add') {
     if (idx >= pending.length) return;
     const goal = pending[idx++];
     running++;
-    runNext(goal.id).then(r => {
+    runGoalById(goal.id).then(r => {
       allResults.push(r);
       const sec = r.result ? (r.result.durationMs / 1000).toFixed(1) : '?';
       console.log(`  ${r.result?.ok ? '✅' : '❌'} ${sec}s  ${r.goal.description.slice(0, 50)}`);
@@ -292,6 +311,15 @@ if (cmd === 'add') {
       console.log('IMPROVEMENTS (0)');
     }
   }
+
+} else if (cmd === 'trim') {
+  const { trimHistory, listHistory } = await import('../src/lab/history.mjs');
+  const before = listHistory().length;
+  const N = parseInt(args[1], 10) || 1000;
+  if (N < 10) { console.log('trim: minimum keep is 10'); process.exit(1); }
+  const r = trimHistory(N);
+  console.log(`trim: ${r.trimmed} removed, ${r.remaining} remaining (was ${before})`);
+  process.exit(0);
 
 } else if (cmd === 'backfill') {
   const r = backfillFromQueue();
@@ -617,13 +645,15 @@ if (cmd === 'add') {
   const totalClosed = experiments.filter(e => e.status === 'closed-loop').length;
   const matched = existing.filter(d => d.startsWith('实验 ')).length;
   console.log(`sync: added ${added} new goal(s) (${totalClosed} closed-loop, ${matched} already matched, ${totalClosed - added - matched} skipped)`);
-  if (added > 0) {
+  if (added > 0 && args.includes('--run')) {
     const results = await runAll();
     console.log(`\nsync: ran ${results.length} goal(s)`);
     for (const r of results) {
       console.log(`  ${r.goal.id}: ${r.result?.ok ? 'OK' : 'FAIL'}`);
     }
-  } else { console.log('sync: nothing new to run'); }
+  } else if (added > 0) {
+    console.log('sync: use --run to execute new goals');
+  }
 
 } else if (cmd === 'verify-affected') {
   const changed = await getChangedFiles();
@@ -664,6 +694,33 @@ if (cmd === 'add') {
     for (const p of m.preferences.slice(-3)) console.log(`    ${p.key}=${p.value}`);
     console.log(`  patterns: ${m.learnedPatterns.length}`);
   }
+
+} else if (cmd === 'reset') {
+  const goalId = args.find(a => a.startsWith('--goal='))?.split('=')[1];
+  if (goalId) {
+    const { updateGoal } = await import('../src/lab/goal-queue.mjs');
+    const r = updateGoal(goalId, { status: 'pending', startedAt: null, finishedAt: null, result: null, retryCount: 0, classification: null, escalatedAt: null });
+    if (r) console.log(`reset: ${goalId} → pending`);
+    else console.log(`reset: goal not found: ${goalId}`);
+  } else {
+    const { resetFailed } = await import('../src/lab/goal-queue.mjs');
+    const count = resetFailed();
+    console.log(`reset: ${count} failed goal(s) → pending`);
+  }
+  process.exit(0);
+
+} else if (cmd === 'clear') {
+  if (!args.includes('--force')) {
+    const { getStatus } = await import('../src/lab/goal-queue.mjs');
+    const s = getStatus();
+    console.log(`WARNING: This will DELETE all ${s.total} goals (${s.pending} pending, ${s.done} done, ${s.failed} failed).`);
+    console.log('Use --force to confirm.');
+    process.exit(1);
+  }
+  const { clearQueue } = await import('../src/lab/goal-queue.mjs');
+  clearQueue();
+  console.log('clear: queue emptied');
+  process.exit(0);
 
 } else if (cmd === 'heal-auto') {
   const { healGoal } = await import('../src/lab/auto-heal.mjs');
@@ -707,12 +764,15 @@ if (cmd === 'add') {
   const result = explore();
   console.log(formatExplorerText(result));
   if (result.recommendations.length > 0) {
-    const { question } = await import('./openchat.mjs');
+    const existing = listGoals().map(g => g.description);
+    let added = 0;
     for (const r of result.recommendations.slice(0, 3)) {
-      // 自动添加为 goal
+      if (existing.includes(r.suggestion)) { console.log(`  ⏭ already in queue: ${r.suggestion.slice(0, 70)}`); continue; }
       addGoal(r.suggestion);
+      added++;
       console.log(`  → added as goal: ${r.suggestion.slice(0, 70)}`);
     }
+    if (added === 0) console.log('  (all recommendations already in queue)');
   }
 
 } else if (cmd === 'costs') {
@@ -739,43 +799,104 @@ if (cmd === 'add') {
   }
   console.log(`  ───────────────────────────`);
 
+} else if (cmd === 'project') {
+  const sub = args[1];
+  const homedir = (await import('os')).homedir();
+  const { resolve } = await import('path');
+  const { existsSync, readFileSync, writeFileSync } = await import('fs');
+  const pf = resolve(homedir, '.openchat/lab/projects.json');
+  let projects = [];
+  try { if (existsSync(pf)) projects = JSON.parse(readFileSync(pf, 'utf8')); } catch {}
+  if (sub === 'add') {
+    const name = args[2];
+    const path = args[3] || name;
+    if (!name) { console.log('usage: lab.mjs project add <name> [path]'); process.exit(0); }
+    const abs = resolve(path);
+    if (!existsSync(abs)) { console.log(`project: path not found: ${abs}`); process.exit(0); }
+    if (projects.find(p => p.name === name)) { console.log(`project: "${name}" already exists`); process.exit(0); }
+    projects.push({ name, path: abs.replace(/\\/g, '/') });
+    writeFileSync(pf, JSON.stringify(projects, null, 2));
+    console.log(`project: added "${name}" -> ${abs}`);
+  } else if (sub === 'rm') {
+    const name = args[2];
+    if (!name) { console.log('usage: lab.mjs project rm <name>'); process.exit(0); }
+    const idx = projects.findIndex(p => p.name === name);
+    if (idx === -1) { console.log(`project: "${name}" not found`); process.exit(0); }
+    projects.splice(idx, 1);
+    writeFileSync(pf, JSON.stringify(projects, null, 2));
+    console.log(`project: removed "${name}"`);
+  } else if (sub === 'ls' || !sub) {
+    if (projects.length === 0) { console.log('project: no projects configured'); process.exit(0); }
+    console.log(`\n📁 Scout Projects (${projects.length})`);
+    for (const p of projects) console.log(`  ${p.name}  ${p.path}`);
+  } else {
+    console.log('usage: lab.mjs project <ls|add|rm>');
+  }
+
+} else if (cmd === 'findings') {
+  const { homedir } = await import('os');
+  const { resolve } = await import('path');
+  const { existsSync, readFileSync } = await import('fs');
+  const f = resolve(homedir(), '.openchat/lab/findings.jsonl');
+  if (!existsSync(f)) { console.log('findings: no data yet'); process.exit(0); }
+  const lines = readFileSync(f, 'utf8').trim().split('\n').filter(Boolean).map(l => JSON.parse(l));
+  const groups = {};
+  for (const l of lines) {
+    if (!groups[l.type]) groups[l.type] = [];
+    groups[l.type].push(l);
+  }
+  console.log(`\n🔍 Scout Findings (${lines.length} total)`);
+  for (const [type, items] of Object.entries(groups)) {
+    const icon = type === 'degradation' ? '📉' : type === 'codesmell' ? '💩' : type === 'ok' ? '✅' : type === 'npm' ? '📦' : '🌐';
+    console.log(`\n  ${icon} ${type} (${items.length})`);
+    const shown = items.slice(-5);
+    for (const i of shown) {
+      const when = new Date(i.ts).toLocaleString();
+      console.log(`    ${when} ${i.desc.slice(0, 80)}`);
+    }
+    if (items.length > 5) console.log(`    ... and ${items.length - 5} more`);
+  }
+
 } else if (cmd === 'watch') {
-  const watchDir = args[1] || resolve(dirname(fileURLToPath(import.meta.url)), '../src/experiments');
+  const baseDir = resolve(dirname(fileURLToPath(import.meta.url)), '../src/experiments');
+  const watchDirs = args[1] ? [args[1]] : [baseDir, resolve(baseDir, 'lib')];
   const fs = await import('fs');
-  console.log(`watch: watching ${watchDir}`);
+  console.log(`watch: watching ${watchDirs.join(', ')}`);
   console.log('watch: press Ctrl-C to stop');
   const debounce = {};
-  fs.watch(watchDir, { recursive: true }, async (event, filename) => {
-    if (!filename || !filename.endsWith('.mjs')) return;
-    const key = filename;
-    if (debounce[key]) clearTimeout(debounce[key]);
-    debounce[key] = setTimeout(async () => {
-      console.log(`\nwatch: ${filename} changed, checking affected...`);
-      try {
-        const changed = [filename];
-        const affected = getAffectedExperiments(changed);
-        if (!affected.length) { console.log('watch: no affected experiments'); return; }
-        let added = 0;
-        const existing = listGoals().map(g => g.description);
-        for (const a of affected) {
-          const desc = `实验 ${a.file.replace(/\.mjs$/, '')}: ${a.name}`;
-          if (existing.includes(desc)) continue;
-          addGoal(desc);
-          added++;
+  for (const dir of watchDirs) {
+    fs.watch(dir, { recursive: true }, async (event, filename) => {
+      if (!filename || !filename.endsWith('.mjs')) return;
+      const key = dir + '/' + filename;
+      if (debounce[key]) clearTimeout(debounce[key]);
+      debounce[key] = setTimeout(async () => {
+        const absPath = resolve(dir, filename);
+        console.log(`\nwatch: ${absPath} changed, checking affected...`);
+        try {
+          const changed = [absPath];
+          const affected = getAffectedExperiments(changed);
+          if (!affected.length) { console.log('watch: no affected experiments'); return; }
+          let added = 0;
+          const existing = listGoals().map(g => g.description);
+          for (const a of affected) {
+            const desc = `实验 ${a.file.replace(/\.mjs$/, '')}: ${a.name}`;
+            if (existing.includes(desc)) continue;
+            addGoal(desc);
+            added++;
+          }
+          if (added === 0) { console.log('watch: affected experiments already in queue'); return; }
+          console.log(`watch: ${added} new goal(s) added, running...`);
+          const results = await runAll();
+          for (const r of results) {
+            const sec = r.result ? (r.result.durationMs / 1000).toFixed(1) : '?';
+            console.log(`  ${r.result?.ok ? '✅' : '❌'} ${sec}s  ${r.goal.description.slice(0, 50)}`);
+          }
+        } catch (e) {
+          console.error(`watch error: ${e.message}`);
         }
-        if (added === 0) { console.log('watch: affected experiments already in queue'); return; }
-        console.log(`watch: ${added} new goal(s) added, running...`);
-        const results = await runAll();
-        for (const r of results) {
-          const sec = r.result ? (r.result.durationMs / 1000).toFixed(1) : '?';
-          console.log(`  ${r.result?.ok ? '✅' : '❌'} ${sec}s  ${r.goal.description.slice(0, 50)}`);
-        }
-      } catch (e) {
-        console.error(`watch error: ${e.message}`);
-      }
-    }, 500);
-  });
-  // keep alive
+      }, 500);
+    });
+  }
   await new Promise(() => {});
 
 } else {

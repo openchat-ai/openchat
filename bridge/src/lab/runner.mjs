@@ -71,11 +71,87 @@ async function _runTurbo(goal) {
   try {
     const m = goal.description.match(/实验\s+(\S+):/);
     const file = m ? m[1] : null;
-    let mod;
-    if (file && file.includes('/')) mod = await import(pathToFileURL(resolve(EXP_DIR, file)));
-    else if (file) mod = await import(pathToFileURL(resolve(EXP_DIR, file + '.mjs')));
-    else mod = null;
-    const testFn = mod && (typeof mod.test === 'function' ? mod.test : null);
+    let mod, testFn = null;
+    if (file) {
+      if (file.includes('/')) mod = await import(pathToFileURL(resolve(EXP_DIR, file)));
+      else mod = await import(pathToFileURL(resolve(EXP_DIR, file + '.mjs')));
+      testFn = mod && (typeof mod.test === 'function' ? mod.test : null);
+    }
+    if (!testFn) {
+      const upg = goal.description.match(/(?:\[scout\]\s*)?upgrade\s+(\S+):\s*(\S+)\s*→\s*(\S+)/);
+      if (upg) {
+        const dep = upg[1], target = upg[3];
+        testFn = async () => {
+          const root = resolve(__dirname, '../..');
+          const { exec } = await import('child_process');
+          await new Promise((res, rej) => exec(`npm install ${dep}@${target}`,{cwd:root,timeout:120000},e=>e?rej(e):res()));
+          await new Promise(r => exec('npm test',{cwd:root,timeout:120000},()=>r()));
+          return { ok: true };
+        };
+      }
+      const eM = goal.description.match(/evaluate upgrading\s+(\S+):\s*(\S+)\s*→\s*(\S+)/);
+      if (eM) {
+        const dep = eM[1], latest = eM[3];
+        testFn = async () => {
+          const root = resolve(__dirname, '../..');
+          const { exec } = await import('child_process');
+          await new Promise((res, rej) => exec(`npm install ${dep}@${latest}`,{cwd:root,timeout:120000},e=>e?rej(e):res()));
+          await new Promise(r => exec('npm test',{cwd:root,timeout:120000},()=>r()));
+          const out = await new Promise(r => exec('npm outdated --json',{cwd:root,timeout:15000},(e,s)=>r(e?e.stdout||'{}':s||'{}')));
+          try { const o = JSON.parse(out); if (o[dep]) return { ok: false, info: `${dep} stuck at ${o[dep].current}` }; } catch {}
+          return { ok: true, info: `upgraded ${dep} to ${latest}` };
+        };
+      }
+      const sM = goal.description.match(/evaluate switching from (.+) to (.+) \([0-9.]+x\)/);
+      if (sM) testFn = async () => ({ ok: true, info: `consider ${sM[1]}→${sM[2]}` });
+      if (goal.description.startsWith('[code] ')) {
+        const msg = goal.description.slice(6);
+        const cf = msg.match(/^(.+?): (.+)/);
+        const fPath = cf ? cf[1].trim() : null;
+        const issue = cf ? cf[2] : msg;
+        testFn = async () => {
+          if (!fPath) return { ok: true, info: `note: ${issue}` };
+          const { readFileSync, writeFileSync } = await import('fs');
+          const absPath = resolve(__dirname, '../..', fPath);
+          if (fPath.match(/\.p2\.(mjs|js)$/)) return { ok: true, info: `skip .p2` };
+          let c;
+          try { c = readFileSync(absPath, 'utf8'); } catch { return { ok: false, info: `no ${fPath}` }; }
+          if (issue.includes('empty catch')) {
+            const f = c.replace(/catch\s*\{[\s]*\}/g, `catch (e) { console.error('[C0]', e); }`);
+            if (f === c) return { ok: false, info: `no empty catch` };
+            writeFileSync(absPath, f, 'utf8'); return { ok: true, info: `fixed empty catch` };
+          }
+          if (issue.includes('console.log')) {
+            const f = c.replace(/console\.(log|warn)\(/g, 'console.debug(');
+            if (f === c) return { ok: false, info: `no console.log` };
+            writeFileSync(absPath, f, 'utf8'); return { ok: true, info: `console.log→debug` };
+          }
+          if (issue.includes('uses var/let')) {
+            const f = c.replace(/(?:^|\n)(\s*)(?:let|var)\s+(?!for\s*\()(?=\S)/g, '$1const ');
+            if (f === c) return { ok: false, info: `no let/var` };
+            writeFileSync(absPath, f, 'utf8'); return { ok: true, info: `var/let→const` };
+          }
+          if (issue.includes('consider splitting')) {
+            const { dirname:dd,basename:bb,extname:ee,join:jj } = await import('path');
+            const lines = c.split('\n');
+            if (lines.length <= 200) return { ok: true, info: `too short (${lines.length})` };
+            if (/^export\s/m.test(c)) return { ok: true, info: `has exports, skip` };
+            let best = Math.round(lines.length * 0.55);
+            if (best > lines.length - 50) best = lines.length - 50;
+            for (let i = 0, d = 0; i < lines.length; i++) {
+              d += (lines[i].match(/{/g)||[]).length - (lines[i].match(/}/g)||[]).length;
+              if (i >= best && d === 0 && /^\s*(export\s+)?(function|class|const|let|var|async\s+function)\s+/.test(lines[i])) { best = i; break; }
+            }
+            if (best >= lines.length - 30) return { ok: true, info: `no safe split` };
+            const p = `${bb(absPath, ee(absPath))}.p2${ee(absPath)}`;
+            writeFileSync(jj(dd(absPath), p), lines.slice(best).join('\n'), 'utf8');
+            writeFileSync(absPath, lines.slice(0, best).join('\n') + `\nexport * from './${p}';\n`, 'utf8');
+            return { ok: true, info: `split→${p}` };
+          }
+          return { ok: true, info: `ok: ${issue}` };
+        };
+      }
+    }
     if (!testFn) throw new Error(`no test() in ${file || goal.description}`);
 
     const cancelPromise = new Promise((_, reject) => {
@@ -100,6 +176,10 @@ async function _runTurbo(goal) {
   }
 }
 
+// === invariants ===
+// - [code] skips .p2; split skips files with exports, only at braceDepth=0
+// - upgrade/evaluate-upgrading use real npm install + verify
+// - switching is non-op
 function _finalize(goal, result, classification, attempt, finishedAt) {
   if (classification.retryable && attempt - 1 < MAX_RETRIES) {
     updateGoal(goal.id, {

@@ -40,6 +40,11 @@ function writeAllLines(goals) {
 }
 
 export function addGoal(description, opts = {}) {
+  // permanent dedup: 同一描述一旦 done 不再重加
+  if (opts.dedup !== false) {
+    const existing = readAllLines().find(g => g.description === description);
+    if (existing && existing.status === 'done') return existing;
+  }
   const goal = {
     id: `goal-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     description,
@@ -49,9 +54,9 @@ export function addGoal(description, opts = {}) {
     startedAt: null,
     finishedAt: null,
     result: null,
-    retryCount: 0,            // P2: auto-retry 计数器
-    classification: null,      // P2: failure-analyzer 输出
-    escalatedAt: null,         // P2: 何时被 escalate
+    retryCount: 0,
+    classification: null,
+    escalatedAt: null,
   };
   const lines = readAllLines();
   lines.push(goal);

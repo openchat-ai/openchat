@@ -24,20 +24,16 @@
 // - 队列空 → break + log "ran 0" (不 busy-loop)
 // - SIGINT/SIGTERM handler + 1s pidfile 轮询双保险, 跨平台都能干净退出
 // - 不重写 queue 状态: 调 runNext, 状态由 runner 管
-// - intervalMs 默认 30min, env: OPENCHAT_LAB_CRON_INTERVAL (ms)
+// - intervalMs 默认 30s, env: OPENCHAT_LAB_CRON_INTERVAL (ms)
 // - intervalMs 可中途修改: 写 ~/.openchat/lab/cron-interval.txt (纯数字 ms)
 //    cron 每 cycle 前读一次, 下次生效
-// - cycle 串行: 跑完一个才跑下一个 (跟 runner 一致, lab 假设单用户)
-// - runNext throw → log + break (不 kill cron, 下个 cycle 继续)
-// - 队列空 → break + log "ran 0" (不 busy-loop)
-// - SIGINT/SIGTERM handler + 1s pidfile 轮询双保险, 跨平台都能干净退出
-// - 不重写 queue 状态: 调 runNext, 状态由 runner 管
-// - intervalMs 默认 30min, env: OPENCHAT_LAB_CRON_INTERVAL (ms)
+// - scout round 在每个 cycle 开始时跑一次
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
 import { runNext } from './runner.mjs';
+import { runScoutRound } from './scout.mjs';
 
 const LAB_DIR = join(homedir(), '.openchat', 'lab');
 const PID_FILE = join(LAB_DIR, 'cron.pid');
@@ -94,7 +90,7 @@ export function startCron(opts = {}) {
   let intervalMs = opts.intervalMs
     ?? (process.env.OPENCHAT_LAB_CRON_INTERVAL
           ? parseInt(process.env.OPENCHAT_LAB_CRON_INTERVAL, 10)
-          : 30 * 60 * 1000);
+          : 30 * 1000);
 
   // 防双开
   const existing = _readPid();
@@ -141,6 +137,9 @@ export function startCron(opts = {}) {
     cycleCount++;
     const cycleStart = Date.now();
     log(`cycle #${cycleCount} start`);
+
+    // scout round: discover & enqueue
+    try { await runScoutRound(); } catch (e) { log(`scout error: ${e.message}`); }
 
     // 连续跑直到队列空
     let cycleRuns = 0;
