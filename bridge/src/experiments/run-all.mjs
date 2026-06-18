@@ -1,20 +1,27 @@
 // run-all.mjs — 按 manifest.json 跑 closed-loop 实验
-// skeleton / reference-only 显式 skip 并说明原因
-// test 函数发现：先 `mod.test`，再任何 `testXxx`，再 dir/test.mjs side-effect 模式
+// 所有实验从 experiments-all.mjs 统⼊
 import { readFile } from 'fs/promises';
 import { resolve, dirname } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
+import * as ALL from './experiments-all.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MANIFEST = JSON.parse(await readFile(resolve(__dirname, 'manifest.json'), 'utf8'));
 
 function _abs(file) { return pathToFileURL(resolve(__dirname, file)).href; }
 
-function findTestFn(mod) {
-  if (typeof mod.test === 'function') return mod.test;
-  for (const v of Object.values(mod)) {
-    if (typeof v === 'function' && /^test[A-Z]/.test(v.name)) return v;
+function findTestFn(expId) {
+  const safe = 'experiment_' + expId.replace(/[^a-zA-Z0-9_]/g, '_');
+  const test = ALL[safe + '_test'];
+  if (typeof test === 'function') return test;
+  for (const [k, v] of Object.entries(ALL)) {
+    if (k.startsWith(safe + '_test') && typeof v === 'function') return v;
   }
+  for (const [k, v] of Object.entries(ALL)) {
+    if (k.startsWith(safe + '_') && typeof v === 'function' && /^test[A-Z]/.test(k)) return v;
+  }
+  const run = ALL[safe + '_run'];
+  if (typeof run === 'function') return () => run({ inputs: {} });
   return null;
 }
 
@@ -23,36 +30,39 @@ let closedLoopTotal = 0, closedLoopPass = 0;
 let skeletonCount = 0, referenceCount = 0;
 
 for (const exp of MANIFEST.experiments) {
-  const status = exp.status || 'closed-loop';  // 默认 closed-loop (向后兼容)
+  const status = exp.status || 'closed-loop';
   const label = `${exp.id.padEnd(15)} ${exp.name}`;
   console.debug(`\n▶ ${label}  [${status}]`);
 
   if (status === 'skeleton') {
-    console.debug(`  ⏭  skipped (skeleton: 缺行为断言或无 test 函数，需补或挪走)`);
+    console.debug(`  ⏭  skipped (skeleton)`);
     skeletonCount++;
     continue;
   }
   if (status === 'reference-only') {
-    console.debug(`  ⏭  skipped (reference-only: 参考实现，不进 run-all)`);
+    console.debug(`  ⏭  skipped (reference-only)`);
     referenceCount++;
     continue;
   }
   if (status === 'paused') {
-    const reason = exp.pausedReason || '';
-    console.debug(`  ⏸  paused (${reason})`);
+    console.debug(`  ⏸  paused (${exp.pausedReason || ''})`);
     continue;
   }
 
   closedLoopTotal++;
   try {
-    const mod = await import(_abs(exp.file));
-    const testFn = findTestFn(mod);
-    if (testFn) {
-      await testFn();
-    } else if (exp.file.endsWith('/test.mjs')) {
-      // dir/test.mjs: side-effect-only, import 上面已经跑完
+    if (exp.file && !exp.file.startsWith('experiments-all') && !exp.file.includes('/')) {
+      const testFn = findTestFn(exp.id);
+      if (testFn) {
+        await testFn();
+      } else {
+        console.debug(`  ⚠ ${exp.id}: 无 test 函数`);
+      }
     } else {
-      console.debug(`  ⚠ ${exp.id}: 无 test 函数，被 run-all 跳过`);
+      // subdirectory or test.mjs: fallback to dynamic import
+      const mod = await import(_abs(exp.file));
+      const tf = (typeof mod.test === 'function') ? mod.test : null;
+      if (tf) await tf();
     }
     closedLoopPass++;
   } catch (e) {

@@ -7,7 +7,7 @@
     "provider-kit",
     "fairy-guardian"
   ],
-  "scannedAt": 1781784567426,
+  "scannedAt": 1781784939325,
   "modules": [
     {
       "path": "/src/api/middleware/error-handler.js",
@@ -2202,290 +2202,6 @@
       "project": "bridge-core"
     },
     {
-      "path": "/src/experiments/01.mjs",
-      "size": 1938,
-      "exports": [
-        {
-          "name": "META",
-          "line": 7,
-          "hash": "f343b82a",
-          "file": "/src/experiments/01.mjs"
-        },
-        {
-          "name": "run",
-          "line": 10,
-          "hash": "39747de1",
-          "file": "/src/experiments/01.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/02.mjs",
-      "size": 9307,
-      "exports": [
-        {
-          "name": "META",
-          "line": 17,
-          "hash": "a629b2c7",
-          "file": "/src/experiments/02.mjs"
-        },
-        {
-          "name": "run",
-          "line": 149,
-          "hash": "1bdd12e4",
-          "file": "/src/experiments/02.mjs"
-        },
-        {
-          "name": "checkGate_CACHED_MAY_BE_STALE",
-          "line": 234,
-          "hash": "794188f0",
-          "file": "/src/experiments/02.mjs"
-        },
-        {
-          "name": "test",
-          "line": 241,
-          "hash": "d3721d39",
-          "file": "/src/experiments/02.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/03.mjs",
-      "size": 15298,
-      "exports": [
-        {
-          "name": "META",
-          "line": 26,
-          "hash": "7536b05e",
-          "file": "/src/experiments/03.mjs"
-        },
-        {
-          "name": "run",
-          "line": 28,
-          "hash": "1bdd12e4",
-          "file": "/src/experiments/03.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/04.mjs",
-      "size": 9866,
-      "exports": [
-        {
-          "name": "META",
-          "line": 16,
-          "hash": "446cf7a0",
-          "file": "/src/experiments/04.mjs"
-        },
-        {
-          "name": "run",
-          "line": 141,
-          "hash": "1bdd12e4",
-          "file": "/src/experiments/04.mjs"
-        },
-        {
-          "name": "test",
-          "line": 234,
-          "hash": "d3721d39",
-          "file": "/src/experiments/04.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/05.mjs",
-      "size": 4461,
-      "exports": [
-        {
-          "name": "META",
-          "line": 12,
-          "hash": "a11294b0",
-          "file": "/src/experiments/05.mjs"
-        },
-        {
-          "name": "run",
-          "line": 29,
-          "hash": "1bdd12e4",
-          "file": "/src/experiments/05.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/06.mjs",
-      "size": 1747,
-      "exports": [
-        {
-          "name": "META",
-          "line": 7,
-          "hash": "ef6480ac",
-          "file": "/src/experiments/06.mjs"
-        },
-        {
-          "name": "run",
-          "line": 11,
-          "hash": "1bdd12e4",
-          "file": "/src/experiments/06.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/07.mjs",
-      "size": 5546,
-      "exports": [
-        {
-          "name": "META",
-          "line": 7,
-          "hash": "a68bd378",
-          "file": "/src/experiments/07.mjs"
-        },
-        {
-          "name": "run",
-          "line": 18,
-          "hash": "1bdd12e4",
-          "file": "/src/experiments/07.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/08.mjs",
-      "size": 3415,
-      "exports": [
-        {
-          "name": "META",
-          "line": 9,
-          "hash": "2c46b9ff",
-          "file": "/src/experiments/08.mjs"
-        },
-        {
-          "name": "run",
-          "line": 14,
-          "hash": "1bdd12e4",
-          "file": "/src/experiments/08.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/09.mjs",
-      "size": 13123,
-      "exports": [
-        {
-          "name": "META",
-          "line": 10,
-          "hash": "a35829eb",
-          "file": "/src/experiments/09.mjs"
-        },
-        {
-          "name": "run",
-          "line": 18,
-          "hash": "1bdd12e4",
-          "file": "/src/experiments/09.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/10.mjs",
-      "size": 7621,
-      "exports": [
-        {
-          "name": "META",
-          "line": 8,
-          "hash": "e9dfc263",
-          "file": "/src/experiments/10.mjs"
-        },
-        {
-          "name": "run",
-          "line": 10,
-          "hash": "1bdd12e4",
-          "file": "/src/experiments/10.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/11.mjs",
-      "size": 2765,
-      "exports": [
-        {
-          "name": "run",
-          "line": 6,
-          "hash": "1bdd12e4",
-          "file": "/src/experiments/11.mjs"
-        },
-        {
-          "name": "test",
-          "line": 60,
-          "hash": "d3721d39",
-          "file": "/src/experiments/11.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/12.mjs",
-      "size": 2554,
-      "exports": [
-        {
-          "name": "run",
-          "line": 5,
-          "hash": "1bdd12e4",
-          "file": "/src/experiments/12.mjs"
-        },
-        {
-          "name": "test",
-          "line": 59,
-          "hash": "d3721d39",
-          "file": "/src/experiments/12.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/13.mjs",
-      "size": 1937,
-      "exports": [
-        {
-          "name": "run",
-          "line": 6,
-          "hash": "1bdd12e4",
-          "file": "/src/experiments/13.mjs"
-        },
-        {
-          "name": "test",
-          "line": 45,
-          "hash": "d3721d39",
-          "file": "/src/experiments/13.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/14.mjs",
-      "size": 4842,
-      "exports": [
-        {
-          "name": "META",
-          "line": 8,
-          "hash": "bb398d24",
-          "file": "/src/experiments/14.mjs"
-        },
-        {
-          "name": "run",
-          "line": 30,
-          "hash": "1bdd12e4",
-          "file": "/src/experiments/14.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
       "path": "/src/experiments/14a-storage-noop/index.mjs",
       "size": 8611,
       "exports": [
@@ -2524,640 +2240,73 @@
       "project": "experiments"
     },
     {
-      "path": "/src/experiments/15.mjs",
-      "size": 5562,
-      "exports": [
-        {
-          "name": "META",
-          "line": 11,
-          "hash": "bb398d24",
-          "file": "/src/experiments/15.mjs"
-        },
-        {
-          "name": "run",
-          "line": 43,
-          "hash": "1bdd12e4",
-          "file": "/src/experiments/15.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/16.mjs",
-      "size": 3091,
-      "exports": [
-        {
-          "name": "META",
-          "line": 3,
-          "hash": "bb398d24",
-          "file": "/src/experiments/16.mjs"
-        },
-        {
-          "name": "run",
-          "line": 26,
-          "hash": "1bdd12e4",
-          "file": "/src/experiments/16.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/17.mjs",
-      "size": 5972,
-      "exports": [
-        {
-          "name": "META",
-          "line": 6,
-          "hash": "bb398d24",
-          "file": "/src/experiments/17.mjs"
-        },
-        {
-          "name": "run",
-          "line": 39,
-          "hash": "1bdd12e4",
-          "file": "/src/experiments/17.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/18.mjs",
-      "size": 30542,
-      "exports": [
-        {
-          "name": "META",
-          "line": 13,
-          "hash": "4c88780f",
-          "file": "/src/experiments/18.mjs"
-        },
-        {
-          "name": "run",
-          "line": 312,
-          "hash": "33bb3ee2",
-          "file": "/src/experiments/18.mjs"
-        },
-        {
-          "name": "setRealExecutor",
-          "line": 638,
-          "hash": "f30b9633",
-          "file": "/src/experiments/18.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/19.mjs",
-      "size": 1441,
-      "exports": [
-        {
-          "name": "META",
-          "line": 10,
-          "hash": "bb398d24",
-          "file": "/src/experiments/19.mjs"
-        },
-        {
-          "name": "run",
-          "line": 23,
-          "hash": "2d725916",
-          "file": "/src/experiments/19.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/20.mjs",
-      "size": 3685,
-      "exports": [
-        {
-          "name": "META",
-          "line": 9,
-          "hash": "bb398d24",
-          "file": "/src/experiments/20.mjs"
-        },
-        {
-          "name": "run",
-          "line": 33,
-          "hash": "1bdd12e4",
-          "file": "/src/experiments/20.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/21.mjs",
-      "size": 11264,
-      "exports": [
-        {
-          "name": "META",
-          "line": 17,
-          "hash": "e396c20d",
-          "file": "/src/experiments/21.mjs"
-        },
-        {
-          "name": "run",
-          "line": 121,
-          "hash": "1bdd12e4",
-          "file": "/src/experiments/21.mjs"
-        },
-        {
-          "name": "test",
-          "line": 255,
-          "hash": "d3721d39",
-          "file": "/src/experiments/21.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/22.mjs",
-      "size": 12365,
-      "exports": [
-        {
-          "name": "initProvider",
-          "line": 42,
-          "hash": "ab9c1003",
-          "file": "/src/experiments/22.mjs"
-        },
-        {
-          "name": "processText",
-          "line": 78,
-          "hash": "20be2c1d",
-          "file": "/src/experiments/22.mjs"
-        },
-        {
-          "name": "getHistory",
-          "line": 216,
-          "hash": "5c47928b",
-          "file": "/src/experiments/22.mjs"
-        },
-        {
-          "name": "run",
-          "line": 225,
-          "hash": "0e12c1c4",
-          "file": "/src/experiments/22.mjs"
-        },
-        {
-          "name": "generateSessionName",
-          "line": 238,
-          "hash": "1bd9ac36",
-          "file": "/src/experiments/22.mjs"
-        },
-        {
-          "name": "test",
-          "line": 255,
-          "hash": "d3721d39",
-          "file": "/src/experiments/22.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/23.mjs",
-      "size": 3508,
-      "exports": [
-        {
-          "name": "META",
-          "line": 11,
-          "hash": "d4c8c715",
-          "file": "/src/experiments/23.mjs"
-        },
-        {
-          "name": "run",
-          "line": 15,
-          "hash": "33bb3ee2",
-          "file": "/src/experiments/23.mjs"
-        },
-        {
-          "name": "test",
-          "line": 31,
-          "hash": "25c8c7cf",
-          "file": "/src/experiments/23.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/24.mjs",
-      "size": 3382,
-      "exports": [
-        {
-          "name": "META",
-          "line": 9,
-          "hash": "5bec1493",
-          "file": "/src/experiments/24.mjs"
-        },
-        {
-          "name": "run",
-          "line": 14,
-          "hash": "33bb3ee2",
-          "file": "/src/experiments/24.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/25.mjs",
-      "size": 9583,
-      "exports": [
-        {
-          "name": "META",
-          "line": 8,
-          "hash": "a2020253",
-          "file": "/src/experiments/25.mjs"
-        },
-        {
-          "name": "run",
-          "line": 12,
-          "hash": "33bb3ee2",
-          "file": "/src/experiments/25.mjs"
-        },
-        {
-          "name": "test",
-          "line": 170,
-          "hash": "25c8c7cf",
-          "file": "/src/experiments/25.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/26.mjs",
-      "size": 5338,
-      "exports": [
-        {
-          "name": "META",
-          "line": 7,
-          "hash": "bb398d24",
-          "file": "/src/experiments/26.mjs"
-        },
-        {
-          "name": "run",
-          "line": 43,
-          "hash": "1bdd12e4",
-          "file": "/src/experiments/26.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/27.mjs",
-      "size": 9278,
-      "exports": [
-        {
-          "name": "META",
-          "line": 11,
-          "hash": "276ff9e0",
-          "file": "/src/experiments/27.mjs"
-        },
-        {
-          "name": "run",
-          "line": 13,
-          "hash": "1bdd12e4",
-          "file": "/src/experiments/27.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/28.mjs",
-      "size": 8133,
-      "exports": [
-        {
-          "name": "META",
-          "line": 9,
-          "hash": "687ddb88",
-          "file": "/src/experiments/28.mjs"
-        },
-        {
-          "name": "run",
-          "line": 11,
-          "hash": "1bdd12e4",
-          "file": "/src/experiments/28.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/29.mjs",
-      "size": 724,
-      "exports": [
-        {
-          "name": "META",
-          "line": 3,
-          "hash": "c39d6cf8",
-          "file": "/src/experiments/29.mjs"
-        },
-        {
-          "name": "run",
-          "line": 6,
-          "hash": "39747de1",
-          "file": "/src/experiments/29.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/30.mjs",
-      "size": 1457,
-      "exports": [
-        {
-          "name": "META",
-          "line": 3,
-          "hash": "18e3f7e7",
-          "file": "/src/experiments/30.mjs"
-        },
-        {
-          "name": "run",
-          "line": 6,
-          "hash": "39747de1",
-          "file": "/src/experiments/30.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/31.mjs",
-      "size": 4474,
-      "exports": [
-        {
-          "name": "META",
-          "line": 3,
-          "hash": "f8dc04d6",
-          "file": "/src/experiments/31.mjs"
-        },
-        {
-          "name": "run",
-          "line": 6,
-          "hash": "39747de1",
-          "file": "/src/experiments/31.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/32.mjs",
-      "size": 4259,
-      "exports": [
-        {
-          "name": "META",
-          "line": 3,
-          "hash": "dd2e723d",
-          "file": "/src/experiments/32.mjs"
-        },
-        {
-          "name": "run",
-          "line": 9,
-          "hash": "1bdd12e4",
-          "file": "/src/experiments/32.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/33.mjs",
-      "size": 4701,
-      "exports": [
-        {
-          "name": "META",
-          "line": 8,
-          "hash": "bb398d24",
-          "file": "/src/experiments/33.mjs"
-        },
-        {
-          "name": "run",
-          "line": 32,
-          "hash": "1bdd12e4",
-          "file": "/src/experiments/33.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/34.mjs",
-      "size": 5579,
-      "exports": [
-        {
-          "name": "META",
-          "line": 8,
-          "hash": "fe3e101d",
-          "file": "/src/experiments/34.mjs"
-        },
-        {
-          "name": "run",
-          "line": 30,
-          "hash": "1bdd12e4",
-          "file": "/src/experiments/34.mjs"
-        },
-        {
-          "name": "test",
-          "line": 49,
-          "hash": "d3721d39",
-          "file": "/src/experiments/34.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/35.mjs",
-      "size": 11954,
-      "exports": [
-        {
-          "name": "META",
-          "line": 16,
-          "hash": "e0f2b608",
-          "file": "/src/experiments/35.mjs"
-        },
-        {
-          "name": "run",
-          "line": 39,
-          "hash": "1bdd12e4",
-          "file": "/src/experiments/35.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/36.mjs",
-      "size": 5616,
-      "exports": [
-        {
-          "name": "META",
-          "line": 12,
-          "hash": "376a6d3f",
-          "file": "/src/experiments/36.mjs"
-        },
-        {
-          "name": "run",
-          "line": 18,
-          "hash": "1bdd12e4",
-          "file": "/src/experiments/36.mjs"
-        },
-        {
-          "name": "test",
-          "line": 77,
-          "hash": "d3721d39",
-          "file": "/src/experiments/36.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/37.mjs",
-      "size": 10671,
-      "exports": [
-        {
-          "name": "META",
-          "line": 17,
-          "hash": "41846caa",
-          "file": "/src/experiments/37.mjs"
-        },
-        {
-          "name": "run",
-          "line": 188,
-          "hash": "1bdd12e4",
-          "file": "/src/experiments/37.mjs"
-        },
-        {
-          "name": "test",
-          "line": 269,
-          "hash": "d3721d39",
-          "file": "/src/experiments/37.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/38.mjs",
-      "size": 9593,
-      "exports": [
-        {
-          "name": "META",
-          "line": 21,
-          "hash": "3603d580",
-          "file": "/src/experiments/38.mjs"
-        },
-        {
-          "name": "run",
-          "line": 91,
-          "hash": "1bdd12e4",
-          "file": "/src/experiments/38.mjs"
-        },
-        {
-          "name": "test",
-          "line": 144,
-          "hash": "d3721d39",
-          "file": "/src/experiments/38.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/39.mjs",
-      "size": 3729,
-      "exports": [
-        {
-          "name": "test",
-          "line": 3,
-          "hash": "d3721d39",
-          "file": "/src/experiments/39.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/40.mjs",
-      "size": 3516,
-      "exports": [
-        {
-          "name": "test",
-          "line": 4,
-          "hash": "d3721d39",
-          "file": "/src/experiments/40.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/41.mjs",
-      "size": 1490,
-      "exports": [
-        {
-          "name": "test",
-          "line": 13,
-          "hash": "d3721d39",
-          "file": "/src/experiments/41.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
       "path": "/src/experiments/42.mjs",
-      "size": 17706,
+      "size": 18086,
       "exports": [
         {
           "name": "META",
           "line": 10,
-          "hash": "b0544bdb",
+          "hash": "f2ae0a39",
           "file": "/src/experiments/42.mjs"
         },
         {
           "name": "run",
           "line": 24,
-          "hash": "1bdd12e4",
+          "hash": "33bb3ee2",
           "file": "/src/experiments/42.mjs"
         },
         {
           "name": "test",
           "line": 37,
-          "hash": "d3721d39",
+          "hash": "25c8c7cf",
           "file": "/src/experiments/42.mjs"
         },
         {
           "name": "scanProject",
           "line": 78,
-          "hash": "dd2fb7ec",
+          "hash": "548cd4d6",
           "file": "/src/experiments/42.mjs"
         },
         {
           "name": "generateDNA",
           "line": 106,
-          "hash": "b6f87ecb",
+          "hash": "d4293d57",
           "file": "/src/experiments/42.mjs"
         },
         {
           "name": "generateMultiProjectDNA",
           "line": 110,
-          "hash": "e17b48c3",
+          "hash": "3c23a5f3",
           "file": "/src/experiments/42.mjs"
         },
         {
           "name": "extractInvariants",
           "line": 128,
-          "hash": "3cd49062",
+          "hash": "1aa57915",
           "file": "/src/experiments/42.mjs"
         },
         {
           "name": "buildDependencyGraph",
           "line": 156,
-          "hash": "96ddc949",
+          "hash": "1847cc37",
           "file": "/src/experiments/42.mjs"
         },
         {
           "name": "writeDNAFile",
           "line": 180,
-          "hash": "06b5ced2",
+          "hash": "3d96810f",
           "file": "/src/experiments/42.mjs"
         },
         {
           "name": "getDNAContext",
           "line": 191,
-          "hash": "22113edb",
+          "hash": "13dd117a",
           "file": "/src/experiments/42.mjs"
         },
         {
           "name": "answerFromDNA",
           "line": 211,
-          "hash": "61d56d48",
+          "hash": "4754bf6f",
           "file": "/src/experiments/42.mjs"
         }
       ],
@@ -3277,80 +2426,704 @@
       "project": "experiments"
     },
     {
-      "path": "/src/experiments/compose-demo.mjs",
-      "size": 11184,
-      "exports": [],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/compose.mjs",
-      "size": 6299,
+      "path": "/src/experiments/experiments-all.mjs",
+      "size": 309967,
       "exports": [
         {
-          "name": "run",
-          "line": 93,
-          "hash": "f0d1c36b",
-          "file": "/src/experiments/compose.mjs"
+          "name": "experiment_01_META",
+          "line": 10,
+          "hash": "af8d9630",
+          "file": "/src/experiments/experiments-all.mjs"
         },
         {
-          "name": "compose",
-          "line": 109,
-          "hash": "8ab2c63f",
-          "file": "/src/experiments/compose.mjs"
+          "name": "experiment_01_run",
+          "line": 13,
+          "hash": "244202f2",
+          "file": "/src/experiments/experiments-all.mjs"
         },
         {
-          "name": "get",
-          "line": 126,
-          "hash": "7b014015",
-          "file": "/src/experiments/compose.mjs"
+          "name": "experiment_02_META",
+          "line": 87,
+          "hash": "8905061b",
+          "file": "/src/experiments/experiments-all.mjs"
         },
         {
-          "name": "list",
-          "line": 127,
-          "hash": "71c3a963",
-          "file": "/src/experiments/compose.mjs"
+          "name": "experiment_02_run",
+          "line": 219,
+          "hash": "5da0689a",
+          "file": "/src/experiments/experiments-all.mjs"
         },
         {
-          "name": "getMeta",
-          "line": 128,
-          "hash": "b033034c",
-          "file": "/src/experiments/compose.mjs"
+          "name": "experiment_02_checkGate_CACHED_MAY_BE_STALE",
+          "line": 304,
+          "hash": "0049c258",
+          "file": "/src/experiments/experiments-all.mjs"
         },
         {
-          "name": "getState",
-          "line": 129,
-          "hash": "8fc1434e",
-          "file": "/src/experiments/compose.mjs"
+          "name": "experiment_02_test",
+          "line": 311,
+          "hash": "4c556a68",
+          "file": "/src/experiments/experiments-all.mjs"
         },
         {
-          "name": "reset",
-          "line": 130,
-          "hash": "7bc142be",
-          "file": "/src/experiments/compose.mjs"
+          "name": "experiment_03_META",
+          "line": 402,
+          "hash": "b2e95949",
+          "file": "/src/experiments/experiments-all.mjs"
         },
         {
-          "name": "printDeps",
-          "line": 133,
-          "hash": "dc054e88",
-          "file": "/src/experiments/compose.mjs"
+          "name": "experiment_03_run",
+          "line": 404,
+          "hash": "66cef904",
+          "file": "/src/experiments/experiments-all.mjs"
         },
         {
-          "name": "pipeline",
-          "line": 157,
-          "hash": "39fb5339",
-          "file": "/src/experiments/compose.mjs"
+          "name": "experiment_04_META",
+          "line": 724,
+          "hash": "cf630187",
+          "file": "/src/experiments/experiments-all.mjs"
         },
         {
-          "name": "dump",
-          "line": 170,
-          "hash": "32addbea",
-          "file": "/src/experiments/compose.mjs"
+          "name": "experiment_04_run",
+          "line": 849,
+          "hash": "b59414c1",
+          "file": "/src/experiments/experiments-all.mjs"
         },
         {
-          "name": "test",
-          "line": 176,
-          "hash": "04795bea",
-          "file": "/src/experiments/compose.mjs"
+          "name": "experiment_04_test",
+          "line": 942,
+          "hash": "117ccee4",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_05_META",
+          "line": 1038,
+          "hash": "c0f60d85",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_05_run",
+          "line": 1055,
+          "hash": "a5441956",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_06_META",
+          "line": 1173,
+          "hash": "d1a8abe6",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_06_run",
+          "line": 1177,
+          "hash": "480efc67",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_07_META",
+          "line": 1224,
+          "hash": "2c3e6e31",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_07_run",
+          "line": 1235,
+          "hash": "f22cfbfa",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_08_META",
+          "line": 1351,
+          "hash": "e951ca09",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_08_run",
+          "line": 1356,
+          "hash": "9538e17c",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_09_META",
+          "line": 1446,
+          "hash": "ad756ee0",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_09_run",
+          "line": 1454,
+          "hash": "e6c59f4d",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_10_META",
+          "line": 1736,
+          "hash": "e0294705",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_10_run",
+          "line": 1738,
+          "hash": "33b1b561",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_11_run",
+          "line": 1917,
+          "hash": "466ccb6b",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_11_test",
+          "line": 1971,
+          "hash": "2c67334b",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_12_run",
+          "line": 1995,
+          "hash": "4755453a",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_12_test",
+          "line": 2049,
+          "hash": "eb4e5a26",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_13_run",
+          "line": 2078,
+          "hash": "c442219e",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_13_test",
+          "line": 2117,
+          "hash": "e49aaf07",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_14_META",
+          "line": 2143,
+          "hash": "01a022fe",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_14_run",
+          "line": 2165,
+          "hash": "ec7ed372",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_15_META",
+          "line": 2275,
+          "hash": "03ab44c4",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_15_run",
+          "line": 2307,
+          "hash": "fc8e16fa",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_16_META",
+          "line": 2407,
+          "hash": "40d9a379",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_16_run",
+          "line": 2430,
+          "hash": "1198099b",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_17_META",
+          "line": 2496,
+          "hash": "d52c7068",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_17_run",
+          "line": 2529,
+          "hash": "080c9f0c",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_18_META",
+          "line": 2656,
+          "hash": "0b373cd2",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_18_run",
+          "line": 2955,
+          "hash": "d46ca89a",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_18_setRealExecutor",
+          "line": 3281,
+          "hash": "56aeb457",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_19_META",
+          "line": 3341,
+          "hash": "7990b21c",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_19_run",
+          "line": 3354,
+          "hash": "3aff3139",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_20_META",
+          "line": 3388,
+          "hash": "0803a1e6",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_20_run",
+          "line": 3412,
+          "hash": "9aa8566d",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_21_META",
+          "line": 3504,
+          "hash": "12f27220",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_21_run",
+          "line": 3608,
+          "hash": "8e2dbe3f",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_21_test",
+          "line": 3742,
+          "hash": "9e25697b",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_22_initProvider",
+          "line": 3832,
+          "hash": "9d8f7cd8",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_22_processText",
+          "line": 3868,
+          "hash": "aff8847d",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_22_getHistory",
+          "line": 4006,
+          "hash": "0e756f4a",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_22_run",
+          "line": 4015,
+          "hash": "e7c0e24d",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_22_generateSessionName",
+          "line": 4028,
+          "hash": "84d85b1b",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_22_test",
+          "line": 4045,
+          "hash": "132dbab7",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_23_META",
+          "line": 4072,
+          "hash": "b0f8a166",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_23_run",
+          "line": 4076,
+          "hash": "05d931f2",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_23_test",
+          "line": 4092,
+          "hash": "d96837b9",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_24_META",
+          "line": 4158,
+          "hash": "16ebb78f",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_24_run",
+          "line": 4163,
+          "hash": "c2117686",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_25_META",
+          "line": 4248,
+          "hash": "49212615",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_25_run",
+          "line": 4252,
+          "hash": "b281328c",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_25_test",
+          "line": 4410,
+          "hash": "99d12550",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_26_META",
+          "line": 4537,
+          "hash": "900743a9",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_26_run",
+          "line": 4573,
+          "hash": "6a9609e1",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_27_META",
+          "line": 4667,
+          "hash": "63175da3",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_27_run",
+          "line": 4669,
+          "hash": "17a55c0c",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_28_META",
+          "line": 4884,
+          "hash": "7469cb33",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_28_run",
+          "line": 4886,
+          "hash": "24e5e074",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_29_META",
+          "line": 5068,
+          "hash": "6f2c7041",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_29_run",
+          "line": 5071,
+          "hash": "7c11b379",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_30_META",
+          "line": 5099,
+          "hash": "79ff5246",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_30_run",
+          "line": 5102,
+          "hash": "0837bb90",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_31_META",
+          "line": 5146,
+          "hash": "2b0309eb",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_31_run",
+          "line": 5149,
+          "hash": "f9123289",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_32_META",
+          "line": 5259,
+          "hash": "7fb6e589",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_32_run",
+          "line": 5265,
+          "hash": "0720fe53",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_33_META",
+          "line": 5383,
+          "hash": "87bfbe6f",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_33_run",
+          "line": 5407,
+          "hash": "f19b60f0",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_34_META",
+          "line": 5504,
+          "hash": "a383c09f",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_34_run",
+          "line": 5526,
+          "hash": "7f9608fd",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_34_test",
+          "line": 5545,
+          "hash": "a52c9297",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_35_META",
+          "line": 5664,
+          "hash": "1b230836",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_35_run",
+          "line": 5687,
+          "hash": "27e4f364",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_36_META",
+          "line": 5967,
+          "hash": "eff78cf1",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_36_run",
+          "line": 5973,
+          "hash": "00062684",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_36_test",
+          "line": 6032,
+          "hash": "0296c48e",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_37_META",
+          "line": 6123,
+          "hash": "79bce930",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_37_run",
+          "line": 6294,
+          "hash": "deb876e3",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_37_test",
+          "line": 6375,
+          "hash": "f54df62c",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_38_META",
+          "line": 6468,
+          "hash": "dba66977",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_38_run",
+          "line": 6538,
+          "hash": "06c728c2",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_38_test",
+          "line": 6591,
+          "hash": "1d1f00a3",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_39_test",
+          "line": 6701,
+          "hash": "92e9ade0",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_40_test",
+          "line": 6772,
+          "hash": "8a81ae74",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_41_test",
+          "line": 6871,
+          "hash": "9e563ece",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_42_META",
+          "line": 6912,
+          "hash": "71e40fd5",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_42_run",
+          "line": 6926,
+          "hash": "95a7dc59",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_42_test",
+          "line": 6939,
+          "hash": "29e67232",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_42_scanProject",
+          "line": 6980,
+          "hash": "6b99d855",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_42_generateDNA",
+          "line": 7008,
+          "hash": "3439d710",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_42_generateMultiProjectDNA",
+          "line": 7012,
+          "hash": "62d8e0c4",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_42_extractInvariants",
+          "line": 7030,
+          "hash": "dad4183d",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_42_buildDependencyGraph",
+          "line": 7058,
+          "hash": "f8140678",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_42_writeDNAFile",
+          "line": 7082,
+          "hash": "86cd694f",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_42_getDNAContext",
+          "line": 7093,
+          "hash": "a0210de4",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_42_answerFromDNA",
+          "line": 7113,
+          "hash": "9bfd10a6",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_compose_run",
+          "line": 7614,
+          "hash": "debc3764",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_compose_compose",
+          "line": 7630,
+          "hash": "ba10b0c2",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_compose_get",
+          "line": 7647,
+          "hash": "1f8e0631",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_compose_list",
+          "line": 7648,
+          "hash": "d7ac9fbb",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_compose_getMeta",
+          "line": 7649,
+          "hash": "0f603b7e",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_compose_getState",
+          "line": 7650,
+          "hash": "e4d18e50",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_compose_reset",
+          "line": 7651,
+          "hash": "e82d71ac",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_compose_printDeps",
+          "line": 7654,
+          "hash": "378e4aab",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_compose_pipeline",
+          "line": 7678,
+          "hash": "7b7a00c5",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_compose_dump",
+          "line": 7691,
+          "hash": "fe159c35",
+          "file": "/src/experiments/experiments-all.mjs"
+        },
+        {
+          "name": "experiment_compose_test",
+          "line": 7697,
+          "hash": "75a9f6c6",
+          "file": "/src/experiments/experiments-all.mjs"
         }
       ],
       "project": "experiments"
@@ -4884,7 +4657,7 @@
     },
     {
       "path": "/src/experiments/run-all.mjs",
-      "size": 2583,
+      "size": 2871,
       "exports": [],
       "project": "experiments"
     },
@@ -14919,8 +14692,8 @@
       "project": "fairy-guardian"
     }
   ],
-  "totalModules": 433,
-  "totalExports": 1997,
+  "totalModules": 391,
+  "totalExports": 2008,
   "invariants": [
     {
       "file": "/src/api/routes/lab-dashboard.mjs",
@@ -15017,105 +14790,10 @@
       ]
     },
     {
-      "file": "/src/experiments/15.mjs",
-      "block": [
-        "// === invariants ==='))",
-        "      warnings.push(`${f}: >100 行但缺少 invariants 约束块`);",
-        "    if (isNew && lineCount > 50 && !exists(specPath))",
-        "      errors.push(`${f}: 新增 >50 行但无对应 ${specPath}`);",
-        "    const inWhitelist = SPEC_REQUIRED.includes(f);",
-        "    if (inWhitelist && !isNew && lineCount > 100) {",
-        "      if (!specFiles.includes(specPath))",
-        "        errors.push(`${f}: 白名单文件改动但未同步 ${specPath}`);",
-        "    }",
-        "    if (inWhitelist && !exists(specPath))",
-        "      errors.push(`${f}: 白名单模块缺少 ${specPath}`);",
-        "  }",
-        "  for (const f of specFiles) {",
-        "    const content = await getContent(f);",
-        "    for (const section of REQUIRED_SPEC_SECTIONS) {",
-        "      if (!content.includes(section)) errors.push(`${f}: 缺少 \"${section}\"`);",
-        "    }",
-        "  }",
-        "  if (totalLines > 500) errors.push(`总 diff ${totalLines} 行（>500），R4 违规`);",
-        "  else if (totalLines > 300) warnings.push(`总 diff ${totalLines} 行（>300），接近 R4 上限`);"
-      ]
-    },
-    {
-      "file": "/src/experiments/18.mjs",
-      "block": [
-        "// === invariants ===\r",
-        "// - MAX_ROUNDS=8, MAX_REPEAT=3, MAX_RETRIES=3 （与 skeleton-agent 一致）\r",
-        "// - dryRun: 两组 mock 序列相同（同 LLM），测组件正确性 + 开销\r",
-        "// - live: 两组同 prompt 调真实 LLM，测完成率 + token 差异\r",
-        "// - H0/H1 只 live 模式输出；dryRun 只输出组件测试结果\r",
-        "import { validateResponse } from './lib/response-validator.mjs';\r",
-        "import { createStepEnforcer } from './lib/step-enforcer.mjs';\r",
-        "import { createErrorTracker } from './lib/error-tracker.mjs';\r",
-        "export const META = {\r",
-        "  id: 'guardrails-pipeline',\r",
-        "  name: 'Guardrails Pipeline — 全栈守卫 vs 裸循环比较实验',\r",
-        "  status: 'closed-loop',\r",
-        "  needsEnv: [],\r",
-        "  inputs: [\r",
-        "    { name: 'op', type: 'string', required: true, description: 'compare | run_pipeline | run_baseline | test_components' },\r",
-        "    { name: 'scenario', type: 'object', required: false },\r",
-        "    { name: 'live', type: 'boolean', required: false, default: false },\r",
-        "    { name: 'repeats', type: 'number', required: false, default: 3 },\r",
-        "  ],\r",
-        "  outputs: [\r"
-      ]
-    },
-    {
-      "file": "/src/experiments/19.mjs",
-      "block": [
-        "// === invariants ===",
-        "// - run() 返回 guardian 实例，不持状态（每次调用新建）",
-        "// - guardian 内部持状态（callCount/enforcer/tracker），跨会话需手动 reset",
-        "import { createGuardian } from './lib/guardian.mjs';",
-        "import { TOOLS as CODING_TOOLS } from './lib/coding-tools.mjs';",
-        "export const META = {",
-        "  id: 'guardian',",
-        "  name: 'Guardian — 守卫层中间件',",
-        "  status: 'closed-loop',",
-        "  needsEnv: [],",
-        "  inputs: [],",
-        "  outputs: [",
-        "    { name: 'guardian', type: 'object', description: 'guardian 实例（wrap/validateResponse/reset）' },",
-        "  ],",
-        "  deps: [],",
-        "  tags: ['guardian', 'middleware'],",
-        "};",
-        "export async function run({ deps = {} } = {}) {",
-        "  const guardian = createGuardian({",
-        "    tools: CODING_TOOLS,"
-      ]
-    },
-    {
-      "file": "/src/experiments/22.mjs",
-      "block": [
-        "// === invariants ===",
-        "//   - _provider 必须先调 initProvider() 才能调 processText/run",
-        "//   - 每个 chatId 一份 history (in-memory Map), session 不持久化",
-        "//   - role > brain > base 的优先级: role 决定 prompt/tools/maxRounds 顶, brain 在 role 之上微调",
-        "//   - toolSubset = (role.tools if role else callerTools) ∩ brain-adapt"
-      ]
-    },
-    {
-      "file": "/src/experiments/38.mjs",
-      "block": [
-        "// === invariants ===",
-        "//   - 调 run() 前必须先调 initProvider (model)",
-        "//   - 每 step 独立 chatId: ${sessionId}/step-${i}/${role}, role 隔离 session",
-        "//   - pickRole 找不到 keyword → fallback DEFAULT_ROLE (editor)",
-        "//   - composeRun('tool-loop', ...) 的 role 透传到 22.mjs, 改 prompt/tools/maxRounds"
-      ]
-    },
-    {
       "file": "/src/experiments/42.mjs",
       "block": [
-        "// === invariants ===');",
-        "          if (start !== -1) {",
+        "// === invariants ===');\r",
+        "          if (start !== -1) {\r",
         "            const end = c.indexOf('"
       ]
     },
@@ -15232,6 +14910,31 @@
         "  FATAL: 'fatal',          // 程序错误, 不应 retry",
         "});",
         "export function create({ maxAttempts = 3, baseDelayMs = 10 } = {}) {"
+      ]
+    },
+    {
+      "file": "/src/experiments/experiments-all.mjs",
+      "block": [
+        "// === invariants ==='))\r",
+        "      warnings.push(`${f}: >100 行但缺少 invariants 约束块`);\r",
+        "    if (isNew && lineCount > 50 && !exists(specPath))\r",
+        "      errors.push(`${f}: 新增 >50 行但无对应 ${specPath}`);\r",
+        "    const inWhitelist = SPEC_REQUIRED.includes(f);\r",
+        "    if (inWhitelist && !isNew && lineCount > 100) {\r",
+        "      if (!specFiles.includes(specPath))\r",
+        "        errors.push(`${f}: 白名单文件改动但未同步 ${specPath}`);\r",
+        "    }\r",
+        "    if (inWhitelist && !exists(specPath))\r",
+        "      errors.push(`${f}: 白名单模块缺少 ${specPath}`);\r",
+        "  }\r",
+        "  for (const f of specFiles) {\r",
+        "    const content = await getContent(f);\r",
+        "    for (const section of REQUIRED_SPEC_SECTIONS) {\r",
+        "      if (!content.includes(section)) errors.push(`${f}: 缺少 \"${section}\"`);\r",
+        "    }\r",
+        "  }\r",
+        "  if (totalLines > 500) errors.push(`总 diff ${totalLines} 行（>500），R4 违规`);\r",
+        "  else if (totalLines > 300) warnings.push(`总 diff ${totalLines} 行（>300），接近 R4 上限`);\r"
       ]
     },
     {
@@ -16111,7 +15814,7 @@
       ]
     }
   ],
-  "totalInvariantBlocks": 51,
+  "totalInvariantBlocks": 47,
   "deps": [
     {
       "file": "/src/api/middleware/error-handler.js",
@@ -17127,104 +16830,6 @@
       ]
     },
     {
-      "file": "/src/experiments/01.mjs",
-      "imports": [
-        "./lib/report.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/02.mjs",
-      "imports": [
-        "fs/promises",
-        "fs",
-        "path",
-        "os",
-        "./lib/report.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/03.mjs",
-      "imports": [
-        "./lib/report.mjs",
-        "provider-kit"
-      ]
-    },
-    {
-      "file": "/src/experiments/04.mjs",
-      "imports": [
-        "fs/promises",
-        "fs",
-        "path",
-        "./lib/report.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/05.mjs",
-      "imports": [
-        "./lib/report.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/06.mjs",
-      "imports": [
-        "./lib/report.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/07.mjs",
-      "imports": [
-        "./lib/report.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/08.mjs",
-      "imports": [
-        "./lib/report.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/09.mjs",
-      "imports": [
-        "./lib/report.mjs",
-        "fs/promises",
-        "path",
-        "crypto"
-      ]
-    },
-    {
-      "file": "/src/experiments/10.mjs",
-      "imports": [
-        "./lib/report.mjs",
-        "fs/promises"
-      ]
-    },
-    {
-      "file": "/src/experiments/11.mjs",
-      "imports": [
-        "./lib/poller-shim.mjs",
-        "assert"
-      ]
-    },
-    {
-      "file": "/src/experiments/12.mjs",
-      "imports": [
-        "assert"
-      ]
-    },
-    {
-      "file": "/src/experiments/13.mjs",
-      "imports": [
-        "assert",
-        "./lib/poller-shim.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/14.mjs",
-      "imports": [
-        "./lib/report.mjs"
-      ]
-    },
-    {
       "file": "/src/experiments/14a-storage-noop/index.mjs",
       "imports": [
         "../lib/report.mjs"
@@ -17248,215 +16853,6 @@
       "file": "/src/experiments/14b-storage-persist/test.mjs",
       "imports": [
         "./index.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/15.mjs",
-      "imports": [
-        "child_process",
-        "fs",
-        "path",
-        "fs/promises",
-        "./lib/report.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/16.mjs",
-      "imports": [
-        "./lib/rescue-utils.mjs",
-        "./lib/report.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/17.mjs",
-      "imports": [
-        "./lib/report.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/18.mjs",
-      "imports": [
-        "./lib/response-validator.mjs",
-        "./lib/step-enforcer.mjs",
-        "./lib/error-tracker.mjs",
-        "./lib/report.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/19.mjs",
-      "imports": [
-        "./lib/guardian.mjs",
-        "./lib/coding-tools.mjs",
-        "./lib/report.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/20.mjs",
-      "imports": [
-        "./lib/report.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/21.mjs",
-      "imports": [
-        "fs/promises",
-        "fs",
-        "path",
-        "os",
-        "./lib/report.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/22.mjs",
-      "imports": [
-        "./lib/config.mjs",
-        "provider-kit",
-        "./lib/epc-pipeline.mjs",
-        "./lib/coding-tools.mjs",
-        "./lib/guardian.mjs",
-        "./lib/subagent-roles.mjs",
-        "./lib/neural-bridge.mjs",
-        "./lib/permission-gate.mjs",
-        "./lib/agent-hooks.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/23.mjs",
-      "imports": [
-        "./lib/report.mjs",
-        "node:assert",
-        "path",
-        "url",
-        "fs/promises"
-      ]
-    },
-    {
-      "file": "/src/experiments/24.mjs",
-      "imports": [
-        "./lib/report.mjs",
-        "fs/promises",
-        "path"
-      ]
-    },
-    {
-      "file": "/src/experiments/25.mjs",
-      "imports": [
-        "./lib/report.mjs",
-        "node:assert"
-      ]
-    },
-    {
-      "file": "/src/experiments/26.mjs",
-      "imports": [
-        "./lib/rescue-utils.mjs",
-        "./lib/report.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/27.mjs",
-      "imports": [
-        "./lib/report.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/28.mjs",
-      "imports": [
-        "./lib/report.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/29.mjs",
-      "imports": [
-        "./lib/report.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/30.mjs",
-      "imports": [
-        "./lib/report.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/31.mjs",
-      "imports": [
-        "./lib/report.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/32.mjs",
-      "imports": [
-        "./lib/report.mjs",
-        "provider-kit"
-      ]
-    },
-    {
-      "file": "/src/experiments/33.mjs",
-      "imports": [
-        "./lib/report.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/34.mjs",
-      "imports": [
-        "./lib/report.mjs",
-        "node:assert"
-      ]
-    },
-    {
-      "file": "/src/experiments/35.mjs",
-      "imports": [
-        "./lib/report.mjs",
-        "url"
-      ]
-    },
-    {
-      "file": "/src/experiments/36.mjs",
-      "imports": [
-        "./lib/report.mjs",
-        "./compose.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/37.mjs",
-      "imports": [
-        "fs/promises",
-        "fs",
-        "path",
-        "./lib/report.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/38.mjs",
-      "imports": [
-        "./lib/report.mjs",
-        "./compose.mjs",
-        "./lib/config.mjs",
-        "provider-kit",
-        "./22.mjs",
-        "./lib/subagent-roles.mjs",
-        "node:assert"
-      ]
-    },
-    {
-      "file": "/src/experiments/39.mjs",
-      "imports": [
-        "./lib/mcp-server.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/40.mjs",
-      "imports": [
-        "./lib/agent-hooks.mjs",
-        "./lib/hooks-builtin.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/41.mjs",
-      "imports": [
-        "./35.mjs",
-        "./36.mjs",
-        "./37.mjs",
-        "./38.mjs"
       ]
     },
     {
@@ -17507,14 +16903,107 @@
       "imports": []
     },
     {
-      "file": "/src/experiments/compose-demo.mjs",
+      "file": "/src/experiments/experiments-all.mjs",
       "imports": [
-        "./compose.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/compose.mjs",
-      "imports": [
+        "./lib/report.mjs",
+        "fs/promises",
+        "fs",
+        "path",
+        "os",
+        "./lib/report.mjs",
+        "./lib/report.mjs",
+        "provider-kit",
+        "fs/promises",
+        "fs",
+        "path",
+        "./lib/report.mjs",
+        "./lib/report.mjs",
+        "./lib/report.mjs",
+        "./lib/report.mjs",
+        "./lib/report.mjs",
+        "./lib/report.mjs",
+        "fs/promises",
+        "path",
+        "crypto",
+        "./lib/report.mjs",
+        "fs/promises",
+        "./lib/poller-shim.mjs",
+        "assert",
+        "assert",
+        "assert",
+        "./lib/poller-shim.mjs",
+        "./lib/report.mjs",
+        "child_process",
+        "fs",
+        "path",
+        "fs/promises",
+        "./lib/report.mjs",
+        "./lib/rescue-utils.mjs",
+        "./lib/report.mjs",
+        "./lib/report.mjs",
+        "./lib/response-validator.mjs",
+        "./lib/step-enforcer.mjs",
+        "./lib/error-tracker.mjs",
+        "./lib/report.mjs",
+        "./lib/guardian.mjs",
+        "./lib/coding-tools.mjs",
+        "./lib/report.mjs",
+        "./lib/report.mjs",
+        "fs/promises",
+        "fs",
+        "path",
+        "os",
+        "./lib/report.mjs",
+        "./lib/config.mjs",
+        "provider-kit",
+        "./lib/epc-pipeline.mjs",
+        "./lib/coding-tools.mjs",
+        "./lib/guardian.mjs",
+        "./lib/subagent-roles.mjs",
+        "./lib/neural-bridge.mjs",
+        "./lib/permission-gate.mjs",
+        "./lib/agent-hooks.mjs",
+        "./lib/report.mjs",
+        "node:assert",
+        "path",
+        "url",
+        "fs/promises",
+        "./lib/report.mjs",
+        "fs/promises",
+        "path",
+        "./lib/report.mjs",
+        "node:assert",
+        "./lib/rescue-utils.mjs",
+        "./lib/report.mjs",
+        "./lib/report.mjs",
+        "./lib/report.mjs",
+        "./lib/report.mjs",
+        "./lib/report.mjs",
+        "./lib/report.mjs",
+        "./lib/report.mjs",
+        "provider-kit",
+        "./lib/report.mjs",
+        "./lib/report.mjs",
+        "node:assert",
+        "./lib/report.mjs",
+        "url",
+        "./lib/report.mjs",
+        "fs/promises",
+        "fs",
+        "path",
+        "./lib/report.mjs",
+        "./lib/report.mjs",
+        "./lib/config.mjs",
+        "provider-kit",
+        "./lib/subagent-roles.mjs",
+        "node:assert",
+        "./lib/mcp-server.mjs",
+        "./lib/agent-hooks.mjs",
+        "./lib/hooks-builtin.mjs",
+        "url",
+        "crypto",
+        "path",
+        "fs",
         "./compose.mjs",
         "fs/promises",
         "path",
@@ -17704,7 +17193,8 @@
       "imports": [
         "fs/promises",
         "path",
-        "url"
+        "url",
+        "./experiments-all.mjs"
       ]
     },
     {
@@ -18182,5 +17672,5 @@
       ]
     }
   ],
-  "totalDepFiles": 260
+  "totalDepFiles": 218
 }
