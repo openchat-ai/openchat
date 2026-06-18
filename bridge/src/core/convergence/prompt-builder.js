@@ -1,4 +1,4 @@
-import { pluginManager } from '../../plugins/plugin-manager.js';
+import { pluginManager } from '../plugin-manager.js';
 
 export class PromptBuilder {
   /**

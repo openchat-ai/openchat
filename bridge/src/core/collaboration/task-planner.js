@@ -7,7 +7,7 @@
  * 3. 反思执行结果，必要时调整计划
  */
 
-import { pluginManager } from '../../plugins/plugin-manager.js';
+import { pluginManager } from '../plugin-manager.js';
 import { memoryManager } from '../../memory/memory-manager.js';
 import { sessionManager } from '../session-manager.js';
 import { PromptBuilder } from '../convergence/prompt-builder.js';

@@ -1,4 +1,4 @@
-import { pluginManager } from '../../plugins/plugin-manager.js';
+import { pluginManager } from '../plugin-manager.js';
 import { memoryManager } from '../../memory/memory-manager.js';
 import { sessionManager } from '../session-manager.js';
 import { PromptBuilder } from '../convergence/prompt-builder.js';
@@ -8,19 +8,26 @@ import { QualityChecker, Corrector } from '../quality/quality-check-system.js';
 import * as responseCache from '../response-cache.js';
 import logger from '../monitoring/logger.js';
 import { runPipeline, getEditProtocolGuidance } from '../epc-pipeline.mjs';
-import { TOOLS as CODING_TOOLS, executeTool as codingExec } from '../../tools/coding-tools.mjs';
 import { GoalManager } from '../goal-manager.mjs';
 
-const _CODING_NAMES = new Set(CODING_TOOLS.map(t => t.function.name));
+let _injectedTools = [];
+let _injectedExec = null;
+
+export function injectCodingTools(tools, execFn) {
+  _injectedTools = tools;
+  _injectedExec = execFn;
+}
+
+const _CODING_NAMES = () => new Set(_injectedTools.map(t => t.function.name));
 
 function _getFC() {
   const pm = pluginManager.getToolsForFunctionCalling() || [];
-  return [...pm, ...CODING_TOOLS];
+  return [...pm, ..._injectedTools];
 }
 
 async function _exec(name, args, ctx) {
-  if (_CODING_NAMES.has(name)) {
-    const r = await codingExec(name, args);
+  if (_CODING_NAMES().has(name)) {
+    const r = await _injectedExec(name, args);
     return { success: true, content: typeof r === 'string' ? r : JSON.stringify(r), ...(typeof r === 'object' ? r : {}) };
   }
   return pluginManager.executeTool(name, args, ctx);
@@ -28,7 +35,7 @@ async function _exec(name, args, ctx) {
 
 function _knownNames() {
   const pm = pluginManager.getToolsForFunctionCalling?.() || [];
-  return new Set([...pm.map(t => (t.function || t).name), ..._CODING_NAMES]);
+  return new Set([...pm.map(t => (t.function || t).name), ..._CODING_NAMES()]);
 }
 
 function mapActionToCommand(name, args) {

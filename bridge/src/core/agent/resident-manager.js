@@ -11,7 +11,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { EventEmitter } from 'events';
 import { persistentConfig } from '../persistent-config.js';
-import { MessageType, createLLMProxyRequest } from '../../p2p/messages.js';
+import { MessageType, createLLMProxyRequest } from '../../experiments/lib/messages.js';
 import { toolRegistry } from '../tool-registry.js';
 import logger from '../monitoring/logger.js';
 

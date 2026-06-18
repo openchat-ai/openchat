@@ -1,7 +1,7 @@
 ﻿import os from 'os';
 import path from 'path';
 import { persistentConfig } from '../core/persistent-config.js';
-import { hasPublicAddress } from '../p2p/p2p-net.js';
+import { hasPublicAddress } from '../experiments/lib/p2p-net.js';
 import { DEFAULT_PORT } from '../constants.js';
 import logger from './monitoring/logger.js';
 

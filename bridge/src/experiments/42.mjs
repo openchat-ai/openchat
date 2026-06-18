@@ -286,35 +286,70 @@ export async function answerFromDNA(question, { maxAgeMs = 300000 } = {}) {
     const { sep, relative } = await import('path');
     const root = BRIDGE_ROOT;
     const ZONE_MAP = [
-      { prefix: '/modules/provider-kit/', name: 'kit' },
-      { prefix: '/src/core/', name: 'core' },
-      { prefix: '/src/api/', name: 'api' },
-      { prefix: '/src/cli/', name: 'cli' },
-      { prefix: '/src/infra/', name: 'infra' },
-      { prefix: '/src/p2p/', name: 'p2p' },
-      { prefix: '/src/plugins/', name: 'plugins' },
-      { prefix: '/src/tools/', name: 'tools' },
+      { prefix: '/modules/provider-kit/', name: 'kit', layer: 0 },
+      { prefix: '/src/core/', name: 'core', layer: 0 },
+      { prefix: '/src/plugins/', name: 'plugins', layer: 1 },
+      { prefix: '/src/tools/', name: 'tools', layer: 1 },
+      { prefix: '/src/p2p/', name: 'p2p', layer: 1 },
+      { prefix: '/src/api/', name: 'api', layer: 2 },
+      { prefix: '/src/cli/', name: 'cli', layer: 2 },
+      { prefix: '/src/infra/', name: 'infra', layer: 2 },
     ];
     function zoneOf(path) {
       const n = path.replace(/\\/g, '/');
-      for (const z of ZONE_MAP) if (n.startsWith(z.prefix)) return z.name;
-      return 'other';
+      for (const z of ZONE_MAP) if (n.startsWith(z.prefix)) return z;
+      return { name: 'other', layer: 9 };
     }
+    function attr(z) { return typeof z === 'object' ? z : { name: z, layer: 9 }; }
 
     const violations = [];
     for (const node of dna.deps) {
-      const srcZone = zoneOf(node.file);
-      if (srcZone === 'other' || srcZone === 'kit') continue;
+      const s = zoneOf(node.file);
+      if (s.name === 'other' || s.name === 'kit') continue;
       const srcDir = resolve(root, '.' + node.file, '..').replace(/\\/g, '/');
       for (const imp of node.imports) {
         if (!imp.startsWith('.') || imp.startsWith('/')) continue;
         const resolved = resolve(srcDir, imp).replace(/\\/g, '/');
         const relPath = '/' + relative(root, resolved).replace(/\\/g, '/');
-        const tgtZone = zoneOf(relPath);
-        if (tgtZone && tgtZone !== 'other' && tgtZone !== srcZone) {
-          violations.push({ from: node.file, to: relPath, srcZone, tgtZone, spec: imp });
+        const t = zoneOf(relPath);
+        if (t.name !== 'other' && t.name !== s.name && s.layer < t.layer) {
+          violations.push({ from: node.file, to: relPath, srcZone: s.name, tgtZone: t.name, spec: imp });
         }
       }
+    }
+
+    // 跨项目边界：外部项目 (kit/flutter/guardian) 引用 bridge-core 内部路径
+    const KNOWN_PROJECT_DIRS = [
+      { name: 'provider-kit', dir: resolve(root, '../modules/provider-kit') },
+      { name: 'openchat-flutter', dir: resolve(root, '../openchat-flutter') },
+      { name: 'fairy-guardian', dir: resolve(root, '../modules/fairy-guardian') },
+    ];
+    const BRIDGE_SRC = resolve(root, 'src').replace(/\\/g, '/');
+    for (const proj of KNOWN_PROJECT_DIRS) {
+      if (!existsSync(proj.dir)) continue;
+      const refs = [];
+      (function walkP(dir, depth) {
+        if (depth > 5) return;
+        try {
+          for (const e of readdirSync(dir, { withFileTypes: true })) {
+            if (e.name.startsWith('.') || e.name === 'node_modules') continue;
+            const p = join(dir, e.name);
+            if (e.isDirectory()) walkP(p, depth + 1);
+            else if (e.name.endsWith('.mjs') || e.name.endsWith('.js') || e.name.endsWith('.dart')) {
+              const c = readFileSync(p, 'utf8');
+              const imps = [...c.matchAll(/from\s+['"]([^'"]+)['"]/g)].map(m => m[1]);
+              for (const imp of imps) {
+                const res = resolve(dir, imp).replace(/\\/g, '/');
+                if (res.startsWith(BRIDGE_SRC)) {
+                  const rel = '/' + relative(root, res).replace(/\\/g, '/');
+                  const frel = p.replace(root, '').replace(/\\/g, '/');
+                  violations.push({ from: frel, to: rel, srcZone: proj.name, tgtZone: zoneOf(rel), spec: imp, cross: true });
+                }
+              }
+            }
+          }
+        } catch {}
+      })(proj.dir, 0);
     }
 
     if (violations.length === 0) return { answer: 'All zones isolated, no boundary violations.' };

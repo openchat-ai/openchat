@@ -9,7 +9,7 @@ import { persistentConfig } from '../../core/persistent-config.js';
 import * as providerService from '../../core/provider-service.js';
 import { sessionManager } from '../../core/session-manager.js';
 import { memoryManager } from '../../memory/memory-manager.js';
-import { pluginManager } from '../../plugins/plugin-manager.js';
+import { pluginManager } from '../../core/plugin-manager.js';
 import { getActiveProvider, callLLM } from './lib/llm.js';
 import { extractFiles, extractHashlines, applyHashlineEdit } from './lib/file-format.js';
 import { PROMPTS, buildMessages } from './lib/prompts.js';

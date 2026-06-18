@@ -1,18 +1,9 @@
 import { router } from '../core/router.js';
 import { sessionManager } from '../session/session-manager.js';
 import { MessageType } from '../protocol/message.js';
-import { pluginManager } from '../plugins/plugin-manager.js';
-import { ShellPlugin, FilePlugin } from '../plugins/system-plugins.js';
-import { GitPlugin, DevToolsPlugin } from '../plugins/eng-plugins.js';
-import SelfTestPlugin from '../plugins/self-test-plugin.js';
-import { DevWorkflowPlugin } from '../plugins/dev-workflow-plugin.mjs';
-import {
-  CodeAnalysisPlugin,
-  ProjectManagementPlugin,
-  WebToolsPlugin,
-  MemoryToolsPlugin
-} from '../plugins/agent-tools.js';
-import { orchestrator } from './agent/orchestrator.mjs';
+import '../plugins/init.mjs';
+import { orchestrator, injectCodingTools } from './agent/orchestrator.mjs';
+import { TOOLS, executeTool } from '../experiments/lib/coding-tools.mjs';
 
 /**
  * CoreHandlers contains the actual logic for the Bridge's operations.
@@ -69,28 +60,10 @@ export const CoreHandlers = {
  * Initialize the router with core handlers.
  */
 export function initCore() {
+  injectCodingTools(TOOLS, executeTool);
   router.registerHandler(MessageType.PROVIDER_ADD, CoreHandlers.handleProviderAdd);
   router.registerHandler(MessageType.SESSION_CREATE, CoreHandlers.handleSessionCreate);
   router.registerHandler(MessageType.CHAT_MESSAGE, CoreHandlers.handleChatMessage);
   router.registerHandler(MessageType.BRIDGE_STATUS, CoreHandlers.handleBridgeStatus);
   
-  // Initialize System Plugins (The "Hands")
-  pluginManager.registerPlugin(ShellPlugin);
-  pluginManager.registerPlugin(FilePlugin);
-
-  // Initialize Engineering Plugins (The "Expertise")
-  pluginManager.registerPlugin(GitPlugin);
-  pluginManager.registerPlugin(DevToolsPlugin);
-
-  // Initialize Agent Tools (The "Intelligence")
-  pluginManager.registerPlugin(CodeAnalysisPlugin);
-  pluginManager.registerPlugin(ProjectManagementPlugin);
-  pluginManager.registerPlugin(WebToolsPlugin);
-  pluginManager.registerPlugin(MemoryToolsPlugin);
-
-  // Initialize Self-Verification Plugins (The "Conscience")
-  pluginManager.registerPlugin(SelfTestPlugin);
-
-  // Dev Workflow Plugin — replaces legacy tools with quality-gated implementations
-  pluginManager.registerPlugin(DevWorkflowPlugin);
 }
