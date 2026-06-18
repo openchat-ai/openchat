@@ -1209,7 +1209,7 @@ export const commands = {
         try {
           const localModels = await fetchLocalModels(providerName);
           if (localModels.length > 0) models = localModels;
-        } catch (e) {}
+        } catch (e) { console.debug(`[commands] fetchLocalModels failed: ${e?.message}`); }
       }
 
       if (modelQuery.includes('/')) {

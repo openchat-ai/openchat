@@ -326,6 +326,11 @@ class PersistentConfig {
   // ================== 保存 ==================
 
   save() {
+    const errs = validateConfig(this.config);
+    if (errs.length > 0) {
+      console.warn(`[config] validation failed (${errs.length}): ${errs.join('; ')}`);
+      return;
+    }
     // 分离敏感/非敏感配置
     // ~/.config/openchat/config.json: only providers + current (keys/tokens)
     // ~/.openchat/config.json: bridge + sessionHistory + preferences
@@ -359,3 +364,60 @@ class PersistentConfig {
 export const persistentConfig = new PersistentConfig();
 export { USER_DIR, PROJECT_DIR, SESSIONS_DIR, SKILLS_DIR, MEMORY_DIR, LOGS_DIR, HOUSES_DIR };
 export default persistentConfig;
+
+// === validate (native, zero-dep) ===
+export function validateConfig(cfg) {
+  const errors = [];
+  if (cfg.providers && (typeof cfg.providers !== 'object' || Array.isArray(cfg.providers)))
+    errors.push('providers: must be an object');
+  if (cfg.current) {
+    if (cfg.current.provider != null && typeof cfg.current.provider !== 'string')
+      errors.push('current.provider: must be string or null');
+    if (cfg.current.model != null && typeof cfg.current.model !== 'string')
+      errors.push('current.model: must be string or null');
+  }
+  if (cfg.bridge) {
+    const b = cfg.bridge;
+    if (b.mode && !['headless', 'gui', 'server'].includes(b.mode))
+      errors.push('bridge.mode: must be headless/gui/server');
+    if (b.port != null && (typeof b.port !== 'number' || b.port < 1024 || b.port > 65535))
+      errors.push('bridge.port: must be number 1024-65535');
+    if (b.host != null && typeof b.host !== 'string')
+      errors.push('bridge.host: must be string');
+    if (b.name != null && (typeof b.name !== 'string' || b.name.length > 100))
+      errors.push('bridge.name: must be string ≤100 chars');
+    if (b.age != null && (typeof b.age !== 'number' || b.age < 0))
+      errors.push('bridge.age: must be number ≥0');
+    if (b.dhtPort != null && (typeof b.dhtPort !== 'number' || b.dhtPort < 0))
+      errors.push('bridge.dhtPort: must be number ≥0');
+    if (b.localBootstrap != null && !Array.isArray(b.localBootstrap))
+      errors.push('bridge.localBootstrap: must be array');
+    if (b.directListen != null && (typeof b.directListen !== 'number' || b.directListen < 0))
+      errors.push('bridge.directListen: must be number ≥0');
+    if (b.directConnect != null && !Array.isArray(b.directConnect))
+      errors.push('bridge.directConnect: must be array');
+    if (b.topic != null && typeof b.topic !== 'string')
+      errors.push('bridge.topic: must be string');
+    if (b.wsSignaling != null && (typeof b.wsSignaling !== 'string' || (b.wsSignaling && !b.wsSignaling.startsWith('ws'))))
+      errors.push('bridge.wsSignaling: must be string starting with ws(s)://');
+    if (b.advertiseHost != null && typeof b.advertiseHost !== 'string')
+      errors.push('bridge.advertiseHost: must be string');
+    if (b.qiniuEnabled != null && typeof b.qiniuEnabled !== 'boolean')
+      errors.push('bridge.qiniuEnabled: must be boolean');
+    if (b.cores != null && !Array.isArray(b.cores))
+      errors.push('bridge.cores: must be array');
+    if (b.hostId != null && typeof b.hostId !== 'string')
+      errors.push('bridge.hostId: must be string');
+    if (b.deployServerEnabled != null && typeof b.deployServerEnabled !== 'boolean')
+      errors.push('bridge.deployServerEnabled: must be boolean');
+    if (b.deployServerPort != null && (typeof b.deployServerPort !== 'number' || b.deployServerPort < 1024 || b.deployServerPort > 65535))
+      errors.push('bridge.deployServerPort: must be number 1024-65535');
+    if (b.llmDailyTokenBudget != null && (typeof b.llmDailyTokenBudget !== 'number' || b.llmDailyTokenBudget < 0))
+      errors.push('bridge.llmDailyTokenBudget: must be number ≥0');
+    if (b.llmCacheEnabled != null && typeof b.llmCacheEnabled !== 'boolean')
+      errors.push('bridge.llmCacheEnabled: must be boolean');
+    if (b.residentThinkMinInterval != null && (typeof b.residentThinkMinInterval !== 'number' || b.residentThinkMinInterval < 1))
+      errors.push('bridge.residentThinkMinInterval: must be number ≥1');
+  }
+  return errors;
+}

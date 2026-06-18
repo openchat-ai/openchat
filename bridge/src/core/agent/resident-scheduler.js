@@ -1107,7 +1107,7 @@ ${recentActivities || '才刚来到这个世界，还没有什么经历。'}
           );
           if (r?.content) failMsg = r.content.trim().substring(0, 200);
           talker.cleanup();
-        } catch (_) {}
+        } catch (_) { console.debug(`[scheduler] talker cleanup failed`); }
         sageManager.ask(residentId, failMsg);
       }
 
@@ -1305,7 +1305,7 @@ ${resB.name} 的性格：勤奋度 ${pct(resB.traits?.diligence ?? 0.5)}，创�
 
     } finally {
       if (agent) {
-        try { agent.cleanup(); } catch (_) {}
+        try { agent.cleanup(); } catch (_) { console.debug(`[scheduler] agent cleanup failed`); }
       }
 
       [resA.id, resB.id].forEach(id => {

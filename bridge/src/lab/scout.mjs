@@ -3,10 +3,11 @@ import { join } from 'path';
 import { addGoal, listGoals } from './goal-queue.mjs';
 import { CONCURRENCY, readProjects } from './scout-shared.mjs';
 import { scanAltExists, scanNewVersion, scanPatch, scanBench, scanNewModule, scanRerun } from './scouts/network.mjs';
-import { scanForLeftoverP2, scanForSyntaxErrors, scanTestCoverage, scanDepsParity, scanConfigSchema } from './scouts/quality.mjs';
+import { scanForLeftoverP2, scanForSyntaxErrors, scanTestCoverage, scanDepsParity, scanConfigSchema, scanEmptyCatch, scanHardcodedPaths } from './scouts/quality.mjs';
 import { scanExplore, scanDegradation, scanExpIntrospect } from './scouts/experiment.mjs';
 import { scanLLMVision } from './scouts/architecture.mjs';
 import { scanSelf } from './scouts/self.mjs';
+import { scanIsolation } from './scouts/isolation.mjs';
 
 // === invariants ===
 // - runScoutRound() 幂等: 相同输入产生相同 finding 列表
@@ -16,8 +17,8 @@ import { scanSelf } from './scouts/self.mjs';
 // - 全部 try/catch 静默失败, scout 不该 crash
 // - 文件扫描仅限 bridge/src, 深度 ≤ 10
 // - 单次 cycle < 30s (即使所有网络失败)
-// - 15 scanner 全部独立 try/catch, 1 个失败不影响其他
-// - 14 scanner 全部返回 number (0 表示"无", N 表示"有多少")
+// - 19 scanner 全部独立 try/catch, 1 个失败不影响其他
+// - 19 scanner 全部返回 number (0 表示"无", N 表示"有多少")
 // - 每个 scanner 至少过 1 条 3 原则 (faster/cheaper/higher return)
 // - 3 原则: faster=减少延迟, cheaper=省资源, higher return=给用户更多价值
 
@@ -59,23 +60,43 @@ export async function runScoutRound() {
   const llmVision = await safe('llmVision', scanLLMVision);
   const expIntrospect = await safe('expIntrospect', scanExpIntrospect);
   const self = await safe('self', scanSelf);
+  const emptyCatch = await safe('emptyCatch', scanEmptyCatch);
+  const hardcodedPaths = await safe('hardcodedPaths', scanHardcodedPaths);
   const rerun = await safe('rerun', scanRerun);
+  const isolation = await safe('isolation', scanIsolation);
 
   // Drain
   const pending = listGoals({ pending: true }).length;
+  let drainOK = 0;
   if (pending > 0) {
     const batch = Math.min(pending, CONCURRENCY);
     log(`cycle: ${pending} pending, draining (max ${CONCURRENCY})`);
     const { runNext } = await import('./runner.mjs');
-    let ok = 0;
     for (let i = 0; i < batch; i++) {
       const r = await runNext();
-      if (r?.ok) ok++;
+      if (r?.ok) drainOK++;
     }
-    log(`drain: ${ok}/${batch} ok`);
+    log(`drain: ${drainOK}/${batch} ok`);
   } else {
     log('cycle: 0 pending, skip');
   }
+
+  // === DNA 刷新（有 fix 或超 1h 才重生成）===
+  try {
+    const { statSync, existsSync } = await import('fs');
+    const { join, resolve } = await import('path');
+    const { fileURLToPath } = await import('url');
+    const root = resolve(fileURLToPath(new URL('.', import.meta.url)), '../..');
+    const dnaPath = join(root, '.dna', 'project-dna.json');
+    const needsRefresh = !existsSync(dnaPath)
+      || drainOK > 0
+      || Date.now() - statSync(dnaPath).mtimeMs > 3600000;
+    if (needsRefresh) {
+      const { writeDNAFile } = await import('../experiments/42.mjs');
+      await writeDNAFile();
+      log('DNA refreshed' + (drainOK > 0 ? ' (after fix)' : ' (age >1h)'));
+    }
+  } catch (e) { log(`DNA refresh error: ${e.message}`); }
 
   // === 元能力心跳 ===
   try {
@@ -91,7 +112,7 @@ export async function runScoutRound() {
     altExists, newVersion, patch,
     explore, degradation,
     newModule, testCoverage, depsParity, configSchema,
-    bench, llmVision, expIntrospect, self, rerun,
+    bench, llmVision, expIntrospect, self, emptyCatch, hardcodedPaths, rerun, isolation,
   };
   log(`round end ${JSON.stringify(result)}`);
   return result;

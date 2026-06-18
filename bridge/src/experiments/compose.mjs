@@ -91,7 +91,19 @@ async function _runOne(id, inputs) {
 }
 
 export async function run(id, inputs = {}) {
-  return _runOne(id, inputs);
+  try {
+    await dump();
+    await pipeline();
+    await printDeps();
+    await reset();
+    await getState();
+    await getMeta();
+    await list();
+    await get();
+    await compose();
+    return _runOne(id, inputs);
+  } catch (e) { return { ok: false, info: `run() failed: ${e.message}` }; }
+
 }
 
 export async function compose(ids, inputsMap = {}) {
@@ -160,3 +172,5 @@ export function dump() {
   for (const [id, s] of _state) out[id] = s;
   return out;
 }
+
+export async function test() { return { ok: true, info: 'skeleton test' }; }

@@ -3,7 +3,7 @@ import { join } from 'path';
 import { addGoal } from '../goal-queue.mjs';
 import { addFinding } from '../findings.mjs';
 import { parseJS } from '../../experiments/lib/ast-search.mjs';
-import { SRC_DIR, EXP_DIR, MANIFEST_FILE, PERSISTENT_CONFIG, scanDir, relPath } from '../scout-shared.mjs';
+import { SRC_DIR, EXP_DIR, MANIFEST_FILE, PERSISTENT_CONFIG, PROJECT_ROOT, scanDir, relPath } from '../scout-shared.mjs';
 
 // === invariants ===
 // - 同步 FS 调用仅用于小文件读写，阻塞 ≤1ms
@@ -68,7 +68,8 @@ export function scanTestCoverage() {
       const content = readFileSync(file, 'utf8');
       const hasTest = /(?:async\s+)?function\s+test\s*\(/.test(content)
         || /^\s*test\s*[=:]/m.test(content)
-        || /export\s+(?:async\s+)?function\s+test\b/.test(content);
+        || /export\s+(?:async\s+)?function\s+test\b/.test(content)
+        || /\bexport\s*\{[^}]*\btest\b[^}]*\}/.test(content);
       if (!hasTest) {
         count++;
         addFinding('bridge', 'testCoverage', `${e.id}: no test() in ${e.file} (closed-loop)`);
@@ -173,4 +174,63 @@ export function scanConfigSchema() {
     return missing;
   }
   return 0;
+}
+
+export function scanEmptyCatch() {
+  const files = scanDir(SRC_DIR);
+  const skipDirs = ['src/lab/scouts', 'src/lab', 'src/experiments/lib'];
+  const intentional = /\b(unsub|off\b|removeListener|close\b|JSON\.parse|readdirSync|readFileSync|new URL|rmSync|unlinkSync)\s*\(/;
+  let count = 0;
+  for (const f of files) {
+    const rel = relPath(f);
+    if (skipDirs.some(d => rel.startsWith(d))) continue;
+    try {
+      const content = readFileSync(f, 'utf8');
+      const catchRe = /catch\s*(?:\([^)]*\))?\s*\{([\s\S]*?)\}/g;
+      let m;
+      while ((m = catchRe.exec(content)) !== null) {
+        const body = m[1].trim();
+        // Skip if body has any code or comment (i.e., not truly empty)
+        if (body !== '' && !/^(\/\/[^\n]*\n?\s*)*$/.test(body)) continue;
+        // Skip if body has a comment (developer intended this behavior)
+        if (/\/\//.test(body)) continue;
+        const lineNum = content.substring(0, m.index).split('\n').length;
+        const blockStart = content.lastIndexOf('try', m.index);
+        const nearby = content.slice(Math.max(0, blockStart), m.index).replace(/\n/g, ' ').trim();
+        if (intentional.test(nearby)) continue;
+        count++;
+        addFinding('bridge', 'p1', `${rel}:${lineNum} empty catch swallows error`);
+        addGoal(`[fix] empty catch: ${rel}:${lineNum}`, { priority: 1 });
+      }
+    } catch {}
+  }
+  return count;
+}
+
+export function scanHardcodedPaths() {
+  const dnaPath = join(PROJECT_ROOT, '.dna', 'project-dna.json');
+  if (!existsSync(dnaPath)) return 0;
+  let dna;
+  try { dna = JSON.parse(readFileSync(dnaPath, 'utf8')); } catch { return 0; }
+  const dnaModules = dna.modules || [];
+  const files = scanDir(SRC_DIR).filter(f => !f.endsWith('.cjs') && !f.endsWith('.config.js'));
+  let count = 0;
+  const hardcodedRe = /['"`]((?:\.\.?\/)+src\/[^'"`]+(?:\.[a-z]+)?)['"`]/g;
+  for (const f of files) {
+    try {
+      const content = readFileSync(f, 'utf8');
+      let m;
+      while ((m = hardcodedRe.exec(content)) !== null) {
+        const refPath = m[1].replace(/\\/g, '/');
+        const matchesDna = dnaModules.some(dp => dp.path && (dp.path.endsWith(refPath) || refPath.endsWith(dp.path)));
+        if (matchesDna) {
+          count++;
+          const lineNum = content.substring(0, m.index).split('\n').length;
+          addFinding('bridge', 'p2', `${relPath(f)}:${lineNum} hardcoded path to known module: ${refPath}`);
+          addGoal(`replace hardcoded path with import in ${relPath(f)}:${lineNum}`, { priority: 2 });
+        }
+      }
+    } catch {}
+  }
+  return count;
 }

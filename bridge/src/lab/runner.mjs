@@ -583,6 +583,10 @@ async function _runTurbo(goal) {
       const { processLabHealth } = await import('./lab-health.mjs');
       testFn = async () => await processLabHealth(goal.description.slice('[lab-health] '.length), goal.id);
     }
+    if (!testFn && goal.description.startsWith('[fix] ')) {
+      const { applyFixer } = await import('./fixers/index.mjs');
+      testFn = async () => applyFixer(goal.description);
+    }
     if (!testFn && goal.description.startsWith('evaluate ')) {
       testFn = async () => ({ ok: true, info: `note: ${goal.description}` });
     }
@@ -671,7 +675,7 @@ function _finalize(goal, result, classification, attempt, finishedAt) {
     retryAttempt: attempt,
   });
 
-  addFact(`实验 ${goal.description.slice(0, 40)} → ${finalStatus} (${(result.durationMs / 1000).toFixed(1)}s)`).catch(() => {});
+  addFact(`实验 ${String(goal.description || goal.id || '').slice(0, 40)} → ${finalStatus} (${(result.durationMs / 1000).toFixed(1)}s)`).catch(() => {});
 
   if (escalationNeeded) {
     escalate(goal, classification, attempt);

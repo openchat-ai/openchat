@@ -197,7 +197,28 @@ export const TOOLS = [...SEARCH_TOOLS, ...DEV_TOOLS, ...AST_TOOLS, ...DEEP_TOOLS
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'dna_query',
+      description: 'Query the project DNA: find export by function name, by hashline hash, list module exports, get hot-rankings, summary, or boundary isolation analysis. Saves tokens vs reading files blindly. Returns compact results (~100 chars).',
+      parameters: {
+        type: 'object',
+        properties: {
+          question: { type: 'string', description: 'Query: "find function X", "hash XXXXXXXX", "ls path/to/file", "summary", "hot", "cat prefix", "isolate"'},
+        },
+        required: ['question'],
+      },
+    },
+  },
 ];
+
+export async function getDNAContext() {
+  try {
+    const { getDNAContext: ctx } = await import('../42.mjs');
+    return await ctx();
+  } catch { return ''; }
+}
 
 export async function executeTool(name, args) {
   switch (name) {
@@ -213,6 +234,10 @@ export async function executeTool(name, args) {
       return editFile(args.path, args.search, args.newStr, { force, test });
     }
     case 'hash_edit': return hashEdit(args.path, args.hash, args.newContent);
+    case 'dna_query': {
+      const { answerFromDNA } = await import('../42.mjs');
+      return answerFromDNA(args.question);
+    }
     case 'grep': case 'find_refs': return searchExec(name, args);
     case 'dep_graph': case 'detect_cycles': case 'to_mermaid': case 'git_commit': case 'git_log':
     case 'test_run': case 'test_discover': case 'lint_run': case 'lint_fix': case 'build_run':

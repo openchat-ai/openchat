@@ -40,8 +40,8 @@ export async function scanDegradation() {
   if (all.length === 0) return 0;
   const byExp = {};
   for (const r of all) {
-    const m = (r.description || '').match(/实验\s+(\S+):/);
-    const id = m ? m[1] : (r.description || '').slice(0, 40);
+    const m = String(r.description || '').match(/实验\s+(\S+):/);
+    const id = m ? m[1] : String(r.description || '').slice(0, 40);
     if (!id) continue;
     (byExp[id] = byExp[id] || []).push(r);
   }

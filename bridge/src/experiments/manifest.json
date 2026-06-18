@@ -801,7 +801,11 @@
       "needsEnv": [],
       "description": "Exposes openchat tools via MCP stdio transport. Use when user mentions MCP, Model Context Protocol, external AI tools, or connecting to AI editors.",
       "deps": [],
-      "tags": ["llm", "mcp", "integration"],
+      "tags": [
+        "llm",
+        "mcp",
+        "integration"
+      ],
       "status": "closed-loop",
       "intelligenceLevel": "L1.5"
     },
@@ -814,7 +818,11 @@
       "needsEnv": [],
       "description": "Registers preTool/postTool hooks for permission, logging, rate-limit. Wired into dev-repl + subagent + tool-loop. Use when user mentions hooks, plugin, permission gate, rate limit, or tool logging.",
       "deps": [],
-      "tags": ["guardrails", "hooks", "plugin"],
+      "tags": [
+        "guardrails",
+        "hooks",
+        "plugin"
+      ],
       "status": "closed-loop",
       "intelligenceLevel": "L1.5"
     },
@@ -827,9 +835,51 @@
       "needsEnv": [],
       "description": "Chains 4 experiments (chat-poller, poll-one, dream-consolidation, goal) into one e2e pipeline. Use when validating the full chat pipeline end-to-end.",
       "deps": [],
-      "tags": ["chat", "e2e", "integration"],
+      "tags": [
+        "chat",
+        "e2e",
+        "integration"
+      ],
       "status": "closed-loop",
       "intelligenceLevel": "L1.5"
+    },
+    {
+      "id": 27,
+      "file": "27.mjs",
+      "name": "存储 + Provider 接线",
+      "category": "general",
+      "pure": true,
+      "deps": [],
+      "tags": [],
+      "status": "skeleton",
+      "intelligenceLevel": null,
+      "description": "Auto-registered"
+    },
+    {
+      "id": "compose",
+      "file": "compose.mjs",
+      "name": "compose",
+      "category": "general",
+      "pure": true,
+      "deps": [],
+      "tags": [],
+      "status": "skeleton",
+      "intelligenceLevel": null,
+      "description": "Auto-registered"
+    },
+    {
+      "id": 42,
+      "file": "42.mjs",
+      "name": "Project DNA - 极速项目理解法",
+      "category": "general",
+      "pure": true,
+      "deps": [],
+      "tags": [
+        "auto-created"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": null,
+      "description": "Project DNA — 极速项目理解法 (含 hashline)"
     }
   ]
 }

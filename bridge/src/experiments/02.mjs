@@ -196,6 +196,7 @@ export async function run({ inputs = {} } = {}) {
 
     case 'refresh': {
       try {
+    await checkGate_CACHED_MAY_BE_STALE();
         const remote = await _fetchRemote();
         _remoteCache = remote;
         await _saveDiskCache();

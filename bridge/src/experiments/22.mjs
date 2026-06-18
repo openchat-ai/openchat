@@ -255,6 +255,10 @@ export async function generateSessionName(chatId) {
 export async function test() {
   const errors = [];
   try {
+    await generateSessionName();
+    await getHistory();
+    await processText();
+    await initProvider();
     if (typeof initProvider !== 'function') errors.push('initProvider not a function');
     if (typeof processText !== 'function') errors.push('processText not a function');
     if (typeof run !== 'function') errors.push('run not a function');

@@ -1,0 +1,286 @@
+// Experiment 42: Project DNA - 极速项目理解法
+//
+// Auto-created by lab
+
+import { fileURLToPath } from 'url';
+import { createHash } from 'crypto';
+
+export const META = { id: 'project-dna' };
+
+const NAME = 'Project DNA - 极速项目理解法';
+
+export async function run({ inputs = {} } = {}) {
+  try {
+    await getDNAContext();
+    await generateDNA();
+    await extractInvariants();
+    await buildDependencyGraph();
+    await writeDNAFile();
+    const ans = await answerFromDNA('how many modules');
+    return { outputs: { info: `DNA generated: ${ans.answer}` } };
+  } catch (e) { return { ok: false, info: `run() failed: ${e.message}` }; }
+
+}
+
+export async function test() {
+  try {
+    await getDNAContext();
+    await buildDependencyGraph();
+    await extractInvariants();
+    await generateDNA();
+    await writeDNAFile();
+    const dna = JSON.parse((await import('fs')).readFileSync((await import('path')).join(fileURLToPath(new URL('.', import.meta.url)), '../..', '.dna', 'project-dna.json'), 'utf8'));
+    return { ok: true, info: `DNA: ${dna.totalModules} modules, ${dna.totalInvariantBlocks} invariants, ${dna.totalDepFiles} deps. Ask answerFromDNA(question) for details.` };
+  } catch (e) { return { ok: false, info: `DNA test failed: ${e.message}` }; }
+}
+
+function hashlineHash(line) {
+  return createHash('md5').update(line).digest('hex').substring(0, 8);
+}
+
+function extractExports(content, relPath) {
+  const exports = [];
+  const lines = content.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(/^\s*(?:export\s+)(?:async\s+)?(?:function|const|let|var|class)\s+(\w+)/);
+    if (m) exports.push({ name: m[1], line: i + 1, hash: hashlineHash(lines[i]), file: relPath });
+  }
+  return exports;
+}
+
+export async function generateDNA() { // TEST HASH
+  const { readdirSync, readFileSync, statSync } = await import('fs');
+  const { join, resolve } = await import('path');
+  const root = resolve(fileURLToPath(new URL('.', import.meta.url)), '../..');
+  const modules = [];
+  function walk(dir, depth) {
+    if (depth > 4) return;
+    try {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        if (e.name.startsWith('.') || e.name === 'node_modules') continue;
+        const p = join(dir, e.name);
+        if (e.isDirectory()) walk(p, depth + 1);
+        else if (e.name.endsWith('.mjs') || e.name.endsWith('.js')) {
+          const rel = p.replace(root, '').replace(/\\/g, '/');
+          const content = readFileSync(p, 'utf8');
+          const exports = extractExports(content, rel);
+          modules.push({ path: rel, size: statSync(p).size, exports });
+        }
+      }
+    } catch {}
+  }
+  walk(resolve(root, 'src'), 0);
+  const totalExports = modules.reduce((s, m) => s + m.exports.length, 0);
+  return { name: 'openchat', root, totalModules: modules.length, totalExports, modules, scannedAt: Date.now() };
+}
+
+export async function extractInvariants() {
+  const { readFileSync, readdirSync, statSync } = await import('fs');
+  const { join, resolve } = await import('path');
+  const root = resolve(fileURLToPath(new URL('.', import.meta.url)), '../..');
+  const invs = [];
+  function walk(dir, depth) {
+    if (depth > 4) return;
+    try {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        if (e.name.startsWith('.') || e.name === 'node_modules') continue;
+        const p = join(dir, e.name);
+        if (e.isDirectory()) walk(p, depth + 1);
+        else if (e.name.endsWith('.mjs') || e.name.endsWith('.js')) {
+          const c = readFileSync(p, 'utf8');
+          const start = c.indexOf('// === invariants ===');
+          if (start !== -1) {
+            const end = c.indexOf('// ===', start + 20);
+            const block = c.slice(start, end !== -1 ? end : c.length).split('\n').filter(l => l.trim()).slice(0, 20);
+            invs.push({ file: p.replace(root, '').replace(/\\/g, '/'), block });
+          }
+        }
+      }
+    } catch {}
+  }
+  walk(resolve(root, 'src'), 0);
+  return { totalInvariantBlocks: invs.length, invariants: invs };
+}
+
+export async function buildDependencyGraph() {
+  const { readFileSync, readdirSync, statSync } = await import('fs');
+  const { join, resolve } = await import('path');
+  const root = resolve(fileURLToPath(new URL('.', import.meta.url)), '../..');
+  const nodes = [];
+  function walk(dir, depth) {
+    if (depth > 3) return;
+    try {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        if (e.name.startsWith('.') || e.name === 'node_modules') continue;
+        const p = join(dir, e.name);
+        if (e.isDirectory()) walk(p, depth + 1);
+        else if (e.name.endsWith('.mjs') || e.name.endsWith('.js')) {
+          const c = readFileSync(p, 'utf8');
+          const imports = [...c.matchAll(/from\s+['"]([^'"]+)['"]/g)].map(m => m[1]);
+          nodes.push({ file: p.replace(root, '').replace(/\\/g, '/'), imports });
+        }
+      }
+    } catch {}
+  }
+  walk(resolve(root, 'src'), 0);
+  return { nodes, totalFiles: nodes.length };
+}
+
+export async function writeDNAFile() {
+  const { writeFileSync, existsSync, mkdirSync } = await import('fs');
+  const { join, resolve } = await import('path');
+  const root = resolve(fileURLToPath(new URL('.', import.meta.url)), '../..');
+  const dna = await generateDNA();
+  const inv = await extractInvariants();
+  const dep = await buildDependencyGraph();
+  const report = { project: dna.name, scannedAt: dna.scannedAt, modules: dna.modules, totalModules: dna.totalModules, totalExports: dna.totalExports, invariants: inv.invariants, totalInvariantBlocks: inv.totalInvariantBlocks, deps: dep.nodes, totalDepFiles: dep.totalFiles };
+  const outDir = join(root, '.dna');
+  if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
+  writeFileSync(join(outDir, 'project-dna.json'), JSON.stringify(report, null, 2), 'utf8');
+  return { ok: true, path: join(outDir, 'project-dna.json') };
+}
+
+export async function getDNAContext({ maxAgeMs = 300000 } = {}) {
+  const { readFileSync, existsSync } = await import('fs');
+  const { join, resolve } = await import('path');
+  const root = resolve(fileURLToPath(new URL('.', import.meta.url)), '../..');
+  const dnaPath = join(root, '.dna', 'project-dna.json');
+  if (!existsSync(dnaPath)) {
+    await writeDNAFile();
+  } else {
+    try {
+      const cur = JSON.parse(readFileSync(dnaPath, 'utf8'));
+      if (Date.now() - (cur.scannedAt || 0) > maxAgeMs) await writeDNAFile();
+    } catch { await writeDNAFile(); }
+  }
+  try {
+    const dna = JSON.parse(readFileSync(dnaPath, 'utf8'));
+    const topMods = dna.modules.filter(m => m.exports?.length > 0).sort((a, b) => (b.exports?.length || 0) - (a.exports?.length || 0)).slice(0, 8);
+    return `[Project DNA] ${dna.totalModules} modules, ${dna.totalExports} exports, ${dna.totalInvariantBlocks} invariants` +
+      `. Top modules: ${topMods.map(m => m.path.replace('/src/', '') + '(' + m.exports.length + ')').join(', ')}` +
+      `. Use dna_query to find any export by name/hash.`;
+  } catch { return ''; }
+}
+
+export async function answerFromDNA(question, { maxAgeMs = 300000 } = {}) {
+  const { readFileSync, existsSync } = await import('fs');
+  const { join, resolve } = await import('path');
+  const root = resolve(fileURLToPath(new URL('.', import.meta.url)), '../..');
+  const dnaPath = join(root, '.dna', 'project-dna.json');
+  if (!existsSync(dnaPath)) {
+    await writeDNAFile();
+  } else {
+    try {
+      const cur = JSON.parse(readFileSync(dnaPath, 'utf8'));
+      if (Date.now() - (cur.scannedAt || 0) > maxAgeMs) await writeDNAFile();
+    } catch { await writeDNAFile(); }
+  }
+  const dna = JSON.parse(readFileSync(dnaPath, 'utf8'));
+  if (!question) return { answer: `DNA: ${dna.totalModules} modules, ${dna.totalExports} exports, ${dna.totalInvariantBlocks} invariants, ${dna.totalDepFiles} deps` };
+  const q = question.toLowerCase();
+
+  // 按函数名查找 — 返回文件 + 行号 + hashline hash
+  const fnMatch = q.match(/find\s+(?:function\s+)?(\w+)/);
+  if (fnMatch) {
+    const name = fnMatch[1];
+    for (const mod of dna.modules) {
+      for (const ex of mod.exports) {
+        if (ex.name.toLowerCase() === name) return { answer: `function ${ex.name} in ${ex.file}:${ex.line}, hashline: ${ex.hash}` };
+      }
+    }
+    return { answer: `function ${name} not found in DNA` };
+  }
+
+  // 按 hashline hash 查找 — 返回文件 + 行
+  const hashMatch = q.match(/hash\s+([0-9a-f]{8})/);
+  if (hashMatch) {
+    const h = hashMatch[1];
+    for (const mod of dna.modules) {
+      for (const ex of mod.exports) {
+        if (ex.hash === h) return { answer: `hash ${h} → ${ex.file}:${ex.line}, function ${ex.name}` };
+      }
+    }
+    return { answer: `hash ${h} not found in DNA` };
+  }
+
+  // 列出模块的 exports
+  const lsMatch = q.match(/ls\s+(\S+)/);
+  if (lsMatch) {
+    const file = lsMatch[1];
+    const mod = dna.modules.find(m => m.path.endsWith(file) || m.path === file);
+    if (!mod) return { answer: `file ${file} not found in DNA` };
+    return { answer: `${mod.path}: ${mod.exports.map(e => `${e.name}:${e.line} hash=${e.hash}`).join(', ')}` };
+  }
+
+  if (/^summary$/i.test(q)) {
+    const top = dna.modules.filter(m => m.exports?.length > 0).sort((a, b) => (b.exports?.length || 0) - (a.exports?.length || 0)).slice(0, 15);
+    return { answer: `${dna.totalModules} modules, ${dna.totalExports} exports. Top:\n${top.map(m => `${m.path} (${m.exports.length} exports)`).join('\n')}` };
+  }
+  if (/^hot$/i.test(q)) {
+    const ranked = dna.modules.filter(m => m.exports?.length > 0).sort((a, b) => (b.exports?.length || 0) - (a.exports?.length || 0)).slice(0, 30);
+    return { answer: `Modules ranked by export count:\n${ranked.map((m, i) => `${i+1}. ${m.path} (${m.exports.length})`).join('\n')}` };
+  }
+  const catMatch = q.match(/^cat\s+(\S+)/);
+  if (catMatch) {
+    const cat = catMatch[1];
+    const matched = dna.modules.filter(m => m.path.includes(cat)).slice(0, 20);
+    return { answer: matched.length ? `${cat}: ${matched.length} modules\n${matched.map(m => `${m.path} (${m.exports?.length || 0} exports)`).join('\n')}` : `No modules matching "${cat}"` };
+  }
+  if (/^isolate\b/.test(q)) {
+    const { resolve, sep, relative } = await import('path');
+    const root = resolve(fileURLToPath(new URL('.', import.meta.url)), '../..');
+    const ZONE_MAP = [
+      { prefix: '/modules/provider-kit/', name: 'kit' },
+      { prefix: '/src/lab/', name: 'lab' },
+      { prefix: '/src/experiments/', name: 'experiments' },
+      { prefix: '/src/core/', name: 'core' },
+      { prefix: '/src/api/', name: 'api' },
+      { prefix: '/src/cli/', name: 'cli' },
+      { prefix: '/src/infra/', name: 'infra' },
+      { prefix: '/src/p2p/', name: 'p2p' },
+      { prefix: '/src/plugins/', name: 'plugins' },
+      { prefix: '/src/tools/', name: 'tools' },
+    ];
+    function zoneOf(path) {
+      const n = path.replace(/\\/g, '/');
+      for (const z of ZONE_MAP) if (n.startsWith(z.prefix)) return z.name;
+      return 'other';
+    }
+
+    const violations = [];
+    for (const node of dna.deps) {
+      const srcZone = zoneOf(node.file);
+      if (srcZone === 'other' || srcZone === 'kit') continue;
+      const srcDir = resolve(root, '.' + node.file, '..').replace(/\\/g, '/');
+      for (const imp of node.imports) {
+        if (!imp.startsWith('.') || imp.startsWith('/')) continue;
+        const resolved = resolve(srcDir, imp).replace(/\\/g, '/');
+        const relPath = '/' + relative(root, resolved).replace(/\\/g, '/');
+        const tgtZone = zoneOf(relPath);
+        if (tgtZone && tgtZone !== 'other' && tgtZone !== srcZone) {
+          violations.push({ from: node.file, to: relPath, srcZone, tgtZone, spec: imp });
+        }
+      }
+    }
+
+    if (violations.length === 0) return { answer: 'All zones isolated, no boundary violations.' };
+
+    // Group by source zone
+    const grouped = {};
+    for (const v of violations) {
+      const key = v.srcZone + ' → ' + v.tgtZone;
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(v);
+    }
+    const lines = [violations.length + ' boundary violations:'];
+    for (const [key, list] of Object.entries(grouped)) {
+      lines.push('  ' + key + ' (' + list.length + '):');
+      for (const v of list) lines.push('    ' + v.from + ' imports ' + v.spec);
+    }
+    return { answer: lines.join('\n') };
+  }
+  if (/total modules|file count|how many/.test(q)) return { answer: `${dna.totalModules} modules in project` };
+  if (/invariant|constraint/.test(q)) return { answer: `${dna.totalInvariantBlocks} invariant blocks across project` };
+  if (/dependency|import/.test(q)) return { answer: `${dna.totalDepFiles} files with import dependencies tracked` };
+  return { answer: `DNA contains ${dna.totalModules} modules, ${dna.totalExports} exports, ${dna.totalInvariantBlocks} invariants, ${dna.totalDepFiles} dep files. Try: "find function X", "ls path/to/file", "hash XXXXXXXX", "summary", "hot", "cat prefix", "isolate"` };
+}
