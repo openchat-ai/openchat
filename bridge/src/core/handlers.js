@@ -1,5 +1,5 @@
 import { router } from '../core/router.js';
-import { sessionManager } from '../session/session-manager.js';
+import { sessionRepo } from './core/repositories/session-repo.js';
 import { MessageType } from '../protocol/message.js';
 import '../plugins/init.mjs';
 import { orchestrator, injectCodingTools } from './agent/orchestrator.mjs';

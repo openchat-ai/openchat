@@ -4,8 +4,7 @@
  */
 
 import { messageBus } from '../message-bus.js';
-import { persistentConfig } from '../persistent-config.js';
-import { EvolutionMemory } from '../evolution/evolution-memory.js';
+import { evolutionRepo } from '../repositories/evolution-repo.js';
 import logger from '../monitoring/logger.js';
 
 export class SocialConnector {
@@ -23,7 +22,7 @@ export class SocialConnector {
     this.avatars = new Map();              // AI化身管理
     this.communities = new Map();          // 社区管理
     this.messageRouter = new MessageRouter();
-    this.evolutionMemory = new EvolutionMemory();
+    this.evolutionMemory = evolutionRepo.getMemory();
     
     this.stats = {
       totalHumans: 0,

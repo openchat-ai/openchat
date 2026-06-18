@@ -1,8 +1,8 @@
 import { AgentSession } from '../agent/agent-session.js';
 import { messageBus, MESSAGE_TYPES } from '../message-bus.js';
-import { persistentConfig } from '../persistent-config.js';
+import { configRepo } from '../repositories/config-repo.js';
+import { memoryRepo } from '../repositories/memory-repo.js';
 import { socialConnector } from './social-connector.js';
-import { knowledgeNetwork } from '../memory/knowledge-network.js';
 import logger from '../monitoring/logger.js';
 
 export class MultiAgentCoordinator {
@@ -11,7 +11,7 @@ export class MultiAgentCoordinator {
     this.taskQueue = [];
     this.completedTasks = [];
     this.socialConnector = socialConnector; // 集成社交网络
-    this.knowledgeNetwork = knowledgeNetwork; // 使用全局知识网络实例
+    this.knowledgeNetwork = memoryRepo.getKnowledgeNetwork(); // 使用全局知识网络实例
     // Note: We'll initialize community manager separately to avoid circular dependency
     this.communityManager = null; // Will be initialized later if needed
   }
@@ -303,8 +303,8 @@ export class MultiAgentCoordinator {
   }
 
   async evolutionLoop(targetModule, goal) {
-    const currentProvider = persistentConfig.getPreference('currentProvider');
-    const currentModel = persistentConfig.getPreference('currentModel');
+    const currentProvider = configRepo.getPreference('currentProvider');
+    const currentModel = configRepo.getPreference('currentModel');
 
     const history = [];
     let isStable = false;

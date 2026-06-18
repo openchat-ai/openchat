@@ -15,15 +15,15 @@ export async function run({ inputs = {} } = {}) {
   const { op = 'test' } = inputs;
   if (op === 'test') { await testEditAdvanced(); return { outputs: { ok: true } }; }
   if (op === 'multiEdit') {
-    const { multiEdit } = await import('../tools/multi-edit.mjs');
+    const { multiEdit } = await import('../experiments/lib/multi-edit.mjs');
     return { outputs: await multiEdit(inputs.edits) };
   }
   if (op === 'astEdit') {
-    const { astEdit } = await import('../tools/ast-edit.mjs');
+    const { astEdit } = await import('../experiments/lib/ast-edit.mjs');
     return { outputs: await astEdit(inputs.file, inputs.pattern, inputs.action, inputs.newValue) };
   }
   if (op === 'getGitDiff') {
-    const { getGitDiff } = await import('../tools/diff-review.mjs');
+    const { getGitDiff } = await import('../experiments/lib/diff-review.mjs');
     return { outputs: await getGitDiff(inputs.base) };
   }
   throw new Error(`edit-advanced: unknown op "${op}"`);

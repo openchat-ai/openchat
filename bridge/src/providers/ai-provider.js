@@ -1,4 +1,4 @@
-import { getProviderConfig, getRuntimeApiKey, getRuntimeBaseUrl } from '../core/provider-service.js';
+import { getProviderConfig, getRuntimeApiKey, getRuntimeBaseUrl } from '../experiments/lib/provider-service.js';
 
 export class AiProvider {
   constructor(id, name) {

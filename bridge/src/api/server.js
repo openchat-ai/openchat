@@ -19,8 +19,8 @@ import { errorHandler } from './middleware/error-handler.js';
 import requestValidator from './middleware/request-validator.js';
 import { securityMiddleware } from './middleware/security.js';
 import { DEFAULT_PORT } from '../constants.js';
-import { qiniuSignaling } from '../core/qiniu-signaling.js';
-import { SignalRelay } from '../core/signal-relay.js';
+import { qiniuSignaling } from '../experiments/lib/qiniu-signaling.js';
+import { SignalRelay } from '../experiments/lib/signal-relay.js';
 
 // 路由
 import feedbackRouter from './routes/feedback.js';

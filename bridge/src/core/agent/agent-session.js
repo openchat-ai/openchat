@@ -1,5 +1,5 @@
 import { messageBus, MESSAGE_TYPES } from '../message-bus.js';
-import { persistentConfig } from '../persistent-config.js';
+import { configRepo } from '../repositories/config-repo.js';
 import * as providerService from '../provider-service.js';
 import { EvolutionEngine } from '../evolution/evolution-engine.js';
 import { securityManager } from '../security/security-manager.js';
@@ -8,16 +8,14 @@ import { ErrorClassifier } from '../security/error-classifier.js';
 import { ContentAnalyzer } from '../quality/content-analyzer.js';
 import { QualityScorer } from '../quality/quality-scorer.js';
 import { StructuredOutputValidator } from '../security/structured-output-validator.js';
-
-const MAX_GLOBAL_CONCURRENT = parseInt(process.env.MAX_GLOBAL_CONCURRENT_REQUESTS, 10) || 4;
-let _globalConcurrent = 0;
-const _globalWaiting = 0;
-const _globalQueue = [];
 import { StreamingValidator, ValidationErrorExplainer } from '../security/streaming-validator.js';
+import { HttpExecutor } from './agent-http-executor.js';
 import { SchemaAutoGenerator, SchemaVersionManager, FormatConverter } from '../quality/schema-manager.js';
 import { MultimodalHandler } from '../audio/multimodal-handler.js';
 import { ResponseCache, SmartRouter, StreamHandler, SafetyWrapper, CircuitBreakerMonitor, MetricsCollector, AdaptiveLimiter, IntelligentCircuitBreaker, CircuitBreaker, RequestQueue, RequestDeduplicator } from '../monitoring/resilience.js';
 import logger from '../monitoring/logger.js';
+import { createSafetyProxy, createSafeAgentSession } from './agent-safety-proxy.js';
+import { AgentResponseProcessor } from './agent-response-processor.js';
 
 export const AGENT_STATES = {
   IDLE: 'idle',
@@ -35,12 +33,12 @@ const HEARTBEAT_INTERVAL = 5000;
 
 export class AgentSession {
   constructor(agentId, config = {}) {
-    const currentProvider = persistentConfig.getCurrentProvider();
+    const currentProvider = configRepo.getCurrentProvider();
     this.agentId = agentId;
     this.config = {
       name: config.name || `agent-${agentId.substring(0, 8)}`,
       provider: config.provider || currentProvider || providerService.DEFAULT_PROVIDER,
-      model: config.model || persistentConfig.getCurrentModel() || null,
+      model: config.model || configRepo.getCurrentModel() || null,
       systemPrompt: config.systemPrompt || 'You are a helpful AI assistant.',
       maxIterations: config.maxIterations || 10,
       ...config
@@ -156,14 +154,38 @@ export class AgentSession {
       defaultProvider: this.config.provider
     });
     
-    const providers = persistentConfig.listProviders();
+    const providers = configRepo.listProviders();
     for (const p of providers) {
       const pConfig = providerService.getProviderConfig(p);
       if (pConfig) {
-        const apiKey = persistentConfig.getApiKey(p);
+        const apiKey = configRepo.getApiKey(p);
         this._router.registerProvider(p, { ...pConfig, apiKey: apiKey || pConfig.apiKey });
       }
     }
+
+    this._httpExecutor = new HttpExecutor({
+      agentId,
+      config: this.config,
+      circuitBreaker: this._circuitBreaker,
+      responseParser: this._responseParser,
+      errorClassifier: this._errorClassifier,
+      metrics: this._metrics,
+      router: this._router,
+      limiter: this._limiter,
+      deduplicator: this._deduplicator,
+      requestQueue: this._requestQueue,
+      isDestroyed: () => this._isDestroyed
+    });
+
+    this._responseProcessor = new AgentResponseProcessor({
+      responseCache: this._responseCache,
+      outputValidator: this._outputValidator,
+      qualityScorer: this._qualityScorer,
+      streamingValidator: this._streamingValidator,
+      safety: this._safety,
+      multimodalHandler: this._multimodalHandler,
+      limiter: this._limiter
+    });
   }
 
   async initialize() {
@@ -442,14 +464,14 @@ export class AgentSession {
   async queryModel(messages) {
     // 优先使用配置的 provider，而不是让路由器选择
     let providerName = this.config.provider;
-    let apiKey = persistentConfig.getApiKey(providerName);
+    let apiKey = configRepo.getApiKey(providerName);
     let model = this.config.model;
 
     // 如果配置的 provider 没有 API key，尝试其他 providers
     if (!apiKey) {
-      const availableProviders = persistentConfig.listProviders();
+      const availableProviders = configRepo.listProviders();
       for (const p of availableProviders) {
-        const key = persistentConfig.getApiKey(p);
+        const key = configRepo.getApiKey(p);
         if (key) {
           providerName = p;
           apiKey = key;
@@ -484,325 +506,13 @@ export class AgentSession {
     }
 
     // 让 persistentConfig 解析模型名（处理显示名称 → API key 的映射）
-    model = persistentConfig.resolveModelName(providerName, model) || model;
+    model = configRepo.resolveModelName(providerName, model) || model;
 
     return this.callApi(providerName, apiKey, model, messages);
   }
 
   async callApi(provider, apiKey, model, messages) {
-    await this._limiter.adapt();
-    
-    const providerConfig = providerService.getProviderConfig(provider);
-    if (!providerConfig || !providerConfig.baseUrl) {
-      return { content: `Provider ${provider} missing baseUrl config` };
-    }
-
-    const filteredMessages = messages.filter(m => m.role !== 'system');
-    if (this.config.systemPrompt) {
-      filteredMessages.unshift({ role: 'system', content: this.config.systemPrompt });
-    }
-
-    const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` };
-
-    const requestKey = { provider, model, messages: filteredMessages };
-    
-    const startTime = Date.now();
-
-    const doRequest = async () => {
-      const requestStart = Date.now();
-      const result = await this._executeRequest(provider, apiKey, model, filteredMessages, headers, providerConfig);
-      const latency = Date.now() - requestStart;
-      
-      const success = !result.content?.startsWith('API error');
-      const statusCode = this._extractStatusCode(result.content);
-      const errorType = this._classifyError(result.content);
-      
-      this._metrics.recordRequest(success, latency, statusCode, errorType);
-      this._router.recordSuccess(provider, latency);
-      
-      if (success) {
-        this._circuitBreaker.recordSuccess(latency);
-      } else {
-        this._circuitBreaker.recordFailure(statusCode, latency);
-        this._router.recordFailure(provider, statusCode, latency);
-      }
-      
-      return result;
-    };
-
-    return this._deduplicator.deduplicate(requestKey, () => {
-      return this._requestQueue.enqueue(doRequest);
-    });
-  }
-
-  _extractStatusCode(content) {
-    if (!content) return null;
-    const match = content.match(/HTTP (\d+)/);
-    return match ? parseInt(match[1]) : null;
-  }
-
-  _classifyError(content) {
-    if (!content) return 'unknown';
-    if (content.includes('timeout')) return 'timeout';
-    if (content.includes('network')) return 'network';
-    if (content.includes('429')) return 'rate_limit';
-    if (content.includes('500')) return 'server_error';
-    if (content.includes('401') || content.includes('403')) return 'auth';
-    return 'other';
-  }
-
-  async _executeRequest(provider, apiKey, model, filteredMessages, headers, providerConfig) {
-    // Phase C: 全局并发控制 — 超过阈值时排队
-    if (_globalConcurrent >= MAX_GLOBAL_CONCURRENT) {
-      await new Promise(resolve => _globalQueue.push(resolve));
-    }
-    _globalConcurrent++;
-    const release = () => {
-      _globalConcurrent--;
-      const next = _globalQueue.shift();
-      if (next) next();
-    };
-
-    try {
-      const config = {
-        retries: 2,
-        retryDelay: 500,
-        minTimeout: 1000,
-        maxTimeout: 30000,
-        maxRetryDelay: 5000,
-        factor: 2,
-        randomize: true,
-        maxRetryTime: 15000,
-        noResponseRetries: 2,
-        statusCodesToRetry: [
-          [408, 408],
-          [429, 429],
-          [500, 599]
-        ],
-        retry: true,
-        onRetryAttempt: null,
-        shouldRetry: null,
-        retryBackoff: null,
-        signal: null
-      };
-
-      const startTime = Date.now();
-      let attempt = 0;
-      let httpRetries = 0;
-      let noResponseRetries = 0;
-
-      while (true) {
-        if (this._isDestroyed) {
-          return { content: 'Agent destroyed' };
-        }
-
-        config.signal?.throwIfAborted?.();
-
-        const circuitCheck = this._circuitBreaker.canExecute();
-        if (!circuitCheck.allowed) {
-          const waitTime = Math.ceil(circuitCheck.waitTime / 1000);
-          return { content: `Circuit breaker open, retry in ${waitTime}s` };
-        }
-
-        if (circuitCheck.state === 'HALF_OPEN') {
-          logger.info('[API] Circuit half-open, probing...');
-        }
-
-        attempt++;
-
-        let response;
-        let data;
-        let status;
-
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), config.maxTimeout);
-
-        try {
-          const requestBody = {
-            model: model,
-            messages: filteredMessages,
-            temperature: 0.7,
-            max_tokens: 2000,
-            provider: { allow_fallbacks: true }
-          };
-
-          response = await fetch(`${providerConfig.baseUrl}${providerConfig.chatEndpoint}`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(requestBody),
-            signal: controller.signal
-          });
-
-          clearTimeout(timeoutId);
-
-          status = response.status;
-          const responseText = await response.text();
-          try {
-            data = JSON.parse(responseText);
-          } catch (e) { logger.warn('[IGNORE] ' + (e?.message || '')); data = { error: { message: `HTTP ${status }: ${responseText.substring(0, 200)}` } };
-          }
-
-          if (response.ok) {
-            this._circuitBreaker.recordSuccess();
-
-            const parsed = this._responseParser.parse(data, provider);
-
-            if (!parsed.success) {
-              return { content: `API error: ${parsed.content}` };
-            }
-
-            return { content: parsed.content };
-          }
-
-          const errorClassification = this._errorClassifier.classify(
-            data.error?.message || JSON.stringify(data),
-            { statusCode: status, attempt }
-          );
-
-          let shouldRetry = this._shouldRetryByStatus(status, httpRetries, config, startTime);
-
-          if (shouldRetry && config.shouldRetry) {
-            const customResult = await config.shouldRetry({
-              error: { status, response: data },
-              attemptNumber: attempt,
-              retriesLeft: config.retries - httpRetries,
-              retriesConsumed: httpRetries,
-              classification: errorClassification
-            });
-            if (customResult === false) {
-              shouldRetry = false;
-            }
-          }
-
-          if (!shouldRetry) {
-            this._circuitBreaker.recordFailure();
-            return { content: `API error: HTTP ${status} (${errorClassification.category})` };
-          }
-
-          let delay = this._calculateBackoff(attempt, config, httpRetries);
-
-          if (status === 429) {
-            const retryAfter = response.headers.get('Retry-After');
-            if ( retryAfter) {
-              const retryAfterMs = parseInt(retryAfter, 10) * 1000;
-              if (!isNaN(retryAfterMs)) {
-                delay = Math.min(retryAfterMs, config.maxRetryDelay);
-              }
-            }
-          }
-
-          if (config.retryBackoff) {
-            delay = await config.retryBackoff({
-              error: { status, response: data },
-              delay,
-              attemptNumber: attempt
-            });
-          }
-
-          config.onRetryAttempt?.({
-            error: { status, response: data },
-            attemptNumber: attempt,
-            retriesLeft: config.retries - httpRetries,
-            retryDelay: delay
-          });
-
-          logger.info(`[API] Attempt ${attempt} failed (HTTP ${status}). Retrying in ${delay}ms...`);
-
-          await this._delay(delay);
-          httpRetries++;
-
-        } catch (error) {
-          clearTimeout(timeoutId);
-
-          if (this._isDestroyed) {
-            return { content: 'Agent destroyed' };
-          }
-
-          config.signal?.throwIfAborted?.();
-
-          const isNetworkError = !response || error.name === 'TypeError' || error.name === 'AbortError' || error.message.includes('fetch');
-
-          const errorClassification = this._errorClassifier.classify(
-            error.message,
-            { attempt, noResponse: true }
-          );
-
-          if (isNetworkError) {
-            if (noResponseRetries >= config.noResponseRetries || !errorClassification.shouldRetry) {
-              this._circuitBreaker.recordFailure();
-              return { content: `API error: ${error.message} (${errorClassification.category})` };
-            }
-
-            if (!this._withinRetryTime(startTime, config.maxRetryTime)) {
-              return { content: `API error: ${error.message} (${errorClassification.category})` };
-            }
-
-            let delay = this._calculateBackoff(attempt, config, noResponseRetries);
-
-            if (config.retryBackoff) {
-              delay = await config.retryBackoff({
-                error: { message: error.message },
-                delay,
-                attemptNumber: attempt
-              });
-            }
-
-            config.onRetryAttempt?.({
-              error: { message: error.message },
-              attemptNumber: attempt,
-              retriesLeft: config.noResponseRetries - noResponseRetries,
-              retryDelay: delay
-            });
-
-            logger.info(`[API] Attempt ${attempt} failed (${error.message}). Retrying in ${delay}ms...`);
-
-            await this._delay(delay);
-            noResponseRetries++;
-            continue;
-          }
-
-          return { content: `API error: ${error.message}` };
-        }
-      }
-    } finally {
-      release();
-    }
-  }
-
-  _shouldRetryByStatus(status, httpRetriesConsumed, config, startTime) {
-    if (!config.retry || httpRetriesConsumed >= config.retries) {
-      return false;
-    }
-
-    if (!this._withinRetryTime(startTime, config.maxRetryTime)) {
-      return false;
-    }
-
-    for (const [min, max] of config.statusCodesToRetry) {
-      if (status >= min && status <= max) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  _withinRetryTime(startTime, maxRetryTime) {
-    return Date.now() - startTime < maxRetryTime;
-  }
-
-  _calculateBackoff(attempt, config, retriesConsumed) {
-    let delay = config.minTimeout * Math.pow(config.factor, retriesConsumed);
-
-    if (config.randomize) {
-      delay = delay * (0.5 + Math.random());
-    }
-
-    return Math.min(delay, config.maxRetryDelay);
-  }
-
-  _delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return this._httpExecutor.callApi(provider, apiKey, model, messages);
   }
 
   async executeTask(task) {
@@ -931,608 +641,219 @@ export class AgentSession {
   }
 
   setOutputSchema(schema) {
-    this._outputSchema = schema;
-    return this;
+    return this._responseProcessor.setOutputSchema(schema);
   }
 
   inferOutputSchema(examples) {
-    if (!Array.isArray(examples) || examples.length === 0) {
-      throw new Error('At least one example is required for schema inference');
-    }
-    this._outputSchema = this._outputValidator.inferSchema(examples);
-    return this._outputSchema;
+    return this._responseProcessor.inferOutputSchema(examples);
   }
 
   validateOutput(content, schema = this._outputSchema) {
-    if (!schema) {
-      return {
-        success: false,
-        errors: [{ path: 'root', message: 'No schema provided. Use setOutputSchema() or provide a schema.' }],
-        warnings: []
-      };
-    }
-    return this._outputValidator.validateWithRetry(content, schema);
+    return this._responseProcessor.validateOutput(content, schema);
   }
 
   extractStructuredJson(content) {
-    return this._outputValidator.extractJson(content);
+    return this._responseProcessor.extractStructuredJson(content);
   }
 
   getValidatorConfig() {
-    return {
-      hasSchema: !!this._outputSchema,
-      schema: this._outputSchema || null,
-      maxRetries: this._outputValidator._maxRetries,
-      enableAutoFix: this._outputValidator._enableAutoFix,
-      coerceTypes: this._outputValidator._coerceTypes,
-      strictMode: this._outputValidator._strictMode
-    };
+    return this._responseProcessor.getValidatorConfig();
   }
 
   detectMedia(content) {
-    return this._multimodalHandler.detectContentTypes(content);
+    return this._responseProcessor.detectMedia(content);
   }
 
   extractImages(content) {
-    return this._multimodalHandler.extractMediaUrls(content, 'image');
+    return this._responseProcessor.extractImages(content);
   }
 
   extractAudio(content) {
-    return this._multimodalHandler.extractMediaUrls(content, 'audio');
+    return this._responseProcessor.extractAudio(content);
   }
 
   extractVideo(content) {
-    return this._multimodalHandler.extractMediaUrls(content, 'video');
+    return this._responseProcessor.extractVideo(content);
   }
 
   processMultimedia(content) {
-    return this._multimodalHandler.processContent(content);
+    return this._responseProcessor.processMultimedia(content);
   }
 
   renderVideoEmbed(url, options = {}) {
-    return this._multimodalHandler.renderVideoEmbed(url, options);
+    return this._responseProcessor.renderVideoEmbed(url, options);
   }
 
   getMediaCacheSize() {
-    return this._multimodalHandler.getCacheSize();
+    return this._responseProcessor.getMediaCacheSize();
   }
 
   clearMediaCache() {
-    this._multimodalHandler.clearCache();
+    this._responseProcessor.clearMediaCache();
   }
 
   scoreQuality(content, context = {}) {
-    return this._qualityScorer.score(content, context);
+    return this._responseProcessor.scoreQuality(content, context);
   }
 
-  async scoreQualityAsync(content, context = {}) {
-    return this._qualityScorer.scoreAsync(content, context);
+  scoreQualityAsync(content, context = {}) {
+    return this._responseProcessor.scoreQualityAsync(content, context);
   }
 
   getQualityWeights() {
-    return this._qualityScorer.getWeights();
+    return this._responseProcessor.getQualityWeights();
   }
 
   setQualityWeights(weights) {
-    this._qualityScorer.setWeights(weights);
+    this._responseProcessor.setQualityWeights(weights);
     return this;
   }
 
   detectContradictions(content) {
-    return this._qualityScorer._detectContradictions(content);
+    return this._responseProcessor.detectContradictions(content);
   }
 
   detectToxicity(content) {
-    return this._qualityScorer.scoreToxicity(content);
+    return this._responseProcessor.detectToxicity(content);
   }
 
   getCachedResponse(request) {
-    return this._responseCache.get(request);
+    return this._responseProcessor.getCachedResponse(request);
   }
 
   cacheResponse(request, response, options = {}) {
-    return this._responseCache.set(request, response, options);
+    return this._responseProcessor.cacheResponse(request, response, options);
   }
 
   hasCachedResponse(request) {
-    return this._responseCache.has(request);
+    return this._responseProcessor.hasCachedResponse(request);
   }
 
   invalidateCache(request) {
-    return this._responseCache.invalidate(request);
+    return this._responseProcessor.invalidateCache(request);
   }
 
   invalidateCacheByTag(tag) {
-    return this._responseCache.invalidateByTag(tag);
+    return this._responseProcessor.invalidateCacheByTag(tag);
   }
 
   clearCache() {
-    return this._responseCache.clear();
+    return this._responseProcessor.clearCache();
   }
 
   getCacheStats() {
-    return this._responseCache.getStats();
+    return this._responseProcessor.getCacheStats();
   }
 
   pruneCache() {
-    return this._responseCache.prune();
+    return this._responseProcessor.pruneCache();
   }
 
   setCacheConfig(config) {
-    if (config.maxSize) this._responseCache.setMaxSize(config.maxSize);
-    if (config.maxMemory) this._responseCache.setMaxMemory(config.maxMemory);
-    if (config.defaultTtl) this._responseCache.setDefaultTtl(config.defaultTtl);
-    if (config.evictionPolicy) this._responseCache.setEvictionPolicy(config.evictionPolicy);
+    this._responseProcessor.setCacheConfig(config);
     return this;
   }
 
   async processResponse(request, responseContent, options = {}) {
-    const { 
-      validate = true,
-      score = true,
-      cache = true,
-      schema = this._outputSchema,
-      context = {},
-      tags = [],
-      autoRetry = false,
-      maxRetries = 3,
-      minQualityThreshold = 0.5,
-      retryDelay = 1000
-    } = options;
-
-    const result = {
-      content: responseContent,
-      fromCache: false,
-      cacheKey: null,
-      validation: null,
-      quality: null,
-      cachedAt: null,
-      ttl: null,
-      retryCount: 0,
-      retryHistory: []
-    };
-
-    if (cache) {
-      const cacheKey = this._responseCache._hashRequest(request);
-      result.cacheKey = cacheKey;
-    }
-
-    if (validate && schema) {
-      const validationResult = await this._outputValidator.validateWithRetry(responseContent, schema);
-      result.validation = {
-        valid: validationResult.success,
-        errors: validationResult.errors || [],
-        warnings: validationResult.warnings || [],
-        fixed: validationResult.fixed || false,
-        attempts: validationResult.attempts || 1
-      };
-    }
-
-    if (score) {
-      const qualityResult = this._qualityScorer.score(responseContent, context);
-      result.quality = {
-        overall: qualityResult.overall,
-        grade: qualityResult.grade,
-        relevance: qualityResult.relevance,
-        completeness: qualityResult.completeness,
-        consistency: qualityResult.consistency,
-        hallucinationResistance: qualityResult.hallucinationResistance,
-        toxicity: qualityResult.toxicity,
-        faithfulness: qualityResult.faithfulness,
-        factuality: qualityResult.factuality,
-        coherence: qualityResult.coherence,
-        conciseness: qualityResult.conciseness,
-        flags: qualityResult.flags,
-        details: qualityResult.details
-      };
-
-      if (result.validation && !result.validation.valid) {
-        result.quality.suspicious = true;
-        result.quality.suspiciousReason = 'validation_failed';
-      } else if (qualityResult.overall < minQualityThreshold) {
-        result.quality.suspicious = true;
-        result.quality.suspiciousReason = 'low_quality_score';
-      }
-    }
-
-    if (cache && result.content) {
-      const cacheOptions = {
-        tags,
-        adaptiveTtl: true,
-        metadata: {
-          requestHash: result.cacheKey,
-          validationPassed: result.validation?.valid ?? true,
-          ...(result.quality && { 
-            qualityScore: result.quality.overall,
-            qualityGrade: result.quality.grade
-          })
-        }
-      };
-
-      this._responseCache.setWithQuality(request, responseContent, result.quality?.overall || 0.7, cacheOptions);
-      
-      const cacheEntry = this._responseCache._storage.get(this._responseCache._hashRequest(request));
-      if (cacheEntry) {
-        result.cachedAt = cacheEntry.createdAt;
-        result.ttl = cacheEntry.ttl;
-      }
-    }
-
-    return result;
+    return this._responseProcessor.processResponse(request, responseContent, options);
   }
 
   async processResponseWithRetry(request, apiCallFn, options = {}) {
-    const {
-      autoRetry = true,
-      maxRetries = 3,
-      minQualityThreshold = options.minQualityThreshold || 0.5,
-      retryDelay = options.retryDelay || 1000,
-      validate = true,
-      score = true,
-      cache = true,
-      schema = this._outputSchema,
-      context = {},
-      tags = []
-    } = options;
-
-    let attempts = 0;
-    let lastResult = null;
-    const retryHistory = [];
-
-    while (attempts < maxRetries) {
-      attempts++;
-      
-      let responseContent;
-      if (attempts === 1) {
-        const cached = this._responseCache.getWithQuality(request);
-        if (cached && !options.forceRefresh) {
-          return {
-            ...cached,
-            fromCache: true,
-            response: cached.response,
-            quality: cached.qualityScore ? { overall: cached.qualityScore } : null
-          };
-        }
-      }
-
-      try {
-        responseContent = await apiCallFn();
-      } catch (error) {
-        retryHistory.push({
-          attempt: attempts,
-          error: error.message,
-          quality: null,
-          success: false
-        });
-
-        if (attempts < maxRetries) {
-          await new Promise(r => setTimeout(r, retryDelay * attempts));
-          continue;
-        }
-
-        return {
-          content: null,
-          error: error.message,
-          retryCount: attempts - 1,
-          retryHistory,
-          success: false
-        };
-      }
-
-      const result = await this.processResponse(request, responseContent, {
-        validate,
-        score,
-        cache,
-        schema,
-        context,
-        tags
-      });
-
-      result.retryCount = attempts - 1;
-      result.retryHistory = retryHistory;
-
-      const needsRetry = autoRetry && (
-        (result.validation && !result.validation.valid) ||
-        (result.quality && result.quality.overall < minQualityThreshold)
-      );
-
-      retryHistory.push({
-        attempt: attempts,
-        quality: result.quality?.overall,
-        validationPassed: result.validation?.valid ?? true,
-        suspicious: result.quality?.suspicious ?? false,
-        success: true
-      });
-
-      if (!needsRetry) {
-        return {
-          ...result,
-          retryCount: attempts - 1,
-          retryHistory
-        };
-      }
-
-      if (attempts < maxRetries) {
-        await new Promise(r => setTimeout(r, retryDelay * attempts));
-      }
-
-      lastResult = result;
-    }
-
-    return {
-      ...lastResult,
-      retryCount: attempts - 1,
-      retryHistory,
-      success: false,
-      finalAttempt: true
-    };
+    return this._responseProcessor.processResponseWithRetry(request, apiCallFn, options);
   }
 
   selfHealResponse(request, responseContent, options = {}) {
-    const { schema = this._outputSchema, qualityThreshold = 0.5 } = options;
-    
-    const healingStrategies = [
-      { name: 'trimWhitespace', fn: (c) => c.trim() },
-      { name: 'fixJsonFormat', fn: (c) => {
-        const extracted = this._outputValidator.extractJson(c);
-        return extracted.success ? JSON.stringify(extracted.data, null, 2) : c;
-      }},
-      { name: 'removeMarkdown', fn: (c) => c.replace(/```json\n?/gi, '').replace(/```\n?$/gi, '').trim() },
-      { name: 'extractCoreContent', fn: (c) => {
-        const match = c.match(/\{[\s\S]*\}/);
-        return match ? match[0] : c;
-      }}
-    ];
-
-    const results = [];
-    
-    for (const strategy of healingStrategies) {
-      try {
-        const healed = strategy.fn(responseContent);
-        const validation = this._outputValidator.validate(healed, schema);
-        const qualityScore = this._qualityScorer.score(healed, {});
-        
-        results.push({
-          strategy: strategy.name,
-          valid: validation.valid,
-          quality: qualityScore.overall,
-          improved: qualityScore.overall > (results[0]?.quality || 0)
-        });
-
-        if (validation.valid && qualityScore.overall >= qualityThreshold) {
-          return {
-            success: true,
-            originalContent: responseContent,
-            healedContent: healed,
-            strategy: strategy.name,
-            quality: qualityScore.overall,
-            validation: validation.valid
-          };
-        }
-      } catch (e) {
-        results.push({
-          strategy: strategy.name,
-          error: e.message,
-          valid: false,
-          quality: 0,
-          improved: false
-        });
-      }
-    }
-
-    return {
-      success: false,
-      originalContent: responseContent,
-      healedContent: null,
-      strategy: null,
-      attempts: results,
-      bestStrategy: results.reduce((best, r) => r.quality > (best?.quality || 0) ? r : best, null)
-    };
+    return this._responseProcessor.selfHealResponse(request, responseContent, options);
   }
 
   prefetchAndCache(requests, fetchFn, options = {}) {
-    const { batchSize = 5, priority = 'high' } = options;
-    
-    const prefetchResults = {
-      successful: [],
-      failed: [],
-      skipped: [],
-      total: requests.length
-    };
-
-    const cached = new Map();
-    for (const req of requests) {
-      if (this._responseCache.has(req)) {
-        cached.set(this._hashRequest(req), req);
-        prefetchResults.skipped.push({ request: req, reason: 'already_cached' });
-      }
-    }
-
-    const uncached = requests.filter(req => !cached.has(this._hashRequest(req)));
-
-    const processBatch = async (batch) => {
-      const promises = batch.map(async (req) => {
-        try {
-          const response = await fetchFn(req);
-          this._responseCache.set(req, response);
-          prefetchResults.successful.push({ request: req });
-          return { success: true, request: req };
-        } catch (error) {
-          prefetchResults.failed.push({ request: req, error: error.message });
-          return { success: false, request: req, error: error.message };
-        }
-      });
-      return Promise.all(promises);
-    };
-
-    for (let i = 0; i < uncached.length; i += batchSize) {
-      const batch = uncached.slice(i, i + batchSize);
-      processBatch(batch);
-    }
-
-    return {
-      ...prefetchResults,
-      cacheHitRate: Math.round((prefetchResults.skipped.length / prefetchResults.total) * 100) / 100,
-      estimatedSavings: `${prefetchResults.skipped.length} cached responses saved`
-    };
+    return this._responseProcessor.prefetchAndCache(requests, fetchFn, options);
   }
 
   _hashRequest(req) {
-    return this._responseCache._hashRequest(req);
+    return this._responseProcessor._hashRequest(req);
   }
 
   getSelfHealingStats() {
-    const cacheStats = this._responseCache.getStats();
-    const qualityStats = this._responseCache.getQualityStats();
-
-    return {
-      cacheHitRate: cacheStats.hitRate,
-      qualityDistribution: qualityStats.gradeDistribution,
-      highQualityCount: qualityStats.highQualityCount,
-      lowQualityCount: qualityStats.lowQualityCount,
-      suspiciousCount: qualityStats.suspiciousCount,
-      recommendation: this._generateSelfHealingRecommendation(qualityStats)
-    };
-  }
-
-  _generateSelfHealingRecommendation(stats) {
-    if (stats.lowQualityCount > stats.highQualityCount) {
-      return 'Consider lowering quality threshold or improving prompt engineering. High number of low-quality cached responses detected.';
-    }
-    if (stats.suspiciousCount > 0) {
-      return 'Some cached responses are flagged as suspicious. Review validation rules or increase retry attempts.';
-    }
-    return 'Cache quality looks healthy. Continue monitoring for any degradation.';
+    return this._responseProcessor.getSelfHealingStats();
   }
 
   intelligentCacheInvalidation(pattern, reason) {
-    const invalidationLog = {
-      timestamp: Date.now(),
-      pattern,
-      reason,
-      invalidated: 0
-    };
-
-    if (pattern === '*' || pattern === '**') {
-      invalidationLog.invalidated = this._responseCache.clear();
-    } else {
-      invalidationLog.invalidated = this._responseCache.invalidateByPattern(pattern);
-    }
-
-    this._lastInvalidation = invalidationLog;
-
-    return {
-      ...invalidationLog,
-      currentStats: this._responseCache.getStats()
-    };
+    return this._responseProcessor.intelligentCacheInvalidation(pattern, reason);
   }
 
-  async getFromCacheOrProcess(request, apiCallFn, options = {}) {
-    const cached = this._responseCache.getWithQuality(request);
-    
-    if (cached && !options.forceRefresh) {
-      return {
-        ...cached,
-        fromCache: true,
-        response: cached.response
-      };
-    }
-
-    const responseContent = await apiCallFn();
-    const result = await this.processResponse(request, responseContent, options);
-    
-    return {
-      ...result,
-      fromCache: false,
-      response: responseContent
-    };
+  getFromCacheOrProcess(request, apiCallFn, options = {}) {
+    return this._responseProcessor.getFromCacheOrProcess(request, apiCallFn, options);
   }
 
   getCacheWithQuality(request) {
-    return this._responseCache.getWithQuality(request);
+    return this._responseProcessor.getCacheWithQuality(request);
   }
 
   getQualityStats() {
-    return this._responseCache.getQualityStats();
+    return this._responseProcessor.getQualityStats();
   }
 
   getHighQualityCache(minScore = 0.8) {
-    return this._responseCache.getHighQualityEntries(minScore);
+    return this._responseProcessor.getHighQualityCache(minScore);
   }
 
   getLowQualityCache(maxScore = 0.5) {
-    return this._responseCache.getLowQualityEntries(maxScore);
+    return this._responseProcessor.getLowQualityCache(maxScore);
   }
 
   invalidateLowQualityCache(maxScore = 0.3) {
-    return this._responseCache.invalidateLowQuality(maxScore);
+    return this._responseProcessor.invalidateLowQualityCache(maxScore);
   }
 
   setValidationSchema(schema) {
-    this._streamingValidator.setSchema(schema);
+    this._responseProcessor.setValidationSchema(schema);
     return this;
   }
 
   async *validateStream(stream, schema) {
-    const validator = new StreamingValidator();
-    validator.setSchema(schema || this._outputSchema);
-    yield* validator.validateStream(stream, schema || this._outputSchema);
+    yield* this._responseProcessor.validateStream(stream, schema);
   }
 
   validateChunk(chunk, isLast = false) {
-    return this._streamingValidator.validateChunk(chunk, isLast);
+    return this._responseProcessor.validateChunk(chunk, isLast);
   }
 
   abortValidation() {
-    return this._streamingValidator.abort();
+    return this._responseProcessor.abortValidation();
   }
 
   getValidationStatus() {
-    return this._streamingValidator.getStatus();
+    return this._responseProcessor.getValidationStatus();
   }
 
   resetStreamingValidator() {
-    this._streamingValidator.reset();
+    this._responseProcessor.resetStreamingValidator();
     return this;
   }
 
   safe(fn, options = {}) {
-    return this._safety.wrap(fn, {
-      timeout: options.timeout || 30000,
-      fallback: options.fallback,
-      name: options.name || fn.name || 'operation'
-    });
+    return this._responseProcessor.safe(fn, options);
   }
 
   safeSync(fn, options = {}) {
-    return this._safety.wrapSync(fn, {
-      fallback: options.fallback,
-      name: options.name || fn.name || 'operation'
-    });
+    return this._responseProcessor.safeSync(fn, options);
   }
 
   safeAsync(fn, options = {}) {
-    return this._safety.wrap(fn, {
-      timeout: options.timeout || 30000,
-      fallback: options.fallback,
-      name: options.name || fn.name || 'async_operation'
-    });
+    return this._responseProcessor.safeAsync(fn, options);
   }
 
   raceWithTimeout(promise, ms = null) {
-    return this._safety.raceWithTimeout(promise, ms || this._safety._defaultTimeout);
+    return this._responseProcessor.raceWithTimeout(promise, ms);
   }
 
   getSafetyStats() {
-    return {
-      circuitBreaker: this._safety.getCircuitBreakerStatus(),
-      errorLogSize: this._safety._errorLog.length,
-      recentErrors: this._safety.getErrorLog(10)
-    };
+    return this._responseProcessor.getSafetyStats();
   }
 
   resetSafetyCircuits(name = null) {
-    this._safety.resetCircuitBreaker(name);
+    this._responseProcessor.resetSafetyCircuits(name);
     return this;
   }
 
@@ -1542,131 +863,4 @@ export class AgentSession {
   }
 }
 
-function createSafetyProxy(session) {
-  const criticalMethods = [
-    'think', 'queryModel', 'callApi', '_executeRequest',
-    'processResponse', 'processResponseWithRetry', 'validateOutput',
-    'scoreQuality', 'extractStructuredJson', 'getCachedResponse',
-    'cacheResponse', 'run', 'executeTask', 'initialize'
-  ];
-
-  const writeMethods = [
-    'writeFile', 'write', 'set', 'add', 'create', 'update', 'delete', 'remove', 'destroy', 'clear'
-  ];
-
-  const queryMethods = [
-    'query', 'get', 'fetch', 'select', 'find', 'search', 'retrieve'
-  ];
-
-  const fallbackStrategies = {
-    think: () => ({ content: 'Operation timed out or failed' }),
-    queryModel: () => ({ content: 'Model query failed' }),
-    callApi: () => ({ content: 'API call failed' }),
-    processResponse: () => ({ content: null, valid: false, quality: null }),
-    processResponseWithRetry: () => ({ content: null, success: false }),
-    validateOutput: () => ({ success: false, errors: [] }),
-    scoreQuality: () => ({ overall: 0, grade: 'F' }),
-    extractStructuredJson: () => ({ success: false, data: null }),
-    getCachedResponse: () => null,
-    cacheResponse: () => null,
-    run: () => ({ status: 'error', error: 'Operation failed' }),
-    executeTask: () => ({ success: false, error: 'Task execution failed' }),
-    initialize: () => { throw new Error('Initialization failed'); },
-    getStatus: () => ({ state: 'ERROR', error: 'Status unavailable' }),
-    getStats: () => ({}),
-    getQualityStats: () => ({ total: 0 }),
-    getCacheStats: () => ({ size: 0, hits: 0, misses: 0 })
-  };
-
-  const handler = {
-    get(target, prop, receiver) {
-      if (prop === 'then' || prop === 'catch' || prop === 'finally') {
-        return target[prop].bind(target);
-      }
-
-      const value = target[prop];
-
-      if (typeof value !== 'function') {
-        return value;
-      }
-
-      if (prop === '_safety' || prop === '_pendingOperations' || prop === 'config') {
-        return value;
-      }
-
-      if (prop === 'constructor' || prop === 'createWithSafety') {
-        return value;
-      }
-
-      const isCritical = criticalMethods.some(m => prop.includes(m));
-      const isWrite = writeMethods.some(m => prop === m || prop.startsWith('_') === false && writeMethods.some(w => prop.startsWith(w)));
-      const isQuery = queryMethods.some(m => prop.startsWith(m));
-
-      if (!isCritical && !isWrite && !isQuery) {
-        return value.bind(target);
-      }
-
-      return async function(...args) {
-        const startTime = Date.now();
-        const opName = `agent:${session.agentId}:${prop}`;
-
-        try {
-          if (session._circuitBreaker && session._circuitBreaker.canExecute) {
-            const check = session._circuitBreaker.canExecute();
-            if (!check.allowed) {
-              const fallback = fallbackStrategies[prop];
-              if (fallback) {
-                return typeof fallback === 'function' ? fallback() : fallback;
-              }
-              return { error: 'Circuit breaker open', waitTime: check.waitTime };
-            }
-          }
-
-          const timeout = isCritical ? 30000 : (isWrite ? 10000 : 15000);
-
-          const result = await Promise.race([
-            value.apply(target, args),
-            new Promise((_, reject) =>
-              setTimeout(() => reject(new Error(`Timeout: ${prop} exceeded ${timeout}ms`)), timeout)
-            )
-          ]);
-
-          return result;
-
-        } catch (error) {
-          logger.error(`[SafetyProxy] ${opName} failed: ${error.message}`);
-
-          const fallback = fallbackStrategies[prop];
-          if (fallback) {
-            const fbResult = typeof fallback === 'function' ? fallback() : fallback;
-            if (fbResult && typeof fbResult === 'object' && fbResult.content === undefined) {
-              fbResult._safety_error = true;
-              fbResult._original_error = error.message;
-              fbResult._operation = prop;
-              fbResult._duration = Date.now() - startTime;
-            }
-            return fbResult;
-          }
-
-          if (prop === 'initialize') {
-            throw error;
-          }
-
-          return {
-            success: false,
-            error: error.message,
-            operation: prop,
-            duration: Date.now() - startTime
-          };
-        }
-      };
-    }
-  };
-
-  return new Proxy(session, handler);
-}
-
-export function createSafeAgentSession(agentId, config = {}) {
-  const session = new AgentSession(agentId, config);
-  return createSafetyProxy(session);
-}
+export { createSafetyProxy, createSafeAgentSession };

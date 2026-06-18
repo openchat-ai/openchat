@@ -1,0 +1,835 @@
+{
+  "version": 8,
+  "name": "openchat-experiments",
+  "description": "可组合实验。ID = 2^n(自身位) + ∑dep_ids(依赖和)，二进制可分解出完整依赖链。",
+  "ioSchema": {
+    "Buffer": "Node.js Buffer",
+    "string": "UTF-8 字符串",
+    "number": "整数",
+    "boolean": "true/false",
+    "object": "结构化对象",
+    "array": "数组",
+    "function": "async (args) => result",
+    "any": "运行时决定"
+  },
+  "statusSchema": {
+    "closed-loop": "有真实行为断言，run-all 跑通即代表回归被捕获",
+    "skeleton": "只有结构/存在性检查或无 test 函数",
+    "reference-only": "参考实现，不是可跑实验",
+    "paused": "暂停 — run-all 跳过，保留文件以备恢复"
+  },
+  "experiments": [
+    {
+      "id": "config",
+      "file": "01.mjs",
+      "name": "持久化配置读取 ~/.openchat/config.json",
+      "category": "config",
+      "pure": true,
+      "needsEnv": [],
+      "description": "Reads and writes the persistent config file at ~/.openchat/config.json. Use when user mentions config, settings, providers, API keys, or default model.",
+      "deps": [],
+      "tags": [
+        "config",
+        "config"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
+    },
+    {
+      "id": "feature-flag",
+      "file": "02.mjs",
+      "name": "分层 Feature Flag — env→local→remote→disk→hardcoded",
+      "category": "config",
+      "pure": true,
+      "needsEnv": [],
+      "description": "分层 Feature Flag — env→local→remote→disk→hardcoded. Use when user mentions feature flags, env override, config layers, or runtime toggles.",
+      "deps": [],
+      "tags": [
+        "config",
+        "feature-flag"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
+    },
+    {
+      "id": "provider-kit",
+      "file": "03.mjs",
+      "name": "provider-kit 适配器总测 (normalize/adapter/error/retry/EPC)",
+      "category": "llm",
+      "pure": false,
+      "needsEnv": [],
+      "description": "provider-kit 适配器总测 (normalize/adapter/error/retry/EPC). Use when testing or debugging provider-kit adapters, provider normalization, or LLM provider switching.",
+      "deps": [],
+      "tags": [
+        "llm",
+        "provider-kit"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
+    },
+    {
+      "id": "skill-loader",
+      "file": "04.mjs",
+      "name": "Markdown 即命令，条件路径激活 skill",
+      "category": "llm",
+      "pure": false,
+      "needsEnv": [],
+      "description": "Markdown 即命令，条件路径激活 skill. Use when user mentions skill loading, markdown commands, conditional skill paths, or activating skills from markdown.",
+      "deps": [],
+      "tags": [
+        "llm",
+        "skill-loader"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L1"
+    },
+    {
+      "id": "codec",
+      "file": "05.mjs",
+      "name": "LMDN 音频编解码 (48kHz, EPC)",
+      "category": "pure",
+      "pure": true,
+      "needsEnv": [],
+      "description": "LMDN 音频编解码 (48kHz, EPC). Use when testing or debugging audio codec, LMDN encoding/decoding, or EPC packet processing.",
+      "deps": [],
+      "tags": [
+        "pure",
+        "codec"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
+    },
+    {
+      "id": "isolation",
+      "file": "06.mjs",
+      "name": "chatId 路径隔离",
+      "category": "pure",
+      "pure": true,
+      "needsEnv": [],
+      "description": "chatId 路径隔离. Use when testing session isolation, chatId routing, or ensuring cross-session data separation.",
+      "deps": [],
+      "tags": [
+        "pure",
+        "isolation"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
+    },
+    {
+      "id": "compressor",
+      "file": "07.mjs",
+      "name": "CLI 输出压缩 (rtk 风格)",
+      "category": "pure",
+      "pure": true,
+      "needsEnv": [],
+      "description": "CLI 输出压缩 (rtk 风格). Use when testing output compression, rtk-style formatting, or reducing CLI output verbosity.",
+      "deps": [],
+      "tags": [
+        "pure",
+        "compressor"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
+    },
+    {
+      "id": "qiniu",
+      "file": "08.mjs",
+      "name": "Qiniu S3 兼容封装 (list/get/put/delete)",
+      "category": "qiniu",
+      "pure": false,
+      "needsEnv": [],
+      "description": "Qiniu S3 兼容封装 (list/get/put/delete). Use when testing Qiniu S3 compatibility, storage operations, or cloud file management.",
+      "deps": [],
+      "tags": [
+        "qiniu",
+        "qiniu"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
+    },
+    {
+      "id": "coding",
+      "file": "09.mjs",
+      "name": "编程工具核心 (read/write/edit/hashEdit/snapshot/restore)",
+      "category": "coder",
+      "pure": true,
+      "needsEnv": [],
+      "description": "Reads, writes, and edits source files with hash-anchored edits. Use when user asks to edit, modify, refactor, create, or delete source code files.",
+      "deps": [],
+      "tags": [
+        "coder",
+        "coding"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L1.5"
+    },
+    {
+      "id": "dev-aux",
+      "file": "10.mjs",
+      "name": "auto-commit / project-context / dev-repl",
+      "category": "dev",
+      "pure": false,
+      "needsEnv": [],
+      "description": "auto-commit / project-context / dev-repl. Use when testing dev REPL, auto-commit workflows, or project context gathering.",
+      "deps": [],
+      "tags": [
+        "dev",
+        "dev-aux"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L1.5"
+    },
+    {
+      "id": "backpressure",
+      "file": "11.mjs",
+      "name": "背压保护 — Qiniu 慢时请求限流",
+      "category": "dev",
+      "pure": false,
+      "needsEnv": [],
+      "description": "背压保护 — Qiniu 慢时请求限流. Use when testing backpressure, rate limiting, or Qiniu slow-request handling.",
+      "deps": [],
+      "tags": [
+        "dev",
+        "backpressure"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
+    },
+    {
+      "id": "multi-session",
+      "file": "12.mjs",
+      "name": "多会话隔离 — N 个并发会话互不干扰",
+      "category": "dev",
+      "pure": false,
+      "needsEnv": [],
+      "description": "Isolates N concurrent sessions so cross-session state never leaks. Use when user mentions multi-session, concurrent chat, session isolation, or parallel conversations.",
+      "deps": [],
+      "tags": [
+        "dev",
+        "multi-session"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L2+"
+    },
+    {
+      "id": "process-recovery",
+      "file": "13.mjs",
+      "name": "Bridge 重启后会话不丢",
+      "category": "dev",
+      "pure": false,
+      "needsEnv": [],
+      "description": "Bridge 重启后会话不丢. Use when testing process recovery, session persistence after restart, or crash resilience.",
+      "deps": [],
+      "tags": [
+        "dev",
+        "process-recovery"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L2+"
+    },
+    {
+      "id": "code-reviewer",
+      "file": "14.mjs",
+      "name": "LLM-driven code review engine",
+      "category": "quality",
+      "pure": false,
+      "needsEnv": [],
+      "description": "LLM-driven code review engine. Use when testing automated code review, LLM-based review, or quality gate review pipeline.",
+      "deps": [],
+      "tags": [
+        "quality",
+        "code-reviewer"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L1.5"
+    },
+    {
+      "id": "verify-commit",
+      "file": "15.mjs",
+      "name": "提交前质量门禁 (spec/R4/invariants/白名单)",
+      "category": "quality",
+      "pure": false,
+      "needsEnv": [],
+      "description": "提交前质量门禁 (spec/R4/invariants/白名单). Use when testing pre-commit hooks, commit validation, spec checks, or invariant enforcement.",
+      "deps": [],
+      "tags": [
+        "quality",
+        "verify-commit"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L1"
+    },
+    {
+      "id": "tool-rescue",
+      "file": "16.mjs",
+      "name": "Tool Call 参数校验+自动修复",
+      "category": "guardrails",
+      "pure": false,
+      "needsEnv": [],
+      "description": "Validates and auto-fixes LLM tool-call arguments before execution. Use when user mentions tool rescue, parameter validation, bad arguments, schema mismatch, or auto-fix tool call.",
+      "deps": [],
+      "tags": [
+        "guardrails",
+        "tool-rescue"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L1.5"
+    },
+    {
+      "id": "step-workflow",
+      "file": "17.mjs",
+      "name": "工作流定义 + 必要步骤强制执行",
+      "category": "guardrails",
+      "pure": false,
+      "needsEnv": [],
+      "description": "Defines multi-step workflows with required steps, retries, abort-on-failure. Use when user asks to /workflow, run a sequence, or chain experiments with guards.",
+      "deps": [],
+      "tags": [
+        "guardrails",
+        "step-workflow"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L2+"
+    },
+    {
+      "id": "guardrails-pipeline",
+      "file": "18.mjs",
+      "name": "全栈守卫 vs 裸循环比较实验",
+      "category": "guardrails",
+      "pure": false,
+      "needsEnv": [],
+      "description": "全栈守卫 vs 裸循环比较实验. Use when comparing guardrails-enabled vs bare agent loops, measuring guard overhead, or A/B testing guard effectiveness.",
+      "deps": [],
+      "tags": [
+        "guardrails",
+        "guardrails-pipeline"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L2+"
+    },
+    {
+      "id": "guardian",
+      "file": "19.mjs",
+      "name": "守卫层中间件",
+      "category": "guardrails",
+      "pure": false,
+      "needsEnv": [],
+      "description": "Wraps agent tool loops with step enforcement and response validation. Use when user mentions guardian, middleware, wrap agent, validate response, or enforce step.",
+      "deps": [],
+      "tags": [
+        "guardrails",
+        "guardian"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L1.5"
+    },
+    {
+      "id": "neural-brain",
+      "file": "20.mjs",
+      "name": "纯 JS 微神经网络 (64→32→8)",
+      "category": "ml",
+      "pure": false,
+      "needsEnv": [],
+      "description": "纯 JS 微神经网络 (64→32→8). Use when testing in-process neural networks, JS ML inference, or lightweight pattern recognition.",
+      "deps": [],
+      "tags": [
+        "ml",
+        "neural-brain"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L4"
+    },
+    {
+      "id": "teach-me",
+      "file": "21.mjs",
+      "name": "苏格拉底式交互教学",
+      "category": "llm",
+      "pure": false,
+      "needsEnv": [],
+      "description": "苏格拉底式交互教学. Use when testing interactive teaching, Socratic method, or step-by-step learning workflows.",
+      "deps": [
+        "skill-loader"
+      ],
+      "tags": [
+        "llm",
+        "teach-me"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L1"
+    },
+    {
+      "id": "tool-loop",
+      "file": "22.mjs",
+      "name": "多轮工具循环 (provider-kit)",
+      "category": "llm",
+      "pure": false,
+      "needsEnv": [],
+      "description": "Runs multi-turn LLM tool-call loops through provider-kit with middleware. Use when user asks to chat, call tools in a loop, run agent, or multi-turn tool use.",
+      "deps": [
+        "guardian"
+      ],
+      "tags": [
+        "llm",
+        "tool-loop"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L1.5"
+    },
+    {
+      "id": "code-search",
+      "file": "23.mjs",
+      "name": "语义搜索 — grep + 跨文件引用追踪",
+      "category": "coder",
+      "pure": true,
+      "needsEnv": [],
+      "description": "语义搜索 — grep + 跨文件引用追踪. Use when testing code search, grep integration, cross-file reference tracking, or symbol resolution.",
+      "deps": [
+        "config"
+      ],
+      "tags": [
+        "coder",
+        "code-search"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
+    },
+    {
+      "id": "edit-advanced",
+      "file": "24.mjs",
+      "name": "高级编辑 (multi-edit / ast-edit / diff-review)",
+      "category": "coder",
+      "pure": true,
+      "needsEnv": [],
+      "description": "高级编辑 (multi-edit / ast-edit / diff-review). Use when testing multi-file edits, AST-based refactoring, or diff review workflows.",
+      "deps": [
+        "coding"
+      ],
+      "tags": [
+        "coder",
+        "edit-advanced"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
+    },
+    {
+      "id": "dev-tools",
+      "file": "25.mjs",
+      "name": "16 个工程工具合集 + 系统健康检查",
+      "category": "dev",
+      "pure": false,
+      "needsEnv": [],
+      "description": "16 个工程工具合集 + 系统健康检查. Use when testing dev tool suite, health checks, or engineering utility belt.",
+      "deps": [
+        "config"
+      ],
+      "tags": [
+        "dev",
+        "dev-tools"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L1.5"
+    },
+    {
+      "id": "retry-guidance",
+      "file": "26.mjs",
+      "name": "工具调用失败的结构化引导",
+      "category": "guardrails",
+      "pure": false,
+      "needsEnv": [],
+      "description": "工具调用失败的结构化引导. Use when testing tool call retry, error recovery guidance, or structured failure handling.",
+      "deps": [
+        "tool-rescue"
+      ],
+      "tags": [
+        "guardrails",
+        "retry-guidance"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L1.5"
+    },
+    {
+      "id": "storage-noop",
+      "file": "14a-storage-noop/index.mjs",
+      "name": "Storage Noop — in-memory Map (R3-clean throwaway template)",
+      "category": "storage",
+      "pure": true,
+      "needsEnv": [],
+      "persistent": false,
+      "description": "Stores key/value pairs in a process-local in-memory Map with no disk writes. Use when user needs a throwaway cache, scratch state, dedupe set, or counter that does not survive process exit.",
+      "deps": [],
+      "tags": [
+        "storage",
+        "throwaway-template",
+        "r3-clean"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
+    },
+    {
+      "id": "storage-persist",
+      "file": "14b-storage-persist/index.mjs",
+      "name": "Storage Persist — PersistentSessionStore (R3 boundary, intentional violation)",
+      "category": "storage",
+      "pure": false,
+      "needsEnv": [],
+      "persistent": true,
+      "r3ExceptionReason": "This experiment tests the persistence boundary itself. Use 14a-storage-noop for in-memory state.",
+      "description": "Reads and writes the persistent session store at ~/.openchat/sessions.json. Use when user asks to inspect, debug, or test cross-process session state, persistent-store.js behavior, or restart recovery.",
+      "deps": [
+        "config"
+      ],
+      "tags": [
+        "storage",
+        "persistence-boundary",
+        "r3-exception"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
+    },
+    {
+      "id": "relay",
+      "file": "28.mjs",
+      "name": "中继 / 消息总线 (bucket-relay + signal-relay + message-bus)",
+      "category": "relay",
+      "pure": false,
+      "needsEnv": [],
+      "description": "中继 / 消息总线 (bucket-relay + signal-relay + message-bus). Use when testing message relay, signal relay, or in-process message bus.",
+      "deps": [
+        "qiniu"
+      ],
+      "tags": [
+        "relay",
+        "relay"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
+    },
+    {
+      "id": "p2p",
+      "file": "29.mjs",
+      "name": "P2P 直连 + Qiniu 信令",
+      "category": "p2p",
+      "pure": false,
+      "needsEnv": [],
+      "description": "P2P 直连 + Qiniu 信令. Use when testing peer-to-peer connections, signaling via Qiniu, or direct device-to-device communication.",
+      "deps": [
+        "qiniu"
+      ],
+      "tags": [
+        "p2p",
+        "p2p"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
+    },
+    {
+      "id": "naming",
+      "file": "30.mjs",
+      "name": "会话自动命名 (消息数 3/8/16/32/64 触发)",
+      "category": "chat",
+      "pure": false,
+      "needsEnv": [],
+      "description": "会话自动命名 (消息数 3/8/16/32/64 触发). Use when testing automatic session naming, conversation title generation, or naming triggers.",
+      "deps": [
+        "qiniu"
+      ],
+      "tags": [
+        "chat",
+        "naming"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L1"
+    },
+    {
+      "id": "session-tree",
+      "file": "31.mjs",
+      "name": "会话树 CRUD (_tree.json 持久化)",
+      "category": "chat",
+      "pure": false,
+      "needsEnv": [],
+      "description": "会话树 CRUD (_tree.json 持久化). Use when testing session tree CRUD operations, tree-based session organization, or persistent tree storage.",
+      "deps": [
+        "qiniu"
+      ],
+      "tags": [
+        "chat",
+        "session-tree"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L1.5"
+    },
+    {
+      "id": "system-exec",
+      "file": "32.mjs",
+      "name": "宿主机命令安全执行 (白名单+黑名单)",
+      "category": "exec",
+      "pure": false,
+      "needsEnv": [],
+      "description": "宿主机命令安全执行 (白名单+黑名单). Use when testing secure command execution, whitelist/blacklist filtering, or host command sandboxing.",
+      "deps": [
+        "compressor"
+      ],
+      "tags": [
+        "exec",
+        "system-exec"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
+    },
+    {
+      "id": "memory",
+      "file": "33.mjs",
+      "name": "Vector Store — 轻量级向量存储 + 混合检索",
+      "category": "memory",
+      "pure": false,
+      "needsEnv": [],
+      "description": "Stores vectors with hybrid keyword + similarity search, persisted to JSON files. Use when user mentions memory, vector store, semantic search, embedding search, recall, or retrieve past context.",
+      "deps": [
+        "config"
+      ],
+      "tags": [
+        "memory",
+        "memory"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L2+"
+    },
+    {
+      "id": "orchestrator",
+      "file": "34.mjs",
+      "name": "编排器 — processStream / process / executeGoal",
+      "category": "multi-turn",
+      "pure": false,
+      "needsEnv": [],
+      "description": "编排器 — processStream / process / executeGoal. Use when testing orchestration, stream processing, goal execution, or agent workflow coordination.",
+      "deps": [
+        "config"
+      ],
+      "tags": [
+        "multi-turn",
+        "orchestrator"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L2+"
+    },
+    {
+      "id": "chat-poller",
+      "file": "35.mjs",
+      "name": "Chat-Poller (walking-skeleton, 轮询+EPC+去重)",
+      "category": "chat",
+      "pure": false,
+      "needsEnv": [],
+      "description": "Chat-Poller (walking-skeleton, 轮询+EPC+去重). Use when testing chat polling, EPC message handling, deduplication, or polling-based chat workflow.",
+      "deps": [
+        "qiniu",
+        "tool-loop",
+        "codec"
+      ],
+      "tags": [
+        "chat",
+        "chat-poller"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
+    },
+    {
+      "id": "poll-one",
+      "file": "36.mjs",
+      "name": "复合实验 — qiniu+isolation+agent 拼出单条消息处理",
+      "category": "chat",
+      "pure": false,
+      "needsEnv": [],
+      "description": "复合实验 — qiniu+isolation+agent 拼出单条消息处理. Use when testing single message processing pipeline end-to-end with Qiniu storage and agent response.",
+      "deps": [
+        "qiniu",
+        "isolation",
+        "tool-loop"
+      ],
+      "tags": [
+        "chat",
+        "poll-one"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L0"
+    },
+    {
+      "id": "dream-consolidation",
+      "file": "37.mjs",
+      "name": "后台记忆归并引擎 (24h+5sessions 门控)",
+      "category": "memory",
+      "pure": false,
+      "needsEnv": [],
+      "description": "后台记忆归并引擎 (24h+5sessions 门控). Use when testing memory consolidation, background merge, or session memory aggregation.",
+      "deps": [
+        "memory"
+      ],
+      "tags": [
+        "memory",
+        "dream-consolidation"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L2+"
+    },
+    {
+      "id": "goal",
+      "file": "38.mjs",
+      "name": "拆解目标 + 多轮执行",
+      "category": "multi-turn",
+      "pure": false,
+      "needsEnv": [],
+      "description": "Decomposes a goal into ordered steps and executes them via the tool-loop agent. Use when user asks to 拆目标, 分步执行, execute a goal, multi-step autonomous task, or plan and run.",
+      "deps": [
+        "tool-loop"
+      ],
+      "tags": [
+        "multi-turn",
+        "goal"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L2+"
+    },
+    {
+      "id": "waveform-sim",
+      "file": "lingbao/40.mjs",
+      "name": "灵保: 漏电流合成波形生成器",
+      "category": "lingbao",
+      "pure": true,
+      "needsEnv": [],
+      "description": "灵保 L1/L2 合成数据源. 50Hz 基波 + 漏电分量 + arc 高频 + 过载. Use when generating synthetic leakage current waveforms for testing signal processing algorithms.",
+      "deps": [],
+      "tags": [
+        "lingbao",
+        "sim",
+        "waveform"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": null
+    },
+    {
+      "id": "signal-algo",
+      "file": "lingbao/41.mjs",
+      "name": "灵保: 信号处理算法 (互相关/FFT/漏电检测/电弧能量)",
+      "category": "lingbao",
+      "pure": true,
+      "needsEnv": [],
+      "description": "灵保 L2 算法层. 互相关定位 / FFT 频谱 / 漏电阈值检测 / 电弧能量. Use when testing signal processing algorithms for electrical safety monitoring.",
+      "deps": [
+        "waveform-sim"
+      ],
+      "tags": [
+        "lingbao",
+        "algo",
+        "signal"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": null
+    },
+    {
+      "id": "mqtt-push",
+      "file": "lingbao/42.mjs",
+      "name": "灵保: 告警推送模拟 (in-process, 无 broker)",
+      "category": "lingbao",
+      "pure": true,
+      "needsEnv": [],
+      "description": "灵保 L3 推送层. in-process EventEmitter 模拟 MQTT, 队列上限 100, handler 异常隔离. Use when testing alert push simulation without external MQTT broker.",
+      "deps": [],
+      "tags": [
+        "lingbao",
+        "push",
+        "mqtt"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": null
+    },
+    {
+      "id": "doc-gen",
+      "file": "lingbao/44.mjs",
+      "name": "灵保: 报告/问卷/ROI/方案书生成 (Markdown/CSV)",
+      "category": "lingbao",
+      "pure": true,
+      "needsEnv": [],
+      "description": "灵保 L4 文档层. 4 种 renderer: report/questionnaire/roi/proposal. 纯字符串, 无外部依赖. Use when generating inspection reports, questionnaires, ROI analysis, or proposal documents.",
+      "deps": [],
+      "tags": [
+        "lingbao",
+        "doc",
+        "report"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": null
+    },
+    {
+      "id": "calendar-parse",
+      "file": "lingbao/45.mjs",
+      "name": "灵保: 施工日历解析+阈值动态调整",
+      "category": "lingbao",
+      "pure": true,
+      "needsEnv": [],
+      "description": "灵保 L2 调度层. 5 种 phase (concrete/lifting/finishing/rest/unknown) 硬编码调整规则 + 7 天预告. Use when parsing construction calendars or adjusting thresholds dynamically.",
+      "deps": [],
+      "tags": [
+        "lingbao",
+        "calendar",
+        "threshold"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": null
+    },
+    {
+      "id": "diagnose",
+      "file": "51-diagnose/index.mjs",
+      "name": "Diagnose — mattpocock diagnose skill 移植 (Phase 1+3)",
+      "category": "llm",
+      "pure": false,
+      "needsEnv": [],
+      "description": "Diagnoses a failed LLM transcript via fingerprints and LLM-driven hypothesis. Use when user asks to diagnose, debug, or triage a failed agent run, broken tool loop, or stuck multi-turn conversation.",
+      "deps": [],
+      "tags": [
+        "llm",
+        "diagnose",
+        "mattpocock"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L1.5"
+    },
+    {
+      "id": "mcp-server",
+      "file": "39.mjs",
+      "name": "MCP Server — Model Context Protocol 接入 (tools/list + tools/call)",
+      "category": "llm",
+      "pure": false,
+      "needsEnv": [],
+      "description": "Exposes openchat tools via MCP stdio transport. Use when user mentions MCP, Model Context Protocol, external AI tools, or connecting to AI editors.",
+      "deps": [],
+      "tags": ["llm", "mcp", "integration"],
+      "status": "closed-loop",
+      "intelligenceLevel": "L1.5"
+    },
+    {
+      "id": "hooks-plugin",
+      "file": "40.mjs",
+      "name": "Hooks Plugin System — pre/post tool hooks with built-in plugins",
+      "category": "guardrails",
+      "pure": false,
+      "needsEnv": [],
+      "description": "Registers preTool/postTool hooks for permission, logging, rate-limit. Wired into dev-repl + subagent + tool-loop. Use when user mentions hooks, plugin, permission gate, rate limit, or tool logging.",
+      "deps": [],
+      "tags": ["guardrails", "hooks", "plugin"],
+      "status": "closed-loop",
+      "intelligenceLevel": "L1.5"
+    },
+    {
+      "id": "e2e-chat-pipeline",
+      "file": "41.mjs",
+      "name": "端到端聊天管线集成测试 — 35+36+37+38 串联",
+      "category": "chat",
+      "pure": false,
+      "needsEnv": [],
+      "description": "Chains 4 experiments (chat-poller, poll-one, dream-consolidation, goal) into one e2e pipeline. Use when validating the full chat pipeline end-to-end.",
+      "deps": [],
+      "tags": ["chat", "e2e", "integration"],
+      "status": "closed-loop",
+      "intelligenceLevel": "L1.5"
+    }
+  ]
+}

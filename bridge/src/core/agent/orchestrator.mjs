@@ -1,9 +1,8 @@
 import { pluginManager } from '../plugin-manager.js';
-import { memoryManager } from '../../memory/memory-manager.js';
-import { sessionManager } from '../session-manager.js';
+import { memoryRepo } from '../repositories/memory-repo.js';
+import { sessionRepo } from '../repositories/session-repo.js';
 import { PromptBuilder } from '../convergence/prompt-builder.js';
 import { agentMonitor } from './agent-monitor.js';
-import { sessionEvents } from '../session-events.js';
 import { QualityChecker, Corrector } from '../quality/quality-check-system.js';
 import * as responseCache from '../response-cache.js';
 import logger from '../monitoring/logger.js';
@@ -80,15 +79,15 @@ export class Orchestrator {
     this.corrector = options.corrector || new Corrector(options.config || {});
     this.enableQualityCheck = options.enableQualityCheck !== false;
     this.goalManager = options.goalManager || new GoalManager({
-      sessionManager: this.sessionManager || sessionManager,
-      memoryManager: this.memoryManager || memoryManager,
+      sessionManager: this.sessionManager || sessionRepo,
+      memoryManager: this.memoryManager || memoryRepo.getMemoryManager(),
       evolutionMemory: options.evolutionMemory || null,
     });
   }
 
   async processStream(sessionId, userId, userMessage, onEvent = () => {}) {
-    const broadcast = (event) => { onEvent(event); sessionEvents.publish(sessionId, event); };
-    const mm = this.memoryManager || memoryManager;
+    const broadcast = (event) => { onEvent(event); sessionRepo.publishEvent(sessionId, event); };
+    const mm = this.memoryManager || memoryRepo.getMemoryManager();
     if (this.useRAG && !mm.initialized) await mm.initialize();
 
     let ragContext = [];
@@ -105,7 +104,7 @@ export class Orchestrator {
 
     await mm.addMessage(sessionId, 'user', userMessage);
 
-    const sm = this.sessionManager || sessionManager;
+    const sm = this.sessionManager || sessionRepo;
     const session = sm.getSession(sessionId);
     if (!session) throw new Error(`Session ${sessionId} not found`);
     const provider = sm.getProvider(session.providerType);
@@ -242,7 +241,7 @@ export class Orchestrator {
   }
 
   async executeGoal(sessionId, userId, goalDescription, onEvent = () => {}) {
-    const broadcast = (e) => { onEvent(e); sessionEvents.publish(sessionId, e); };
+    const broadcast = (e) => { onEvent(e); sessionRepo.publishEvent(sessionId, e); };
     const gm = this.goalManager;
 
     const activeGoal = gm.getActiveGoal(sessionId);
@@ -266,7 +265,7 @@ export class Orchestrator {
       }
     }
 
-    const sm = this.sessionManager || sessionManager;
+    const sm = this.sessionManager || sessionRepo;
     const session = sm.getSession(sessionId);
     const provider = sm.getProvider(session.providerType);
     const results = [];
@@ -307,7 +306,7 @@ export class Orchestrator {
       logger.info(`[QC] 检测到质量问题: ${check.issues.join('; ')}`);
       const feedback = this.corrector.generateFeedback(check.issues);
 
-      const sm = this.sessionManager || sessionManager;
+      const sm = this.sessionManager || sessionRepo;
       const session = sm.getSession(sessionId);
       const provider = sm.getProvider(session.providerType);
 

@@ -9,7 +9,7 @@ import { socialConnector } from '../core/collaboration/social-connector.js';
 import { knowledgeNetwork } from '../core/memory/knowledge-network.js';
 import { CommunityManager } from '../core/collaboration/community-manager.js';
 import { securityManager } from '../security/security-manager.js';
-import * as providerService from '../core/provider-service.js';
+import * as providerService from '../experiments/lib/provider-service.js';
 import { memoryManager } from '../memory/memory-manager.js';
 import { vectorStore } from '../memory/vector-store.js';
 import { embeddingService } from '../memory/embedding-service.js';

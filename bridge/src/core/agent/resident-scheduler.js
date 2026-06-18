@@ -11,7 +11,7 @@
 import { residentManager } from './resident-manager.js';
 import { sageManager } from './sage.js';
 import { multiAgentCoordinator } from '../collaboration/multi-agent-coordinator.js';
-import { persistentConfig } from '../persistent-config.js';
+import { configRepo } from '../repositories/config-repo.js';
 import { decideActions } from './resident-decisions.js';
 import { SelfLearner } from '../evolution/self-learner.js';
 import { DEFAULT_PORT } from '../../constants.js';
@@ -226,7 +226,7 @@ const residents = residentManager.list(null);
     if (running >= MAX_CONCURRENT_AGENTS) return;
 
     // 思考间隔控制：避免频繁调用 LLM
-    const bridgeCfg = persistentConfig.getBridgeConfig();
+    const bridgeCfg = configRepo.getBridgeConfig();
     const thinkInterval = (bridgeCfg.residentThinkMinInterval || 5) * 60_000;
     const lastThink = this._lastThinkTime.get(id) || 0;
     const now = Date.now();

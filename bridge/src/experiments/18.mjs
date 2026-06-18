@@ -638,7 +638,7 @@ let _realExec = null;
 export function setRealExecutor(fn) { _realExec = fn; }
 async function realExec(name, args) {
   if (_realExec) return _realExec(name, args);
-  const { executeTool } = await import('../tools/coding-tools.mjs');
+  const { executeTool } = await import('../experiments/lib/coding-tools.mjs');
   const r = await executeTool(name, args);
   return typeof r === 'string' ? r : JSON.stringify(r, null, 2);
 }

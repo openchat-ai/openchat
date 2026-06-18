@@ -7,7 +7,7 @@
  * - 学习改进
  */
 
-import { persistentConfig } from '../persistent-config.js';
+import { configRepo } from '../repositories/config-repo.js';
 import logger from '../monitoring/logger.js';
 
 export class PerformanceScorer {
@@ -284,7 +284,7 @@ export class PerformanceScorer {
   async persistScores() {
     try {
       const scoresObj = Object.fromEntries(this.agentScores);
-      await persistentConfig.set('agent_scores', scoresObj);
+      await configRepo.set('agent_scores', scoresObj);
     } catch (e) {
       logger.error('Failed to persist agent scores:', e);
     }
@@ -297,7 +297,7 @@ export class PerformanceScorer {
     try {
       // 保留最近 100 条
       const toSave = this.learningHistory.slice(-100);
-      await persistentConfig.set('learning_history', toSave);
+      await configRepo.set('learning_history', toSave);
     } catch (e) {
       logger.error('Failed to persist learning history:', e);
     }
@@ -308,12 +308,12 @@ export class PerformanceScorer {
    */
   async loadHistory() {
     try {
-      const scores = await persistentConfig.get('agent_scores');
+      const scores = await configRepo.get('agent_scores');
       if (scores) {
         this.agentScores = new Map(Object.entries(scores));
       }
 
-      const learning = await persistentConfig.get('learning_history');
+      const learning = await configRepo.get('learning_history');
       if (learning) {
         this.learningHistory = learning;
       }

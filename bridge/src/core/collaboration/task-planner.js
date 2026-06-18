@@ -8,8 +8,7 @@
  */
 
 import { pluginManager } from '../plugin-manager.js';
-import { memoryManager } from '../../memory/memory-manager.js';
-import { sessionManager } from '../session-manager.js';
+import { sessionRepo } from '../repositories/session-repo.js';
 import { PromptBuilder } from '../convergence/prompt-builder.js';
 import logger from '../monitoring/logger.js';
 
@@ -301,16 +300,16 @@ ${JSON.stringify(executionResult.results, null, 2)}
    */
   getProvider(context) {
     const providerId = context.providerId ||
-                       sessionManager.currentProvider ||
+                       sessionRepo.currentProvider ||
                        'openrouter';
-    return sessionManager.getProvider(providerId);
+    return sessionRepo.getProvider(providerId);
   }
 
   /**
    * 获取当前 Model
    */
   getModel(context) {
-    return context.model || sessionManager.currentModel || 'auto';
+    return context.model || sessionRepo.currentModel || 'auto';
   }
 }
 

@@ -18,7 +18,7 @@ import { createHandlers } from './infra/route-handlers.js';
 import { initCore } from './core/handlers.js';
 import { CLIGateway, WSGateway } from './gateway/base.js';
 import { persistentConfig } from './core/persistent-config.js';
-import * as providerService from './core/provider-service.js';
+import * as providerService from './experiments/lib/provider-service.js';
 import { memoryManager } from './memory/memory-manager.js';
 import P2PSwarm, { hasPublicAddress, getPublicIPv4 } from './p2p/p2p-net.js';
 import { PeerRegistry } from './p2p/peer-registry.js';

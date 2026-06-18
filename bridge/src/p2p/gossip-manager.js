@@ -1,7 +1,7 @@
 /** * Gossip Manager ?Cross-Bridge knowledge sync via P2P * ： P2P ?Bridge * * Uses timestamp-based vector clock for conflict resolution. * Periodically gossips knowledge summaries; peers pull missing entries. * 。，? */
 import { EventEmitter } from 'events';
-import { MessageType, createMessage } from './messages.js';
-import { vectorMemory } from '../core/memory/vector-memory.js';
+import { MessageType, createMessage } from '../experiments/lib/messages.js';
+import { vectorMemory } from '../experiments/lib/vector-memory.js';
 
 const GOSSIP_INTERVAL_MS = 60_000; // gossip broadcast interval
 const SYNC_BATCH_SIZE = 10;         // max entries per sync batch

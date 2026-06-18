@@ -6,125 +6,14 @@
  * 数据持久化到 ~/.openchat/residents.json，Bridge 重启不丢失。
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
 import { EventEmitter } from 'events';
-import { persistentConfig } from '../persistent-config.js';
+import { configRepo } from '../repositories/config-repo.js';
 import { MessageType, createLLMProxyRequest } from '../../experiments/lib/messages.js';
 import { toolRegistry } from '../tool-registry.js';
+import { ensureFile, readAll, writeAll } from './resident-io.js';
+import { TRAIT_POOL, TRAIT_KEYS, createTraits, randomTraits, inheritTraits, traitsToLabels } from './resident-traits.js';
 import logger from '../monitoring/logger.js';
-
-const DATA_FILE = path.join(os.homedir(), '.openchat', 'residents.json');
 const MAX_ACTIVITIES = 0;
-
-// 性格特征池：特征名 → 两极标签
-const TRAIT_POOL = {
-  diligence:     { high: '勤劳', low: '懒惰' },
-  curiosity:     { high: '好奇', low: '保守' },
-  courage:       { high: '勇敢', low: '谨慎' },
-  sociability:   { high: '合群', low: '孤僻' },
-  creativity:    { high: '创造', low: '刻板' },
-};
-
-const TRAIT_KEYS = Object.keys(TRAIT_POOL);
-
-function createTraits(dominantTrait) {
-  const base = {
-    diligence: 0.5,
-    curiosity: 0.5,
-    courage: 0.5,
-    sociability: 0.5,
-    creativity: 0.5,
-  };
-  base[dominantTrait] = 0.9;
-  const otherTraits = TRAIT_KEYS.filter(t => t !== dominantTrait);
-  otherTraits.forEach(t => {
-    base[t] = 0.3 + Math.random() * 0.3;
-  });
-  return base;
-}
-
-// 管家的默认性格
-const BUTLER_TRAITS = createTraits('diligence');
-
-// ================== 底层 IO ==================
-
-function ensureFile() {
-  const dir = path.dirname(DATA_FILE);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-  if (!fs.existsSync(DATA_FILE)) {
-    fs.writeFileSync(DATA_FILE, JSON.stringify([], null, 2), 'utf8');
-  }
-}
-
-function readAll() {
-  ensureFile();
-  try {
-    const raw = fs.readFileSync(DATA_FILE, 'utf8');
-    return JSON.parse(raw);
-  } catch (e) { logger.warn('[IGNORE] ' + (e?.message || '')); return []; }
-}
-
-function writeAll(residents) {
-  ensureFile();
-  fs.writeFileSync(DATA_FILE, JSON.stringify(residents, null, 2), 'utf8');
-}
-
-// ================== 性格遗传引擎 ==================
-
-/**
- * 生成随机 traits（初代居民用）
- */
-function randomTraits() {
-  const traits = {};
-  for (const key of TRAIT_KEYS) {
-    traits[key] = Math.round((Math.random() * 0.6 + 0.2) * 100) / 100; // 0.2-0.8
-  }
-  return traits;
-}
-
-/**
- * 从父 traits 继承并漂移
- * 核心规则：
- *   - 子 trait = 父 trait + 随机漂移 (±0.15)
- *   - 如果 trait 极端（>0.8 或 <0.2），漂移概率减半
- *   - 结果限制在 [0.0, 1.0]
- */
-function inheritTraits(parentTraits) {
-  const traits = {};
-  for (const key of TRAIT_KEYS) {
-    const parentVal = parentTraits[key] ?? 0.5;
-
-    // 极端值漂移更小
-    const driftRange = (parentVal > 0.8 || parentVal < 0.2) ? 0.08 : 0.15;
-    const drift = (Math.random() - 0.5) * 2 * driftRange;
-
-    traits[key] = Math.round(Math.min(1, Math.max(0, parentVal + drift)) * 100) / 100;
-  }
-  return traits;
-}
-
-/**
- * 将 traits 转为可读标签列表
- * 只显示 notable（偏向明显）的特征
- */
-function traitsToLabels(traits) {
-  if (!traits) return [];
-  const labels = [];
-  for (const key of TRAIT_KEYS) {
-    const val = traits[key];
-    if (val == null) continue;
-    if (val >= 0.7) {
-      labels.push(TRAIT_POOL[key].high);
-    } else if (val <= 0.3) {
-      labels.push(TRAIT_POOL[key].low);
-    }
-  }
-  return labels;
-}
 
 // ================== safeHouse 迁移工具 ==================
 
@@ -225,7 +114,7 @@ export class ResidentManager extends EventEmitter {
    * 思考 — 调用 LLM（本地或经 P2P 代理）
    * @param {object} options
    * @param {Array}  options.messages       — [{ role, content }]
-   * @param {string} options.model          — 模型名，默认 persistentConfig.getCurrentModel()
+   * @param {string} options.model          — 模型名，默认 configRepo.getCurrentModel()
    * @param {number} options.residentId     — 居民 ID（可选，仅代理模式使用）
    * @param {number} options.temperature    — 温度（可选）
    * @param {number} options.maxTokens      — 最大 token 数（可选）
@@ -238,7 +127,7 @@ export class ResidentManager extends EventEmitter {
       throw new Error('think() 缺少 messages');
     }
 
-    const bridgeConfig = persistentConfig.getBridgeConfig();
+    const bridgeConfig = configRepo.getBridgeConfig();
     const llmMode = bridgeConfig?.llmMode || 'local';
 
     if (llmMode === 'proxy' && this._p2p) {
@@ -263,7 +152,7 @@ export class ResidentManager extends EventEmitter {
 
     const requestMsg = createLLMProxyRequest({
       requestId,
-      model: model || persistentConfig.getCurrentModel() || '',
+      model: model || configRepo.getCurrentModel() || '',
       messages,
       residentId: String(residentId || ''),
       residentName: '',
@@ -303,7 +192,7 @@ export class ResidentManager extends EventEmitter {
     const { messages, model, temperature, maxTokens, timeout } = options;
     const enableCot = options.cot !== false;
 
-    const providerName = persistentConfig.getCurrentProvider();
+    const providerName = configRepo.getCurrentProvider();
     if (!providerName) {
       throw new Error('未配置 LLM provider');
     }
@@ -374,7 +263,7 @@ export class ResidentManager extends EventEmitter {
 
       this.emit('llm-request', {
         messages,
-        model: model || persistentConfig.getCurrentModel() || '',
+        model: model || configRepo.getCurrentModel() || '',
         temperature: temperature ?? 0.7,
         maxTokens: maxTokens || 2048,
         resolve: (result) => {
@@ -724,5 +613,6 @@ export class ResidentManager extends EventEmitter {
 }
 
 // 导出单例 + 工具函数（给 Flutter 端映射用）
-export { TRAIT_POOL, TRAIT_KEYS, traitsToLabels, migrateSafeHouse };
+export { migrateSafeHouse };
+export { TRAIT_POOL, TRAIT_KEYS, traitsToLabels } from './resident-traits.js';
 export const residentManager = new ResidentManager();

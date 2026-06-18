@@ -1,6 +1,6 @@
 ﻿import os from 'os';
 import path from 'path';
-import { persistentConfig } from '../core/persistent-config.js';
+import { configRepo } from '../core/repositories/config-repo.js';
 import { hasPublicAddress } from '../experiments/lib/p2p-net.js';
 import { DEFAULT_PORT } from '../constants.js';
 import logger from './monitoring/logger.js';
@@ -11,7 +11,7 @@ import logger from './monitoring/logger.js';
  */
 export function parseCliArgs(argv = process.argv) {
   const args = argv.slice(2);
-  const savedBridge = persistentConfig.getBridgeConfig();
+  const savedBridge = configRepo.getBridgeConfig();
   const isSandbox = args.includes('--sandbox');
   const isInteractive = args.includes('--cli') || args.includes('-i');
 
@@ -68,7 +68,7 @@ const isNesting = args.includes('--nesting');
     hostId = args[hostIdArgIndex].split('=')[1];
   }
   if (!hostId) {
-    hostId = persistentConfig.getHostId();
+    hostId = configRepo.getHostId();
   }
 
   // houseId锛氬瓙杩涚▼閫氳繃 --houseId 鎸囧畾锛岄粯璁?hostId + '_default'
@@ -90,7 +90,7 @@ const isNesting = args.includes('--nesting');
 
   // --save-config 持久化本次配置
   if (args.includes('--save-config')) {
-    persistentConfig.setBridgeConfig({
+    configRepo.setBridgeConfig({
       mode: isHeadless ? 'headless' : 'cli',
       port, name: bridgeName, region: bridgeRegion,
       dhtPort, localBootstrap, directListen, directConnect,
