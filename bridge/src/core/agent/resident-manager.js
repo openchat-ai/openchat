@@ -8,7 +8,7 @@
 
 import { EventEmitter } from 'events';
 import { configRepo } from '../repositories/config-repo.js';
-import { MessageType, createLLMProxyRequest } from '../../experiments/lib/messages.js';
+import { MessageType, createLLMProxyRequest } from '../../experiments/lib/storage-lib.mjs';
 import { toolRegistry } from '../tool-registry.js';
 import { ensureFile, readAll, writeAll } from './resident-io.js';
 import { TRAIT_POOL, TRAIT_KEYS, createTraits, randomTraits, inheritTraits, traitsToLabels } from './resident-traits.js';

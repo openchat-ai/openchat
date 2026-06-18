@@ -12,13 +12,13 @@ const NAME = 'Dev-Tools — 16 个工程工具';
 export async function run({ inputs = {} } = {}) {
   const { op, ...args } = inputs;
   if (!op) throw new Error('dev-tools.run: op required');
-  const tools = await import('../experiments/lib/dev-tools.mjs');
+  const tools = await import('../experiments/lib/coding-lib.mjs');
 
   switch (op) {
     // === 系统健康检查（从实验 26-30 收编） ===
 
     case 'check_tracing': {
-      const { generate, createSpan, endSpan, getTrace, formatLog } = await import('../experiments/lib/request-id.mjs');
+      const { generate, createSpan, endSpan, getTrace, formatLog } = await import('../experiments/lib/coding-lib.mjs');
       const id = generate();
       const child = createSpan('', 'child');
       const grandchild = createSpan(child, 'grandchild');
@@ -169,7 +169,7 @@ export async function run({ inputs = {} } = {}) {
 
 export async function test() {
   const R = create();
-  const tools = await import('../experiments/lib/dev-tools.mjs');
+  const tools = await import('../experiments/lib/coding-lib.mjs');
 
   // Step 2: 依赖图
   {

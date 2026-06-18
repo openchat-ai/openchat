@@ -3,7 +3,7 @@ import { sessionRepo } from './core/repositories/session-repo.js';
 import { MessageType } from '../protocol/message.js';
 import '../plugins/init.mjs';
 import { orchestrator, injectCodingTools } from './agent/orchestrator.mjs';
-import { TOOLS, executeTool } from '../experiments/lib/coding-tools.mjs';
+import { TOOLS, executeTool } from '../experiments/lib/coding-lib.mjs';
 
 /**
  * CoreHandlers contains the actual logic for the Bridge's operations.

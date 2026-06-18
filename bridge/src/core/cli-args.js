@@ -1,7 +1,7 @@
 ﻿import os from 'os';
 import path from 'path';
 import { configRepo } from '../core/repositories/config-repo.js';
-import { hasPublicAddress } from '../experiments/lib/p2p-net.js';
+import { hasPublicAddress } from '../experiments/lib/storage-lib.mjs';
 import { DEFAULT_PORT } from '../constants.js';
 import logger from './monitoring/logger.js';
 

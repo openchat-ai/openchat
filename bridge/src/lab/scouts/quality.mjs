@@ -2,7 +2,7 @@ import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { addGoal } from '../goal-queue.mjs';
 import { addFinding } from '../findings.mjs';
-import { parseJS } from '../../experiments/lib/ast-search.mjs';
+import { parseJS } from '../../experiments/lib/coding-lib.mjs';
 import { SRC_DIR, EXP_DIR, MANIFEST_FILE, PERSISTENT_CONFIG, PROJECT_ROOT, scanDir, relPath } from '../scout-shared.mjs';
 
 // === invariants ===

@@ -5,7 +5,7 @@
 // === invariants ===
 // - **Throwaway pattern**: this is the canonical "use me" template for new
 //   experiments that need a Map-shaped state during the run. Pure in-memory.
-//   **Do not** import src/experiments/lib/persistent-store.js or
+//   **Do not** import src/experiments/lib/storage-lib.mjs or
 //   src/core/persistent-store.js here — that would re-introduce the R3
 //   boundary-blur that 14-storage had (see docs/experiment-design-audit-2026-06-11.md).
 // - State lives in a module-level `const cache = new Map()`. Process exit

@@ -1,4 +1,4 @@
-import { getProviderConfig, getRuntimeApiKey, getRuntimeBaseUrl } from '../experiments/lib/provider-service.js';
+import { getProviderConfig, getRuntimeApiKey, getRuntimeBaseUrl } from '../experiments/lib/llm-lib.mjs';
 
 export class AiProvider {
   constructor(id, name) {

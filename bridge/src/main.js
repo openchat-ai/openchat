@@ -18,13 +18,13 @@ import { createHandlers } from './infra/route-handlers.js';
 import { initCore } from './core/handlers.js';
 import { CLIGateway, WSGateway } from './gateway/base.js';
 import { persistentConfig } from './core/persistent-config.js';
-import * as providerService from './experiments/lib/provider-service.js';
+import * as providerService from './experiments/lib/llm-lib.mjs';
 import { memoryManager } from './memory/memory-manager.js';
-import P2PSwarm, { hasPublicAddress, getPublicIPv4 } from './p2p/p2p-net.js';
+import P2PSwarm, { hasPublicAddress, getPublicIPv4 } from './experiments/lib/storage-lib.mjs';
 import { PeerRegistry } from './p2p/peer-registry.js';
 import { QiniuBackend } from './p2p/peer-registry/qiniu-backend.js';
 import { HttpBackend } from './p2p/peer-registry/http-backend.js';
-import logger from './core/monitoring/logger.js';
+import logger from './experiments/lib/misc-lib.mjs';
 
 // Helper: fetch models from Bridge's own HTTP API for a local provider
 async function fetchLocalModelsFromBridge(providerName) {

@@ -4,7 +4,7 @@
 //
 // === invariants ===
 // - **INTENTIONAL R3 VIOLATION** — this experiment imports the production
-//   persistence library (src/experiments/lib/persistent-store.js →
+//   persistence library (src/experiments/lib/storage-lib.mjs →
 //   src/core/persistent-store.js) because **the question being answered
 //   is "does persistent-store.js work as advertised?"**. R3 is
 //   deliberately broken here, R6 (delete-or-absorb) is enforced hard.

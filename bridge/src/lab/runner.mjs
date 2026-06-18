@@ -27,10 +27,10 @@ import { recordRun } from './history.mjs';
 import { classify } from './failure-analyzer.mjs';
 import { escalate } from './escalate.mjs';
 import { labEvents } from './lab-events.mjs';
-import { addFact } from '../experiments/lib/agent-memory.mjs';
+import { addFact } from '../experiments/lib/misc-lib.mjs';
 import { registerRun, unregisterRun } from './active-runs.mjs';
 import { addFinding } from './findings.mjs';
-import { parseJS } from '../experiments/lib/ast-search.mjs';
+import { parseJS } from '../experiments/lib/coding-lib.mjs';
 import { relPath } from './scout-shared.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

@@ -7,7 +7,7 @@
     "provider-kit",
     "fairy-guardian"
   ],
-  "scannedAt": 1781784092429,
+  "scannedAt": 1781784567426,
   "modules": [
     {
       "path": "/src/api/middleware/error-handler.js",
@@ -165,7 +165,7 @@
     },
     {
       "path": "/src/api/server.js",
-      "size": 32263,
+      "size": 33090,
       "exports": [],
       "project": "bridge-core"
     },
@@ -215,24 +215,24 @@
     },
     {
       "path": "/src/cli/commands.js",
-      "size": 90383,
+      "size": 92706,
       "exports": [
         {
           "name": "commands",
           "line": 48,
-          "hash": "65a5c960",
+          "hash": "01344ba6",
           "file": "/src/cli/commands.js"
         },
         {
           "name": "parseCommand",
           "line": 2131,
-          "hash": "f0e735de",
+          "hash": "d0f6c6e0",
           "file": "/src/cli/commands.js"
         },
         {
           "name": "executeCommand",
           "line": 2184,
-          "hash": "9d32ad49",
+          "hash": "584a29e9",
           "file": "/src/cli/commands.js"
         }
       ],
@@ -563,18 +563,18 @@
     },
     {
       "path": "/src/core/agent/resident-manager.js",
-      "size": 19906,
+      "size": 20528,
       "exports": [
         {
           "name": "ResidentManager",
           "line": 39,
-          "hash": "d4ff5f8d",
+          "hash": "09da9c83",
           "file": "/src/core/agent/resident-manager.js"
         },
         {
           "name": "residentManager",
           "line": 618,
-          "hash": "5f70c2ea",
+          "hash": "6ec64dbe",
           "file": "/src/core/agent/resident-manager.js"
         }
       ],
@@ -626,12 +626,6 @@
       "project": "bridge-core"
     },
     {
-      "path": "/src/core/audio/lmdn-codec.mjs",
-      "size": 64,
-      "exports": [],
-      "project": "bridge-core"
-    },
-    {
       "path": "/src/core/audio/multimodal-handler.js",
       "size": 12991,
       "exports": [
@@ -646,12 +640,12 @@
     },
     {
       "path": "/src/core/cli-args.js",
-      "size": 5911,
+      "size": 6073,
       "exports": [
         {
           "name": "parseCliArgs",
           "line": 12,
-          "hash": "aa7de0f5",
+          "hash": "c73c6a3c",
           "file": "/src/core/cli-args.js"
         }
       ],
@@ -978,18 +972,18 @@
     },
     {
       "path": "/src/core/handlers.js",
-      "size": 2212,
+      "size": 2278,
       "exports": [
         {
           "name": "CoreHandlers",
           "line": 12,
-          "hash": "7c23ed0d",
+          "hash": "6bcddf99",
           "file": "/src/core/handlers.js"
         },
         {
           "name": "initCore",
           "line": 62,
-          "hash": "fc912eee",
+          "hash": "954f395b",
           "file": "/src/core/handlers.js"
         }
       ],
@@ -1106,12 +1100,6 @@
           "file": "/src/core/monitoring/enhanced-stability-system.js"
         }
       ],
-      "project": "bridge-core"
-    },
-    {
-      "path": "/src/core/monitoring/logger.js",
-      "size": 61,
-      "exports": [],
       "project": "bridge-core"
     },
     {
@@ -1845,12 +1833,12 @@
     },
     {
       "path": "/src/infra/route-handlers.js",
-      "size": 17838,
+      "size": 18351,
       "exports": [
         {
           "name": "createHandlers",
           "line": 17,
-          "hash": "5a3c809d",
+          "hash": "562c792a",
           "file": "/src/infra/route-handlers.js"
         }
       ],
@@ -1858,18 +1846,18 @@
     },
     {
       "path": "/src/main.js",
-      "size": 27546,
+      "size": 28314,
       "exports": [
         {
           "name": "Bridge",
           "line": 190,
-          "hash": "5ad55db7",
+          "hash": "d680f4c7",
           "file": "/src/main.js"
         },
         {
           "name": "startBridge",
           "line": 730,
-          "hash": "6837db00",
+          "hash": "d9dc7f5f",
           "file": "/src/main.js"
         }
       ],
@@ -1953,13 +1941,7 @@
     },
     {
       "path": "/src/p2p/gossip-manager.js",
-      "size": 6060,
-      "exports": [],
-      "project": "bridge-core"
-    },
-    {
-      "path": "/src/p2p/p2p-net.js",
-      "size": 90,
+      "size": 6244,
       "exports": [],
       "project": "bridge-core"
     },
@@ -2132,18 +2114,18 @@
     },
     {
       "path": "/src/providers/ai-provider.js",
-      "size": 16346,
+      "size": 16891,
       "exports": [
         {
           "name": "AiProvider",
           "line": 3,
-          "hash": "96992577",
+          "hash": "1033282e",
           "file": "/src/providers/ai-provider.js"
         },
         {
           "name": "createProvider",
           "line": 86,
-          "hash": "7e96be80",
+          "hash": "1b2e9d9b",
           "file": "/src/providers/ai-provider.js"
         }
       ],
@@ -2505,12 +2487,12 @@
     },
     {
       "path": "/src/experiments/14a-storage-noop/index.mjs",
-      "size": 8431,
+      "size": 8611,
       "exports": [
         {
           "name": "META",
           "line": 102,
-          "hash": "bb398d24",
+          "hash": "4c88780f",
           "file": "/src/experiments/14a-storage-noop/index.mjs"
         }
       ],
@@ -2524,12 +2506,12 @@
     },
     {
       "path": "/src/experiments/14b-storage-persist/index.mjs",
-      "size": 9454,
+      "size": 9635,
       "exports": [
         {
           "name": "META",
           "line": 111,
-          "hash": "bb398d24",
+          "hash": "4c88780f",
           "file": "/src/experiments/14b-storage-persist/index.mjs"
         }
       ],
@@ -2600,24 +2582,24 @@
     },
     {
       "path": "/src/experiments/18.mjs",
-      "size": 29859,
+      "size": 30542,
       "exports": [
         {
           "name": "META",
           "line": 13,
-          "hash": "bb398d24",
+          "hash": "4c88780f",
           "file": "/src/experiments/18.mjs"
         },
         {
           "name": "run",
           "line": 312,
-          "hash": "1bdd12e4",
+          "hash": "33bb3ee2",
           "file": "/src/experiments/18.mjs"
         },
         {
           "name": "setRealExecutor",
           "line": 638,
-          "hash": "9fef59a9",
+          "hash": "f30b9633",
           "file": "/src/experiments/18.mjs"
         }
       ],
@@ -2731,24 +2713,24 @@
     },
     {
       "path": "/src/experiments/23.mjs",
-      "size": 3426,
+      "size": 3508,
       "exports": [
         {
           "name": "META",
           "line": 11,
-          "hash": "32d67987",
+          "hash": "d4c8c715",
           "file": "/src/experiments/23.mjs"
         },
         {
           "name": "run",
           "line": 15,
-          "hash": "1bdd12e4",
+          "hash": "33bb3ee2",
           "file": "/src/experiments/23.mjs"
         },
         {
           "name": "test",
           "line": 31,
-          "hash": "d3721d39",
+          "hash": "25c8c7cf",
           "file": "/src/experiments/23.mjs"
         }
       ],
@@ -2756,18 +2738,18 @@
     },
     {
       "path": "/src/experiments/24.mjs",
-      "size": 3293,
+      "size": 3382,
       "exports": [
         {
           "name": "META",
           "line": 9,
-          "hash": "d3651033",
+          "hash": "5bec1493",
           "file": "/src/experiments/24.mjs"
         },
         {
           "name": "run",
           "line": 14,
-          "hash": "1bdd12e4",
+          "hash": "33bb3ee2",
           "file": "/src/experiments/24.mjs"
         }
       ],
@@ -2775,24 +2757,24 @@
     },
     {
       "path": "/src/experiments/25.mjs",
-      "size": 9294,
+      "size": 9583,
       "exports": [
         {
           "name": "META",
           "line": 8,
-          "hash": "32d8d96b",
+          "hash": "a2020253",
           "file": "/src/experiments/25.mjs"
         },
         {
           "name": "run",
           "line": 12,
-          "hash": "1bdd12e4",
+          "hash": "33bb3ee2",
           "file": "/src/experiments/25.mjs"
         },
         {
           "name": "test",
           "line": 170,
-          "hash": "d3721d39",
+          "hash": "25c8c7cf",
           "file": "/src/experiments/25.mjs"
         }
       ],
@@ -3374,1737 +3356,1375 @@
       "project": "experiments"
     },
     {
-      "path": "/src/experiments/lib/agent-hooks.mjs",
-      "size": 2363,
-      "exports": [
-        {
-          "name": "on",
-          "line": 15,
-          "hash": "7dba0016",
-          "file": "/src/experiments/lib/agent-hooks.mjs"
-        },
-        {
-          "name": "off",
-          "line": 25,
-          "hash": "c6c7620e",
-          "file": "/src/experiments/lib/agent-hooks.mjs"
-        },
-        {
-          "name": "clear",
-          "line": 29,
-          "hash": "2fa83884",
-          "file": "/src/experiments/lib/agent-hooks.mjs"
-        },
-        {
-          "name": "runPre",
-          "line": 35,
-          "hash": "53c56125",
-          "file": "/src/experiments/lib/agent-hooks.mjs"
-        },
-        {
-          "name": "runPost",
-          "line": 50,
-          "hash": "01886efe",
-          "file": "/src/experiments/lib/agent-hooks.mjs"
-        },
-        {
-          "name": "listHooks",
-          "line": 64,
-          "hash": "9dc1d551",
-          "file": "/src/experiments/lib/agent-hooks.mjs"
-        },
-        {
-          "name": "getStats",
-          "line": 72,
-          "hash": "f034b105",
-          "file": "/src/experiments/lib/agent-hooks.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/agent-memory.mjs",
-      "size": 1702,
-      "exports": [
-        {
-          "name": "load",
-          "line": 14,
-          "hash": "e5815325",
-          "file": "/src/experiments/lib/agent-memory.mjs"
-        },
-        {
-          "name": "save",
-          "line": 26,
-          "hash": "a9ea3787",
-          "file": "/src/experiments/lib/agent-memory.mjs"
-        },
-        {
-          "name": "addFact",
-          "line": 33,
-          "hash": "8ced90c5",
-          "file": "/src/experiments/lib/agent-memory.mjs"
-        },
-        {
-          "name": "addPreference",
-          "line": 41,
-          "hash": "809e7bf2",
-          "file": "/src/experiments/lib/agent-memory.mjs"
-        },
-        {
-          "name": "addPattern",
-          "line": 48,
-          "hash": "7abb4a6c",
-          "file": "/src/experiments/lib/agent-memory.mjs"
-        },
-        {
-          "name": "summary",
-          "line": 54,
-          "hash": "bc757628",
-          "file": "/src/experiments/lib/agent-memory.mjs"
-        },
-        {
-          "name": "META",
-          "line": 59,
-          "hash": "8ec6a01a",
-          "file": "/src/experiments/lib/agent-memory.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/ast-adapters.mjs",
-      "size": 9749,
-      "exports": [
-        {
-          "name": "parseDart",
-          "line": 16,
-          "hash": "d4acac69",
-          "file": "/src/experiments/lib/ast-adapters.mjs"
-        },
-        {
-          "name": "parseJS",
-          "line": 68,
-          "hash": "ab0704f1",
-          "file": "/src/experiments/lib/ast-adapters.mjs"
-        },
-        {
-          "name": "parsePython",
-          "line": 107,
-          "hash": "432f9c74",
-          "file": "/src/experiments/lib/ast-adapters.mjs"
-        },
-        {
-          "name": "parseRust",
-          "line": 127,
-          "hash": "2a736235",
-          "file": "/src/experiments/lib/ast-adapters.mjs"
-        },
-        {
-          "name": "parseGo",
-          "line": 142,
-          "hash": "ee06da99",
-          "file": "/src/experiments/lib/ast-adapters.mjs"
-        },
-        {
-          "name": "parse",
-          "line": 161,
-          "hash": "46b8f97c",
-          "file": "/src/experiments/lib/ast-adapters.mjs"
-        },
-        {
-          "name": "parseFile",
-          "line": 172,
-          "hash": "8c438f3f",
-          "file": "/src/experiments/lib/ast-adapters.mjs"
-        },
-        {
-          "name": "TOOLS",
-          "line": 189,
-          "hash": "a1d2ae88",
-          "file": "/src/experiments/lib/ast-adapters.mjs"
-        },
-        {
-          "name": "executeTool",
-          "line": 194,
-          "hash": "34c43b01",
-          "file": "/src/experiments/lib/ast-adapters.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/ast-edit.mjs",
-      "size": 4055,
-      "exports": [
-        {
-          "name": "astEdit",
-          "line": 58,
-          "hash": "b8c678f7",
-          "file": "/src/experiments/lib/ast-edit.mjs"
-        },
-        {
-          "name": "executeTool",
-          "line": 106,
-          "hash": "34c43b01",
-          "file": "/src/experiments/lib/ast-edit.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/ast-search.mjs",
-      "size": 6971,
-      "exports": [
-        {
-          "name": "parseJS",
-          "line": 68,
-          "hash": "ab0704f1",
-          "file": "/src/experiments/lib/ast-search.mjs"
-        },
-        {
-          "name": "buildIndex",
-          "line": 75,
-          "hash": "a7063255",
-          "file": "/src/experiments/lib/ast-search.mjs"
-        },
-        {
-          "name": "indexProject",
-          "line": 82,
-          "hash": "c3267161",
-          "file": "/src/experiments/lib/ast-search.mjs"
-        },
-        {
-          "name": "findRefs",
-          "line": 107,
-          "hash": "0f1f1bdf",
-          "file": "/src/experiments/lib/ast-search.mjs"
-        },
-        {
-          "name": "renameSymbol",
-          "line": 124,
-          "hash": "66107597",
-          "file": "/src/experiments/lib/ast-search.mjs"
-        },
-        {
-          "name": "TOOLS",
-          "line": 140,
-          "hash": "a1d2ae88",
-          "file": "/src/experiments/lib/ast-search.mjs"
-        },
-        {
-          "name": "executeTool",
-          "line": 146,
-          "hash": "34c43b01",
-          "file": "/src/experiments/lib/ast-search.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/auto-commit.mjs",
-      "size": 3409,
-      "exports": [
-        {
-          "name": "hasGitRepo",
-          "line": 14,
-          "hash": "18d98ebd",
-          "file": "/src/experiments/lib/auto-commit.mjs"
-        },
-        {
-          "name": "gitAdd",
-          "line": 21,
-          "hash": "f6fb9b5b",
-          "file": "/src/experiments/lib/auto-commit.mjs"
-        },
-        {
-          "name": "gitDiff",
-          "line": 27,
-          "hash": "13280369",
-          "file": "/src/experiments/lib/auto-commit.mjs"
-        },
-        {
-          "name": "generateMessage",
-          "line": 34,
-          "hash": "28d956f6",
-          "file": "/src/experiments/lib/auto-commit.mjs"
-        },
-        {
-          "name": "autoCommit",
-          "line": 69,
-          "hash": "ad0b173c",
-          "file": "/src/experiments/lib/auto-commit.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/bucket-relay.js",
-      "size": 4070,
-      "exports": [],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/code-search.mjs",
-      "size": 6708,
-      "exports": [
-        {
-          "name": "grepSearch",
-          "line": 26,
-          "hash": "86d24060",
-          "file": "/src/experiments/lib/code-search.mjs"
-        },
-        {
-          "name": "findReferences",
-          "line": 70,
-          "hash": "dc427a12",
-          "file": "/src/experiments/lib/code-search.mjs"
-        },
-        {
-          "name": "TOOLS",
-          "line": 118,
-          "hash": "a1d2ae88",
-          "file": "/src/experiments/lib/code-search.mjs"
-        },
-        {
-          "name": "executeTool",
-          "line": 155,
-          "hash": "34c43b01",
-          "file": "/src/experiments/lib/code-search.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/coding-tools.mjs",
-      "size": 11802,
-      "exports": [
-        {
-          "name": "readFile",
-          "line": 31,
-          "hash": "e1689756",
-          "file": "/src/experiments/lib/coding-tools.mjs"
-        },
-        {
-          "name": "writeFile",
-          "line": 43,
-          "hash": "5501e15f",
-          "file": "/src/experiments/lib/coding-tools.mjs"
-        },
-        {
-          "name": "editFile",
-          "line": 105,
-          "hash": "c97b12b6",
-          "file": "/src/experiments/lib/coding-tools.mjs"
-        },
-        {
-          "name": "hashEdit",
-          "line": 119,
-          "hash": "9641a769",
-          "file": "/src/experiments/lib/coding-tools.mjs"
-        },
-        {
-          "name": "TOOLS",
-          "line": 137,
-          "hash": "e21b79ff",
-          "file": "/src/experiments/lib/coding-tools.mjs"
-        },
-        {
-          "name": "getDNAContext",
-          "line": 216,
-          "hash": "1d12bd55",
-          "file": "/src/experiments/lib/coding-tools.mjs"
-        },
-        {
-          "name": "executeTool",
-          "line": 223,
-          "hash": "34c43b01",
-          "file": "/src/experiments/lib/coding-tools.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/config.mjs",
-      "size": 551,
-      "exports": [
-        {
-          "name": "persistentConfig",
-          "line": 20,
-          "hash": "f50afc02",
-          "file": "/src/experiments/lib/config.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/constants.js",
-      "size": 530,
-      "exports": [
-        {
-          "name": "DEFAULT_PORT",
-          "line": 2,
-          "hash": "981f7aec",
-          "file": "/src/experiments/lib/constants.js"
-        },
-        {
-          "name": "PORT_OFFSETS",
-          "line": 5,
-          "hash": "82da5a4b",
-          "file": "/src/experiments/lib/constants.js"
-        },
-        {
-          "name": "getPort",
-          "line": 10,
-          "hash": "7a9586e6",
-          "file": "/src/experiments/lib/constants.js"
-        },
-        {
-          "name": "getMainPort",
-          "line": 16,
-          "hash": "c1e3eed1",
-          "file": "/src/experiments/lib/constants.js"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/cost-tracker.mjs",
-      "size": 7420,
-      "exports": [
-        {
-          "name": "CostTracker",
-          "line": 48,
-          "hash": "9bd72276",
-          "file": "/src/experiments/lib/cost-tracker.mjs"
-        },
-        {
-          "name": "run",
-          "line": 168,
-          "hash": "1bdd12e4",
-          "file": "/src/experiments/lib/cost-tracker.mjs"
-        },
-        {
-          "name": "META",
-          "line": 192,
-          "hash": "9b8c8187",
-          "file": "/src/experiments/lib/cost-tracker.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/dev-repl.mjs",
-      "size": 48479,
-      "exports": [
-        {
-          "name": "startDevRepl",
-          "line": 168,
-          "hash": "887fb40a",
-          "file": "/src/experiments/lib/dev-repl.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/dev-tools.mjs",
-      "size": 14413,
-      "exports": [
-        {
-          "name": "depGraph",
-          "line": 17,
-          "hash": "30e023a0",
-          "file": "/src/experiments/lib/dev-tools.mjs"
-        },
-        {
-          "name": "detectCycles",
-          "line": 42,
-          "hash": "12ff5219",
-          "file": "/src/experiments/lib/dev-tools.mjs"
-        },
-        {
-          "name": "toMermaid",
-          "line": 59,
-          "hash": "376356e1",
-          "file": "/src/experiments/lib/dev-tools.mjs"
-        },
-        {
-          "name": "gitCommit",
-          "line": 66,
-          "hash": "8ea08ef2",
-          "file": "/src/experiments/lib/dev-tools.mjs"
-        },
-        {
-          "name": "gitLog",
-          "line": 75,
-          "hash": "66ba862a",
-          "file": "/src/experiments/lib/dev-tools.mjs"
-        },
-        {
-          "name": "testRun",
-          "line": 93,
-          "hash": "5b0a8c58",
-          "file": "/src/experiments/lib/dev-tools.mjs"
-        },
-        {
-          "name": "testDiscover",
-          "line": 104,
-          "hash": "086ea3f1",
-          "file": "/src/experiments/lib/dev-tools.mjs"
-        },
-        {
-          "name": "lintRun",
-          "line": 110,
-          "hash": "71008ba0",
-          "file": "/src/experiments/lib/dev-tools.mjs"
-        },
-        {
-          "name": "lintFix",
-          "line": 117,
-          "hash": "ef560f9a",
-          "file": "/src/experiments/lib/dev-tools.mjs"
-        },
-        {
-          "name": "buildRun",
-          "line": 123,
-          "hash": "f1aff70f",
-          "file": "/src/experiments/lib/dev-tools.mjs"
-        },
-        {
-          "name": "tsTypeCheck",
-          "line": 130,
-          "hash": "72ca3061",
-          "file": "/src/experiments/lib/dev-tools.mjs"
-        },
-        {
-          "name": "langRun",
-          "line": 137,
-          "hash": "4755a365",
-          "file": "/src/experiments/lib/dev-tools.mjs"
-        },
-        {
-          "name": "dockerBuild",
-          "line": 145,
-          "hash": "e47f1f00",
-          "file": "/src/experiments/lib/dev-tools.mjs"
-        },
-        {
-          "name": "sqlParseCreate",
-          "line": 150,
-          "hash": "7d3ccb94",
-          "file": "/src/experiments/lib/dev-tools.mjs"
-        },
-        {
-          "name": "curlRun",
-          "line": 160,
-          "hash": "ec40725c",
-          "file": "/src/experiments/lib/dev-tools.mjs"
-        },
-        {
-          "name": "secNpmAudit",
-          "line": 166,
-          "hash": "2d2fc5c6",
-          "file": "/src/experiments/lib/dev-tools.mjs"
-        },
-        {
-          "name": "perfMeasure",
-          "line": 173,
-          "hash": "644a0693",
-          "file": "/src/experiments/lib/dev-tools.mjs"
-        },
-        {
-          "name": "docsFindChanged",
-          "line": 181,
-          "hash": "c846177b",
-          "file": "/src/experiments/lib/dev-tools.mjs"
-        },
-        {
-          "name": "ciDetect",
-          "line": 189,
-          "hash": "9e7fc3da",
-          "file": "/src/experiments/lib/dev-tools.mjs"
-        },
-        {
-          "name": "envDiff",
-          "line": 199,
-          "hash": "ff248143",
-          "file": "/src/experiments/lib/dev-tools.mjs"
-        },
-        {
-          "name": "TOOLS",
-          "line": 208,
-          "hash": "a1d2ae88",
-          "file": "/src/experiments/lib/dev-tools.mjs"
-        },
-        {
-          "name": "executeTool",
-          "line": 230,
-          "hash": "34c43b01",
-          "file": "/src/experiments/lib/dev-tools.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/dev-workflow-plugin.mjs",
-      "size": 7080,
-      "exports": [
-        {
-          "name": "DevWorkflowPlugin",
-          "line": 10,
-          "hash": "ef1a5e25",
-          "file": "/src/experiments/lib/dev-workflow-plugin.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/diff-review.mjs",
-      "size": 1849,
-      "exports": [
-        {
-          "name": "getGitDiff",
-          "line": 9,
-          "hash": "11c3391a",
-          "file": "/src/experiments/lib/diff-review.mjs"
-        },
-        {
-          "name": "executeTool",
-          "line": 22,
-          "hash": "597d2c12",
-          "file": "/src/experiments/lib/diff-review.mjs"
-        },
-        {
-          "name": "confirmDiff",
-          "line": 29,
-          "hash": "b18dd465",
-          "file": "/src/experiments/lib/diff-review.mjs"
-        },
-        {
-          "name": "revertChanges",
-          "line": 42,
-          "hash": "f2ccef31",
-          "file": "/src/experiments/lib/diff-review.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/edit-quality-gate.mjs",
-      "size": 3017,
-      "exports": [
-        {
-          "name": "isEditTool",
-          "line": 27,
-          "hash": "6b73cba2",
-          "file": "/src/experiments/lib/edit-quality-gate.mjs"
-        },
-        {
-          "name": "checkEditedFile",
-          "line": 38,
-          "hash": "44c67896",
-          "file": "/src/experiments/lib/edit-quality-gate.mjs"
-        },
-        {
-          "name": "run",
-          "line": 65,
-          "hash": "1bdd12e4",
-          "file": "/src/experiments/lib/edit-quality-gate.mjs"
-        },
-        {
-          "name": "META",
-          "line": 73,
-          "hash": "3c43ae30",
-          "file": "/src/experiments/lib/edit-quality-gate.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/epc-pipeline.mjs",
-      "size": 4016,
-      "exports": [
-        {
-          "name": "buildEpc",
-          "line": 28,
-          "hash": "84f8073a",
-          "file": "/src/experiments/lib/epc-pipeline.mjs"
-        },
-        {
-          "name": "runPipeline",
-          "line": 42,
-          "hash": "1176eb34",
-          "file": "/src/experiments/lib/epc-pipeline.mjs"
-        },
-        {
-          "name": "getEditProtocolGuidance",
-          "line": 63,
-          "hash": "16918805",
-          "file": "/src/experiments/lib/epc-pipeline.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/error-tracker.mjs",
-      "size": 1768,
-      "exports": [
-        {
-          "name": "createErrorTracker",
-          "line": 7,
-          "hash": "a3cba8da",
-          "file": "/src/experiments/lib/error-tracker.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/failover-picker.mjs",
-      "size": 3275,
-      "exports": [
-        {
-          "name": "pickFirstAlive",
-          "line": 22,
-          "hash": "098acc60",
-          "file": "/src/experiments/lib/failover-picker.mjs"
-        },
-        {
-          "name": "META",
-          "line": 72,
-          "hash": "b7b05d5e",
-          "file": "/src/experiments/lib/failover-picker.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/guardian.mjs",
-      "size": 2332,
-      "exports": [
-        {
-          "name": "createGuardian",
-          "line": 12,
-          "hash": "d26303fb",
-          "file": "/src/experiments/lib/guardian.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/hooks-builtin.mjs",
-      "size": 1580,
-      "exports": [
-        {
-          "name": "enableLoggingHook",
-          "line": 6,
-          "hash": "664230fe",
-          "file": "/src/experiments/lib/hooks-builtin.mjs"
-        },
-        {
-          "name": "enablePermissionHook",
-          "line": 18,
-          "hash": "fc353998",
-          "file": "/src/experiments/lib/hooks-builtin.mjs"
-        },
-        {
-          "name": "enableRateLimitHook",
-          "line": 27,
-          "hash": "209fb4d6",
-          "file": "/src/experiments/lib/hooks-builtin.mjs"
-        },
-        {
-          "name": "getCallLog",
-          "line": 37,
-          "hash": "84906bdb",
-          "file": "/src/experiments/lib/hooks-builtin.mjs"
-        },
-        {
-          "name": "clearCallLog",
-          "line": 39,
-          "hash": "8d27bf7d",
-          "file": "/src/experiments/lib/hooks-builtin.mjs"
-        },
-        {
-          "name": "META",
-          "line": 41,
-          "hash": "c1f86799",
-          "file": "/src/experiments/lib/hooks-builtin.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/lmdn-codec.mjs",
-      "size": 14005,
-      "exports": [],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/logger.js",
-      "size": 1234,
-      "exports": [],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/mcp-server.mjs",
-      "size": 2740,
-      "exports": [
-        {
-          "name": "McpServer",
-          "line": 9,
-          "hash": "f5437d77",
-          "file": "/src/experiments/lib/mcp-server.mjs"
-        },
-        {
-          "name": "startStdioServer",
-          "line": 61,
-          "hash": "b7c80dc4",
-          "file": "/src/experiments/lib/mcp-server.mjs"
-        },
-        {
-          "name": "META",
-          "line": 78,
-          "hash": "e61eabfd",
-          "file": "/src/experiments/lib/mcp-server.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/message-bus.js",
-      "size": 1727,
-      "exports": [
-        {
-          "name": "MESSAGE_TYPES",
-          "line": 3,
-          "hash": "900bb209",
-          "file": "/src/experiments/lib/message-bus.js"
-        },
-        {
-          "name": "MessageBus",
-          "line": 13,
-          "hash": "badcbc05",
-          "file": "/src/experiments/lib/message-bus.js"
-        },
-        {
-          "name": "messageBus",
-          "line": 74,
-          "hash": "9d318d8f",
-          "file": "/src/experiments/lib/message-bus.js"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/messages.js",
-      "size": 14885,
-      "exports": [],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/multi-edit.mjs",
-      "size": 2804,
-      "exports": [
-        {
-          "name": "multiEdit",
-          "line": 38,
-          "hash": "241ac6ef",
-          "file": "/src/experiments/lib/multi-edit.mjs"
-        },
-        {
-          "name": "executeTool",
-          "line": 76,
-          "hash": "34c43b01",
-          "file": "/src/experiments/lib/multi-edit.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/neural-bridge.mjs",
-      "size": 2944,
-      "exports": [
-        {
-          "name": "init",
-          "line": 26,
-          "hash": "c03874ca",
-          "file": "/src/experiments/lib/neural-bridge.mjs"
-        },
-        {
-          "name": "setEnabled",
-          "line": 35,
-          "hash": "b18fd9f3",
-          "file": "/src/experiments/lib/neural-bridge.mjs"
-        },
-        {
-          "name": "isEnabled",
-          "line": 37,
-          "hash": "178adc39",
-          "file": "/src/experiments/lib/neural-bridge.mjs"
-        },
-        {
-          "name": "predict",
-          "line": 39,
-          "hash": "4fbd8aea",
-          "file": "/src/experiments/lib/neural-bridge.mjs"
-        },
-        {
-          "name": "adaptTools",
-          "line": 49,
-          "hash": "75ce72d9",
-          "file": "/src/experiments/lib/neural-bridge.mjs"
-        },
-        {
-          "name": "adaptMaxRounds",
-          "line": 55,
-          "hash": "944154fc",
-          "file": "/src/experiments/lib/neural-bridge.mjs"
-        },
-        {
-          "name": "trainOnOutcome",
-          "line": 61,
-          "hash": "0f744ca8",
-          "file": "/src/experiments/lib/neural-bridge.mjs"
-        },
-        {
-          "name": "getStats",
-          "line": 74,
-          "hash": "f034b105",
-          "file": "/src/experiments/lib/neural-bridge.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/output-compressor.mjs",
-      "size": 5856,
-      "exports": [
-        {
-          "name": "compressOutput",
-          "line": 14,
-          "hash": "3868ce82",
-          "file": "/src/experiments/lib/output-compressor.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/p2p-net.js",
-      "size": 20050,
-      "exports": [],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/permission-gate.mjs",
-      "size": 6011,
-      "exports": [
-        {
-          "name": "setEnabled",
-          "line": 79,
-          "hash": "b18fd9f3",
-          "file": "/src/experiments/lib/permission-gate.mjs"
-        },
-        {
-          "name": "isEnabled",
-          "line": 80,
-          "hash": "c322481b",
-          "file": "/src/experiments/lib/permission-gate.mjs"
-        },
-        {
-          "name": "getPermission",
-          "line": 81,
-          "hash": "7df0425b",
-          "file": "/src/experiments/lib/permission-gate.mjs"
-        },
-        {
-          "name": "checkPermission",
-          "line": 87,
-          "hash": "01803a43",
-          "file": "/src/experiments/lib/permission-gate.mjs"
-        },
-        {
-          "name": "resetTrust",
-          "line": 133,
-          "hash": "b0e8b7a0",
-          "file": "/src/experiments/lib/permission-gate.mjs"
-        },
-        {
-          "name": "listTrust",
-          "line": 138,
-          "hash": "bf4e432c",
-          "file": "/src/experiments/lib/permission-gate.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/persistent-store.js",
-      "size": 2315,
-      "exports": [
-        {
-          "name": "PersistentSessionStore",
-          "line": 16,
-          "hash": "181d67da",
-          "file": "/src/experiments/lib/persistent-store.js"
-        },
-        {
-          "name": "persistentStore",
-          "line": 98,
-          "hash": "a248ee8e",
-          "file": "/src/experiments/lib/persistent-store.js"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/poller-shim.mjs",
-      "size": 2893,
-      "exports": [
-        {
-          "name": "_setDeps",
-          "line": 5,
-          "hash": "8bf3bc04",
-          "file": "/src/experiments/lib/poller-shim.mjs"
-        },
-        {
-          "name": "_resetDeps",
-          "line": 9,
-          "hash": "5e83a135",
-          "file": "/src/experiments/lib/poller-shim.mjs"
-        },
-        {
-          "name": "_getDeps",
-          "line": 13,
-          "hash": "0a106254",
-          "file": "/src/experiments/lib/poller-shim.mjs"
-        },
-        {
-          "name": "tsFromKey",
-          "line": 15,
-          "hash": "ba954d17",
-          "file": "/src/experiments/lib/poller-shim.mjs"
-        },
-        {
-          "name": "parseMsgPayload",
-          "line": 21,
-          "hash": "018d2203",
-          "file": "/src/experiments/lib/poller-shim.mjs"
-        },
-        {
-          "name": "startChatPoll",
-          "line": 39,
-          "hash": "c64cca09",
-          "file": "/src/experiments/lib/poller-shim.mjs"
-        },
-        {
-          "name": "handleMessage",
-          "line": 49,
-          "hash": "49d5f47d",
-          "file": "/src/experiments/lib/poller-shim.mjs"
-        },
-        {
-          "name": "handleVoice",
-          "line": 56,
-          "hash": "7bb0f4ae",
-          "file": "/src/experiments/lib/poller-shim.mjs"
-        },
-        {
-          "name": "processOne",
-          "line": 67,
-          "hash": "9a9b20a0",
-          "file": "/src/experiments/lib/poller-shim.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/project-context.mjs",
-      "size": 4248,
-      "exports": [
-        {
-          "name": "findRelatedFiles",
-          "line": 15,
-          "hash": "7668b2ea",
-          "file": "/src/experiments/lib/project-context.mjs"
-        },
-        {
-          "name": "findDependencies",
-          "line": 38,
-          "hash": "8b1aa2f4",
-          "file": "/src/experiments/lib/project-context.mjs"
-        },
-        {
-          "name": "getProjectStructure",
-          "line": 67,
-          "hash": "2206ab46",
-          "file": "/src/experiments/lib/project-context.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/provider-health.mjs",
-      "size": 11047,
-      "exports": [
-        {
-          "name": "diagnose",
-          "line": 99,
-          "hash": "efb2db6b",
-          "file": "/src/experiments/lib/provider-health.mjs"
-        },
-        {
-          "name": "pingProvider",
-          "line": 213,
-          "hash": "31668275",
-          "file": "/src/experiments/lib/provider-health.mjs"
-        },
-        {
-          "name": "META",
-          "line": 234,
-          "hash": "07f0a7ce",
-          "file": "/src/experiments/lib/provider-health.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/provider-service.js",
-      "size": 1556,
-      "exports": [
-        {
-          "name": "getProviderConfig",
-          "line": 8,
-          "hash": "8f5a19e9",
-          "file": "/src/experiments/lib/provider-service.js"
-        },
-        {
-          "name": "listProviders",
-          "line": 11,
-          "hash": "b3364e70",
-          "file": "/src/experiments/lib/provider-service.js"
-        },
-        {
-          "name": "getProvider",
-          "line": 14,
-          "hash": "906b2cad",
-          "file": "/src/experiments/lib/provider-service.js"
-        },
-        {
-          "name": "listModels",
-          "line": 17,
-          "hash": "dc01a8bc",
-          "file": "/src/experiments/lib/provider-service.js"
-        },
-        {
-          "name": "getDefaultModel",
-          "line": 20,
-          "hash": "9ebecbe6",
-          "file": "/src/experiments/lib/provider-service.js"
-        },
-        {
-          "name": "addCustomProvider",
-          "line": 23,
-          "hash": "f20561a5",
-          "file": "/src/experiments/lib/provider-service.js"
-        },
-        {
-          "name": "listAll",
-          "line": 27,
-          "hash": "c79bccee",
-          "file": "/src/experiments/lib/provider-service.js"
-        },
-        {
-          "name": "listConfigured",
-          "line": 30,
-          "hash": "0a8cd770",
-          "file": "/src/experiments/lib/provider-service.js"
-        },
-        {
-          "name": "getModels",
-          "line": 33,
-          "hash": "0339c448",
-          "file": "/src/experiments/lib/provider-service.js"
-        },
-        {
-          "name": "refreshModels",
-          "line": 36,
-          "hash": "28449f23",
-          "file": "/src/experiments/lib/provider-service.js"
-        },
-        {
-          "name": "configureProvider",
-          "line": 39,
-          "hash": "3b685a2e",
-          "file": "/src/experiments/lib/provider-service.js"
-        },
-        {
-          "name": "getProviderInstance",
-          "line": 43,
-          "hash": "43ff5721",
-          "file": "/src/experiments/lib/provider-service.js"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/qiniu-s3.mjs",
-      "size": 7846,
-      "exports": [],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/qiniu-signaling.js",
-      "size": 15452,
-      "exports": [
-        {
-          "name": "qiniuSignaling",
-          "line": 528,
-          "hash": "bc89a82a",
-          "file": "/src/experiments/lib/qiniu-signaling.js"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/quality-gate.mjs",
-      "size": 3422,
-      "exports": [
-        {
-          "name": "snapshot",
-          "line": 17,
-          "hash": "d4a8a42c",
-          "file": "/src/experiments/lib/quality-gate.mjs"
-        },
-        {
-          "name": "restore",
-          "line": 24,
-          "hash": "b49992f5",
-          "file": "/src/experiments/lib/quality-gate.mjs"
-        },
-        {
-          "name": "hasSnapshot",
-          "line": 33,
-          "hash": "eaa8a75d",
-          "file": "/src/experiments/lib/quality-gate.mjs"
-        },
-        {
-          "name": "runLint",
-          "line": 37,
-          "hash": "523028ab",
-          "file": "/src/experiments/lib/quality-gate.mjs"
-        },
-        {
-          "name": "runTests",
-          "line": 46,
-          "hash": "a12d5897",
-          "file": "/src/experiments/lib/quality-gate.mjs"
-        },
-        {
-          "name": "applyWithGuard",
-          "line": 59,
-          "hash": "38138177",
-          "file": "/src/experiments/lib/quality-gate.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/repl-history.mjs",
-      "size": 3660,
-      "exports": [
-        {
-          "name": "loadHistory",
-          "line": 47,
-          "hash": "e47b96aa",
-          "file": "/src/experiments/lib/repl-history.mjs"
-        },
-        {
-          "name": "saveHistory",
-          "line": 57,
-          "hash": "f174bc0f",
-          "file": "/src/experiments/lib/repl-history.mjs"
-        },
-        {
-          "name": "appendMessage",
-          "line": 70,
-          "hash": "46c06001",
-          "file": "/src/experiments/lib/repl-history.mjs"
-        },
-        {
-          "name": "clearHistory",
-          "line": 76,
-          "hash": "7cfed114",
-          "file": "/src/experiments/lib/repl-history.mjs"
-        },
-        {
-          "name": "listSessions",
-          "line": 82,
-          "hash": "6907b208",
-          "file": "/src/experiments/lib/repl-history.mjs"
-        },
-        {
-          "name": "run",
-          "line": 91,
-          "hash": "1bdd12e4",
-          "file": "/src/experiments/lib/repl-history.mjs"
-        },
-        {
-          "name": "META",
-          "line": 104,
-          "hash": "fc846bb0",
-          "file": "/src/experiments/lib/repl-history.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/report.mjs",
-      "size": 1489,
-      "exports": [
-        {
-          "name": "create",
-          "line": 3,
-          "hash": "4c022661",
-          "file": "/src/experiments/lib/report.mjs"
-        },
-        {
-          "name": "ok",
-          "line": 28,
-          "hash": "5d97d62f",
-          "file": "/src/experiments/lib/report.mjs"
-        },
-        {
-          "name": "ng",
-          "line": 29,
-          "hash": "e4668e67",
-          "file": "/src/experiments/lib/report.mjs"
-        },
-        {
-          "name": "skip",
-          "line": 30,
-          "hash": "a0813586",
-          "file": "/src/experiments/lib/report.mjs"
-        },
-        {
-          "name": "report",
-          "line": 31,
-          "hash": "4c373245",
-          "file": "/src/experiments/lib/report.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/request-id.mjs",
-      "size": 729,
+      "path": "/src/experiments/lib/coding-lib.mjs",
+      "size": 99840,
       "exports": [
         {
           "name": "generate",
-          "line": 4,
-          "hash": "80f89fdf",
-          "file": "/src/experiments/lib/request-id.mjs"
+          "line": 5,
+          "hash": "01efe8fc",
+          "file": "/src/experiments/lib/coding-lib.mjs"
         },
         {
           "name": "createSpan",
-          "line": 9,
-          "hash": "908a49c8",
-          "file": "/src/experiments/lib/request-id.mjs"
+          "line": 10,
+          "hash": "ab3b3362",
+          "file": "/src/experiments/lib/coding-lib.mjs"
         },
         {
           "name": "endSpan",
-          "line": 15,
-          "hash": "8e995313",
-          "file": "/src/experiments/lib/request-id.mjs"
+          "line": 16,
+          "hash": "42edd3fa",
+          "file": "/src/experiments/lib/coding-lib.mjs"
         },
         {
           "name": "getTrace",
-          "line": 21,
-          "hash": "14e65a27",
-          "file": "/src/experiments/lib/request-id.mjs"
+          "line": 22,
+          "hash": "5785fd11",
+          "file": "/src/experiments/lib/coding-lib.mjs"
         },
         {
           "name": "formatLog",
-          "line": 32,
-          "hash": "50e02b13",
-          "file": "/src/experiments/lib/request-id.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/rescue-utils.mjs",
-      "size": 3770,
-      "exports": [
+          "line": 33,
+          "hash": "0a72a7ab",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
         {
           "name": "coerce",
-          "line": 7,
-          "hash": "31643a5e",
-          "file": "/src/experiments/lib/rescue-utils.mjs"
+          "line": 44,
+          "hash": "766ba71d",
+          "file": "/src/experiments/lib/coding-lib.mjs"
         },
         {
           "name": "validateToolCall",
-          "line": 27,
-          "hash": "34fb5eac",
-          "file": "/src/experiments/lib/rescue-utils.mjs"
+          "line": 64,
+          "hash": "993edb59",
+          "file": "/src/experiments/lib/coding-lib.mjs"
         },
         {
           "name": "rescueToolCall",
-          "line": 52,
-          "hash": "a8a6a689",
-          "file": "/src/experiments/lib/rescue-utils.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/response-validator.mjs",
-      "size": 3642,
-      "exports": [
-        {
-          "name": "validateResponse",
-          "line": 21,
-          "hash": "cfa580c8",
-          "file": "/src/experiments/lib/response-validator.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/session-namer.mjs",
-      "size": 2719,
-      "exports": [
-        {
-          "name": "writeMeta",
-          "line": 32,
-          "hash": "e91384f3",
-          "file": "/src/experiments/lib/session-namer.mjs"
+          "line": 89,
+          "hash": "5bee1ecc",
+          "file": "/src/experiments/lib/coding-lib.mjs"
         },
         {
-          "name": "invalidateCache",
-          "line": 48,
-          "hash": "35b9a0e2",
-          "file": "/src/experiments/lib/session-namer.mjs"
+          "name": "snapshot",
+          "line": 137,
+          "hash": "f68f574d",
+          "file": "/src/experiments/lib/coding-lib.mjs"
         },
         {
-          "name": "autoNameIfNeeded",
-          "line": 62,
-          "hash": "18d59825",
-          "file": "/src/experiments/lib/session-namer.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/session-tree.mjs",
-      "size": 7728,
-      "exports": [
-        {
-          "name": "getCurrentPath",
-          "line": 35,
-          "hash": "fa73554e",
-          "file": "/src/experiments/lib/session-tree.mjs"
+          "name": "restore",
+          "line": 144,
+          "hash": "9fe2fe34",
+          "file": "/src/experiments/lib/coding-lib.mjs"
         },
         {
-          "name": "getParentForNewUser",
-          "line": 55,
-          "hash": "c6737c6f",
-          "file": "/src/experiments/lib/session-tree.mjs"
+          "name": "hasSnapshot",
+          "line": 153,
+          "hash": "81382599",
+          "file": "/src/experiments/lib/coding-lib.mjs"
         },
         {
-          "name": "addNode",
-          "line": 65,
-          "hash": "90ce883c",
-          "file": "/src/experiments/lib/session-tree.mjs"
+          "name": "runLint",
+          "line": 157,
+          "hash": "e49a52c5",
+          "file": "/src/experiments/lib/coding-lib.mjs"
         },
         {
-          "name": "addVariant",
-          "line": 79,
-          "hash": "ae25a030",
-          "file": "/src/experiments/lib/session-tree.mjs"
+          "name": "runTests",
+          "line": 166,
+          "hash": "9ed1f476",
+          "file": "/src/experiments/lib/coding-lib.mjs"
         },
         {
-          "name": "editMessage",
-          "line": 95,
-          "hash": "79e6e31f",
-          "file": "/src/experiments/lib/session-tree.mjs"
+          "name": "applyWithGuard",
+          "line": 179,
+          "hash": "957a5a30",
+          "file": "/src/experiments/lib/coding-lib.mjs"
         },
         {
-          "name": "getNodeWithVariants",
-          "line": 128,
-          "hash": "bcc0a5da",
-          "file": "/src/experiments/lib/session-tree.mjs"
+          "name": "parseDart",
+          "line": 239,
+          "hash": "8ff87478",
+          "file": "/src/experiments/lib/coding-lib.mjs"
         },
         {
-          "name": "deleteSession",
-          "line": 141,
-          "hash": "41613c6a",
-          "file": "/src/experiments/lib/session-tree.mjs"
+          "name": "parseJS",
+          "line": 291,
+          "hash": "b3fa95b5",
+          "file": "/src/experiments/lib/coding-lib.mjs"
         },
         {
-          "name": "handleSignal",
-          "line": 147,
-          "hash": "8d8e254f",
-          "file": "/src/experiments/lib/session-tree.mjs"
+          "name": "parsePython",
+          "line": 330,
+          "hash": "b0673ac0",
+          "file": "/src/experiments/lib/coding-lib.mjs"
         },
         {
-          "name": "rebuildTreeFromFiles",
-          "line": 165,
-          "hash": "a1e432be",
-          "file": "/src/experiments/lib/session-tree.mjs"
+          "name": "parseRust",
+          "line": 350,
+          "hash": "8a6cb3d5",
+          "file": "/src/experiments/lib/coding-lib.mjs"
         },
         {
-          "name": "ensureTree",
-          "line": 205,
-          "hash": "b108d550",
-          "file": "/src/experiments/lib/session-tree.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/signal-relay.js",
-      "size": 1311,
-      "exports": [],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/slash-commands.mjs",
-      "size": 16140,
-      "exports": [
-        {
-          "name": "COMMANDS",
-          "line": 41,
-          "hash": "2c2ee687",
-          "file": "/src/experiments/lib/slash-commands.mjs"
+          "name": "parseGo",
+          "line": 365,
+          "hash": "3cd00658",
+          "file": "/src/experiments/lib/coding-lib.mjs"
         },
         {
-          "name": "listCommands",
-          "line": 59,
-          "hash": "9372657f",
-          "file": "/src/experiments/lib/slash-commands.mjs"
+          "name": "parse",
+          "line": 384,
+          "hash": "c699a97c",
+          "file": "/src/experiments/lib/coding-lib.mjs"
         },
         {
-          "name": "listCommandNames",
-          "line": 67,
-          "hash": "cf968d22",
-          "file": "/src/experiments/lib/slash-commands.mjs"
-        },
-        {
-          "name": "validateCommandName",
-          "line": 74,
-          "hash": "836bc3d2",
-          "file": "/src/experiments/lib/slash-commands.mjs"
-        },
-        {
-          "name": "parseSlash",
-          "line": 110,
-          "hash": "982aadfc",
-          "file": "/src/experiments/lib/slash-commands.mjs"
-        },
-        {
-          "name": "applySlash",
-          "line": 131,
-          "hash": "ecc042d0",
-          "file": "/src/experiments/lib/slash-commands.mjs"
-        },
-        {
-          "name": "META",
-          "line": 327,
-          "hash": "49aff037",
-          "file": "/src/experiments/lib/slash-commands.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/step-enforcer.mjs",
-      "size": 1465,
-      "exports": [
-        {
-          "name": "createStepEnforcer",
-          "line": 8,
-          "hash": "d63ea31d",
-          "file": "/src/experiments/lib/step-enforcer.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/subagent-roles.mjs",
-      "size": 3524,
-      "exports": [
-        {
-          "name": "ROLES",
-          "line": 14,
-          "hash": "eb5a701c",
-          "file": "/src/experiments/lib/subagent-roles.mjs"
-        },
-        {
-          "name": "DEFAULT_ROLE",
-          "line": 39,
-          "hash": "9f56c2a5",
-          "file": "/src/experiments/lib/subagent-roles.mjs"
-        },
-        {
-          "name": "pickRole",
-          "line": 51,
-          "hash": "7249c0d1",
-          "file": "/src/experiments/lib/subagent-roles.mjs"
-        },
-        {
-          "name": "getRole",
-          "line": 62,
-          "hash": "27d6871b",
-          "file": "/src/experiments/lib/subagent-roles.mjs"
-        },
-        {
-          "name": "listRoles",
-          "line": 66,
-          "hash": "f0257b00",
-          "file": "/src/experiments/lib/subagent-roles.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/subagent.mjs",
-      "size": 10074,
-      "exports": [
-        {
-          "name": "runSubagent",
-          "line": 23,
-          "hash": "5ac5441d",
-          "file": "/src/experiments/lib/subagent.mjs"
-        },
-        {
-          "name": "META",
-          "line": 236,
-          "hash": "81cb5ae3",
-          "file": "/src/experiments/lib/subagent.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/system-exec.mjs",
-      "size": 4034,
-      "exports": [
-        {
-          "name": "isSafeCommand",
-          "line": 19,
-          "hash": "b49fe9b9",
-          "file": "/src/experiments/lib/system-exec.mjs"
-        },
-        {
-          "name": "execCommand",
-          "line": 32,
-          "hash": "27c94928",
-          "file": "/src/experiments/lib/system-exec.mjs"
+          "name": "parseFile",
+          "line": 395,
+          "hash": "6b376acb",
+          "file": "/src/experiments/lib/coding-lib.mjs"
         },
         {
           "name": "TOOLS",
-          "line": 64,
-          "hash": "a1d2ae88",
-          "file": "/src/experiments/lib/system-exec.mjs"
+          "line": 412,
+          "hash": "5a4c8d00",
+          "file": "/src/experiments/lib/coding-lib.mjs"
         },
         {
           "name": "executeTool",
-          "line": 97,
-          "hash": "597d2c12",
-          "file": "/src/experiments/lib/system-exec.mjs"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/tool-registry.js",
-      "size": 4736,
-      "exports": [
+          "line": 417,
+          "hash": "f94e7b34",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
         {
-          "name": "toolRegistry",
-          "line": 143,
-          "hash": "41dea05c",
-          "file": "/src/experiments/lib/tool-registry.js"
-        }
-      ],
-      "project": "experiments"
-    },
-    {
-      "path": "/src/experiments/lib/tools-deep.mjs",
-      "size": 8148,
-      "exports": [
+          "name": "parseJS",
+          "line": 493,
+          "hash": "b3fa95b5",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "buildIndex",
+          "line": 500,
+          "hash": "deee12f4",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "indexProject",
+          "line": 507,
+          "hash": "12d6d0d0",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "findRefs",
+          "line": 532,
+          "hash": "0a09ffc4",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "renameSymbol",
+          "line": 549,
+          "hash": "ba24a2c9",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "TOOLS",
+          "line": 565,
+          "hash": "5a4c8d00",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "executeTool",
+          "line": 571,
+          "hash": "f94e7b34",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "grepSearch",
+          "line": 612,
+          "hash": "3f049823",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "findReferences",
+          "line": 656,
+          "hash": "27bb2515",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "TOOLS",
+          "line": 704,
+          "hash": "5a4c8d00",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "executeTool",
+          "line": 741,
+          "hash": "f94e7b34",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "depGraph",
+          "line": 766,
+          "hash": "e38647de",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "detectCycles",
+          "line": 791,
+          "hash": "320c7db7",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "toMermaid",
+          "line": 808,
+          "hash": "f374f7ee",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "gitCommit",
+          "line": 815,
+          "hash": "4e751d39",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "gitLog",
+          "line": 824,
+          "hash": "6d5e2c90",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "testRun",
+          "line": 842,
+          "hash": "9a973859",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "testDiscover",
+          "line": 853,
+          "hash": "3a9d2141",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "lintRun",
+          "line": 859,
+          "hash": "97e87ce3",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "lintFix",
+          "line": 866,
+          "hash": "8c7a917b",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "buildRun",
+          "line": 872,
+          "hash": "12166ca3",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "tsTypeCheck",
+          "line": 879,
+          "hash": "9d0669ce",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "langRun",
+          "line": 886,
+          "hash": "3b1575c2",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "dockerBuild",
+          "line": 894,
+          "hash": "770f0030",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "sqlParseCreate",
+          "line": 899,
+          "hash": "46326d26",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "curlRun",
+          "line": 909,
+          "hash": "e945f5b1",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "secNpmAudit",
+          "line": 915,
+          "hash": "0a8fbd40",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "perfMeasure",
+          "line": 922,
+          "hash": "f28ccc7a",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "docsFindChanged",
+          "line": 930,
+          "hash": "2e8a881f",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "ciDetect",
+          "line": 938,
+          "hash": "711d04dd",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "envDiff",
+          "line": 948,
+          "hash": "0762b6f2",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "TOOLS",
+          "line": 957,
+          "hash": "5a4c8d00",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "executeTool",
+          "line": 979,
+          "hash": "f94e7b34",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "getGitDiff",
+          "line": 1013,
+          "hash": "9445ea28",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "executeTool",
+          "line": 1026,
+          "hash": "62417842",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "confirmDiff",
+          "line": 1033,
+          "hash": "4342886c",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "revertChanges",
+          "line": 1046,
+          "hash": "3b506cd5",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "isEditTool",
+          "line": 1081,
+          "hash": "b8cd0130",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "checkEditedFile",
+          "line": 1092,
+          "hash": "001f2198",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "run",
+          "line": 1119,
+          "hash": "33bb3ee2",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "META",
+          "line": 1127,
+          "hash": "8a3d0dfa",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "multiEdit",
+          "line": 1167,
+          "hash": "53f8eb0c",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "executeTool",
+          "line": 1205,
+          "hash": "f94e7b34",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "findRelatedFiles",
+          "line": 1227,
+          "hash": "be5b3ab8",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "findDependencies",
+          "line": 1250,
+          "hash": "a1e47705",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "getProjectStructure",
+          "line": 1279,
+          "hash": "a550a285",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
         {
           "name": "gitBranch",
-          "line": 21,
-          "hash": "9fb2b0a1",
-          "file": "/src/experiments/lib/tools-deep.mjs"
+          "line": 1346,
+          "hash": "b34af4db",
+          "file": "/src/experiments/lib/coding-lib.mjs"
         },
         {
           "name": "gitMerge",
-          "line": 27,
-          "hash": "43d51838",
-          "file": "/src/experiments/lib/tools-deep.mjs"
+          "line": 1352,
+          "hash": "7128eb3c",
+          "file": "/src/experiments/lib/coding-lib.mjs"
         },
         {
           "name": "gitRebase",
-          "line": 39,
-          "hash": "ca0f6537",
-          "file": "/src/experiments/lib/tools-deep.mjs"
+          "line": 1364,
+          "hash": "5211a961",
+          "file": "/src/experiments/lib/coding-lib.mjs"
         },
         {
           "name": "gitApplyPatch",
-          "line": 44,
-          "hash": "6243c1eb",
-          "file": "/src/experiments/lib/tools-deep.mjs"
+          "line": 1369,
+          "hash": "fba52ea6",
+          "file": "/src/experiments/lib/coding-lib.mjs"
         },
         {
           "name": "testParallel",
-          "line": 54,
-          "hash": "ba3f32b4",
-          "file": "/src/experiments/lib/tools-deep.mjs"
+          "line": 1379,
+          "hash": "a6ffaf82",
+          "file": "/src/experiments/lib/coding-lib.mjs"
         },
         {
           "name": "testCoverage",
-          "line": 65,
-          "hash": "47a80bd3",
-          "file": "/src/experiments/lib/tools-deep.mjs"
+          "line": 1390,
+          "hash": "46f722da",
+          "file": "/src/experiments/lib/coding-lib.mjs"
         },
         {
           "name": "testFlakyDetect",
-          "line": 70,
-          "hash": "e9b077c0",
-          "file": "/src/experiments/lib/tools-deep.mjs"
+          "line": 1395,
+          "hash": "820a5c46",
+          "file": "/src/experiments/lib/coding-lib.mjs"
         },
         {
           "name": "langASTParse",
-          "line": 86,
-          "hash": "2eee8e0d",
-          "file": "/src/experiments/lib/tools-deep.mjs"
+          "line": 1411,
+          "hash": "c9664ab0",
+          "file": "/src/experiments/lib/coding-lib.mjs"
         },
         {
           "name": "TOOLS",
-          "line": 131,
-          "hash": "a1d2ae88",
-          "file": "/src/experiments/lib/tools-deep.mjs"
+          "line": 1456,
+          "hash": "5a4c8d00",
+          "file": "/src/experiments/lib/coding-lib.mjs"
         },
         {
           "name": "executeTool",
-          "line": 140,
-          "hash": "34c43b01",
-          "file": "/src/experiments/lib/tools-deep.mjs"
+          "line": 1465,
+          "hash": "f94e7b34",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "compressOutput",
+          "line": 1491,
+          "hash": "b8b49c9c",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "hasGitRepo",
+          "line": 1661,
+          "hash": "e5da922d",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "gitAdd",
+          "line": 1668,
+          "hash": "19201e17",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "gitDiff",
+          "line": 1674,
+          "hash": "8b058b7e",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "generateMessage",
+          "line": 1681,
+          "hash": "24b5b9c0",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "autoCommit",
+          "line": 1716,
+          "hash": "6a0e3a41",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "isSafeCommand",
+          "line": 1747,
+          "hash": "2a206506",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "execCommand",
+          "line": 1760,
+          "hash": "7e49581b",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "TOOLS",
+          "line": 1792,
+          "hash": "5a4c8d00",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "executeTool",
+          "line": 1825,
+          "hash": "62417842",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "astEdit",
+          "line": 1896,
+          "hash": "bcac1407",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "executeTool",
+          "line": 1944,
+          "hash": "f94e7b34",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "McpServer",
+          "line": 1959,
+          "hash": "4401b796",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "startStdioServer",
+          "line": 2011,
+          "hash": "0c9b2c29",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "META",
+          "line": 2028,
+          "hash": "e63a7257",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "readFile",
+          "line": 2055,
+          "hash": "3dd95825",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "writeFile",
+          "line": 2067,
+          "hash": "c05d65ce",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "editFile",
+          "line": 2129,
+          "hash": "54de4d6c",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "hashEdit",
+          "line": 2143,
+          "hash": "7a03b357",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "TOOLS",
+          "line": 2161,
+          "hash": "d5867588",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "getDNAContext",
+          "line": 2240,
+          "hash": "3675b716",
+          "file": "/src/experiments/lib/coding-lib.mjs"
+        },
+        {
+          "name": "executeTool",
+          "line": 2247,
+          "hash": "f94e7b34",
+          "file": "/src/experiments/lib/coding-lib.mjs"
         }
       ],
       "project": "experiments"
     },
     {
-      "path": "/src/experiments/lib/topic-registry.js",
-      "size": 2981,
-      "exports": [],
+      "path": "/src/experiments/lib/llm-lib.mjs",
+      "size": 41120,
+      "exports": [
+        {
+          "name": "CostTracker",
+          "line": 49,
+          "hash": "1336cbe1",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "run",
+          "line": 169,
+          "hash": "33bb3ee2",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "META",
+          "line": 193,
+          "hash": "70730868",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "diagnose",
+          "line": 294,
+          "hash": "75199075",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "pingProvider",
+          "line": 408,
+          "hash": "4471f2a3",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "META",
+          "line": 429,
+          "hash": "86ecec46",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "pickFirstAlive",
+          "line": 452,
+          "hash": "4290ef64",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "META",
+          "line": 502,
+          "hash": "860bf742",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "createErrorTracker",
+          "line": 511,
+          "hash": "50932073",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "validateResponse",
+          "line": 583,
+          "hash": "0fc70271",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "createStepEnforcer",
+          "line": 672,
+          "hash": "54830c63",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "createGuardian",
+          "line": 733,
+          "hash": "c2ade19e",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "init",
+          "line": 806,
+          "hash": "dc898bb8",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "setEnabled",
+          "line": 815,
+          "hash": "f25a284e",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "isEnabled",
+          "line": 817,
+          "hash": "6423640a",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "predict",
+          "line": 819,
+          "hash": "20d65ab5",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "adaptTools",
+          "line": 829,
+          "hash": "33f5c8dd",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "adaptMaxRounds",
+          "line": 835,
+          "hash": "3deb49c4",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "trainOnOutcome",
+          "line": 841,
+          "hash": "70455ed4",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "getStats",
+          "line": 854,
+          "hash": "2b91fcf2",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "persistentConfig",
+          "line": 879,
+          "hash": "419c98eb",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "buildEpc",
+          "line": 911,
+          "hash": "9c12da07",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "runPipeline",
+          "line": 925,
+          "hash": "c053a765",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "getEditProtocolGuidance",
+          "line": 946,
+          "hash": "300215c8",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "getProviderConfig",
+          "line": 968,
+          "hash": "395182db",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "listProviders",
+          "line": 971,
+          "hash": "1875dcae",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "getProvider",
+          "line": 974,
+          "hash": "168e2e90",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "listModels",
+          "line": 977,
+          "hash": "f1cc6e82",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "getDefaultModel",
+          "line": 980,
+          "hash": "2c8f0970",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "addCustomProvider",
+          "line": 983,
+          "hash": "064ce020",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "listAll",
+          "line": 987,
+          "hash": "61560b2e",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "listConfigured",
+          "line": 990,
+          "hash": "ba46da75",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "getModels",
+          "line": 993,
+          "hash": "f56add19",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "refreshModels",
+          "line": 996,
+          "hash": "94393ef2",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "configureProvider",
+          "line": 999,
+          "hash": "7f3aa663",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        },
+        {
+          "name": "getProviderInstance",
+          "line": 1003,
+          "hash": "f3b20a2c",
+          "file": "/src/experiments/lib/llm-lib.mjs"
+        }
+      ],
       "project": "experiments"
     },
     {
-      "path": "/src/experiments/lib/vector-memory.js",
-      "size": 11890,
-      "exports": [],
+      "path": "/src/experiments/lib/misc-lib.mjs",
+      "size": 122873,
+      "exports": [
+        {
+          "name": "_setDeps",
+          "line": 314,
+          "hash": "2b185318",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "_resetDeps",
+          "line": 318,
+          "hash": "5228452c",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "_getDeps",
+          "line": 322,
+          "hash": "e3c82198",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "tsFromKey",
+          "line": 324,
+          "hash": "ec56532c",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "parseMsgPayload",
+          "line": 330,
+          "hash": "05bb5222",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "startChatPoll",
+          "line": 348,
+          "hash": "83cdecab",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "handleMessage",
+          "line": 358,
+          "hash": "a15d0c32",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "handleVoice",
+          "line": 365,
+          "hash": "22fd00f4",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "processOne",
+          "line": 376,
+          "hash": "e29f20bc",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "create",
+          "line": 398,
+          "hash": "f51d2899",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "ok",
+          "line": 423,
+          "hash": "36e9df94",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "ng",
+          "line": 424,
+          "hash": "19c1b397",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "skip",
+          "line": 425,
+          "hash": "547dc8fe",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "report",
+          "line": 426,
+          "hash": "db375c51",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "loadHistory",
+          "line": 479,
+          "hash": "2a2546eb",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "saveHistory",
+          "line": 489,
+          "hash": "d4f2ca98",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "appendMessage",
+          "line": 502,
+          "hash": "16da9571",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "clearHistory",
+          "line": 508,
+          "hash": "4a00ac5b",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "listSessions",
+          "line": 514,
+          "hash": "1e8ee024",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "run",
+          "line": 523,
+          "hash": "33bb3ee2",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "META",
+          "line": 536,
+          "hash": "f8ae51c0",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "on",
+          "line": 553,
+          "hash": "b4d1a1d1",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "off",
+          "line": 563,
+          "hash": "599d0528",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "clear",
+          "line": 567,
+          "hash": "b6b3678b",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "runPre",
+          "line": 573,
+          "hash": "77687e72",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "runPost",
+          "line": 588,
+          "hash": "9b0f71a2",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "listHooks",
+          "line": 602,
+          "hash": "26c63c99",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "getStats",
+          "line": 610,
+          "hash": "2b91fcf2",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "enableLoggingHook",
+          "line": 623,
+          "hash": "88f5a658",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "enablePermissionHook",
+          "line": 635,
+          "hash": "4812eb3e",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "enableRateLimitHook",
+          "line": 644,
+          "hash": "cf9a16c5",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "getCallLog",
+          "line": 654,
+          "hash": "312d3800",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "clearCallLog",
+          "line": 656,
+          "hash": "66974e28",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "META",
+          "line": 658,
+          "hash": "75598345",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "load",
+          "line": 674,
+          "hash": "02ced349",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "save",
+          "line": 686,
+          "hash": "d5e91864",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "addFact",
+          "line": 693,
+          "hash": "6a7b1cab",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "addPreference",
+          "line": 701,
+          "hash": "9cdceb2f",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "addPattern",
+          "line": 708,
+          "hash": "f2a02922",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "summary",
+          "line": 714,
+          "hash": "a9941870",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "META",
+          "line": 719,
+          "hash": "c13e81ee",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "setEnabled",
+          "line": 800,
+          "hash": "f25a284e",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "isEnabled",
+          "line": 801,
+          "hash": "d04b72a6",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "getPermission",
+          "line": 802,
+          "hash": "8db3b305",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "checkPermission",
+          "line": 808,
+          "hash": "85b46c93",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "resetTrust",
+          "line": 854,
+          "hash": "25efbd76",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "listTrust",
+          "line": 859,
+          "hash": "76caf4df",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "COMMANDS",
+          "line": 904,
+          "hash": "5874cae1",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "listCommands",
+          "line": 922,
+          "hash": "f14991ae",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "listCommandNames",
+          "line": 930,
+          "hash": "69d332e9",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "validateCommandName",
+          "line": 937,
+          "hash": "a8455350",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "parseSlash",
+          "line": 973,
+          "hash": "2ad9b77d",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "applySlash",
+          "line": 994,
+          "hash": "e95f9918",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "META",
+          "line": 1190,
+          "hash": "352c914b",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "ROLES",
+          "line": 1207,
+          "hash": "c13d0731",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "DEFAULT_ROLE",
+          "line": 1232,
+          "hash": "c6d2a452",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "pickRole",
+          "line": 1244,
+          "hash": "dfd3c675",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "getRole",
+          "line": 1255,
+          "hash": "6f7ce20a",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "listRoles",
+          "line": 1259,
+          "hash": "1365b04f",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "runSubagent",
+          "line": 1286,
+          "hash": "1fffd509",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "META",
+          "line": 1499,
+          "hash": "3f62e495",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "DevWorkflowPlugin",
+          "line": 1511,
+          "hash": "5f479e35",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        },
+        {
+          "name": "startDevRepl",
+          "line": 1811,
+          "hash": "19087c66",
+          "file": "/src/experiments/lib/misc-lib.mjs"
+        }
+      ],
+      "project": "experiments"
+    },
+    {
+      "path": "/src/experiments/lib/storage-lib.mjs",
+      "size": 101326,
+      "exports": [
+        {
+          "name": "DEFAULT_PORT",
+          "line": 3,
+          "hash": "daea3cd1",
+          "file": "/src/experiments/lib/storage-lib.mjs"
+        },
+        {
+          "name": "PORT_OFFSETS",
+          "line": 6,
+          "hash": "3a0b5149",
+          "file": "/src/experiments/lib/storage-lib.mjs"
+        },
+        {
+          "name": "getPort",
+          "line": 11,
+          "hash": "9cf828f4",
+          "file": "/src/experiments/lib/storage-lib.mjs"
+        },
+        {
+          "name": "getMainPort",
+          "line": 17,
+          "hash": "cfd99c9e",
+          "file": "/src/experiments/lib/storage-lib.mjs"
+        },
+        {
+          "name": "qiniuSignaling",
+          "line": 1330,
+          "hash": "afa1e646",
+          "file": "/src/experiments/lib/storage-lib.mjs"
+        },
+        {
+          "name": "PersistentSessionStore",
+          "line": 1514,
+          "hash": "75830827",
+          "file": "/src/experiments/lib/storage-lib.mjs"
+        },
+        {
+          "name": "persistentStore",
+          "line": 1596,
+          "hash": "243bdaa1",
+          "file": "/src/experiments/lib/storage-lib.mjs"
+        },
+        {
+          "name": "toolRegistry",
+          "line": 2769,
+          "hash": "7511be25",
+          "file": "/src/experiments/lib/storage-lib.mjs"
+        },
+        {
+          "name": "MESSAGE_TYPES",
+          "line": 2775,
+          "hash": "63fa8024",
+          "file": "/src/experiments/lib/storage-lib.mjs"
+        },
+        {
+          "name": "MessageBus",
+          "line": 2785,
+          "hash": "08655b2f",
+          "file": "/src/experiments/lib/storage-lib.mjs"
+        },
+        {
+          "name": "messageBus",
+          "line": 2846,
+          "hash": "fee6e63f",
+          "file": "/src/experiments/lib/storage-lib.mjs"
+        },
+        {
+          "name": "writeMeta",
+          "line": 2879,
+          "hash": "bdc97df7",
+          "file": "/src/experiments/lib/storage-lib.mjs"
+        },
+        {
+          "name": "invalidateCache",
+          "line": 2895,
+          "hash": "386cc394",
+          "file": "/src/experiments/lib/storage-lib.mjs"
+        },
+        {
+          "name": "autoNameIfNeeded",
+          "line": 2909,
+          "hash": "9bd9635d",
+          "file": "/src/experiments/lib/storage-lib.mjs"
+        },
+        {
+          "name": "getCurrentPath",
+          "line": 2964,
+          "hash": "8a930aed",
+          "file": "/src/experiments/lib/storage-lib.mjs"
+        },
+        {
+          "name": "getParentForNewUser",
+          "line": 2984,
+          "hash": "463b59d7",
+          "file": "/src/experiments/lib/storage-lib.mjs"
+        },
+        {
+          "name": "addNode",
+          "line": 2994,
+          "hash": "0c2a8df9",
+          "file": "/src/experiments/lib/storage-lib.mjs"
+        },
+        {
+          "name": "addVariant",
+          "line": 3008,
+          "hash": "a8c3fa7d",
+          "file": "/src/experiments/lib/storage-lib.mjs"
+        },
+        {
+          "name": "editMessage",
+          "line": 3024,
+          "hash": "41cd0e66",
+          "file": "/src/experiments/lib/storage-lib.mjs"
+        },
+        {
+          "name": "getNodeWithVariants",
+          "line": 3057,
+          "hash": "512fc21f",
+          "file": "/src/experiments/lib/storage-lib.mjs"
+        },
+        {
+          "name": "deleteSession",
+          "line": 3070,
+          "hash": "e30e20c7",
+          "file": "/src/experiments/lib/storage-lib.mjs"
+        },
+        {
+          "name": "handleSignal",
+          "line": 3076,
+          "hash": "ede0096d",
+          "file": "/src/experiments/lib/storage-lib.mjs"
+        },
+        {
+          "name": "rebuildTreeFromFiles",
+          "line": 3094,
+          "hash": "70b06cae",
+          "file": "/src/experiments/lib/storage-lib.mjs"
+        },
+        {
+          "name": "ensureTree",
+          "line": 3134,
+          "hash": "57ea2493",
+          "file": "/src/experiments/lib/storage-lib.mjs"
+        }
+      ],
       "project": "experiments"
     },
     {
@@ -5782,18 +5402,18 @@
     },
     {
       "path": "/src/lab/runner.mjs",
-      "size": 37390,
+      "size": 38102,
       "exports": [
         {
           "name": "runNext",
           "line": 187,
-          "hash": "7fccedd0",
+          "hash": "3ad4da20",
           "file": "/src/lab/runner.mjs"
         },
         {
           "name": "runAll",
           "line": 708,
-          "hash": "a2e1f992",
+          "hash": "08a7f2dc",
           "file": "/src/lab/runner.mjs"
         }
       ],
@@ -6041,48 +5661,48 @@
     },
     {
       "path": "/src/lab/scouts/quality.mjs",
-      "size": 8818,
+      "size": 9054,
       "exports": [
         {
           "name": "scanForLeftoverP2",
           "line": 13,
-          "hash": "84d7e0c7",
+          "hash": "2174e76d",
           "file": "/src/lab/scouts/quality.mjs"
         },
         {
           "name": "scanForSyntaxErrors",
           "line": 31,
-          "hash": "5ec43deb",
+          "hash": "89248311",
           "file": "/src/lab/scouts/quality.mjs"
         },
         {
           "name": "scanTestCoverage",
           "line": 53,
-          "hash": "c8940a05",
+          "hash": "ad67a50f",
           "file": "/src/lab/scouts/quality.mjs"
         },
         {
           "name": "scanDepsParity",
           "line": 83,
-          "hash": "f8334b66",
+          "hash": "472ad681",
           "file": "/src/lab/scouts/quality.mjs"
         },
         {
           "name": "scanConfigSchema",
           "line": 132,
-          "hash": "ead0b373",
+          "hash": "e0a2d31a",
           "file": "/src/lab/scouts/quality.mjs"
         },
         {
           "name": "scanEmptyCatch",
           "line": 179,
-          "hash": "a3c92822",
+          "hash": "b99ca732",
           "file": "/src/lab/scouts/quality.mjs"
         },
         {
           "name": "scanHardcodedPaths",
           "line": 210,
-          "hash": "72e761e8",
+          "hash": "c600d310",
           "file": "/src/lab/scouts/quality.mjs"
         }
       ],
@@ -15299,7 +14919,7 @@
       "project": "fairy-guardian"
     }
   ],
-  "totalModules": 489,
+  "totalModules": 433,
   "totalExports": 1997,
   "invariants": [
     {
@@ -15350,50 +14970,50 @@
     {
       "file": "/src/experiments/14a-storage-noop/index.mjs",
       "block": [
-        "// === invariants ===",
-        "// - **Throwaway pattern**: this is the canonical \"use me\" template for new",
-        "//   experiments that need a Map-shaped state during the run. Pure in-memory.",
-        "//   **Do not** import src/experiments/lib/persistent-store.js or",
-        "//   src/core/persistent-store.js here — that would re-introduce the R3",
-        "//   boundary-blur that 14-storage had (see docs/experiment-design-audit-2026-06-11.md).",
-        "// - State lives in a module-level `const cache = new Map()`. Process exit",
-        "//   wipes everything. No writes to ~/.openchat/, oc/recordings/, bridge/state/.",
-        "// - One-cmd run: `node src/experiments/14a-storage-noop/index.mjs` (default",
-        "//   demo) or `node src/experiments/14a-storage-noop/test.mjs` (assertions).",
-        "// - META: { id, name, status, needsEnv: [], inputs, outputs, persistent: false }",
-        "//   `persistent: false` is explicit (R3 self-declaration).",
-        "// - 6 ops: set / get / has / delete / clear / size. Surface state after every",
-        "//   op so the user can see what changed (R5).",
-        "// - test() does 3 case dry-runs: basic CRUD, get-missing-returns-null,",
-        "//   delete-then-size, plus persistent=false self-check.",
-        "// - This is **not** for cross-process state, long-term memory, or anything",
-        "//   that needs to survive a restart. If you need that, use 14b-storage-persist.",
-        "//"
+        "// === invariants ===\r",
+        "// - **Throwaway pattern**: this is the canonical \"use me\" template for new\r",
+        "//   experiments that need a Map-shaped state during the run. Pure in-memory.\r",
+        "//   **Do not** import src/experiments/lib/storage-lib.mjs or\r",
+        "//   src/core/persistent-store.js here — that would re-introduce the R3\r",
+        "//   boundary-blur that 14-storage had (see docs/experiment-design-audit-2026-06-11.md).\r",
+        "// - State lives in a module-level `const cache = new Map()`. Process exit\r",
+        "//   wipes everything. No writes to ~/.openchat/, oc/recordings/, bridge/state/.\r",
+        "// - One-cmd run: `node src/experiments/14a-storage-noop/index.mjs` (default\r",
+        "//   demo) or `node src/experiments/14a-storage-noop/test.mjs` (assertions).\r",
+        "// - META: { id, name, status, needsEnv: [], inputs, outputs, persistent: false }\r",
+        "//   `persistent: false` is explicit (R3 self-declaration).\r",
+        "// - 6 ops: set / get / has / delete / clear / size. Surface state after every\r",
+        "//   op so the user can see what changed (R5).\r",
+        "// - test() does 3 case dry-runs: basic CRUD, get-missing-returns-null,\r",
+        "//   delete-then-size, plus persistent=false self-check.\r",
+        "// - This is **not** for cross-process state, long-term memory, or anything\r",
+        "//   that needs to survive a restart. If you need that, use 14b-storage-persist.\r",
+        "//\r"
       ]
     },
     {
       "file": "/src/experiments/14b-storage-persist/index.mjs",
       "block": [
-        "// === invariants ===",
-        "// - **INTENTIONAL R3 VIOLATION** — this experiment imports the production",
-        "//   persistence library (src/experiments/lib/persistent-store.js →",
-        "//   src/core/persistent-store.js) because **the question being answered",
-        "//   is \"does persistent-store.js work as advertised?\"**. R3 is",
-        "//   deliberately broken here, R6 (delete-or-absorb) is enforced hard.",
-        "// - **NOT a throwaway pattern.** This is a boundary test. If you find",
-        "//   yourself reaching for `import persistentStore from '...'` in a",
-        "//   fresh experiment, ask first: \"do I really need cross-process state?\"",
-        "//   If no, use 14a-storage-noop. If yes, copy this directory.",
-        "// - META.persistent: true — explicit R3 self-declaration (the exception).",
-        "// - 8 ops: set / get / has / delete / clear / listSessions / save / load.",
-        "//   `save`/`load` are explicit fs-roundtrip ops for the persistence test",
-        "//   (R3b: prove the data actually goes to disk and comes back).",
-        "// - 持久化文件: ~/.openchat/sessions.json (由 persistent-store.js 内部).",
-        "//   实验跑的 set/delete 会**真实写**这个文件, 不隔离. 这是 boundary 的成本.",
-        "// - Surface state after every op (R5), and after save/load print the",
-        "//   file path + size so the user can see the persistence happened.",
-        "// - test() does 5 case dry-runs: CRUD, listSessions, save/load roundtrip,",
-        "//   cross-restart simulation (load in a fresh import), R3 self-declaration."
+        "// === invariants ===\r",
+        "// - **INTENTIONAL R3 VIOLATION** — this experiment imports the production\r",
+        "//   persistence library (src/experiments/lib/storage-lib.mjs →\r",
+        "//   src/core/persistent-store.js) because **the question being answered\r",
+        "//   is \"does persistent-store.js work as advertised?\"**. R3 is\r",
+        "//   deliberately broken here, R6 (delete-or-absorb) is enforced hard.\r",
+        "// - **NOT a throwaway pattern.** This is a boundary test. If you find\r",
+        "//   yourself reaching for `import persistentStore from '...'` in a\r",
+        "//   fresh experiment, ask first: \"do I really need cross-process state?\"\r",
+        "//   If no, use 14a-storage-noop. If yes, copy this directory.\r",
+        "// - META.persistent: true — explicit R3 self-declaration (the exception).\r",
+        "// - 8 ops: set / get / has / delete / clear / listSessions / save / load.\r",
+        "//   `save`/`load` are explicit fs-roundtrip ops for the persistence test\r",
+        "//   (R3b: prove the data actually goes to disk and comes back).\r",
+        "// - 持久化文件: ~/.openchat/sessions.json (由 persistent-store.js 内部).\r",
+        "//   实验跑的 set/delete 会**真实写**这个文件, 不隔离. 这是 boundary 的成本.\r",
+        "// - Surface state after every op (R5), and after save/load print the\r",
+        "//   file path + size so the user can see the persistence happened.\r",
+        "// - test() does 5 case dry-runs: CRUD, listSessions, save/load roundtrip,\r",
+        "//   cross-restart simulation (load in a fresh import), R3 self-declaration.\r"
       ]
     },
     {
@@ -15424,26 +15044,26 @@
     {
       "file": "/src/experiments/18.mjs",
       "block": [
-        "// === invariants ===",
-        "// - MAX_ROUNDS=8, MAX_REPEAT=3, MAX_RETRIES=3 （与 skeleton-agent 一致）",
-        "// - dryRun: 两组 mock 序列相同（同 LLM），测组件正确性 + 开销",
-        "// - live: 两组同 prompt 调真实 LLM，测完成率 + token 差异",
-        "// - H0/H1 只 live 模式输出；dryRun 只输出组件测试结果",
-        "import { validateResponse } from './lib/response-validator.mjs';",
-        "import { createStepEnforcer } from './lib/step-enforcer.mjs';",
-        "import { createErrorTracker } from './lib/error-tracker.mjs';",
-        "export const META = {",
-        "  id: 'guardrails-pipeline',",
-        "  name: 'Guardrails Pipeline — 全栈守卫 vs 裸循环比较实验',",
-        "  status: 'closed-loop',",
-        "  needsEnv: [],",
-        "  inputs: [",
-        "    { name: 'op', type: 'string', required: true, description: 'compare | run_pipeline | run_baseline | test_components' },",
-        "    { name: 'scenario', type: 'object', required: false },",
-        "    { name: 'live', type: 'boolean', required: false, default: false },",
-        "    { name: 'repeats', type: 'number', required: false, default: 3 },",
-        "  ],",
-        "  outputs: ["
+        "// === invariants ===\r",
+        "// - MAX_ROUNDS=8, MAX_REPEAT=3, MAX_RETRIES=3 （与 skeleton-agent 一致）\r",
+        "// - dryRun: 两组 mock 序列相同（同 LLM），测组件正确性 + 开销\r",
+        "// - live: 两组同 prompt 调真实 LLM，测完成率 + token 差异\r",
+        "// - H0/H1 只 live 模式输出；dryRun 只输出组件测试结果\r",
+        "import { validateResponse } from './lib/response-validator.mjs';\r",
+        "import { createStepEnforcer } from './lib/step-enforcer.mjs';\r",
+        "import { createErrorTracker } from './lib/error-tracker.mjs';\r",
+        "export const META = {\r",
+        "  id: 'guardrails-pipeline',\r",
+        "  name: 'Guardrails Pipeline — 全栈守卫 vs 裸循环比较实验',\r",
+        "  status: 'closed-loop',\r",
+        "  needsEnv: [],\r",
+        "  inputs: [\r",
+        "    { name: 'op', type: 'string', required: true, description: 'compare | run_pipeline | run_baseline | test_components' },\r",
+        "    { name: 'scenario', type: 'object', required: false },\r",
+        "    { name: 'live', type: 'boolean', required: false, default: false },\r",
+        "    { name: 'repeats', type: 'number', required: false, default: 3 },\r",
+        "  ],\r",
+        "  outputs: [\r"
       ]
     },
     {
@@ -15615,725 +15235,103 @@
       ]
     },
     {
-      "file": "/src/experiments/lib/ast-adapters.mjs",
+      "file": "/src/experiments/lib/coding-lib.mjs",
       "block": [
-        "// === invariants ===",
-        "// - Dart: regex-based (no native parser available); covers classes/functions/imports/widget-build",
-        "// - JS: acorn-based full AST",
-        "// - Py/Rs/Go: regex-based for top-level symbols",
-        "// - All adapters return same shape: { language, parsed, symbols[], errors[] }",
-        "import fs from 'fs/promises';",
-        "import path from 'path';",
-        "import { createRequire } from 'module';",
-        "const _require = createRequire(import.meta.url);",
-        "const PROJECT_ROOT = process.cwd();",
-        "// ─── Dart adapter (Flutter-focused) ────────────────────────",
-        "export function parseDart(code) {",
-        "  const symbols = [];",
-        "  const errors = [];",
-        "  // imports",
-        "  for (const m of code.matchAll(/^import\\s+['\"]([^'\"]+)['\"]\\s*(?:as\\s+(\\w+))?(?:\\s+show\\s+(.+?))?(?:\\s+hide\\s+(.+?))?\\s*;/gm)) {",
-        "    symbols.push({ kind: 'import', name: m[2] || m[1].split('/').pop().split('.').shift() || m[1], path: m[1], alias: m[2] || null });",
-        "  }",
-        "  // exports",
-        "  for (const m of code.matchAll(/^export\\s+['\"]([^'\"]+)['\"]/gm)) {"
+        "// === invariants ===\r",
+        "// - applyWithGuard() saves original, runs edit, verifies, rollbacks on failure\r",
+        "// - snapshot store is in-memory Map<filePath, {content, ts}>\r",
+        "// - runLint() calls npm run lint in project root, returns {pass, output}\r",
+        "// - runTests() calls npm test -- --findRelatedTests, returns {pass, output, failedTests[]}\r",
+        "// - restore() writes original content back\r",
+        "// - applyWithGuard passes through the editFn return value on success\r",
+        "import { execSync } from 'child_process';\r",
+        "import fs from 'fs/promises';\r",
+        "import path from 'path';\r",
+        "const _snapshots = new Map();\r",
+        "const PROJECT_ROOT = process.cwd();\r",
+        "export async function snapshot(filePath) {\r",
+        "  const resolved = path.resolve(PROJECT_ROOT, filePath);\r",
+        "  const content = await fs.readFile(resolved, 'utf8');\r",
+        "  _snapshots.set(filePath, { content, ts: Date.now() });\r",
+        "  return { filePath, bytes: content.length };\r",
+        "}\r",
+        "export async function restore(filePath) {\r",
+        "  const snap = _snapshots.get(filePath);\r"
       ]
     },
     {
-      "file": "/src/experiments/lib/ast-edit.mjs",
+      "file": "/src/experiments/lib/llm-lib.mjs",
       "block": [
-        "// === invariants ===",
-        "// - Only works for .js/.jsx/.mjs files (falls back to error for other types)",
-        "// - Uses acorn to parse, walks AST to find target node by selector",
-        "// - Edits source by replacing at AST position — no codegen needed",
-        "// - Selectors: function:{name}, class:{name}, const:{name}, let:{name}, var:{name}",
-        "// - edit: rename, replace_body (replace function body)",
-        "import { readFile, writeFile } from './coding-tools.mjs';",
-        "import path from 'path';",
-        "const JS_EXT = /\\.(js|jsx|mjs|cjs)$/;",
-        "// Simple AST walker (no acorn-walk dependency)",
-        "function walkFind(node, test) {",
-        "  if (!node || typeof node !== 'object') return null;",
-        "  if (test(node)) return node;",
-        "  for (const key of Object.keys(node)) {",
-        "    if (key === 'parent') continue;",
-        "    const child = node[key];",
-        "    if (Array.isArray(child)) {",
-        "      for (const item of child) {",
-        "        const found = walkFind(item, test);",
-        "        if (found) return found;"
+        "// === invariants ===\r",
+        "// - 永不抛 (cost 错误降级为 0)\r",
+        "// - 字符→token 系数 4 (业界粗估, 不假装精确)\r",
+        "// - 单价 map 找不到 → 0, 不报错 (用户没配该 model = 显式零成本)\r",
+        "// - summary 返回的 byModel 永远有 'unknown' 兜底\r",
+        "const CHARS_PER_TOKEN = 4;\r",
+        "// 默认单价 (USD / 1K tokens), 缺数据 = 0\r",
+        "// 用户可在 config.json 的 providers.<name>.costPer1k 覆盖\r",
+        "const DEFAULT_COST = {\r",
+        "  // openai\r",
+        "  'gpt-4o':         { input: 0.005,  output: 0.015 },\r",
+        "  'gpt-4o-mini':    { input: 0.00015, output: 0.0006 },\r",
+        "  'gpt-4-turbo':    { input: 0.01,   output: 0.03 },\r",
+        "  'gpt-3.5-turbo':  { input: 0.0005, output: 0.0015 },\r",
+        "  // anthropic\r",
+        "  'claude-3-5-sonnet-20241022': { input: 0.003, output: 0.015 },\r",
+        "  'claude-3-haiku-20240307':    { input: 0.00025, output: 0.00125 },\r",
+        "  // MiniMax (openchat 自家, 待用户配)\r",
+        "  'MiniMax-M3':     { input: 0,      output: 0 },\r",
+        "};\r"
       ]
     },
     {
-      "file": "/src/experiments/lib/ast-search.mjs",
+      "file": "/src/experiments/lib/misc-lib.mjs",
       "block": [
-        "// === invariants ===",
-        "// - JS parsing via acorn (no TypeScript — ts files analyzed as JS, TS-specific syntax skipped)",
-        "// - Symbol index: functions, classes, variables, exports",
-        "// - findReferences: AST-aware (excludes comments, strings)",
-        "import fs from 'fs/promises';",
-        "import path from 'path';",
-        "import * as acorn from 'acorn';",
-        "const PROJECT_ROOT = process.cwd();",
-        "let _astCache = null;",
-        "const astWalker = {",
-        "  walkProgram(node, visitors) {",
-        "    if (!node || !node.body) return;",
-        "    for (const stmt of node.body) this.walkNode(stmt, visitors);",
-        "  },",
-        "  walkNode(node, visitors) {",
-        "    if (!node || typeof node !== 'object') return;",
-        "    if (visitors[node.type]) visitors[node.type](node);",
-        "    for (const key of Object.keys(node)) {",
-        "      if (key === 'parent') continue;",
-        "      const val = node[key];"
+        "// === invariants ===\r",
+        "// - load 永不抛 — 文件不存在/JSON 损坏都返回空数组\r",
+        "// - save 原子写: 写 .tmp 再 rename (避免半写状态)\r",
+        "// - 单文件 messages 数组上限 1000 条 (写时裁剪), 防止 history 文件膨胀\r",
+        "// - chatId 路径用 [a-zA-Z0-9_-] 过滤, 防 ../ 穿越\r",
+        "// - 不与 persistent-store 耦合, 是独立 fs 命名空间\r",
+        "import fs from 'fs';\r",
+        "import path from 'path';\r",
+        "import { homedir } from 'os';\r",
+        "const HISTORY_DIR = path.join(homedir(), '.openchat', 'repl-history');\r",
+        "const MAX_HISTORY = 1000;\r",
+        "const VALID_ID = /^[a-zA-Z0-9_-]{1,64}$/;\r",
+        "function safeId(chatId) {\r",
+        "  if (typeof chatId !== 'string' || !VALID_ID.test(chatId)) {\r",
+        "    throw new Error(`repl-history: invalid chatId \"${chatId}\" (must match ${VALID_ID})`);\r",
+        "  }\r",
+        "  return chatId;\r",
+        "}\r",
+        "function ensureDir() {\r",
+        "  if (!fs.existsSync(HISTORY_DIR)) fs.mkdirSync(HISTORY_DIR, { recursive: true });\r"
       ]
     },
     {
-      "file": "/src/experiments/lib/auto-commit.mjs",
+      "file": "/src/experiments/lib/storage-lib.mjs",
       "block": [
-        "// === invariants ===",
-        "// - autoCommit(filePaths) stages files, generates message from git diff, commits",
-        "// - commitMessage() calls `git diff --cached` to generate descriptive message",
-        "// - Falls back to \"feat: auto-commit\" if diff is empty",
-        "// - commitFormat: \"type(scope): description\"",
-        "// - Only works inside a git repo",
-        "import { execSync } from 'child_process';",
-        "import path from 'path';",
-        "const PROJECT_ROOT = process.cwd();",
-        "export function hasGitRepo(cwd = PROJECT_ROOT) {",
-        "  try {",
-        "    execSync('git rev-parse --git-dir', { cwd, encoding: 'utf8', windowsHide: true });",
-        "    return true;",
-        "  } catch { return false; }",
-        "}",
-        "export function gitAdd(filePaths, cwd = PROJECT_ROOT) {",
-        "  const files = Array.isArray(filePaths) ? filePaths.join(' ') : filePaths;",
-        "  execSync(`git add ${files}`, { cwd, encoding: 'utf8', windowsHide: true });",
-        "  return { staged: filePaths };",
-        "}"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/code-search.mjs",
-      "block": [
-        "// === invariants ===",
-        "// - grepSearch uses ripgrep (rg) when available, falls back to Node.js recursive grep",
-        "// - findReferences only parses JS/TS import/export syntax via regex (no full AST)",
-        "// - All paths are relative to PROJECT_ROOT; path traversal denied",
-        "import fs from 'fs/promises';",
-        "import path from 'path';",
-        "import { execSync } from 'child_process';",
-        "const PROJECT_ROOT = process.cwd();",
-        "function safeResolve(filePath) {",
-        "  const resolved = path.resolve(PROJECT_ROOT, filePath);",
-        "  if (!resolved.startsWith(PROJECT_ROOT)) throw new Error('Path traversal denied');",
-        "  return resolved;",
-        "}",
-        "async function exists(p) {",
-        "  try { await fs.access(p); return true; } catch { return false; }",
-        "}",
-        "function hasRipgrep() {",
-        "  try { execSync('rg --version', { stdio: 'ignore' }); return true; } catch { return false; }",
-        "}",
-        "export async function grepSearch(query, options = {}) {"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/coding-tools.mjs",
-      "block": [
-        "// === invariants ===",
-        "// - readFile(path): returns file content as string",
-        "// - writeFile(path, content): writes content to file",
-        "// - editFile(path, edits): apply multiple search/replace edits with quality gate",
-        "// - hashEdit(content, search, replace): hashline-style edit with anchor hash",
-        "// - TOOLS: OpenAI function-calling schema array",
-        "// - All file ops relative to project root (F:\\openchat)",
-        "// - editFile validates that search string exists uniquely before replacing",
-        "// - editFile runs lint after edit by default, returns {pass, step?, ...editResult}",
-        "// - use force=true on edit_file to skip quality gate",
-        "import fs from 'fs/promises';",
-        "import path from 'path';",
-        "import crypto from 'crypto';",
-        "import { applyWithGuard } from './quality-gate.mjs';",
-        "import { TOOLS as SEARCH_TOOLS, executeTool as searchExec } from './code-search.mjs';",
-        "import { TOOLS as DEV_TOOLS, executeTool as devExec } from './dev-tools.mjs';",
-        "import { TOOLS as AST_TOOLS, executeTool as astExec } from './ast-search.mjs';",
-        "import { TOOLS as DEEP_TOOLS, executeTool as deepExec } from './tools-deep.mjs';",
-        "import { TOOLS as ADAPTER_TOOLS, executeTool as adapterExec } from './ast-adapters.mjs';",
-        "// memory-tools.mjs removed: dead code"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/cost-tracker.mjs",
-      "block": [
-        "// === invariants ===",
-        "// - 永不抛 (cost 错误降级为 0)",
-        "// - 字符→token 系数 4 (业界粗估, 不假装精确)",
-        "// - 单价 map 找不到 → 0, 不报错 (用户没配该 model = 显式零成本)",
-        "// - summary 返回的 byModel 永远有 'unknown' 兜底",
-        "const CHARS_PER_TOKEN = 4;",
-        "// 默认单价 (USD / 1K tokens), 缺数据 = 0",
-        "// 用户可在 config.json 的 providers.<name>.costPer1k 覆盖",
-        "const DEFAULT_COST = {",
-        "  // openai",
-        "  'gpt-4o':         { input: 0.005,  output: 0.015 },",
-        "  'gpt-4o-mini':    { input: 0.00015, output: 0.0006 },",
-        "  'gpt-4-turbo':    { input: 0.01,   output: 0.03 },",
-        "  'gpt-3.5-turbo':  { input: 0.0005, output: 0.0015 },",
-        "  // anthropic",
-        "  'claude-3-5-sonnet-20241022': { input: 0.003, output: 0.015 },",
-        "  'claude-3-haiku-20240307':    { input: 0.00025, output: 0.00125 },",
-        "  // MiniMax (openchat 自家, 待用户配)",
-        "  'MiniMax-M3':     { input: 0,      output: 0 },",
-        "};"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/dev-repl.mjs",
-      "block": [
-        "// === invariants ===",
-        "// - startDevRepl 入口先调 provider-health.diagnose + failover-picker 选 alive provider",
-        "// - readline 循环: 同一轮 tool 调用 cache (toolCache Map) 防重复",
-        "// - 流式分支: provider.chatStream 不存在时降级 provider.chat, lastStreamed 防重复打印",
-        "// - history: 每次 user/assistant/tool 落盘 ~/.openchat/repl-history/<id>.json, /clear 清空",
-        "// - /resume 跳到目标: sessionId 不变, 后续 histAppend 仍写**原** session (保护目标不被污染)",
-        "// - slash-commands: applySlash async, 调 ctx.onCommit (commit 路径) 和 ctx.availableSessions (/resume 路径)",
-        "// - edit-quality-gate: edit tool 完成后异步 fire-and-forget, 失败塞 messages+history, 不阻塞 REPL",
-        "// - 全程 never-throw 策略: 所有 catch 静默, gate/pinger 内部保永不抛",
-        "// 5 件套 v2 件套 5: 执行边界 (execution boundary).",
-        "// 三层: (a) MAX_ROUNDS=30 兜底 (cap 总轮数, 防 subagent 卡死),",
-        "// (b) READ_BUDGET=3 软约束 (read-style tool 连续 N 次后注入 phase transition 提示, 防 exploration 链不切到 write),",
-        "// (c) 决断力 (decision under uncertainty) — systemMsg 显式禁止 surrender/ask user, 强制 unilateral decision.",
-        "// (d) 强倒计时 (diff proposal → must edit) — M3 produce diff 块后, N 轮内必须 emit edit_file, 不允许再问 a/b/c.",
-        "// v7 失败: exploration 链不切到 write 链. (b) 修.",
-        "// v8' 失败: M3 在 (b) 触发后给 plan + ask 2 确认. (c) 修 (改 surrender 为 propose diff).",
-        "// v9 失败: M3 produce diff 但 ask (a/b/c) 选哪个. (d) 修 (强倒计时逼 edit_file).",
-        "const MAX_ROUNDS = 30;",
-        "const READ_BUDGET = 3;",
-        "const DIFF_COUNTDOWN = 2; // 件 5 (d): produce diff 后给 N 轮机会 edit_file"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/dev-tools.mjs",
-      "block": [
-        "// === invariants ===",
-        "// - All tools are thin wrappers: parse stdin, call CLI, return structured output",
-        "// - Path traversal denied on all file-based ops",
-        "// - Tools prefixed by category for clarity",
-        "import fs from 'fs/promises';",
-        "import path from 'path';",
-        "import { execSync } from 'child_process';",
-        "const PROJECT_ROOT = process.cwd();",
-        "function safeResolve(p) { const r = path.resolve(PROJECT_ROOT, p); if (!r.startsWith(PROJECT_ROOT)) throw new Error('Path traversal denied'); return r; }",
-        "function run(cmd, opts = {}) { try { return execSync(cmd, { encoding: 'utf8', maxBuffer: 10 * 1024 * 1024, stdio: ['pipe', 'pipe', 'pipe'], ...opts }); } catch (e) { return e.stdout || e.message; } }"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/dev-workflow-plugin.mjs",
-      "block": [
-        "// === invariants ===",
-        "// - Each execute() dynamically imports the relevant tool module",
-        "// - run_command uses isSafeCommand + output-compressor",
-        "// - read_file/write_file/edit_file include path traversal protection + quality gate",
-        "// - git_commit uses auto-commit with diff-based message generation",
-        "// - analyze_project uses project-context's findDependencies + getProjectStructure",
-        "export const DevWorkflowPlugin = {",
-        "  id: 'plugin-dev-workflow',",
-        "  name: 'Dev Workflow',",
-        "  description: 'Enhanced dev tools: safe command execution, quality-gated edits, auto-commit, project analysis.',",
-        "  tools: [",
-        "    {",
-        "      name: 'run_command',",
-        "      description: 'Execute a shell command with safety checks. Whitelisted: npm, node, git, flutter, dart, ls, cat, pwd, echo, mkdir, rm (safe), cp, mv, grep, find, head, tail, sort, wc, curl, dir, type, cd. Blocked: rm -rf /, sudo, shutdown, del /f, format, >nul.',",
-        "      params: {",
-        "        command: { type: 'string', description: 'Shell command to execute' },",
-        "        timeout: { type: 'number', description: 'Timeout in ms (default 10000)', required: false },",
-        "      },",
-        "      execute: async ({ command, timeout = 10000 }) => {",
-        "        const { execCommand } = await import('./system-exec.mjs');"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/diff-review.mjs",
-      "block": [
-        "// === invariants ===",
-        "// - diffReview() computes git diff for staged/unstaged changes",
-        "// - confirmDiff() asks user via stdin for y/n — interactive only",
-        "// - For non-interactive (chat), returns diff text for LLM to present",
-        "import { execSync } from 'child_process';",
-        "export function getGitDiff(cwd = process.cwd()) {",
-        "  try {",
-        "    const diff = execSync('git diff 2>&1', { cwd, encoding: 'utf8', timeout: 5000, windowsHide: true });",
-        "    const staged = execSync('git diff --cached 2>&1', { cwd, encoding: 'utf8', timeout: 5000, windowsHide: true });",
-        "    const output = [];",
-        "    if (staged.trim()) output.push('=== Staged ===\\n' + staged);",
-        "    if (diff.trim()) output.push('=== Unstaged ===\\n' + diff);",
-        "    return output.join('\\n') || '(no changes)';",
-        "  } catch {",
-        "    return '(not a git repo or git unavailable)';",
-        "  }",
-        "}",
-        "export function executeTool(name, args) {",
-        "  if (name === 'diff_review' || name === 'getGitDiff') {",
-        "    return getGitDiff(args?.cwd);"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/edit-quality-gate.mjs",
-      "block": [
-        "// === invariants ===",
-        "// - 永不抛 — 错误降级为 { ok:false, errors:[], summary:'lint runner unavailable' }",
-        "// - 只对 .js/.mjs/.ts/.jsx/.tsx 跑 lint, 其他扩展名直接 ok:true",
-        "// - 默认 8s 超时, 不阻塞 REPL 主循环",
-        "// - 不写盘, 不修改文件 (lintRun 只读)",
-        "import { lintRun } from './dev-tools.mjs';",
-        "const EDIT_TOOLS = new Set(['edit_file', 'write_file', 'multi_edit', 'ast_edit', 'editFile', 'writeFile', 'hashEdit']);",
-        "const LINT_EXTS = /\\.(js|mjs|cjs|ts|jsx|tsx)$/i;",
-        "const LINT_TIMEOUT = 8000;",
-        "export function isEditTool(toolName) {",
-        "  return EDIT_TOOLS.has(toolName);",
-        "}",
-        "function withTimeout(p, ms) {",
-        "  return Promise.race([",
-        "    p,",
-        "    new Promise((_, rej) => setTimeout(() => rej(new Error(`timeout ${ms}ms`)), ms)),",
-        "  ]);",
-        "}",
-        "export async function checkEditedFile(filePath) {",
-        "  if (!filePath || typeof filePath !== 'string') {"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/error-tracker.mjs",
-      "block": [
-        "// === invariants ===",
-        "// - maxAttemptsPerCall=3，同一 call 超过直接标记 fatal",
-        "// - similarError(msg1, msg2): 消息相似度判断，防止绕圈",
-        "export function createErrorTracker() {",
-        "  const history = []; // { tool, args, error, attempt, round }",
-        "  return {",
-        "    record(tool, args, error, round) {",
-        "      history.push({ tool, args: JSON.stringify(args), error, round, ts: Date.now() });",
-        "    },",
-        "    // 判断是否可以重试",
-        "    shouldRetry(tool, args, error) {",
-        "      const argsStr = JSON.stringify(args);",
-        "      const attempts = history.filter(h =>",
-        "        h.tool === tool &&",
-        "        h.args === argsStr &&",
-        "        _similarError(h.error, error)",
-        "      );",
-        "      if (attempts.length >= 3) return { retry: false, reason: '超过最大重试次数 (3)' };",
-        "      if (error && _isFatal(error)) return { retry: false, reason: '致命错误，不应重试' };",
-        "      return { retry: true, attempt: attempts.length + 1 };"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/failover-picker.mjs",
-      "block": [
-        "// === invariants ===",
-        "// - 真 ping 永不抛 — 全部错误降级为 tried[i].error",
-        "// - 真 ping 超时默认 8000ms (可配, 上限 10000). 跟 pingProvider 上限对齐, 给真实 provider 4-6s 留余量.",
-        "//   旧默认 3000ms 在 minimax/openrouter 4-6s 真实延迟下会假性超时, 触发 v4 报告里的 pre-flight crash.",
-        "// - 只对**首个 alive** 调 createProvider+connect, 不浪费 5-10s 在死端点",
-        "// - 不写盘, 不持久化任何结果",
-        "// - silent=true 不打 stdout, 供测试断言",
-        "import { pingProvider } from './provider-health.mjs';",
-        "export async function pickFirstAlive(fallbacks, cfg = {}, { silent = false, timeoutMs = 8000 } = {}) {",
-        "  const tried = [];",
-        "  const log = (s) => { if (!silent) process.stdout.write(s); };",
-        "  for (const fb of fallbacks) {",
-        "    const pcfg = cfg.providers?.[fb.name] || {};",
-        "    // 把 model 透给 pingProvider 让它能挖 providers.<id>.adapter.<model>.<family>.baseURL",
-        "    const ping = await pingProvider(fb.name, { ...pcfg, _model: fb.model }, { timeoutMs });",
-        "    tried.push({ name: fb.name, model: fb.model, ping });",
-        "    if (ping.error === 'no-api-key') {",
-        "      log(`\\x1b[90m[failover] ${fb.name}: 缺 apiKey, 跳过\\x1b[0m\\n`);",
-        "      continue;",
-        "    }"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/guardian.mjs",
-      "block": [
-        "// === invariants ===",
-        "// - wrap(tc, executor): 先校验，通过后执行，返回结果字符串",
-        "// - validateResponse(response): 校验整个 LLM 响应",
-        "// - MAX_REPEAT=3",
-        "import { validateResponse } from './response-validator.mjs';",
-        "import { createStepEnforcer } from './step-enforcer.mjs';",
-        "import { createErrorTracker } from './error-tracker.mjs';",
-        "export function createGuardian({ tools, stepDeps = {} } = {}) {",
-        "  const enforcer = createStepEnforcer();",
-        "  const tracker = createErrorTracker();",
-        "  if (Object.keys(stepDeps).length > 0) enforcer.defineAll(stepDeps);",
-        "  const callCount = new Map();",
-        "  function _parseArgs(tc) {",
-        "    const raw = tc.function?.arguments || tc.arguments || '{}';",
-        "    try { return { ok: true, args: typeof raw === 'string' ? JSON.parse(raw) : raw }; }",
-        "    catch { return { ok: false, error: `[Guardian] 参数非法 JSON: ${String(raw).slice(0, 80)}` }; }",
-        "  }",
-        "  return {",
-        "    // 先校验，再执行。返回 { ok, result/error, bypassedByGuardian? }",
-        "    async wrap(tc, executor) {"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/multi-edit.mjs",
-      "block": [
-        "// === invariants ===",
-        "// - Uses built-in fs + minimatch-style pattern matching (no external deps)",
-        "// - Each file is edited via coding-tools' editFile with quality gate",
-        "// - Skips files where search string is not found (reports as skipped)",
-        "// - All results returned in a single batch",
-        "import fs from 'fs/promises';",
-        "import path from 'path';",
-        "const PROJECT_ROOT = process.cwd();",
-        "// Simple glob matching: * matches anything except /, ** matches everything",
-        "function matchGlob(filePath, pattern) {",
-        "  const regexStr = pattern",
-        "    .replace(/\\./g, '\\\\.')",
-        "    .replace(/\\*\\*/g, '☯')",
-        "    .replace(/\\*/g, '[^/]*')",
-        "    .replace(/☯/g, '.*');",
-        "  return new RegExp('^' + regexStr + '$').test(filePath.replace(/\\\\/g, '/'));",
-        "}",
-        "async function findFiles(dir, pattern, results = [], rootDir = dir) {",
-        "  const entries = await fs.readdir(dir, { withFileTypes: true }).catch(() => []);",
-        "  for (const entry of entries) {"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/output-compressor.mjs",
-      "block": [
-        "// === invariants ===",
-        "// - compressOutput(cmd, stdout, stderr) returns { stdout, stderr, meta }",
-        "// - MAX_DEFAULT_LINES: 50 lines, beyond that → truncate with head/tail",
-        "// - Known commands get specialized compression (git, ls, test runners, linters)",
-        "// - Error output is never compressed (except dedup)",
-        "// - Meta includes original/originalBytes/compressedBytes/ratio",
-        "// - Line dedup removes consecutive duplicate lines only",
-        "const MAX_DEFAULT_LINES = 50;",
-        "const MAX_LINE_LENGTH = 500;",
-        "const TAIL_LINES = 10;",
-        "export function compressOutput(cmd, stdout, stderr) {",
-        "  const origBytes = (stdout + stderr).length;",
-        "  const meta = { origBytes, compressedBytes: 0, ratio: 1, strategy: 'none' };",
-        "  // Error output: never truncate, just dedup",
-        "  const stderrClean = _dedupLines(stderr);",
-        "  const cmdBase = (cmd || '').trim().split(/\\s+/)[0]?.toLowerCase();",
-        "  const strategy = _getStrategy(cmdBase, stdout);",
-        "  let stdoutClean = stdout;",
-        "  switch (strategy) {",
-        "    case 'git_status':"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/permission-gate.mjs",
-      "block": [
-        "// === invariants ===",
-        "//   - _enabled 默认 true, setEnabled(false) 是测试 escape hatch",
-        "//   - _trust 懒加载, 损坏/读失败 → 静默重置为空 (主流程不 throw)",
-        "//   - checkPermission 总是返 { allowed, reason }; allowed=false 时 22.mjs 把 reason 当 tool result 返给 LLM",
-        "//   - bridge 模式 (无 process.stdin.isTTY 或 ctx.bridgeMode) → confirm 静默 allow + log, 不阻塞",
-        "//   - 未知 tool → 默认 'confirm' (保守, 走 confirm 路径)",
-        "//   - trust 写失败 → 静默 (不影响 runtime, 不影响本次 allow 决策)"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/project-context.mjs",
-      "block": [
-        "// === invariants ===",
-        "// - findRelatedFiles(filePath) scans imports/exports and finds connected files",
-        "// - findDependencies(filePath) lists direct imports + their resolution",
-        "// - getProjectStructure(root) returns directory tree up to 3 levels",
-        "// - Only reads files, never modifies",
-        "import fs from 'fs/promises';",
-        "import { existsSync } from 'fs';",
-        "import path from 'path';",
-        "const PROJECT_ROOT = process.cwd();",
-        "const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'coverage', '.next', '.nuxt']);",
-        "export async function findRelatedFiles(filePath) {",
-        "  const resolved = path.resolve(PROJECT_ROOT, filePath);",
-        "  const dir = path.dirname(resolved);",
-        "  const ext = path.extname(filePath);",
-        "  const base = path.basename(filePath, ext);",
-        "  // Find files with same base name but different extensions",
-        "  const related = [];",
-        "  try {",
-        "    const entries = await fs.readdir(dir);",
-        "    for (const e of entries) {"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/provider-health.mjs",
-      "block": [
-        "// === invariants ===",
-        "// - diagnose() 永不抛 — 所有错误降级为 report.items[i].error",
-        "// - ping 超时硬上限 3000ms, 不会 hang 住 REPL 启动",
-        "// - alive 判定: 2xx/3xx 才算 alive; 4xx/5xx/timeout/网络错 全部 alive=false",
-        "// - 不写盘: 只读 config + 只发 GET ping, 不持久化任何结果",
-        "// - silent=true 时不打颜色码 (供测试断言), silent=false 输出 ANSI 着色",
-        "// - 降级链构造顺序与 dev-repl.mjs:107-111 行为一致 (current → openrouter → 其他有 apiKey)",
-        "// - firstAlive 取**第一个**存活 provider, 不选\"最优\" (避免策略复杂度)",
-        "import fs from 'fs/promises';",
-        "import os from 'os';",
-        "import path from 'path';",
-        "const DEFAULT_CONFIG = path.join(os.homedir(), '.config', 'openchat', 'config.json');",
-        "const COLOR = {",
-        "  reset: '\\x1b[0m', dim: '\\x1b[90m', red: '\\x1b[31m', green: '\\x1b[32m',",
-        "  yellow: '\\x1b[33m', cyan: '\\x1b[36m', bold: '\\x1b[1m',",
-        "};",
-        "function pad(s, n) { s = String(s); return s + ' '.repeat(Math.max(0, n - s.length)); }",
-        "async function readConfig(configPath) {",
-        "  const p = configPath || DEFAULT_CONFIG;",
-        "  try {"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/quality-gate.mjs",
-      "block": [
-        "// === invariants ===",
-        "// - applyWithGuard() saves original, runs edit, verifies, rollbacks on failure",
-        "// - snapshot store is in-memory Map<filePath, {content, ts}>",
-        "// - runLint() calls npm run lint in project root, returns {pass, output}",
-        "// - runTests() calls npm test -- --findRelatedTests, returns {pass, output, failedTests[]}",
-        "// - restore() writes original content back",
-        "// - applyWithGuard passes through the editFn return value on success",
-        "import { execSync } from 'child_process';",
-        "import fs from 'fs/promises';",
-        "import path from 'path';",
-        "const _snapshots = new Map();",
-        "const PROJECT_ROOT = process.cwd();",
-        "export async function snapshot(filePath) {",
-        "  const resolved = path.resolve(PROJECT_ROOT, filePath);",
-        "  const content = await fs.readFile(resolved, 'utf8');",
-        "  _snapshots.set(filePath, { content, ts: Date.now() });",
-        "  return { filePath, bytes: content.length };",
-        "}",
-        "export async function restore(filePath) {",
-        "  const snap = _snapshots.get(filePath);"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/repl-history.mjs",
-      "block": [
-        "// === invariants ===",
-        "// - load 永不抛 — 文件不存在/JSON 损坏都返回空数组",
-        "// - save 原子写: 写 .tmp 再 rename (避免半写状态)",
-        "// - 单文件 messages 数组上限 1000 条 (写时裁剪), 防止 history 文件膨胀",
-        "// - chatId 路径用 [a-zA-Z0-9_-] 过滤, 防 ../ 穿越",
-        "// - 不与 persistent-store 耦合, 是独立 fs 命名空间",
-        "import fs from 'fs';",
-        "import path from 'path';",
-        "import { homedir } from 'os';",
-        "const HISTORY_DIR = path.join(homedir(), '.openchat', 'repl-history');",
-        "const MAX_HISTORY = 1000;",
-        "const VALID_ID = /^[a-zA-Z0-9_-]{1,64}$/;",
-        "function safeId(chatId) {",
-        "  if (typeof chatId !== 'string' || !VALID_ID.test(chatId)) {",
-        "    throw new Error(`repl-history: invalid chatId \"${chatId}\" (must match ${VALID_ID})`);",
-        "  }",
-        "  return chatId;",
-        "}",
-        "function ensureDir() {",
-        "  if (!fs.existsSync(HISTORY_DIR)) fs.mkdirSync(HISTORY_DIR, { recursive: true });"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/response-validator.mjs",
-      "block": [
-        "// === invariants ===",
-        "// - 不修改 content，只校验 tool_calls 数组",
-        "// - 未知 tool name 算 fatal 错误，不自动跳过",
-        "// - 返回 errors 数组，不 throw",
-        "// - 5 件套 v2 件套 3 (强契约): 校验参数 type + enum 越界, 输出 shape 不在这层 (runtime call 之后)",
-        "//   enum 校验: 若 schema prop 有 enum 数组, value 必须在数组内",
-        "function _repairJSON(s) {",
-        "  let fixed = s;",
-        "  let inStr = false, escape = false;",
-        "  for (const c of fixed) { if (escape) { escape = false; continue; } if (c === '\\\\') { escape = true; continue; } if (c === '\"') { inStr = !inStr; } }",
-        "  if (inStr) fixed += '\"';",
-        "  const opens = (fixed.match(/\\{/g) || []).length;",
-        "  const closes = (fixed.match(/\\}/g) || []).length;",
-        "  for (let i = 0; i < opens - closes; i++) fixed += '}';",
-        "  return fixed;",
-        "}",
-        "export function validateResponse(response, schemas) {",
-        "  const errors = [];",
-        "  if (!response || !response.toolCalls || !Array.isArray(response.toolCalls)) {",
-        "    return { valid: true, errors: [], toolCalls: [] };"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/session-namer.mjs",
-      "block": [
-        "// === invariants ===",
-        "// - _metaCache[chatId] = { name, userSet, autoNamed, createdAt, updatedAt } | null",
-        "// - Never auto-name if userSet === true",
-        "// - Auto-name triggers: messageCount ∈ [3, 8, 16, 32, 64] (exponential backoff)",
-        "// - Name generation uses the same provider as chat (processText via external callback)",
-        "// - _meta.json written to Qiniu only when name actually changes",
-        "// - Cache miss → read from Qiniu; negative cache (null) avoids repeated misses",
-        "const META_KEY = '_meta.json';",
-        "const TRIGGER_POINTS = new Set([3, 8, 16, 32, 64]);",
-        "const _metaCache = new Map();",
-        "function metaPath(chatId) {",
-        "  return `oc/chat/${chatId}/${META_KEY}`;",
-        "}",
-        "async function readMeta(chatId) {",
-        "  if (_metaCache.has(chatId)) return _metaCache.get(chatId);",
-        "  try {",
-        "    const raw = await qiniuGet(metaPath(chatId));",
-        "    const meta = JSON.parse(raw.toString('utf8'));",
-        "    _metaCache.set(chatId, meta);",
-        "    return meta;"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/session-tree.mjs",
-      "block": [
-        "// === invariants ===",
-        "// - _tree.json is the source of truth; .msg / -reply.json files are legacy compat",
-        "// - Each node has: id, role('user'|'assistant'), content, parent(null|nodeId), ts",
-        "// - Assistant nodes have optional: variants[{content,ts}], activeVariant(index)",
-        "// - Tree is reconstructed from _tree.json on each poll (disk-backed, not in-memory)",
-        "// - Signal files: _edit_{nodeId}, _reanswer_{nodeId} — consumed then skipped in seenKeys",
-        "// - Signal files: _delete.signal — deletes all files under chatId prefix",
-        "// - New user node is always appended to latest leaf of current path",
-        "// - _tree.json has version field for cache invalidation",
-        "const TREE_FILE = '_tree.json';",
-        "const SIGNAL_PREFIX = '_';",
-        "function _treePath(chatId) {",
-        "  return `oc/chat/${chatId}/${TREE_FILE}`;",
-        "}",
-        "async function loadTree(chatId) {",
-        "  try {",
-        "    const raw = await qiniuGet(_treePath(chatId));",
-        "    return JSON.parse(raw.toString('utf8'));",
-        "  } catch {",
-        "    return { version: 1, nodes: [] };"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/slash-commands.mjs",
-      "block": [
-        "// === invariants ===",
-        "// - COMMANDS 是单例, 不在运行时变更 (P0 命令集)",
-        "// - parseSlash 是纯函数, 不读 cfg 不写盘",
-        "// - applySlash 整体 async (commit 路径要 await onCommit), 其他 case 直接返同步值包成 Promise",
-        "// - 不直接操作 readline / process.exit, 全部通过 sideEffect 通知 dev-repl",
-        "// - 不持久化 model 切换 (运行中内存态, 退出生效)",
-        "// - /resume 接受 id 或序号, 找不到返 \"找不到\" 不抛",
-        "// - /commit 必依赖 ctx.onCommit, 缺失返 \"未注入\" 不抛",
-        "//   /help                  — 列出所有命令",
-        "//   /status                — 当前 session/provider/model/工具数/历史轮数",
-        "//   /clear                 — 清屏 + 重置历史",
-        "//   /history-clear         — 清空当前 session 的对话历史 (不退出, 不清屏)",
-        "//   /model <name|id>       — 切换当前 model (运行中, 写到 ctx.model)",
-        "//   /resume [chatId]       — 列有历史的 session (无参) 或 跳到指定 session (有参)",
-        "//   /forget [chatId]       — 列有历史的 session; 或 /forget <id> --force 删除",
-        "//   /diff                  — 显示未提交的 git diff",
-        "//   /commit                — 一键 git add + 自动 commit msg (基于 git diff)",
-        "//   /task <goal>           — 派生子 agent 跑任务 (独立 session)",
-        "//   /workflow <name>       — 运行已定义的工作流",
-        "//   /exit                  — 退出 (alias: /quit)"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/step-enforcer.mjs",
-      "block": [
-        "// === invariants ===",
-        "// - 只检查已注册的前提，未知步骤不报错",
-        "// - registerCompleted() 后不可撤销",
-        "// - reset() 清空所有状态",
-        "export function createStepEnforcer() {",
-        "  const completed = new Set();",
-        "  const preconditions = new Map(); // stepName → string[] (前提步骤)",
-        "  return {",
-        "    // 定义步骤依赖: stepName 依赖于 prereqs",
-        "    define(stepName, prereqs = []) {",
-        "      preconditions.set(stepName, prereqs);",
-        "      return this;",
-        "    },",
-        "    // 批量定义",
-        "    defineAll(map) {",
-        "      for (const [step, prereqs] of Object.entries(map)) {",
-        "        preconditions.set(step, prereqs);",
-        "      }",
-        "      return this;",
-        "    },"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/subagent.mjs",
-      "block": [
-        "// === invariants ===",
-        "// - runSubagent 入口必须接收 deps (provider/fallbacks/picker/loadTools) 由 dev-repl 注入，",
-        "//   不自己再读 cfg 也不再走 startDevRepl",
-        "// - sessionId 必须独立于调用方 (子任务历史不污染主 session)",
-        "// - 历史轮数上限比 dev-repl 低 (默认 30), 防子任务失控",
-        "// - 子任务不持久化到 repl-history (子任务是 throw-away, 不占磁盘)",
-        "// - 失败/超时统一返 { ok:false, error }, 不抛",
-        "// - system prompt 强化\"独立完成, 不需要追问\", 子任务不应触发交互",
-        "// - toolCache 独立, 不复用主 session 的 cache",
-        "// - 返回的 finalAnswer 截断到 4000 字符 (防主 session 被灌爆)",
-        "// - opts.tools 接受 tool name 数组 → 窄工具集 (5 件套第 2 条: 子任务越窄越好, M3 偏 build_run 时浪费 round)",
-        "import { randomUUID } from 'crypto';",
-        "const DEFAULT_MAX_ROUNDS = 30;",
-        "const MAX_ANSWER_CHARS = 4000;",
-        "const ROUND_DELAY_MS = 200;",
-        "export async function runSubagent({ goal, deps, opts = {} }) {",
-        "  const startTs = Date.now();",
-        "  const sessionId = `subagent_${randomUUID().slice(0, 8)}`;",
-        "  const maxRounds = opts.maxRounds || DEFAULT_MAX_ROUNDS;",
-        "  if (!goal || typeof goal !== 'string') {"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/system-exec.mjs",
-      "block": [
-        "// === invariants ===",
-        "// - ALLOWED_COMMANDS: whitelist of safe executables (prefix match)",
-        "// - BLOCKED_PATTERNS: regex patterns that will reject a command outright",
-        "// - timeout defaults to 10s, max output 100KB",
-        "// - execCommand() returns { stdout, stderr, exitCode }",
-        "// - TOOLS array follows OpenAI function-calling schema",
-        "// - Never executes if cmd fails safety check (throws)",
-        "import { execSync } from 'child_process';",
-        "import { compressOutput } from './output-compressor.mjs';",
-        "const ALLOWED_COMMANDS = ['ls', 'cat', 'echo', 'node', 'npm', 'git', 'pwd', 'dir', 'type', 'whoami', 'date', 'find', 'grep', 'head', 'tail', 'wc', 'cmd'];",
-        "const BLOCKED_PATTERNS = [/\\brm\\b/, /\\bdel\\b/, /\\bformat\\b/, /\\bsudo\\b/, /\\bshutdown\\b/, /\\breboot\\b/, /\\bhalt\\b/, /\\bpoweroff\\b/, /\\bmv\\b/, /\\bcp\\b/, /\\bchmod\\b/, /\\bchown\\b/, /\\bmkfs\\b/, /\\bdd\\b/, /\\b>|>>|\\||;&\\${/];",
-        "const MAX_OUTPUT = 100 * 1024;",
-        "const DEFAULT_TIMEOUT = 10000;",
-        "const EXEC_OPTS = { timeout: DEFAULT_TIMEOUT, maxBuffer: MAX_OUTPUT, windowsHide: true, encoding: 'utf8' };",
-        "export function isSafeCommand(cmd) {",
-        "  if (!cmd || typeof cmd !== 'string') return false;",
-        "  const trimmed = cmd.trim();",
-        "  if (!trimmed) return false;",
-        "  // Blacklist check",
-        "  for (const p of BLOCKED_PATTERNS) {"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/tools-deep.mjs",
-      "block": [
-        "// === invariants ===",
-        "// - Git tools parse diff/conflict markers, don't run interactive commands",
-        "// - Test tools run files in parallel with Promise.all",
-        "// - Multi-language adapters: JS via acorn, others via regex fallback",
-        "import fs from 'fs/promises';",
-        "import { readFileSync, writeFileSync, unlinkSync } from 'fs';",
-        "import path from 'path';",
-        "import { execSync } from 'child_process';",
-        "import { createRequire } from 'module';",
-        "const _require = createRequire(import.meta.url);",
-        "const PROJECT_ROOT = process.cwd();",
-        "function run(cmd, opts = {}) {",
-        "  try { return execSync(cmd, { encoding: 'utf8', maxBuffer: 10 * 1024 * 1024, stdio: ['pipe', 'pipe', 'pipe'], ...opts }).trim(); }",
-        "  catch (e) { return (e.stdout || '').trim() || e.message; }",
-        "}"
+        "// === invariants ===\r",
+        "// - _metaCache[chatId] = { name, userSet, autoNamed, createdAt, updatedAt } | null\r",
+        "// - Never auto-name if userSet === true\r",
+        "// - Auto-name triggers: messageCount ∈ [3, 8, 16, 32, 64] (exponential backoff)\r",
+        "// - Name generation uses the same provider as chat (processText via external callback)\r",
+        "// - _meta.json written to Qiniu only when name actually changes\r",
+        "// - Cache miss → read from Qiniu; negative cache (null) avoids repeated misses\r",
+        "const META_KEY = '_meta.json';\r",
+        "const TRIGGER_POINTS = new Set([3, 8, 16, 32, 64]);\r",
+        "const _metaCache = new Map();\r",
+        "function metaPath(chatId) {\r",
+        "  return `oc/chat/${chatId}/${META_KEY}`;\r",
+        "}\r",
+        "async function readMeta(chatId) {\r",
+        "  if (_metaCache.has(chatId)) return _metaCache.get(chatId);\r",
+        "  try {\r",
+        "    const raw = await qiniuGet(metaPath(chatId));\r",
+        "    const meta = JSON.parse(raw.toString('utf8'));\r",
+        "    _metaCache.set(chatId, meta);\r",
+        "    return meta;\r"
       ]
     },
     {
@@ -16915,26 +15913,26 @@
     {
       "file": "/src/lab/runner.mjs",
       "block": [
-        "// === invariants ===",
-        "// - 单 goal 串行跑 (不并发), lab 假设单用户",
-        "// - 所有实验 in-process, 无子进程开销",
-        "// - test() 抛错或返回 { ok: false } 都算 fail",
-        "// - 可取消: supervisor 设 cancel flag, 500ms polling 检测",
-        "// - exit code 0 = success, 非 0 = code",
-        "// - MAX_RETRIES 默认 2 (共 3 次尝试)",
-        "// - 失败 escalate 是 fire-and-forget, 不等返回",
-        "import { fileURLToPath, pathToFileURL } from 'url';",
-        "import { dirname, join, resolve } from 'path';",
-        "import { getNextPending, updateGoal, housekeeping } from './goal-queue.mjs';",
-        "import { recordRun } from './history.mjs';",
-        "import { classify } from './failure-analyzer.mjs';",
-        "import { escalate } from './escalate.mjs';",
-        "import { labEvents } from './lab-events.mjs';",
-        "import { addFact } from '../experiments/lib/agent-memory.mjs';",
-        "import { registerRun, unregisterRun } from './active-runs.mjs';",
-        "import { addFinding } from './findings.mjs';",
-        "import { parseJS } from '../experiments/lib/ast-search.mjs';",
-        "import { relPath } from './scout-shared.mjs';"
+        "// === invariants ===\r",
+        "// - 单 goal 串行跑 (不并发), lab 假设单用户\r",
+        "// - 所有实验 in-process, 无子进程开销\r",
+        "// - test() 抛错或返回 { ok: false } 都算 fail\r",
+        "// - 可取消: supervisor 设 cancel flag, 500ms polling 检测\r",
+        "// - exit code 0 = success, 非 0 = code\r",
+        "// - MAX_RETRIES 默认 2 (共 3 次尝试)\r",
+        "// - 失败 escalate 是 fire-and-forget, 不等返回\r",
+        "import { fileURLToPath, pathToFileURL } from 'url';\r",
+        "import { dirname, join, resolve } from 'path';\r",
+        "import { getNextPending, updateGoal, housekeeping } from './goal-queue.mjs';\r",
+        "import { recordRun } from './history.mjs';\r",
+        "import { classify } from './failure-analyzer.mjs';\r",
+        "import { escalate } from './escalate.mjs';\r",
+        "import { labEvents } from './lab-events.mjs';\r",
+        "import { addFact } from '../experiments/lib/misc-lib.mjs';\r",
+        "import { registerRun, unregisterRun } from './active-runs.mjs';\r",
+        "import { addFinding } from './findings.mjs';\r",
+        "import { parseJS } from '../experiments/lib/coding-lib.mjs';\r",
+        "import { relPath } from './scout-shared.mjs';\r"
       ]
     },
     {
@@ -17040,26 +16038,26 @@
     {
       "file": "/src/lab/scouts/quality.mjs",
       "block": [
-        "// === invariants ===",
-        "// - 同步 FS 调用仅用于小文件读写，阻塞 ≤1ms",
-        "// - AST 操作仅在验证阶段执行，不影响运行时路径",
-        "// - try/catch 覆盖所有外部 IO 调用",
-        "export function scanForLeftoverP2() {",
-        "  const files = scanDir(SRC_DIR);",
-        "  const re = /from\\s+['\"][^'\"]*\\.p2\\.[^'\"]*['\"]/g;",
-        "  let count = 0;",
-        "  for (const f of files) {",
-        "    try {",
-        "      const content = readFileSync(f, 'utf8');",
-        "      const m = content.match(re);",
-        "      if (m && m.length > 0) {",
-        "        count += m.length;",
-        "        addFinding('bridge', 'p1', `${relPath(f)}: ${m.length} leftover .p2. import(s)`);",
-        "        addGoal(`remove leftover .p2. import in ${relPath(f)}`, { priority: 1 });",
-        "      }",
-        "    } catch {}",
-        "  }",
-        "  return count;"
+        "// === invariants ===\r",
+        "// - 同步 FS 调用仅用于小文件读写，阻塞 ≤1ms\r",
+        "// - AST 操作仅在验证阶段执行，不影响运行时路径\r",
+        "// - try/catch 覆盖所有外部 IO 调用\r",
+        "export function scanForLeftoverP2() {\r",
+        "  const files = scanDir(SRC_DIR);\r",
+        "  const re = /from\\s+['\"][^'\"]*\\.p2\\.[^'\"]*['\"]/g;\r",
+        "  let count = 0;\r",
+        "  for (const f of files) {\r",
+        "    try {\r",
+        "      const content = readFileSync(f, 'utf8');\r",
+        "      const m = content.match(re);\r",
+        "      if (m && m.length > 0) {\r",
+        "        count += m.length;\r",
+        "        addFinding('bridge', 'p1', `${relPath(f)}: ${m.length} leftover .p2. import(s)`);\r",
+        "        addGoal(`remove leftover .p2. import in ${relPath(f)}`, { priority: 1 });\r",
+        "      }\r",
+        "    } catch {}\r",
+        "  }\r",
+        "  return count;\r"
       ]
     },
     {
@@ -17113,7 +16111,7 @@
       ]
     }
   ],
-  "totalInvariantBlocks": 77,
+  "totalInvariantBlocks": 51,
   "deps": [
     {
       "file": "/src/api/middleware/error-handler.js",
@@ -17261,8 +16259,8 @@
         "./middleware/request-validator.js",
         "./middleware/security.js",
         "../constants.js",
-        "../experiments/lib/qiniu-signaling.js",
-        "../experiments/lib/signal-relay.js",
+        "../experiments/lib/storage-lib.mjs",
+        "../experiments/lib/storage-lib.mjs",
         "./routes/feedback.js",
         "./routes/p2p.js",
         "./routes/updates.js",
@@ -17314,7 +16312,7 @@
         "../core/memory/knowledge-network.js",
         "../core/collaboration/community-manager.js",
         "../security/security-manager.js",
-        "../experiments/lib/provider-service.js",
+        "../experiments/lib/llm-lib.mjs",
         "../memory/memory-manager.js",
         "../memory/vector-store.js",
         "../memory/embedding-service.js",
@@ -17461,7 +16459,7 @@
       "imports": [
         "events",
         "../repositories/config-repo.js",
-        "../../experiments/lib/messages.js",
+        "../../experiments/lib/storage-lib.mjs",
         "../tool-registry.js",
         "./resident-io.js",
         "./resident-traits.js",
@@ -17500,12 +16498,6 @@
       "imports": []
     },
     {
-      "file": "/src/core/audio/lmdn-codec.mjs",
-      "imports": [
-        "../../experiments/lib/lmdn-codec.mjs"
-      ]
-    },
-    {
       "file": "/src/core/audio/multimodal-handler.js",
       "imports": []
     },
@@ -17515,7 +16507,7 @@
         "os",
         "path",
         "../core/repositories/config-repo.js",
-        "../experiments/lib/p2p-net.js",
+        "../experiments/lib/storage-lib.mjs",
         "../constants.js",
         "./monitoring/logger.js"
       ]
@@ -17700,7 +16692,7 @@
         "./core/repositories/session-repo.js",
         "../protocol/message.js",
         "./agent/orchestrator.mjs",
-        "../experiments/lib/coding-tools.mjs"
+        "../experiments/lib/coding-lib.mjs"
       ]
     },
     {
@@ -17760,12 +16752,6 @@
         "./performance-monitor.js",
         "./system-health-checker.js",
         "../collaboration/multi-agent-coordinator.js"
-      ]
-    },
-    {
-      "file": "/src/core/monitoring/logger.js",
-      "imports": [
-        "../../experiments/lib/logger.js"
       ]
     },
     {
@@ -18536,376 +17522,99 @@
       ]
     },
     {
-      "file": "/src/experiments/lib/agent-hooks.mjs",
-      "imports": []
-    },
-    {
-      "file": "/src/experiments/lib/agent-memory.mjs",
+      "file": "/src/experiments/lib/coding-lib.mjs",
       "imports": [
-        "fs/promises",
-        "fs",
-        "path"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/ast-adapters.mjs",
-      "imports": [
-        "fs/promises",
-        "path",
-        "module"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/ast-edit.mjs",
-      "imports": [
-        "./coding-tools.mjs",
-        "path"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/ast-search.mjs",
-      "imports": [
-        "fs/promises",
-        "path",
-        "acorn"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/auto-commit.mjs",
-      "imports": [
-        "child_process",
-        "path"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/bucket-relay.js",
-      "imports": [
-        "./qiniu-signaling.js"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/code-search.mjs",
-      "imports": [
-        "fs/promises",
-        "path",
-        "child_process"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/coding-tools.mjs",
-      "imports": [
-        "fs/promises",
-        "path",
         "crypto",
-        "./quality-gate.mjs",
-        "./code-search.mjs",
-        "./dev-tools.mjs",
-        "./ast-search.mjs",
-        "./tools-deep.mjs",
-        "./ast-adapters.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/config.mjs",
-      "imports": [
-        "fs",
-        "path",
-        "os"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/constants.js",
-      "imports": []
-    },
-    {
-      "file": "/src/experiments/lib/cost-tracker.mjs",
-      "imports": []
-    },
-    {
-      "file": "/src/experiments/lib/dev-repl.mjs",
-      "imports": [
-        "readline",
-        "os",
-        "./agent-hooks.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/dev-tools.mjs",
-      "imports": [
+        "child_process",
         "fs/promises",
         "path",
-        "child_process"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/dev-workflow-plugin.mjs",
-      "imports": []
-    },
-    {
-      "file": "/src/experiments/lib/diff-review.mjs",
-      "imports": [
-        "child_process"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/edit-quality-gate.mjs",
-      "imports": [
-        "./dev-tools.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/epc-pipeline.mjs",
-      "imports": [
-        "./epc-pipeline.mjs",
-        "provider-kit"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/error-tracker.mjs",
-      "imports": []
-    },
-    {
-      "file": "/src/experiments/lib/failover-picker.mjs",
-      "imports": [
-        "./provider-health.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/guardian.mjs",
-      "imports": [
-        "./response-validator.mjs",
-        "./step-enforcer.mjs",
-        "./error-tracker.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/hooks-builtin.mjs",
-      "imports": [
-        "./agent-hooks.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/lmdn-codec.mjs",
-      "imports": [
-        "./logger.js"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/logger.js",
-      "imports": [
-        "pino"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/mcp-server.mjs",
-      "imports": [
-        "./coding-tools.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/message-bus.js",
-      "imports": [
-        "events"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/messages.js",
-      "imports": [
-        "module"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/multi-edit.mjs",
-      "imports": [
         "fs/promises",
-        "path"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/neural-bridge.mjs",
-      "imports": [
-        "../../core/memory/neural-brain.js"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/output-compressor.mjs",
-      "imports": []
-    },
-    {
-      "file": "/src/experiments/lib/p2p-net.js",
-      "imports": [
+        "path",
         "module",
-        "./messages.js",
-        "./topic-registry.js",
-        "./constants.js"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/permission-gate.mjs",
-      "imports": [
-        "fs",
+        "fs/promises",
         "path",
-        "os"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/persistent-store.js",
-      "imports": [
-        "fs",
+        "acorn",
+        "fs/promises",
         "path",
-        "os",
-        "./logger.js"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/poller-shim.mjs",
-      "imports": []
-    },
-    {
-      "file": "/src/experiments/lib/project-context.mjs",
-      "imports": [
+        "child_process",
+        "fs/promises",
+        "path",
+        "child_process",
+        "child_process",
+        "fs/promises",
+        "path",
         "fs/promises",
         "fs",
-        "path"
+        "path",
+        "fs/promises",
+        "fs",
+        "path",
+        "child_process",
+        "module",
+        "child_process",
+        "path",
+        "child_process",
+        "path",
+        "fs/promises",
+        "path",
+        "crypto"
       ]
     },
     {
-      "file": "/src/experiments/lib/provider-health.mjs",
+      "file": "/src/experiments/lib/llm-lib.mjs",
       "imports": [
         "fs/promises",
         "os",
-        "path"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/provider-service.js",
-      "imports": [
+        "path",
+        "../../core/memory/neural-brain.js",
+        "fs",
+        "path",
+        "os",
+        "./epc-pipeline.mjs",
+        "provider-kit",
         "provider-kit",
         "provider-kit"
       ]
     },
     {
-      "file": "/src/experiments/lib/qiniu-s3.mjs",
+      "file": "/src/experiments/lib/misc-lib.mjs",
       "imports": [
-        "crypto"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/qiniu-signaling.js",
-      "imports": [
-        "qiniu",
-        "crypto"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/quality-gate.mjs",
-      "imports": [
-        "child_process",
-        "fs/promises",
-        "path"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/repl-history.mjs",
-      "imports": [
+        "pino",
         "fs",
         "path",
+        "os",
+        "fs/promises",
+        "fs",
+        "path",
+        "fs",
+        "path",
+        "os",
+        "crypto",
+        "readline",
         "os"
       ]
     },
     {
-      "file": "/src/experiments/lib/report.mjs",
-      "imports": []
-    },
-    {
-      "file": "/src/experiments/lib/request-id.mjs",
+      "file": "/src/experiments/lib/storage-lib.mjs",
       "imports": [
-        "crypto"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/rescue-utils.mjs",
-      "imports": []
-    },
-    {
-      "file": "/src/experiments/lib/response-validator.mjs",
-      "imports": []
-    },
-    {
-      "file": "/src/experiments/lib/session-namer.mjs",
-      "imports": [
-        "./qiniu-s3.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/session-tree.mjs",
-      "imports": [
-        "./qiniu-s3.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/signal-relay.js",
-      "imports": [
-        "./qiniu-signaling.js"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/slash-commands.mjs",
-      "imports": []
-    },
-    {
-      "file": "/src/experiments/lib/step-enforcer.mjs",
-      "imports": []
-    },
-    {
-      "file": "/src/experiments/lib/subagent-roles.mjs",
-      "imports": []
-    },
-    {
-      "file": "/src/experiments/lib/subagent.mjs",
-      "imports": [
-        "crypto"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/system-exec.mjs",
-      "imports": [
-        "child_process",
-        "./output-compressor.mjs"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/tool-registry.js",
-      "imports": [
-        "./vector-memory.js",
-        "./logger.js",
-        "mathjs",
-        "url"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/tools-deep.mjs",
-      "imports": [
-        "fs/promises",
-        "fs",
-        "path",
-        "child_process",
-        "module"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/topic-registry.js",
-      "imports": [
-        "events"
-      ]
-    },
-    {
-      "file": "/src/experiments/lib/vector-memory.js",
-      "imports": [
+        "module",
+        "events",
+        "crypto",
+        "qiniu",
+        "crypto",
         "fs",
         "path",
         "os",
-        "./logger.js"
+        "./misc-lib.mjs",
+        "module",
+        "fs",
+        "path",
+        "os",
+        "./misc-lib.mjs",
+        "./misc-lib.mjs",
+        "mathjs",
+        "url",
+        "events"
       ]
     },
     {
@@ -19016,7 +17725,7 @@
       "file": "/src/infra/route-handlers.js",
       "imports": [
         "../core/persistent-config.js",
-        "../experiments/lib/provider-service.js",
+        "../experiments/lib/llm-lib.mjs",
         "../memory/memory-manager.js",
         "../session/session-manager.js",
         "../core/agent/agent-monitor.js",
@@ -19191,10 +17900,10 @@
         "./failure-analyzer.mjs",
         "./escalate.mjs",
         "./lab-events.mjs",
-        "../experiments/lib/agent-memory.mjs",
+        "../experiments/lib/misc-lib.mjs",
         "./active-runs.mjs",
         "./findings.mjs",
-        "../experiments/lib/ast-search.mjs",
+        "../experiments/lib/coding-lib.mjs",
         "./scout-shared.mjs",
         "joi"
       ]
@@ -19269,7 +17978,7 @@
         "path",
         "../goal-queue.mjs",
         "../findings.mjs",
-        "../../experiments/lib/ast-search.mjs",
+        "../../experiments/lib/coding-lib.mjs",
         "../scout-shared.mjs"
       ]
     },
@@ -19313,13 +18022,13 @@
         "./core/handlers.js",
         "./gateway/base.js",
         "./core/persistent-config.js",
-        "./experiments/lib/provider-service.js",
+        "./experiments/lib/llm-lib.mjs",
         "./memory/memory-manager.js",
-        "./p2p/p2p-net.js",
+        "./experiments/lib/storage-lib.mjs",
         "./p2p/peer-registry.js",
         "./p2p/peer-registry/qiniu-backend.js",
         "./p2p/peer-registry/http-backend.js",
-        "./core/monitoring/logger.js"
+        "./experiments/lib/misc-lib.mjs"
       ]
     },
     {
@@ -19360,14 +18069,8 @@
       "file": "/src/p2p/gossip-manager.js",
       "imports": [
         "events",
-        "../experiments/lib/messages.js",
-        "../experiments/lib/vector-memory.js"
-      ]
-    },
-    {
-      "file": "/src/p2p/p2p-net.js",
-      "imports": [
-        "../experiments/lib/p2p-net.js"
+        "../experiments/lib/storage-lib.mjs",
+        "../experiments/lib/storage-lib.mjs"
       ]
     },
     {
@@ -19449,7 +18152,7 @@
     {
       "file": "/src/providers/ai-provider.js",
       "imports": [
-        "../experiments/lib/provider-service.js"
+        "../experiments/lib/llm-lib.mjs"
       ]
     },
     {
@@ -19479,5 +18182,5 @@
       ]
     }
   ],
-  "totalDepFiles": 316
+  "totalDepFiles": 260
 }

@@ -16,12 +16,12 @@ export async function run({ inputs = {} } = {}) {
   const { op = 'test', pattern, include, rootDir, maxResults, symbol } = inputs;
   if (op === 'test') { await test(); return { outputs: { ok: true } }; }
   if (op === 'grepSearch') {
-    const { grepSearch } = await import('../experiments/lib/code-search.mjs');
+    const { grepSearch } = await import('../experiments/lib/coding-lib.mjs');
     const results = await grepSearch(pattern, { include, rootDir, maxResults });
     return { outputs: { results } };
   }
   if (op === 'findReferences') {
-    const { findReferences } = await import('../experiments/lib/code-search.mjs');
+    const { findReferences } = await import('../experiments/lib/coding-lib.mjs');
     const refs = await findReferences(symbol, { rootDir, maxResults });
     return { outputs: refs };
   }
@@ -30,7 +30,7 @@ export async function run({ inputs = {} } = {}) {
 
 export async function test() {
   const R = create();
-  const { grepSearch, findReferences } = await import('../experiments/lib/code-search.mjs');
+  const { grepSearch, findReferences } = await import('../experiments/lib/coding-lib.mjs');
 
   // === grepSearch ===
   {

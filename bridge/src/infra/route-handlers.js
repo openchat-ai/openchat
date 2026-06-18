@@ -1,5 +1,5 @@
 import { persistentConfig } from '../core/persistent-config.js';
-import * as providerService from '../experiments/lib/provider-service.js';
+import * as providerService from '../experiments/lib/llm-lib.mjs';
 import { memoryManager } from '../memory/memory-manager.js';
 import { sessionManager } from '../session/session-manager.js';
 import { agentMonitor } from '../core/agent/agent-monitor.js';
