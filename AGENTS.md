@@ -82,7 +82,7 @@ npm publish
 ```
 
 ## DNA 项目索引
-> `.dna/project-dna.json` 含 333 模块、641 export 的 hashline 索引。
+> `.dna/project-dna.json` 含 6 项目、509 模块、1985 export 的 hashline 索引（bridge-core/experiments/lab/openchat-flutter/provider-kit/fairy-guardian）。
 > **使用方式**: 查询函数位置用 `find function X`，查 hash 用 `hash XXXXXXXX`，列模块用 `ls path`，边界隔离分析用 `isolate`。
 > 入口: `bridge/src/experiments/42.mjs` 或 `bridge/src/experiments/lib/coding-tools.mjs:dna_query` 工具。
 > 首次进入会话时调用 `getDNAContext()` (42.mjs) 获取摘要注入上下文。

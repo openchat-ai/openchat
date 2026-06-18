@@ -13,7 +13,9 @@ const NAME = 'Project DNA - 极速项目理解法';
 
 const BRIDGE_ROOT = resolve(fileURLToPath(new URL('.', import.meta.url)), '../..');
 const PROJECTS = [
-  { name: 'bridge', root: BRIDGE_ROOT, scanDir: 'src', langs: ['js'] },
+  { name: 'bridge-core', root: BRIDGE_ROOT, scanDir: 'src', langs: ['js'], excludeDirs: ['experiments', 'lab'] },
+  { name: 'experiments', root: BRIDGE_ROOT, scanDir: 'src/experiments', langs: ['js'] },
+  { name: 'lab', root: BRIDGE_ROOT, scanDir: 'src/lab', langs: ['js'] },
   { name: 'openchat-flutter', root: resolve(BRIDGE_ROOT, '../openchat-flutter'), scanDir: 'lib', langs: ['dart'] },
   { name: 'provider-kit', root: resolve(BRIDGE_ROOT, '../modules/provider-kit'), scanDir: '.', langs: ['js'] },
   { name: 'fairy-guardian', root: resolve(BRIDGE_ROOT, '../modules/fairy-guardian'), scanDir: '.', langs: ['js'] },
@@ -75,12 +77,14 @@ const EX_FN_MAP = { js: extractExports, dart: extractDartExports };
 
 export async function scanProject(project) {
   const validExts = project.langs.flatMap(l => EXT_MAP[l] || []);
+  const exclude = new Set(project.excludeDirs || []);
   const modules = [];
   function walk(dir, depth) {
     if (depth > 4) return;
     try {
       for (const e of readdirSync(dir, { withFileTypes: true })) {
         if (e.name.startsWith('.') || e.name === 'node_modules' || e.name === 'build' || e.name === '.dart_tool') continue;
+        if (e.isDirectory() && exclude.has(e.name)) continue;
         const p = join(dir, e.name);
         if (e.isDirectory()) walk(p, depth + 1);
         else if (validExts.some(ext => e.name.endsWith(ext))) {
@@ -196,7 +200,7 @@ export async function getDNAContext({ maxAgeMs = 300000 } = {}) {
   }
   try {
     const dna = JSON.parse(readFileSync(dnaPath, 'utf8'));
-    const projects = dna.projects?.join('/') || 'bridge';
+    const projects = dna.projects?.join('/') || 'bridge-core';
     const topMods = dna.modules.filter(m => m.exports?.length > 0).sort((a, b) => (b.exports?.length || 0) - (a.exports?.length || 0)).slice(0, 10);
     return `[Project DNA] ${dna.totalModules} modules in ${projects}, ${dna.totalExports} exports, ${dna.totalInvariantBlocks} invariants` +
       `. Top: ${topMods.map(m => `[${m.project||'bridge'}]${m.path.replace(/^\/(?:src\/|lib\/)/, '')}(${m.exports.length})`).join(', ')}` +
@@ -283,8 +287,6 @@ export async function answerFromDNA(question, { maxAgeMs = 300000 } = {}) {
     const root = BRIDGE_ROOT;
     const ZONE_MAP = [
       { prefix: '/modules/provider-kit/', name: 'kit' },
-      { prefix: '/src/lab/', name: 'lab' },
-      { prefix: '/src/experiments/', name: 'experiments' },
       { prefix: '/src/core/', name: 'core' },
       { prefix: '/src/api/', name: 'api' },
       { prefix: '/src/cli/', name: 'cli' },
