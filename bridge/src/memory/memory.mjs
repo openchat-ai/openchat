@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import { USER_DIR, persistentConfig } from '../core/persistent-config.js';
+import { USER_DIR, persistentConfig } from '../core/core-config.mjs';
 
 const VECTOR_DIR = path.join(USER_DIR, 'vectors');
 const INDEX_FILE = path.join(VECTOR_DIR, 'index.json');

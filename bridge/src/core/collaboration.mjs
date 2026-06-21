@@ -8,7 +8,7 @@ import { memoryRepo } from './repositories.mjs';
 import { evolutionRepo } from './repositories.mjs';
 import { sessionRepo } from './repositories.mjs';
 import { knowledgeNetwork } from '../memory/knowledge-network.js';
-import { pluginManager } from '../plugin-manager.js';
+import { pluginManager } from './core-config.mjs';
 import { PromptBuilder } from '../convergence/prompt-builder.js';
 import logger from '../monitoring/logger.js';
 

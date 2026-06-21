@@ -1,7 +1,7 @@
 // core/repositories.mjs — merged from repositories/{config,evolution,memory,session}-repo.js
 // 2026-06-21 (R1 cancelled, target 80 modules)
 
-import { persistentConfig } from './persistent-config.js';
+import { persistentConfig } from './core-config.mjs';
 import { EvolutionMemory } from './evolution/evolution-memory.js';
 import { memoryManager } from '../memory/memory.mjs';
 import { knowledgeNetwork } from './memory/knowledge-network.js';

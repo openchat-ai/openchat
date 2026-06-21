@@ -4,7 +4,7 @@
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
-import { pluginManager } from '../plugin-manager.js';
+import { pluginManager } from './core-config.mjs';
 import logger from '../monitoring/logger.js';
 
 // === ConvergenceEngine ===

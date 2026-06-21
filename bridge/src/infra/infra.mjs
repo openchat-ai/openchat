@@ -76,7 +76,7 @@ export class TelegramGateway extends BaseGateway {
   }
 }
 
-import { persistentConfig } from '../core/persistent-config.js';
+import { persistentConfig } from '../core/core-config.mjs';
 import * as providerService from '../experiments/lib/llm-lib.mjs';
 import { memoryManager } from '../memory/memory.mjs';
 import { sessionManager } from '../session/session-manager.js';

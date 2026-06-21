@@ -1,7 +1,7 @@
 import { MessageBuilder, MessageType } from '../protocol/message.js';
 import { sessionManager } from '../session/session-manager.js';
 import { processInput } from '../core/convergence/natural-language-parser.js';
-import { persistentConfig } from '../core/persistent-config.js';
+import { persistentConfig } from '../core/core-config.mjs';
 import { multiAgentCoordinator } from '../core/collaboration/multi-agent-coordinator.js';
 import { EvolutionEngine } from '../core/evolution/evolution-engine.js';
 import { EvolutionMemory } from '../core/evolution/evolution-memory.js';

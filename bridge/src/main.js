@@ -16,7 +16,7 @@ import { MessageBuilder, MessageType } from './protocol/message.js';
 import { router, initCore } from './core/routing.mjs';
 import { createHandlers } from './infra/route-handlers.js';
 import { CLIGateway, WSGateway } from './gateway/base.js';
-import { persistentConfig } from './core/persistent-config.js';
+import { persistentConfig } from './core/core-config.mjs';
 import * as providerService from './experiments/lib/llm-lib.mjs';
 import { memoryManager } from './memory/memory-manager.js';
 import P2PSwarm, { hasPublicAddress, getPublicIPv4 } from './experiments/lib/storage-lib.mjs';

@@ -5,11 +5,11 @@
  */
 
 import express from 'express';
-import { persistentConfig } from '../../core/persistent-config.js';
+import { persistentConfig } from '../../core/core-config.mjs';
 import * as providerService from '../../core/provider-service.js';
 import { sessionManager, sessionEvents } from '../../core/runtime.mjs';
 import { memoryManager } from '../../memory/memory-manager.js';
-import { pluginManager } from '../../core/plugin-manager.js';
+import { pluginManager } from '../../core/core-config.mjs';
 import { getActiveProvider, callLLM } from './lib/llm.js';
 import { extractFiles, extractHashlines, applyHashlineEdit } from './lib/file-format.js';
 import { PROMPTS, buildMessages } from './lib/prompts.js';

@@ -100,7 +100,7 @@ class SessionEvents {
 }
 
 import { providerRegistry } from 'provider-kit';
-import { persistentConfig } from './persistent-config.js';
+import { persistentConfig } from './core-config.mjs';
 
 class SessionManager {
   constructor() {

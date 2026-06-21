@@ -1,6 +1,6 @@
 import { providerRegistry } from 'provider-kit';
 import { persistentStore } from '../storage/persistent-store.js';
-import { persistentConfig } from '../core/persistent-config.js';
+import { persistentConfig } from '../core/core-config.mjs';
 
 export class SessionManager {
   constructor() {
