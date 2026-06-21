@@ -22,13 +22,8 @@ import { SignalRelay } from '../experiments/lib/storage-lib.mjs';
 
 // 路由
 import { feedbackRouter, updatesRouter, versionsRouter, resourcesRouter, metricsRouter, healthRouter } from './routes/route-bundle.mjs';
-import { createP2PRouter } from './routes/p2p.js';
-import skillsRouter from './routes/skills.js';
+import { createP2PRouter, voiceRouter, signalingRouter, skillsRouter, devRouter, labDashboardRouter } from './routes/all-routes.mjs';
     import legacyRouter from './routes/legacy.js';
-    import devRouter from './routes/dev/index.js';
-import voiceRouter from './routes/voice.js';
-import signalingRouter from './routes/signaling.js';
-import labDashboardRouter from './routes/lab-dashboard.mjs';
 
 class APIServer {
   constructor(options = {}) {
@@ -787,7 +782,7 @@ function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'
     this._signalRelay.init();
 
     // Inject shared rooms + relay into signaling routes
-    const { setSignalingContext } = await import('./routes/signaling.js');
+    const { setSignalingContext } = await import('./routes/all-routes.mjs');
     setSignalingContext(this._signalingRooms, this._signalRelay);
 
     return new Promise((resolve, reject) => {
