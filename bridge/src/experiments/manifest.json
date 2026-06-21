@@ -1,5 +1,5 @@
 {
-  "version": 8,
+  "version": 9,
   "name": "openchat-experiments",
   "description": "可组合实验。ID = 2^n(自身位) + ∑dep_ids(依赖和)，二进制可分解出完整依赖链。",
   "ioSchema": {
@@ -448,45 +448,6 @@
       "intelligenceLevel": "L1.5"
     },
     {
-      "id": "storage-noop",
-      "file": "14a-storage-noop/index.mjs",
-      "name": "Storage Noop — in-memory Map (R3-clean throwaway template)",
-      "category": "storage",
-      "pure": true,
-      "needsEnv": [],
-      "persistent": false,
-      "description": "Stores key/value pairs in a process-local in-memory Map with no disk writes. Use when user needs a throwaway cache, scratch state, dedupe set, or counter that does not survive process exit.",
-      "deps": [],
-      "tags": [
-        "storage",
-        "throwaway-template",
-        "r3-clean"
-      ],
-      "status": "closed-loop",
-      "intelligenceLevel": "L0"
-    },
-    {
-      "id": "storage-persist",
-      "file": "14b-storage-persist/index.mjs",
-      "name": "Storage Persist — PersistentSessionStore (R3 boundary, intentional violation)",
-      "category": "storage",
-      "pure": false,
-      "needsEnv": [],
-      "persistent": true,
-      "r3ExceptionReason": "This experiment tests the persistence boundary itself. Use 14a-storage-noop for in-memory state.",
-      "description": "Reads and writes the persistent session store at ~/.openchat/sessions.json. Use when user asks to inspect, debug, or test cross-process session state, persistent-store.js behavior, or restart recovery.",
-      "deps": [
-        "config"
-      ],
-      "tags": [
-        "storage",
-        "persistence-boundary",
-        "r3-exception"
-      ],
-      "status": "closed-loop",
-      "intelligenceLevel": "L0"
-    },
-    {
       "id": "relay",
       "file": "28.mjs",
       "name": "中继 / 消息总线 (bucket-relay + signal-relay + message-bus)",
@@ -687,110 +648,6 @@
       ],
       "status": "closed-loop",
       "intelligenceLevel": "L2+"
-    },
-    {
-      "id": "waveform-sim",
-      "file": "lingbao/40.mjs",
-      "name": "灵保: 漏电流合成波形生成器",
-      "category": "lingbao",
-      "pure": true,
-      "needsEnv": [],
-      "description": "灵保 L1/L2 合成数据源. 50Hz 基波 + 漏电分量 + arc 高频 + 过载. Use when generating synthetic leakage current waveforms for testing signal processing algorithms.",
-      "deps": [],
-      "tags": [
-        "lingbao",
-        "sim",
-        "waveform"
-      ],
-      "status": "closed-loop",
-      "intelligenceLevel": null
-    },
-    {
-      "id": "signal-algo",
-      "file": "lingbao/41.mjs",
-      "name": "灵保: 信号处理算法 (互相关/FFT/漏电检测/电弧能量)",
-      "category": "lingbao",
-      "pure": true,
-      "needsEnv": [],
-      "description": "灵保 L2 算法层. 互相关定位 / FFT 频谱 / 漏电阈值检测 / 电弧能量. Use when testing signal processing algorithms for electrical safety monitoring.",
-      "deps": [
-        "waveform-sim"
-      ],
-      "tags": [
-        "lingbao",
-        "algo",
-        "signal"
-      ],
-      "status": "closed-loop",
-      "intelligenceLevel": null
-    },
-    {
-      "id": "mqtt-push",
-      "file": "lingbao/42.mjs",
-      "name": "灵保: 告警推送模拟 (in-process, 无 broker)",
-      "category": "lingbao",
-      "pure": true,
-      "needsEnv": [],
-      "description": "灵保 L3 推送层. in-process EventEmitter 模拟 MQTT, 队列上限 100, handler 异常隔离. Use when testing alert push simulation without external MQTT broker.",
-      "deps": [],
-      "tags": [
-        "lingbao",
-        "push",
-        "mqtt"
-      ],
-      "status": "closed-loop",
-      "intelligenceLevel": null
-    },
-    {
-      "id": "doc-gen",
-      "file": "lingbao/44.mjs",
-      "name": "灵保: 报告/问卷/ROI/方案书生成 (Markdown/CSV)",
-      "category": "lingbao",
-      "pure": true,
-      "needsEnv": [],
-      "description": "灵保 L4 文档层. 4 种 renderer: report/questionnaire/roi/proposal. 纯字符串, 无外部依赖. Use when generating inspection reports, questionnaires, ROI analysis, or proposal documents.",
-      "deps": [],
-      "tags": [
-        "lingbao",
-        "doc",
-        "report"
-      ],
-      "status": "closed-loop",
-      "intelligenceLevel": null
-    },
-    {
-      "id": "calendar-parse",
-      "file": "lingbao/45.mjs",
-      "name": "灵保: 施工日历解析+阈值动态调整",
-      "category": "lingbao",
-      "pure": true,
-      "needsEnv": [],
-      "description": "灵保 L2 调度层. 5 种 phase (concrete/lifting/finishing/rest/unknown) 硬编码调整规则 + 7 天预告. Use when parsing construction calendars or adjusting thresholds dynamically.",
-      "deps": [],
-      "tags": [
-        "lingbao",
-        "calendar",
-        "threshold"
-      ],
-      "status": "closed-loop",
-      "intelligenceLevel": null
-    },
-    {
-      "id": "diagnose",
-      "file": "51-diagnose/index.mjs",
-      "name": "Diagnose — mattpocock diagnose skill 移植 (Phase 1+3)",
-      "category": "llm",
-      "pure": false,
-      "needsEnv": [],
-      "description": "Diagnoses a failed LLM transcript via fingerprints and LLM-driven hypothesis. Use when user asks to diagnose, debug, or triage a failed agent run, broken tool loop, or stuck multi-turn conversation.",
-      "deps": [],
-      "tags": [
-        "llm",
-        "diagnose",
-        "mattpocock"
-      ],
-      "status": "closed-loop",
-      "intelligenceLevel": "L1.5"
     },
     {
       "id": "mcp-server",
