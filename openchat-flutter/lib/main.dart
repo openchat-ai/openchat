@@ -5,10 +5,8 @@ import 'package:sdui_engine/sdui_engine.dart';
 import 'providers/client_providers.dart';
 import 'core/api/qiniu_direct_client.dart';
 import 'core/sdui_config.dart';
-import 'ui/screens/main_screen.dart';
-import 'ui/screens/theme_selector_screen.dart';
-import 'ui/screens/voice_room_screen.dart';
-import 'ui/screens/room_screen.dart';
+import 'ui/screens/screens.dart';
+import 'ui/screens/screens_voice.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();

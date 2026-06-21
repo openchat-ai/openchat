@@ -9,7 +9,7 @@ import '../../core/api/qiniu_direct_client.dart';
 import '../../core/sdui_config.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/client_providers.dart';
-import '../screens/main_screen.dart';
+import '../screens/screens.dart';
 
 // ===== code_item.dart =====
 class CodeItem {
