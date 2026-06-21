@@ -23,7 +23,7 @@ import P2PSwarm, { hasPublicAddress, getPublicIPv4 } from './experiments/lib/sto
 import { PeerRegistry } from './p2p/peer-registry.js';
 import { QiniuBackend } from './p2p/peer-registry/qiniu-backend.js';
 import { HttpBackend } from './p2p/peer-registry/http-backend.js';
-import logger from './experiments/lib/misc-lib.mjs';
+import { logger } from './experiments/lib/misc-lib.mjs';
 
 // Helper: fetch models from Bridge's own HTTP API for a local provider
 async function fetchLocalModelsFromBridge(providerName) {
@@ -309,7 +309,7 @@ export class Bridge {
       // [auto-lab] OPENCHAT_AUTO_LAB=1 时自动启动 lab cron
       if (process.env.OPENCHAT_AUTO_LAB === '1' || process.env.OPENCHAT_AUTO_LAB === 'true') {
         try {
-          const { startCron } = await import('./lab/cron.mjs');
+          const { startCron } = await import('./lab/lab-runner.mjs');
           const interval = parseInt(process.env.OPENCHAT_LAB_CRON_INTERVAL || '1800000', 10);
           const r = startCron(interval);
           console.debug(`[auto-lab] cron started (pid=${r?.pid || '?'}, interval=${(interval/1000).toFixed(0)}s)`);

@@ -7,11 +7,7 @@ import { fileURLToPath } from 'url';
 import path from 'path';
 import { qiniuSignaling } from '../../core/qiniu-signaling.js';
 import { SignalRelay } from '../../core/signal-relay.js';
-import { listGoals, getStatus, listFailed } from '../../lab/goal-queue.mjs';
-import { listHistory } from '../../lab/history.mjs';
-import { getExperimentStats } from '../../lab/aggregator.mjs';
-import { detectRegressions } from '../../lab/regression.mjs';
-import { listEscalated, getEscalationStats } from '../../lab/escalate.mjs';
+import { listGoals, getStatus, listFailed, listHistory, getExperimentStats, detectRegressions, listEscalated, getEscalationStats } from '../../lab/lab-core.mjs';
 
 // ===============================
 // Voice Routes (from voice.js)

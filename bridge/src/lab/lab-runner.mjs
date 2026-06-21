@@ -1,3 +1,18 @@
+// === lab-runner.mjs — Merged lab runner modules ===
+// Combined from: runner.mjs, cron.mjs, scout.mjs, supervisor.mjs
+
+import { fileURLToPath, pathToFileURL } from 'url';
+import { dirname, join, resolve } from 'path';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync, readdirSync } from 'fs';
+import { homedir } from 'os';
+import { spawn } from 'child_process';
+import { CONCURRENCY, addFact, addFinding, addGoal, classify, diagnose, escalate, getActiveRuns, getNextPending, getTail, housekeeping, labEvents, listGoals, parseJS, readProjects, recordRun, registerRun, relPath, unregisterRun, updateGoal } from './lab-core.mjs';
+
+// ===============================
+// Module code
+// ===============================
+
+// --- runner.mjs ---
 // runner.mjs — 拉下一个 pending goal, 直接 in-process 跑 test(), 写 result
 //
 // 流程:
@@ -20,18 +35,6 @@
 // - MAX_RETRIES 默认 2 (共 3 次尝试)
 // - 失败 escalate 是 fire-and-forget, 不等返回
 
-import { fileURLToPath, pathToFileURL } from 'url';
-import { dirname, join, resolve } from 'path';
-import { getNextPending, updateGoal, housekeeping } from './goal-queue.mjs';
-import { recordRun } from './history.mjs';
-import { classify } from './failure-analyzer.mjs';
-import { escalate } from './escalate.mjs';
-import { labEvents } from './lab-events.mjs';
-import { addFact } from '../experiments/lib/misc-lib.mjs';
-import { registerRun, unregisterRun } from './active-runs.mjs';
-import { addFinding } from './findings.mjs';
-import { parseJS } from '../experiments/lib/coding-lib.mjs';
-import { relPath } from './scout-shared.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const EXP_DIR = resolve(__dirname, '../experiments');
@@ -184,7 +187,7 @@ async function _applyCodeFix(absPath, issue) {
   return { ok: true, info: r.info };
 }
 
-export async function runNext(turbo = true) {
+async function runNext(turbo = true) {
   // 自治 housekeeping: 卡 running 太久 → 重置 pending; pollution → 标 failed
   _housekeep();
   // 确保 supervisor 已启动
@@ -705,7 +708,7 @@ function _housekeep() {
   }
 }
 
-export async function runAll(maxRuns = 100, turbo = true) {
+async function runAll(maxRuns = 100, turbo = true) {
   const results = [];
   for (let i = 0; i < maxRuns; i++) {
     const r = await runNext(turbo);
@@ -714,3 +717,541 @@ export async function runAll(maxRuns = 100, turbo = true) {
   }
   return results;
 }
+
+
+// --- cron.mjs ---
+// cron.mjs — 定时拉 runNext, 真正"无人值守"
+//
+// 用法:
+//   import { startCron, stopCron, isCronRunning } from './cron.mjs';
+//   const handle = startCron({ intervalMs: 30*60*1000 });
+//   process.on('SIGINT', handle.stop);
+//
+// 设计:
+//   - 启动: 写 pidfile (~/.openchat/lab/cron.pid), 拒绝双开
+//   - 启动后: 等 intervalMs (默认 30 min), 然后跑一轮, 跑完再 wait
+//   - 一轮: 连续 runNext 直到 no-pending (队列空就跳出, 避免每 30min 都跑空)
+//   - 退出: SIGINT/SIGTERM handler → stop() → 清 pidfile
+//   - 错误: 单次 runNext throw 不 kill 循环, 记到 console (lab 主流程已 classify, 不太会 throw)
+//   - 不动 queue 状态: 跟单次 run-next 行为一致
+//
+// 跟 run-all 的区别:
+//   - run-all: 一次性 drain 到空, 退出
+//   - run-cron: 永远不退出, 每 interval 触发新 drain
+
+// === invariants ===
+// - pidfile (~/.openchat/lab/cron.pid) 防双开, 双开会拒 (清掉死 pidfile 再开)
+// - cycle 串行: 跑完一个才跑下一个 (跟 runner 一致, lab 假设单用户)
+// - runNext throw → log + break (不 kill cron, 下个 cycle 继续)
+// - 队列空 → break + log "ran 0" (不 busy-loop)
+// - SIGINT/SIGTERM handler + 1s pidfile 轮询双保险, 跨平台都能干净退出
+// - 不重写 queue 状态: 调 runNext, 状态由 runner 管
+// - intervalMs 默认 30s, env: OPENCHAT_LAB_CRON_INTERVAL (ms)
+// - intervalMs 可中途修改: 写 ~/.openchat/lab/cron-interval.txt (纯数字 ms)
+//    cron 每 cycle 前读一次, 下次生效
+// - scout round 在每个 cycle 开始时跑一次
+
+
+const LAB_DIR = join(homedir(), '.openchat', 'lab');
+const PID_FILE = join(LAB_DIR, 'cron.pid');
+const INTERVAL_FILE = join(LAB_DIR, 'cron-interval.txt');
+
+function ensureDir() {
+  if (!existsSync(LAB_DIR)) mkdirSync(LAB_DIR, { recursive: true });
+}
+
+function _readPid() {
+  if (!existsSync(PID_FILE)) return null;
+  try {
+    const text = readFileSync(PID_FILE, 'utf8').trim();
+    return text ? parseInt(text, 10) : null;
+  } catch { return null; }
+}
+
+function _writePid(pid) {
+  ensureDir();
+  writeFileSync(PID_FILE, String(pid), 'utf8');
+}
+
+function _clearPid() {
+  try { if (existsSync(PID_FILE)) unlinkSync(PID_FILE); } catch (e) { console.error('[C0]', e); }
+}
+
+function _pidAlive(pid) {
+  if (!pid) return false;
+  try {
+    // signal 0 不真发信号, 只检查能不能发 — 能发就是活进程
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    return e.code === 'EPERM';  // EPERM = 进程存在, 只是没权限 kill
+  }
+}
+
+function isCronRunning() {
+  const pid = _readPid();
+  if (!pid) return false;
+  if (!_pidAlive(pid)) {
+    // 死 pidfile, 清掉
+    _clearPid();
+    return false;
+  }
+  return pid === process.pid || true;  // 自己或别的进程都算 running
+}
+
+function getCronPid() {
+  return _readPid();
+}
+
+function startCron(opts = {}) {
+  let intervalMs = opts.intervalMs
+    ?? (process.env.OPENCHAT_LAB_CRON_INTERVAL
+          ? parseInt(process.env.OPENCHAT_LAB_CRON_INTERVAL, 10)
+          : 30 * 1000);
+
+  // 防双开
+  const existing = _readPid();
+  if (existing && _pidAlive(existing) && existing !== process.pid) {
+    return { ok: false, reason: 'cron already running', pid: existing };
+  }
+  _writePid(process.pid);
+
+  let stopped = false;
+  let cycleCount = 0;
+  let runCount = 0;
+  let lastRunAt = null;
+  let lastError = null;
+
+  const log = (msg) => console.debug(`[cron] ${new Date().toISOString()} ${msg}`);
+
+  log(`started (pid=${process.pid}, interval=${(intervalMs/1000).toFixed(0)}s)`);
+
+  const stop = (reason = 'manual') => {
+    if (stopped) return;
+    stopped = true;
+    log(`stopping (reason: ${reason}, cycles=${cycleCount}, runs=${runCount})`);
+    _clearPid();
+    // 退出进程 — setTimeout 链 / lab-events watcher 都会 keep-alive
+    // 不显式 exit 永远停不下来
+    setImmediate(() => process.exit(0));
+  };
+
+  const cycle = async () => {
+    if (stopped) return;
+
+    // 每 cycle 前读一次 interval 文件，支持中途修改
+    try {
+      if (existsSync(INTERVAL_FILE)) {
+        const txt = readFileSync(INTERVAL_FILE, 'utf8').trim();
+        const n = parseInt(txt, 10);
+        if (n > 0 && n !== intervalMs) {
+          intervalMs = n;
+          log(`interval updated to ${(intervalMs/1000).toFixed(0)}s`);
+          try { unlinkSync(INTERVAL_FILE); } catch (e) { console.error('[C0]', e); }
+        }
+      }
+    } catch (e) { console.error('[C0]', e); }
+    cycleCount++;
+    const cycleStart = Date.now();
+    log(`cycle #${cycleCount} start`);
+
+    // scout round: discover & enqueue
+    try { await runScoutRound(); } catch (e) { log(`scout error: ${e.message}`); }
+
+    // 连续跑直到队列空
+    let cycleRuns = 0;
+    while (!stopped) {
+      let r;
+      try {
+        r = await runNext();
+      } catch (e) {
+        lastError = e.message;
+        log(`cycle #${cycleCount} error: ${e.message}`);
+        break;
+      }
+      if (!r.ok && r.reason === 'no pending goal') {
+        break;
+      }
+      cycleRuns++;
+      runCount++;
+      lastRunAt = Date.now();
+      const sec = (r.result?.durationMs / 1000).toFixed(1);
+      const st = r.result?.ok ? 'OK' : 'FAIL';
+      log(`cycle #${cycleCount} run ${cycleRuns}: ${r.goal.id} ${st} (${sec}s)`);
+    }
+
+    const dur = ((Date.now() - cycleStart) / 1000).toFixed(1);
+    log(`cycle #${cycleCount} done (ran ${cycleRuns} goal(s), ${dur}s)`);
+
+    // schedule next
+    if (!stopped) {
+      setTimeout(cycle, intervalMs);
+    }
+  };
+
+  // schedule first cycle
+  setTimeout(cycle, intervalMs);
+
+  // 监控 pidfile: 没了就自己退出
+  // 原因: Windows 上 SIGINT 不可靠, lab.mjs cron-stop 删 pidfile
+  // cron 1s 内看到 pidfile 不见了 → stop()
+  const watcher = setInterval(() => {
+    if (!_readPid()) {
+      stop('pidfile missing');
+      clearInterval(watcher);
+    }
+  }, 1000);
+
+  // register signal handlers (only if not already registered by caller)
+  const onSig = (sig) => stop(sig);
+  process.once('SIGINT', () => onSig('SIGINT'));
+  process.once('SIGTERM', () => onSig('SIGTERM'));
+
+  return {
+    ok: true,
+    pid: process.pid,
+    intervalMs,
+    stop,
+    getStatus: () => ({
+      pid: process.pid,
+      intervalMs,
+      stopped,
+      cycleCount,
+      runCount,
+      lastRunAt,
+      lastError,
+    }),
+  };
+}
+
+function stopCron() {
+  const pid = _readPid();
+  if (!pid) return { ok: false, reason: 'no cron running' };
+  if (!_pidAlive(pid)) {
+    _clearPid();
+    return { ok: false, reason: 'stale pidfile cleaned' };
+  }
+  if (pid === process.pid) {
+    return { ok: false, reason: 'cannot stop self, send SIGINT to the cron process' };
+  }
+  // 双保险: 删 pidfile (cron 1s 内看到会自己 exit)
+  // + 发 SIGINT (Linux 上 cron 立即 exit, 不需要 pidfile poll)
+  // 顺序: 先删 pidfile — 万一 SIGINT 在 Windows 上无效, poll 还能 catch
+  let killed = false;
+  let killError = null;
+  try {
+    process.kill(pid, 'SIGINT');
+    killed = true;
+  } catch (e) {
+    killError = e.message;
+  }
+  _clearPid();
+  return {
+    ok: true,
+    stopped: pid,
+    signaled: killed,
+    killError,
+  };
+}
+
+// --- scout.mjs ---
+import { scanAltExists, scanNewVersion, scanPatch, scanBench, scanNewModule, scanRerun } from './scouts/network.mjs';
+import { scanForLeftoverP2, scanForSyntaxErrors, scanTestCoverage, scanDepsParity, scanConfigSchema, scanEmptyCatch, scanHardcodedPaths } from './scouts/quality.mjs';
+import { scanExplore, scanDegradation, scanExpIntrospect } from './scouts/experiment.mjs';
+import { scanLLMVision } from './scouts/architecture.mjs';
+import { scanSelf } from './scouts/self.mjs';
+import { scanIsolation } from './scouts/isolation.mjs';
+
+// === invariants ===
+// - runScoutRound() 幂等: 相同输入产生相同 finding 列表
+// - 单 scanner 5s timeout (AbortSignal.timeout), 失败静默
+// - finding 永远不重复添加 (key = type+desc, append-only)
+// - goal 永远不重复 add (goal-queue.mjs permanent dedup on done)
+// - 全部 try/catch 静默失败, scout 不该 crash
+// - 文件扫描仅限 bridge/src, 深度 ≤ 10
+// - 单次 cycle < 30s (即使所有网络失败)
+// - 19 scanner 全部独立 try/catch, 1 个失败不影响其他
+// - 19 scanner 全部返回 number (0 表示"无", N 表示"有多少")
+// - 每个 scanner 至少过 1 条 3 原则 (faster/cheaper/higher return)
+// - 3 原则: faster=减少延迟, cheaper=省资源, higher return=给用户更多价值
+
+function log(msg) {
+  console.debug(`[scout] ${new Date().toISOString()} ${msg}`);
+}
+
+async function safe(name, fn) {
+  try {
+    const r = await fn();
+    const n = typeof r === 'number' ? r : 0;
+    log(`${name}: ${n}`);
+    return n;
+  } catch (e) {
+    log(`${name}: FAIL ${(e?.message || String(e)).slice(0, 120)}`);
+    return 0;
+  }
+}
+
+async function runScoutRound() {
+  const projects = readProjects();
+  const projArr = Array.isArray(projects)
+    ? projects.map(p => ({ ...p }))
+    : Object.entries(projects).map(([name, cfg]) => ({ name, ...cfg }));
+  log(`started (pid=${process.pid}, projects=${projArr.length})`);
+
+  const p1 = await safe('p1', scanForLeftoverP2);
+  const p2 = await safe('p2', scanForSyntaxErrors);
+  const altExists = projArr[0] ? await safe('altExists', () => scanAltExists(projArr[0])) : 0;
+  const newVersion = projArr[0] ? await safe('newVersion', () => scanNewVersion(projArr[0])) : 0;
+  const patch = projArr[0] ? await safe('patch', () => scanPatch(projArr[0])) : 0;
+  const explore = await safe('explore', scanExplore);
+  const degradation = await safe('degradation', scanDegradation);
+  const newModule = await safe('newModule', scanNewModule);
+  const testCoverage = await safe('testCoverage', scanTestCoverage);
+  const depsParity = await safe('depsParity', scanDepsParity);
+  const configSchema = await safe('configSchema', scanConfigSchema);
+  const bench = await safe('bench', scanBench);
+  const llmVision = await safe('llmVision', scanLLMVision);
+  const expIntrospect = await safe('expIntrospect', scanExpIntrospect);
+  const self = await safe('self', scanSelf);
+  const emptyCatch = await safe('emptyCatch', scanEmptyCatch);
+  const hardcodedPaths = await safe('hardcodedPaths', scanHardcodedPaths);
+  const rerun = await safe('rerun', scanRerun);
+  const isolation = await safe('isolation', scanIsolation);
+
+  // Drain
+  const pending = listGoals({ pending: true }).length;
+  let drainOK = 0;
+  if (pending > 0) {
+    const batch = Math.min(pending, CONCURRENCY);
+    log(`cycle: ${pending} pending, draining (max ${CONCURRENCY})`);
+    const { runNext } = await import('./runner.mjs');
+    for (let i = 0; i < batch; i++) {
+      const r = await runNext();
+      if (r?.ok) drainOK++;
+    }
+    log(`drain: ${drainOK}/${batch} ok`);
+  } else {
+    log('cycle: 0 pending, skip');
+  }
+
+  // === DNA 刷新（有 fix 或超 1h 才重生成）===
+  try {
+    const { statSync, existsSync } = await import('fs');
+    const { join, resolve } = await import('path');
+    const { fileURLToPath } = await import('url');
+    const root = resolve(fileURLToPath(new URL('.', import.meta.url)), '../..');
+    const dnaPath = join(root, '.dna', 'project-dna.json');
+    const needsRefresh = !existsSync(dnaPath)
+      || drainOK > 0
+      || Date.now() - statSync(dnaPath).mtimeMs > 3600000;
+    if (needsRefresh) {
+      const { writeDNAFile } = await import('../experiments/42.mjs');
+      await writeDNAFile();
+      log('DNA refreshed' + (drainOK > 0 ? ' (after fix)' : ' (age >1h)'));
+    }
+  } catch (e) { log(`DNA refresh error: ${e.message}`); }
+
+  // === 元能力心跳 ===
+  try {
+    const { ping } = await import('./lab-health.mjs');
+    const health = ping();
+    if (!health.ok) log(`[ALERT] lab-health heartbeat FAIL: ${health.issues?.join(', ')}`);
+  } catch (e) {
+    log(`[ALERT] lab-health heartbeat CRASH: ${e.message}`);
+  }
+
+  const result = {
+    p1, p2,
+    altExists, newVersion, patch,
+    explore, degradation,
+    newModule, testCoverage, depsParity, configSchema,
+    bench, llmVision, expIntrospect, self, emptyCatch, hardcodedPaths, rerun, isolation,
+  };
+  log(`round end ${JSON.stringify(result)}`);
+  return result;
+}
+
+
+// --- supervisor.mjs ---
+// supervisor.mjs — 监控循环，检测 running goal 的异常状态并干涉
+//
+// 检测维度：
+//   1. 静默卡死 — lastOutputAt 超过 stuckThresholdMs 无输出
+//   2. 死循环   — 同一条 log 重复超过 loopThreshold 次
+//   3. 超长运行 — duration > medianDuration * durationRatio
+// 干涉措施：
+//   1. 先发 SIGINT（子进程）/ set cancel flag（turbo）
+//   2. 读最后 N 行输出 → 附加诊断 → 重置 goal 为 pending + hint
+//   3. 救不活 → escalate
+
+// === invariants ===
+// - 每 checkIntervalMs 扫描一次，不阻塞 runner
+// - 不修改 goal 数据，只通过 registry 观察
+// - 干涉时先软后硬（SIGINT → 无响应则 SIGTERM → escalate）
+// - 同一条干涉 60s 内不重复
+
+
+const DEFAULTS = {
+  checkIntervalMs: 30_000,
+  stuckThresholdMs: 120_000,       // 2min 无输出 → 卡死
+  loopThreshold: 5,                // 同一行出现 5 次 → 死循环
+  durationRatio: 3,                // >3x median → 超长
+  cooldownMs: 60_000,              // 同 goal 干涉冷却期
+};
+
+// 从 history 计算同类实验的中位耗时
+function _medianDuration(description) {
+  try {
+    const { listHistory } = require('fs');
+    // 动态 import 避免循环依赖
+  } catch (e) { console.error('[C0]', e); }
+  return null;
+}
+
+async function _loadHistoryForDuration(description) {
+  try {
+    const { listHistory } = await import('./history.mjs');
+    const all = listHistory();
+    const same = all.filter(r => r.description === description && r.durationMs > 0 && r.status === 'done');
+    if (same.length === 0) return null;
+    const sorted = same.map(r => r.durationMs).sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+  } catch { return null; }
+}
+
+async function _intervene(run, detection, opts = {}) {
+  const { goalId, child, cancel, description } = run;
+  const cooldownKey = `intervene:${goalId}`;
+  const lastIntervene = globalThis._supervisorCooldowns?.get(cooldownKey);
+  if (lastIntervene && Date.now() - lastIntervene < (opts.cooldownMs || DEFAULTS.cooldownMs)) return;
+  if (!globalThis._supervisorCooldowns) globalThis._supervisorCooldowns = new Map();
+  globalThis._supervisorCooldowns.set(cooldownKey, Date.now());
+
+  const tail = getTail(goalId, 15);
+  const tailText = tail.join('\n');
+  console.debug(`[supervisor] detecting ${goalId}: ${detection.reason}`);
+
+  // 1. 软干涉：发 SIGINT / 设 cancel flag
+  if (child && child.pid && !child.killed) {
+    try { process.kill(child.pid, 'SIGINT'); } catch (e) { console.error('[C0]', e); }
+    // 等 5s 看进程是否退出
+    await new Promise(r => setTimeout(r, 5000));
+    if (child.exitCode === null && !child.killed) {
+      // 没反应 → SIGTERM
+      try { process.kill(child.pid, 'SIGTERM'); } catch (e) { console.error('[C0]', e); }
+      await new Promise(r => setTimeout(r, 2000));
+    }
+  }
+  if (cancel) {
+    try { cancel(); } catch (e) { console.error('[C0]', e); }
+  }
+
+  // 2. 用 auto-heal 诊断 tail
+  const diag = await diagnose({ ok: false, error: tailText });
+  const suggestion = diag.ok ? null : diag.diagnosis?.suggestion || 'Unknown loop';
+
+  // 3. 把 goal 重置为 pending + 注入 hint
+  const finishedAt = Date.now();
+  const result = { ok: false, exitCode: null, signal: 'SIGINT', durationMs: finishedAt - run.startedAt, error: `[supervisor] ${detection.reason}: ${suggestion || tailText.slice(0, 80)}` };
+  const classification = classify({ exitCode: null, signal: 'SIGINT', error: result.error });
+
+  // 先记为 failed（避免后续 supervisor 再扫描到它）
+  updateGoal(goalId, {
+    status: 'failed',
+    finishedAt,
+    result,
+    classification,
+  });
+  recordRun({
+    goalId,
+    description,
+    status: 'failed',
+    exitCode: result.exitCode,
+    signal: result.signal,
+    durationMs: result.durationMs,
+    finishedAt,
+    error: result.error,
+    classification,
+    retryAttempt: 0,
+  });
+  labEvents.emit('runner', { type: 'finish', goalId, description, reason: 'supervisor-intervene' });
+
+  // 再重置为 pending（带 hint）
+  updateGoal(goalId, {
+    status: 'pending',
+    startedAt: null,
+    finishedAt: null,
+    result: null,
+    classification: null,
+    escalatedAt: null,
+  });
+  console.debug(`[supervisor] ${goalId}: ${detection.reason} → reset to pending (hint: ${suggestion || 'retry'})`);
+}
+
+async function startSupervisor(opts = {}) {
+  const {
+    checkIntervalMs = DEFAULTS.checkIntervalMs,
+    stuckThresholdMs = DEFAULTS.stuckThresholdMs,
+    loopThreshold = DEFAULTS.loopThreshold,
+    durationRatio = DEFAULTS.durationRatio,
+  } = opts;
+
+  let stopped = false;
+
+  async function check() {
+    if (stopped) return;
+    const runs = getActiveRuns();
+    for (const run of runs) {
+      // 跳过冷却期内的
+      if (run.goalId && globalThis._supervisorCooldowns?.get(`intervene:${run.goalId}`)) {
+        const last = globalThis._supervisorCooldowns.get(`intervene:${run.goalId}`);
+        if (Date.now() - last < DEFAULTS.cooldownMs) continue;
+      }
+
+      const now = Date.now();
+      const duration = now - run.startedAt;
+      const detections = [];
+
+      // 1. 静默卡死
+      const silentFor = now - run.lastOutputAt;
+      if (silentFor > stuckThresholdMs && duration > stuckThresholdMs) {
+        detections.push({ type: 'stuck', reason: `No output for ${(silentFor / 1000).toFixed(0)}s (duration ${(duration / 1000).toFixed(0)}s)` });
+      }
+
+      // 2. 死循环
+      const repeatedLines = Object.entries(run.loopCounter).filter(([_, c]) => c >= loopThreshold);
+      if (repeatedLines.length > 0) {
+        const worst = repeatedLines.sort((a, b) => b[1] - a[1])[0];
+        detections.push({ type: 'loop', reason: `Line "${worst[0].slice(0, 60)}" repeated ${worst[1]} times` });
+      }
+
+      // 3. 超长运行（对比同类实验）
+      const median = await _loadHistoryForDuration(run.description);
+      if (median && duration > median * durationRatio) {
+        detections.push({ type: 'overlong', reason: `Running ${(duration / 1000).toFixed(0)}s (${(duration / median).toFixed(1)}x median ${(median / 1000).toFixed(0)}s)` });
+      }
+
+      if (detections.length > 0) {
+        const primary = detections.sort((a, b) => {
+          const w = { stuck: 3, loop: 2, overlong: 1 };
+          return (w[b.type] || 0) - (w[a.type] || 0);
+        })[0];
+        await _intervene(run, primary, opts);
+      }
+    }
+    if (!stopped) setTimeout(check, checkIntervalMs);
+  }
+
+  setTimeout(check, checkIntervalMs);
+  console.debug(`[supervisor] started (every ${(checkIntervalMs / 1000).toFixed(0)}s)`);
+
+  return {
+    stop: () => { stopped = true; console.debug('[supervisor] stopped'); },
+    getStatus: () => ({ running: !stopped, checkIntervalMs }),
+  };
+}
+
+const META = { id: 'supervisor' };
+
+export { runNext, runAll, isCronRunning, getCronPid, startCron, stopCron, runScoutRound, startSupervisor, META };
