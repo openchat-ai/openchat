@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:openchat_flutter/core/models/agent_model.dart';
-import 'package:openchat_flutter/providers/agent_provider.dart';
+import 'package:openchat_flutter/providers/client_providers.dart';
 
 class AgentTaskCard extends ConsumerWidget {
   final Agent agent;
@@ -81,6 +81,6 @@ class AgentTaskCard extends ConsumerWidget {
   }
 
   void _navigateToDetail(BuildContext context, String agentId) {
-    // 这里的路由将�?screens 中定�?    Navigator.pushNamed(context, '/agent-detail', arguments: agentId);
+    // 这里的路由将�?screens 中定�?    Navigator.pushNamed(context, '/agent-detail', arguments: agentId);
   }
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
-import '../../providers/theme_provider.dart';
+import '../../providers/client_providers.dart';
 import 'settings_theme_preview.dart';
 
 class SettingsThemeSection extends ConsumerWidget {

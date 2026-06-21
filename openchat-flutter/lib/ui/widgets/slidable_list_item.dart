@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../providers/theme_provider.dart';
+import '../../../providers/client_providers.dart';
 
 class SlidableAction {
   final IconData icon;

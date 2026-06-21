@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
-import '../../providers/theme_provider.dart';
+import '../../providers/client_providers.dart';
 import 'settings_profile_header.dart';
 import 'settings_theme_section.dart';
 import 'bridge_url_tile.dart';

@@ -5,7 +5,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../providers/theme_provider.dart';
+import '../../providers/client_providers.dart';
 import '../../core/api/qiniu_direct_client.dart';
 import '../../core/audio/audio.dart';
 import '../../core/sdui_config.dart';

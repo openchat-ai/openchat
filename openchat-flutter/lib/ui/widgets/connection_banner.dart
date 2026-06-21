@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../providers/theme_provider.dart';
-import '../../providers/bridge_provider.dart';
+import '../../providers/client_providers.dart';
 import '../../core/api/base_client.dart';
 
 class ConnectionBanner extends ConsumerWidget {

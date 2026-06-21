@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sdui_engine/sdui_engine.dart';
-import 'providers/theme_provider.dart';
+import 'providers/client_providers.dart';
 import 'core/api/qiniu_direct_client.dart';
 import 'core/sdui_config.dart';
 import 'ui/screens/main_screen.dart';

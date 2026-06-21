@@ -10,7 +10,7 @@ import '../../core/api/qiniu_direct_client.dart';
 import '../../core/sdui_config.dart';
 import '../../core/sdui_config.dart';
 import '../../core/theme/app_theme.dart';
-import '../../providers/theme_provider.dart';
+import '../../providers/client_providers.dart';
 import 'chat_bubble.dart';
 import 'chat_empty_state.dart';
 import 'chat_input_area.dart';

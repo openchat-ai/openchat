@@ -2,8 +2,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:async';
 import '../../core/theme/app_theme.dart';
-import '../../providers/theme_provider.dart';
-import '../../providers/bridge_provider.dart';
+import '../../providers/client_providers.dart';
 import '../../core/api/base_client.dart';
 import '../../core/sdui_config.dart';
 import '../../core/sdui_config.dart';
