@@ -7,7 +7,7 @@ import { memoryManager } from '../memory/memory.mjs';
 import { knowledgeNetwork } from './memory/knowledge-network.js';
 import { getEnhancedMemoryManager } from './memory/memory-manager-enhanced.js';
 import { sessionManager } from '../session/session-manager.js';
-import { sessionEvents } from './session-events.js';
+import { sessionEvents } from './runtime.mjs';
 
 // === ConfigRepository ===
 

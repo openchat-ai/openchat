@@ -82,7 +82,7 @@ import { memoryManager } from '../memory/memory.mjs';
 import { sessionManager } from '../session/session-manager.js';
 import { agentMonitor } from '../core/agent/agent-monitor.js';
 import { residentScheduler } from '../core/agent/resident-scheduler.js';
-import { router } from '../core/router.js';
+import { router } from '../core/routing.mjs';
 import { MessageType } from '../protocol/message.js';
 
 export function createHandlers(bridge, CONFIG, crypto) {
