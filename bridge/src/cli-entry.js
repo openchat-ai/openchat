@@ -3,7 +3,7 @@
  * Usage: node src/cli-entry.js [options]
  */
 import { Bridge } from './main.js';
-import { parseCliArgs } from './core/cli-args.js';
+import { parseCliArgs } from './core/core-bootstrap.mjs';
 
 const CONFIG = parseCliArgs(process.argv);
 process.env.OPENCHAT_DATA_DIR = CONFIG.dataDir || process.env.OPENCHAT_DATA_DIR;

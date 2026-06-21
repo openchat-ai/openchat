@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
-import { GoalManager } from '../goal-manager.mjs';
+import { GoalManager } from '../core-bootstrap.mjs';
 
 class MockSessionManager {
   getSession = () => ({ providerType: 'mock', model: 'mock-model' });

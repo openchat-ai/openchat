@@ -5545,7 +5545,7 @@ export async function experiment_34_run({ inputs = {} } = {}) {
 export async function experiment_34_test() {
   const R = create();
   const { Orchestrator, OrchestratorEvents } = await import('../core/agent/orchestrator.mjs');
-  const { GoalManager } = await import('../core/goal-manager.mjs');
+  const { GoalManager } = await import('../core/core-bootstrap.mjs');
 
   const sm = new MockSessionManager();
   const mm = new MockMemoryManager();
@@ -6591,7 +6591,7 @@ export async function experiment_38_run({ inputs = {} } = {}) {
 export async function experiment_38_test() {
   const R = create();
 
-  const { GoalManager } = await import('../core/goal-manager.mjs');
+  const { GoalManager } = await import('../core/core-bootstrap.mjs');
   const { Orchestrator } = await import('../core/agent/orchestrator.mjs');
 
   class MockProvider {
