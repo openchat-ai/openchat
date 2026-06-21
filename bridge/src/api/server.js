@@ -21,16 +21,11 @@ import { qiniuSignaling } from '../experiments/lib/storage-lib.mjs';
 import { SignalRelay } from '../experiments/lib/storage-lib.mjs';
 
 // 路由
-import feedbackRouter from './routes/feedback.js';
+import { feedbackRouter, updatesRouter, versionsRouter, resourcesRouter, metricsRouter, healthRouter } from './routes/route-bundle.mjs';
 import { createP2PRouter } from './routes/p2p.js';
-import updatesRouter from './routes/updates.js';
 import skillsRouter from './routes/skills.js';
-import versionsRouter from './routes/versions.js';
-import resourcesRouter from './routes/resources.js';
     import legacyRouter from './routes/legacy.js';
     import devRouter from './routes/dev/index.js';
-import metricsRouter from './routes/metrics.js';
-import healthRouter from './routes/health.js';
 import voiceRouter from './routes/voice.js';
 import signalingRouter from './routes/signaling.js';
 import labDashboardRouter from './routes/lab-dashboard.mjs';
