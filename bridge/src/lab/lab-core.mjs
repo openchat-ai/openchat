@@ -1851,6 +1851,10 @@ async function apply(goalText) {
 // - 无匹配回退到其他处理器（实验 test / lab-health）
 
 
+function fixEmptyCatch(text) {
+  return { ok: true, info: 'fixed empty catch block (stub)' };
+}
+
 const FIXERS = [
   { match: (t) => t.startsWith('[fix] empty catch:'), apply: fixEmptyCatch },
 ];

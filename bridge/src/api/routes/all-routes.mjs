@@ -925,7 +925,8 @@ import { extractFiles, extractHashlines, applyHashlineEdit } from './lib/file-fo
 import { PROMPTS, buildMessages } from './lib/prompts.js';
 import { ensureProject, writeWithGit, describeProject, scanProjectFiles, getProjectPath } from './lib/workspace.js';
 
-const legacyRouter = express.Router();
+const router = express.Router();
+const legacyRouter = router;
 
 let bridgeRef = null;
 
@@ -1991,6 +1992,4 @@ router.get('/ai/main', (req, res) => {
   });
 });
 
-export { 
-export { voiceRouter, signalingRouter, skillsRouter, devRouter, labDashboardRouter };
-, legacyRouter, setBridgeContext };
+export { voiceRouter, signalingRouter, skillsRouter, devRouter, labDashboardRouter, legacyRouter, setBridgeContext };

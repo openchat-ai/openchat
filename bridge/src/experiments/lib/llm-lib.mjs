@@ -426,7 +426,7 @@ export async function pingProvider(name, pcfg = {}, { timeoutMs = 3000 } = {}) {
   return { ...result, baseUrl };  // 把 baseUrl 带回去供 caller 用
 }
 
-export const META = { id: 'provider-health' };
+// export const META = { id: 'provider-health' };
 
 // === failover-picker.mjs ===
 // === failover-picker.mjs ===
@@ -499,7 +499,7 @@ export async function pickFirstAlive(fallbacks, cfg = {}, { silent = false, time
   };
 }
 
-export const META = { id: 'failover-picker' };
+// export const META = { id: 'failover-picker' };
 
 // === error-tracker.mjs ===
 // ErrorTracker — 跨轮次错误追踪 + 重试决策
@@ -857,16 +857,14 @@ export function getStats() {
 }
 
 // === config.mjs ===
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
+import { existsSync, readFileSync } from 'node:fs';
 
 const NEW_CONFIG_FILE = path.join(os.homedir(), '.config', 'openchat', 'config.json');
 
 function loadNewConfig() {
   try {
-    if (fs.existsSync(NEW_CONFIG_FILE)) {
-      return JSON.parse(fs.readFileSync(NEW_CONFIG_FILE, 'utf8'));
+    if (existsSync(NEW_CONFIG_FILE)) {
+      return JSON.parse(readFileSync(NEW_CONFIG_FILE, 'utf8'));
     }
   } catch (e) {
     if (e.code !== 'ENOENT') console.debug('[config] load error:', e.message);

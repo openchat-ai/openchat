@@ -92,6 +92,19 @@ class EvolutionCLI {
 
 export { EvolutionCLI };
 
+// === SkillManager ===
+
+class SkillManager {
+  constructor() { this.skills = new Map(); }
+
+  registerSkill(name, skill) { this.skills.set(name, { ...skill, registeredAt: Date.now() }); }
+  getSkill(name) { return this.skills.get(name); }
+  listSkills() { return Array.from(this.skills.entries()); }
+  executeSkill(name, params) { const skill = this.skills.get(name); if (!skill) throw new Error(`Skill not found: ${name}`); return skill.handler(params); }
+}
+
+export { SkillManager };
+
 // === EvolutionSystem ===
 
 export class EvolutionSystem {
@@ -163,15 +176,3 @@ export class SelfLearner {
   recall(topic) { return this.knowledge.get(topic) || []; }
 }
 
-// === SkillManager ===
-
-class SkillManager {
-  constructor() { this.skills = new Map(); }
-
-  registerSkill(name, skill) { this.skills.set(name, { ...skill, registeredAt: Date.now() }); }
-  getSkill(name) { return this.skills.get(name); }
-  listSkills() { return Array.from(this.skills.entries()); }
-  executeSkill(name, params) { const skill = this.skills.get(name); if (!skill) throw new Error(`Skill not found: ${name}`); return skill.handler(params); }
-}
-
-export { SkillManager };

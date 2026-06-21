@@ -228,12 +228,9 @@ function _extractFailedTests(output) {
 // - Py/Rs/Go: regex-based for top-level symbols
 // - All adapters return same shape: { language, parsed, symbols[], errors[] }
 
-import fs from 'fs/promises';
-import path from 'path';
 import { createRequire } from 'module';
 const _require = createRequire(import.meta.url);
 
-const PROJECT_ROOT = process.cwd();
 
 // ─── Dart adapter (Flutter-focused) ────────────────────────
 export function parseDart(code) {
@@ -429,11 +426,8 @@ export async function executeTool(name, args) {
 // - Symbol index: functions, classes, variables, exports
 // - findReferences: AST-aware (excludes comments, strings)
 
-import fs from 'fs/promises';
-import path from 'path';
 import * as acorn from 'acorn';
 
-const PROJECT_ROOT = process.cwd();
 let _astCache = null;
 
 const astWalker = {
@@ -489,13 +483,6 @@ const astWalker = {
     return changes;
   },
 };
-
-export function parseJS(code) {
-  try {
-    const ast = acorn.parse(code, { ecmaVersion: 'latest', sourceType: 'module', locations: true, ranges: true });
-    return ast;
-  } catch { return null; }
-}
 
 export function buildIndex(code, filePath) {
   const ast = parseJS(code);
@@ -562,38 +549,13 @@ export function renameSymbol(index, oldName, newName) {
   return { oldName, newName, filesChanged: results.length, totalChanges: results.reduce((a, r) => a + r.changes, 0) };
 }
 
-export const TOOLS = [
-  { type: 'function', function: { name: 'ast_index', description: 'Build AST symbol index of project files (JS/TS)', parameters: { type: 'object', properties: { rootDir: { type: 'string' } } } } },
-  { type: 'function', function: { name: 'ast_find_refs', description: 'Find all definitions and usages of a symbol via AST', parameters: { type: 'object', properties: { symbol: { type: 'string' }, rootDir: { type: 'string' } }, required: ['symbol'] } } },
-  { type: 'function', function: { name: 'ast_rename', description: 'Rename a symbol across all project files', parameters: { type: 'object', properties: { oldName: { type: 'string' }, newName: { type: 'string' }, rootDir: { type: 'string' } }, required: ['oldName', 'newName'] } } },
-];
 
-export async function executeTool(name, args) {
-  switch (name) {
-    case 'ast_index': return indexProject(args.rootDir);
-    case 'ast_find_refs': {
-      const idx = await indexProject(args.rootDir);
-      return findRefs(args.symbol, idx);
-    }
-    case 'ast_rename': {
-      const idx = await indexProject(args.rootDir);
-      return renameSymbol(idx, args.oldName, args.newName);
-    }
-    default: throw new Error(`Unknown ast tool: ${name}`);
-  }
-}
 
 // === code-search.mjs ===
 // === invariants ===
 // - grepSearch uses ripgrep (rg) when available, falls back to Node.js recursive grep
 // - findReferences only parses JS/TS import/export syntax via regex (no full AST)
 // - All paths are relative to PROJECT_ROOT; path traversal denied
-
-import fs from 'fs/promises';
-import path from 'path';
-import { execSync } from 'child_process';
-
-const PROJECT_ROOT = process.cwd();
 
 function safeResolve(filePath) {
   const resolved = path.resolve(PROJECT_ROOT, filePath);
@@ -701,50 +663,7 @@ export async function findReferences(symbol, options = {}) {
   return { definitions: definitions.slice(0, maxResults), usages: usages.slice(0, maxResults) };
 }
 
-export const TOOLS = [
-  {
-    type: 'function',
-    function: {
-      name: 'grep',
-      description: 'Search file contents by text pattern. Uses ripgrep if available, falls back to Node.js recursive search.',
-      parameters: {
-        type: 'object',
-        properties: {
-          query: { type: 'string', description: 'Text pattern to search for' },
-          include: { type: 'string', description: 'Glob pattern to include files (e.g. "*.{js,mjs}")' },
-          exclude: { type: 'string', description: 'Glob pattern to exclude files' },
-          rootDir: { type: 'string', description: 'Root directory relative to project root' },
-          maxResults: { type: 'number', description: 'Max results (default 200)' },
-        },
-        required: ['query'],
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'find_refs',
-      description: 'Find symbol definitions and usages across JS/TS files. Parses import/export syntax.',
-      parameters: {
-        type: 'object',
-        properties: {
-          symbol: { type: 'string', description: 'Symbol name to find' },
-          rootDir: { type: 'string', description: 'Root directory relative to project root' },
-          maxResults: { type: 'number', description: 'Max results per category (default 100)' },
-        },
-        required: ['symbol'],
-      },
-    },
-  },
-];
 
-export async function executeTool(name, args) {
-  switch (name) {
-    case 'grep': return grepSearch(args.query, { include: args.include, exclude: args.exclude, rootDir: args.rootDir, maxResults: args.maxResults });
-    case 'find_refs': return findReferences(args.symbol, { rootDir: args.rootDir, maxResults: args.maxResults });
-    default: throw new Error(`Unknown code-search tool: ${name}`);
-  }
-}
 
 // === dev-tools.mjs ===
 // Dev tools: 依赖图 / Git / 测试 / Lint / 构建 / 语言 / Docker / SQL / API / 安全 / 性能 / 文档 / CI / 环境
@@ -752,15 +671,6 @@ export async function executeTool(name, args) {
 // - All tools are thin wrappers: parse stdin, call CLI, return structured output
 // - Path traversal denied on all file-based ops
 // - Tools prefixed by category for clarity
-
-import fs from 'fs/promises';
-import path from 'path';
-import { execSync } from 'child_process';
-
-const PROJECT_ROOT = process.cwd();
-
-function safeResolve(p) { const r = path.resolve(PROJECT_ROOT, p); if (!r.startsWith(PROJECT_ROOT)) throw new Error('Path traversal denied'); return r; }
-function run(cmd, opts = {}) { try { return execSync(cmd, { encoding: 'utf8', maxBuffer: 10 * 1024 * 1024, stdio: ['pipe', 'pipe', 'pipe'], ...opts }); } catch (e) { return e.stdout || e.message; } }
 
 // === Step 2: 依赖图分析 ===
 export async function depGraph(rootDir = '.') {
@@ -954,52 +864,7 @@ export function envDiff(envA = {}, envB = {}) {
   return { diff, hasChanges: diff.length > 0 };
 }
 
-export const TOOLS = [
-  { type: 'function', function: { name: 'dep_graph', description: 'Analyze JS/TS file dependency graph (imports/exports)', parameters: { type: 'object', properties: { rootDir: { type: 'string' } } } } },
-  { type: 'function', function: { name: 'detect_cycles', description: 'Detect circular dependencies in JS/TS project', parameters: { type: 'object', properties: { rootDir: { type: 'string' } } } } },
-  { type: 'function', function: { name: 'to_mermaid', description: 'Convert dependency edges to Mermaid graph format', parameters: { type: 'object', properties: { edges: { type: 'array', items: { type: 'object' } } }, required: ['edges'] } } },
-  { type: 'function', function: { name: 'git_commit', description: 'Git add + commit with auto message', parameters: { type: 'object', properties: { context: { type: 'string' } } } } },
-  { type: 'function', function: { name: 'git_log', description: 'Show recent git log', parameters: { type: 'object', properties: { count: { type: 'number' } } } } },
-  { type: 'function', function: { name: 'test_run', description: 'Discover and run test files', parameters: { type: 'object', properties: { pattern: { type: 'string' } } } } },
-  { type: 'function', function: { name: 'test_discover', description: 'Discover test files without running', parameters: { type: 'object', properties: { rootDir: { type: 'string' } } } } },
-  { type: 'function', function: { name: 'lint_run', description: 'Run ESLint and return errors', parameters: { type: 'object', properties: { pattern: { type: 'string' } } } } },
-  { type: 'function', function: { name: 'lint_fix', description: 'Run ESLint --fix', parameters: { type: 'object', properties: { pattern: { type: 'string' } } } } },
-  { type: 'function', function: { name: 'build_run', description: 'Run build command and return output', parameters: { type: 'object', properties: { command: { type: 'string' } } } } },
-  { type: 'function', function: { name: 'ts_typecheck', description: 'Run TypeScript type check (tsc --noEmit)', parameters: { type: 'object', properties: { pattern: { type: 'string' } } } } },
-  { type: 'function', function: { name: 'lang_run', description: 'Run code in specified language (python/go/rust)', parameters: { type: 'object', properties: { language: { type: 'string' }, command: { type: 'string' } }, required: ['language', 'command'] } } },
-  { type: 'function', function: { name: 'docker_build', description: 'Build Docker image', parameters: { type: 'object', properties: { tag: { type: 'string' }, dockerfile: { type: 'string' } } } } },
-  { type: 'function', function: { name: 'sql_parse', description: 'Parse CREATE TABLE SQL into structured schema', parameters: { type: 'object', properties: { sql: { type: 'string' } }, required: ['sql'] } } },
-  { type: 'function', function: { name: 'curl_run', description: 'Execute HTTP request via curl', parameters: { type: 'object', properties: { method: { type: 'string' }, url: { type: 'string' }, body: { type: 'object' } }, required: ['url'] } } },
-  { type: 'function', function: { name: 'sec_audit', description: 'Run npm audit for vulnerability scan', parameters: { type: 'object', properties: {} } } },
-  { type: 'function', function: { name: 'docs_suggest', description: 'Find changed files that may need docs update', parameters: { type: 'object', properties: {} } } },
-  { type: 'function', function: { name: 'ci_detect', description: 'Detect project type and suggest CI workflow', parameters: { type: 'object', properties: {} } } },
-  { type: 'function', function: { name: 'env_diff', description: 'Compare two env objects and list differences', parameters: { type: 'object', properties: { a: { type: 'object' }, b: { type: 'object' } }, required: ['a', 'b'] } } },
-];
 
-export async function executeTool(name, args) {
-  switch (name) {
-    case 'dep_graph': return depGraph(args.rootDir);
-    case 'detect_cycles': return detectCycles(args.rootDir);
-    case 'to_mermaid': return toMermaid(args.edges);
-    case 'git_commit': return gitCommit(args.context);
-    case 'git_log': return gitLog(args.count);
-    case 'test_run': return testRun(args.pattern);
-    case 'test_discover': return testDiscover(args.rootDir);
-    case 'lint_run': return lintRun(args.pattern);
-    case 'lint_fix': return lintFix(args.pattern);
-    case 'build_run': return buildRun(args.command);
-    case 'ts_typecheck': return tsTypeCheck(args.pattern);
-    case 'lang_run': return langRun(args.language, args.command);
-    case 'docker_build': return dockerBuild(args.tag, args.dockerfile);
-    case 'sql_parse': return sqlParseCreate(args.sql);
-    case 'curl_run': return curlRun(args.method, args.url, args.body);
-    case 'sec_audit': return secNpmAudit();
-    case 'docs_suggest': return docsFindChanged();
-    case 'ci_detect': return ciDetect();
-    case 'env_diff': return envDiff(args.a, args.b);
-    default: throw new Error(`Unknown dev tool: ${name}`);
-  }
-}
 
 // === diff-review.mjs ===
 // Diff review — shows a diff and asks for user approval before finalizing changes.
@@ -1007,8 +872,6 @@ export async function executeTool(name, args) {
 // - diffReview() computes git diff for staged/unstaged changes
 // - confirmDiff() asks user via stdin for y/n — interactive only
 // - For non-interactive (chat), returns diff text for LLM to present
-
-import { execSync } from 'child_process';
 
 export function getGitDiff(cwd = process.cwd()) {
   try {
@@ -1023,12 +886,6 @@ export function getGitDiff(cwd = process.cwd()) {
   }
 }
 
-export function executeTool(name, args) {
-  if (name === 'diff_review' || name === 'getGitDiff') {
-    return getGitDiff(args?.cwd);
-  }
-  throw new Error(`Unknown tool: ${name}`);
-}
 
 export async function confirmDiff(diffText, promptText = 'Apply these changes? (Y/n): ') {
   if (!diffText || diffText === '(no changes)' || diffText.startsWith('(not a git repo')) {
@@ -1134,10 +991,7 @@ export const META = { id: 'edit-quality-gate' };
 // - Skips files where search string is not found (reports as skipped)
 // - All results returned in a single batch
 
-import fs from 'fs/promises';
-import path from 'path';
 
-const PROJECT_ROOT = process.cwd();
 
 // Simple glob matching: * matches anything except /, ** matches everything
 function matchGlob(filePath, pattern) {
@@ -1202,12 +1056,6 @@ export async function multiEdit(globPattern, search, newStr, options = {}) {
 }
 
 // Unified dispatch for dev.mjs tool loop
-export async function executeTool(name, args) {
-  if (name === 'multi_edit') {
-    return multiEdit(args.pattern, args.search, args.newStr, { force: args.force === true });
-  }
-  throw new Error(`Unknown tool: ${name}`);
-}
 
 // === project-context.mjs ===
 // Project context: dependency & structure analysis for LLM.
@@ -1217,11 +1065,8 @@ export async function executeTool(name, args) {
 // - getProjectStructure(root) returns directory tree up to 3 levels
 // - Only reads files, never modifies
 
-import fs from 'fs/promises';
 import { existsSync } from 'fs';
-import path from 'path';
 
-const PROJECT_ROOT = process.cwd();
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'coverage', '.next', '.nuxt']);
 
 export async function findRelatedFiles(filePath) {
@@ -1329,19 +1174,7 @@ async function _walkDir(root, dir, depth, maxDepth, result) {
 // - Test tools run files in parallel with Promise.all
 // - Multi-language adapters: JS via acorn, others via regex fallback
 
-import fs from 'fs/promises';
 import { readFileSync, writeFileSync, unlinkSync } from 'fs';
-import path from 'path';
-import { execSync } from 'child_process';
-import { createRequire } from 'module';
-const _require = createRequire(import.meta.url);
-
-const PROJECT_ROOT = process.cwd();
-function run(cmd, opts = {}) {
-  try { return execSync(cmd, { encoding: 'utf8', maxBuffer: 10 * 1024 * 1024, stdio: ['pipe', 'pipe', 'pipe'], ...opts }).trim(); }
-  catch (e) { return (e.stdout || '').trim() || e.message; }
-}
-
 // === Step 19: Git 深度集成 ===
 export function gitBranch() {
   const current = run('git branch --show-current');
@@ -1453,26 +1286,7 @@ function countNodes(node) {
   return count;
 }
 
-export const TOOLS = [
-  { type: 'function', function: { name: 'git_branch', description: 'List branches and show current', parameters: { type: 'object', properties: {} } } },
-  { type: 'function', function: { name: 'git_merge_dry', description: 'Dry-run merge to check for conflicts', parameters: { type: 'object', properties: { targetBranch: { type: 'string' }, source: { type: 'string', default: 'HEAD' } }, required: ['targetBranch'] } } },
-  { type: 'function', function: { name: 'git_apply_patch', description: 'Apply a patch string (dry-run check first)', parameters: { type: 'object', properties: { patch: { type: 'string' } }, required: ['patch'] } } },
-  { type: 'function', function: { name: 'test_parallel', description: 'Run test files in parallel', parameters: { type: 'object', properties: { pattern: { type: 'string', default: 'src' } } } } },
-  { type: 'function', function: { name: 'test_flaky', description: 'Detect flaky tests by running N times', parameters: { type: 'object', properties: { pattern: { type: 'string' }, runs: { type: 'number', default: 3 } } } } },
-  { type: 'function', function: { name: 'lang_ast_parse', description: 'Parse code AST for any supported language (js/py/rs/go)', parameters: { type: 'object', properties: { language: { type: 'string' }, code: { type: 'string' } }, required: ['language', 'code'] } } },
-];
 
-export async function executeTool(name, args) {
-  switch (name) {
-    case 'git_branch': return gitBranch();
-    case 'git_merge_dry': return gitMerge(args.targetBranch, args.source);
-    case 'git_apply_patch': return gitApplyPatch(args.patch);
-    case 'test_parallel': return testParallel(args.pattern);
-    case 'test_flaky': return testFlakyDetect(args.pattern, args.runs || 3);
-    case 'lang_ast_parse': return langASTParse(args.language, args.code);
-    default: throw new Error(`Unknown deep tool: ${name}`);
-  }
-}
 
 // === output-compressor.mjs ===
 // CLI output compressor — rtk-inspired token saving.
@@ -1653,11 +1467,6 @@ export { compressOutput as default };
 // - commitFormat: "type(scope): description"
 // - Only works inside a git repo
 
-import { execSync } from 'child_process';
-import path from 'path';
-
-const PROJECT_ROOT = process.cwd();
-
 export function hasGitRepo(cwd = PROJECT_ROOT) {
   try {
     execSync('git rev-parse --git-dir', { cwd, encoding: 'utf8', windowsHide: true });
@@ -1736,8 +1545,6 @@ export async function autoCommit(filePaths, cwd = PROJECT_ROOT) {
 // - TOOLS array follows OpenAI function-calling schema
 // - Never executes if cmd fails safety check (throws)
 
-import { execSync } from 'child_process';
-
 const ALLOWED_COMMANDS = ['ls', 'cat', 'echo', 'node', 'npm', 'git', 'pwd', 'dir', 'type', 'whoami', 'date', 'find', 'grep', 'head', 'tail', 'wc', 'cmd'];
 const BLOCKED_PATTERNS = [/\brm\b/, /\bdel\b/, /\bformat\b/, /\bsudo\b/, /\bshutdown\b/, /\breboot\b/, /\bhalt\b/, /\bpoweroff\b/, /\bmv\b/, /\bcp\b/, /\bchmod\b/, /\bchown\b/, /\bmkfs\b/, /\bdd\b/, /\b>|>>|\||;&\${/];
 const MAX_OUTPUT = 100 * 1024;
@@ -1789,52 +1596,8 @@ export function execCommand(cmd, timeout, compress = false) {
 }
 
 // OpenAI function-calling schema
-export const TOOLS = [
-  {
-    type: 'function',
-    function: {
-      name: 'exec_command',
-      description: 'Execute a shell command on the host. Allowed: ls, cat, echo, node, npm, git, pwd, dir, type, whoami, date, find, grep, head, tail, wc, cmd. Use pipes/redirects with caution — shell metacharacters may be rejected.',
-      parameters: {
-        type: 'object',
-        properties: {
-          command: { type: 'string', description: 'Shell command to execute' },
-          timeout: { type: 'number', description: 'Timeout in ms (default 10000)', default: 10000 },
-        },
-        required: ['command'],
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'list_directory',
-      description: 'List files in a directory. Handles Windows paths with spaces correctly.',
-      parameters: {
-        type: 'object',
-        properties: {
-          path: { type: 'string', description: 'Directory path to list (relative or absolute)' },
-        },
-        required: ['path'],
-      },
-    },
-  },
-];
 
 // Execute tool by name, return result as string (with compression for LLM)
-export function executeTool(name, args) {
-  if (name === 'exec_command') {
-    const result = execCommand(args.command, args.timeout, true);
-    return JSON.stringify(result);
-  }
-  if (name === 'list_directory') {
-    const dirPath = (args.path || '.').replace(/\/$/, '');
-    const cmd = `cmd /c dir /b "${dirPath}"`;
-    const result = execCommand(cmd, 10000, true);
-    return JSON.stringify(result);
-  }
-  throw new Error(`Unknown tool: ${name}`);
-}
 
 // === ast-edit.mjs ===
 // AST edit — syntax-aware editing for JS/JSX files using acorn.
@@ -1845,7 +1608,6 @@ export function executeTool(name, args) {
 // - Selectors: function:{name}, class:{name}, const:{name}, let:{name}, var:{name}
 // - edit: rename, replace_body (replace function body)
 
-import path from 'path';
 
 const JS_EXT = /\.(js|jsx|mjs|cjs)$/;
 
@@ -1941,12 +1703,6 @@ export async function astEdit(filePath, selector, action, newValue) {
 }
 
 // Unified dispatch for dev.mjs tool loop
-export async function executeTool(name, args) {
-  if (name === 'ast_edit') {
-    return astEdit(args.path, args.selector, args.action, args.newValue);
-  }
-  throw new Error(`Unknown tool: ${name}`);
-}
 
 // === mcp-server.mjs ===
 
@@ -2025,8 +1781,6 @@ export function startStdioServer() {
   return server;
 }
 
-export const META = { id: 'mcp-server' };
-
 // === coding-tools.mjs ===
 // Coding tools for LLM software development agent.
 // === invariants ===
@@ -2040,12 +1794,7 @@ export const META = { id: 'mcp-server' };
 // - editFile runs lint after edit by default, returns {pass, step?, ...editResult}
 // - use force=true on edit_file to skip quality gate
 
-import fs from 'fs/promises';
-import path from 'path';
-import crypto from 'crypto';
 // memory-tools.mjs removed: dead code
-
-const PROJECT_ROOT = process.cwd(); // F:\openchat (or bridge/)
 
 /** 单行 8 字符 md5 hash (lowercase) — hashline 编辑的锚点 */
 function hashlineHash(line) {
@@ -2158,84 +1907,6 @@ export async function hashEdit(filePath, hash, newContent) {
   throw new Error(`Hash anchor ${hash} not found in ${filePath}`);
 }
 
-export const TOOLS = [...SEARCH_TOOLS, ...DEV_TOOLS, ...AST_TOOLS, ...DEEP_TOOLS, ...ADAPTER_TOOLS, // ...MEMORY_TOOLS, — removed: dead
-  {
-    type: 'function',
-    function: {
-      name: 'read_file',
-      description: 'Read a file. Path is relative to project root. Set allowExternal=true to read files outside the project (C:\\...).',
-      parameters: {
-        type: 'object',
-        properties: { path: { type: 'string', description: 'File path (relative or absolute if allowExternal=true)' }, allowExternal: { type: 'boolean', description: 'Allow reading files outside project root' } },
-        required: ['path'],
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'write_file',
-      description: 'Write content to a file. Creates directories if needed. Path is relative to project root. Prefer edit_file for partial changes. Pass force=true to bypass shrink-detection guardrail (only if new content is intentionally <30% of original).',
-      parameters: {
-        type: 'object',
-        properties: {
-          path: { type: 'string', description: 'Relative file path' },
-          content: { type: 'string', description: 'File content' },
-          force: { type: 'boolean', description: 'Bypass shrink-detection guardrail (use only if intentional)' },
-        },
-        required: ['path', 'content'],
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'edit_file',
-      description: 'Search and replace in a file. Runs lint (and optionally tests) after edit, rolls back on failure. The search string must be unique. No regex.',
-      parameters: {
-        type: 'object',
-        properties: {
-          path: { type: 'string' },
-          search: { type: 'string', description: 'Exact text to find (must be unique)' },
-          newStr: { type: 'string', description: 'Replacement text' },
-          force: { type: 'boolean', description: 'Skip quality gate (lint/test check). Default false.' },
-          test: { type: 'boolean', description: 'Also run tests after edit (default false). Only valid when force=false.' },
-        },
-        required: ['path', 'search', 'newStr'],
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'hash_edit',
-      description: 'Edit a single line by 8-char md5 hash anchor (saves tokens vs search/replace when the file is large). Use when the LLM has read the file and has the hash for the target line. Hash = md5(line) first 8 hex chars.',
-      parameters: {
-        type: 'object',
-        properties: {
-          path: { type: 'string' },
-          hash: { type: 'string', description: '8-char hex md5 of the target line' },
-          newContent: { type: 'string', description: 'Replacement line content' },
-        },
-        required: ['path', 'hash', 'newContent'],
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'dna_query',
-      description: 'Query the project DNA: find export by function name, by hashline hash, list module exports, get hot-rankings, summary, or boundary isolation analysis. Saves tokens vs reading files blindly. Returns compact results (~100 chars).',
-      parameters: {
-        type: 'object',
-        properties: {
-          question: { type: 'string', description: 'Query: "find function X", "hash XXXXXXXX", "ls path/to/file", "summary", "hot", "cat prefix", "isolate"'},
-        },
-        required: ['question'],
-      },
-    },
-  },
-];
 
 export async function getDNAContext() {
   try {
@@ -2244,41 +1915,4 @@ export async function getDNAContext() {
   } catch { return ''; }
 }
 
-export async function executeTool(name, args) {
-  switch (name) {
-    case 'read_file': return readFile(args.path, args.allowExternal);
-    case 'write_file': return writeFile(args.path, args.content, { force: !!args.force });
-    case 'edit_file': {
-      // 协议选用交给 LLM (system prompt 含 getEditProtocolGuidance 引导):
-      //   LLM 看 prompt → 大文件单行编辑时主动选 hash_edit
-      //   LLM 不看 prompt → 走原 edit_file (浪费 token 但能跑)
-      // 不在 runtime 拦截 — 拦截会破坏 FC 协议,又难以观测
-      const force = args.force === true;
-      const test = !!args.test;
-      return editFile(args.path, args.search, args.newStr, { force, test });
-    }
-    case 'hash_edit': return hashEdit(args.path, args.hash, args.newContent);
-    case 'dna_query': {
-      const { answerFromDNA } = await import('../42.mjs');
-      return answerFromDNA(args.question);
-    }
-    case 'grep': case 'find_refs': return searchExec(name, args);
-    case 'dep_graph': case 'detect_cycles': case 'to_mermaid': case 'git_commit': case 'git_log':
-    case 'test_run': case 'test_discover': case 'lint_run': case 'lint_fix': case 'build_run':
-    case 'ts_typecheck': case 'lang_run': case 'docker_build': case 'sql_parse': case 'curl_run':
-    case 'sec_audit': case 'docs_suggest': case 'ci_detect': case 'env_diff':
-      return devExec(name, args);
-    case 'ast_index': case 'ast_find_refs': case 'ast_rename':
-      return astExec(name, args);
-    case 'git_branch': case 'git_merge_dry': case 'git_apply_patch':
-    case 'test_parallel': case 'test_flaky':
-    case 'lang_ast_parse':
-      return deepExec(name, args);
-    case 'lang_parse': case 'lang_parse_file':
-      return adapterExec(name, args);
-    case 'get_cwd': case 'read_memory': case 'memory_store':
-      throw new Error(`Tool "${name}" removed (memory-tools deleted)`);
-    default: throw new Error(`Unknown coding tool: ${name}`);
-  }
-}
 
