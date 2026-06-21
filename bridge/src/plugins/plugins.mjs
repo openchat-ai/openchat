@@ -1,3 +1,4 @@
+import { pluginManager } from '../core/plugin-manager.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs/promises';
@@ -5,7 +6,226 @@ import path from 'path';
 
 const execPromise = promisify(exec);
 
-// 跨平台文件搜索
+// === system-plugins.js ===
+export const ShellPlugin = {
+  id: 'plugin-shell',
+  name: 'System Shell',
+  description: 'Allows execution of shell commands on the local machine.',
+  tools: [
+    {
+      name: 'run_command',
+      description: 'Executes a shell command and returns the output.',
+      params: {
+        command: { type: 'string', description: 'The command to run' }
+      },
+      execute: async ({ command }, context) => {
+        console.debug(`[Shell] Executing: ${command}`);
+        try {
+          const { stdout, stderr } = await execPromise(command);
+          return {
+            success: true,
+            output: stdout || stderr,
+            exitCode: 0
+          };
+        } catch (error) {
+          return {
+            success: false,
+            output: error.stderr || error.message,
+            exitCode: error.code || 1
+          };
+        }
+      }
+    }
+  ]
+};
+
+export const FilePlugin = {
+  id: 'plugin-file',
+  name: 'File System',
+  description: 'Read, write and manage files on the local disk.',
+  tools: [
+    {
+      name: 'read_file',
+      description: 'Reads the contents of a file.',
+      params: {
+        path: { type: 'string', description: 'Absolute path to the file' }
+      },
+      execute: async ({ path }) => {
+        const mod = await import('fs/promises');
+        const content = await mod.readFile(path, 'utf8');
+        return { success: true, content };
+      }
+    },
+    {
+      name: 'write_file',
+      description: 'Writes content to a file.',
+      params: {
+        path: { type: 'string', description: 'Absolute path' },
+        content: { type: 'string', description: 'Content to write' }
+      },
+      execute: async ({ path, content }) => {
+        const mod = await import('fs/promises');
+        await mod.writeFile(path, content, 'utf8');
+        return { success: true };
+      }
+    }
+  ]
+};
+
+// === eng-plugins.js ===
+export const GitPlugin = {
+  id: 'plugin-git',
+  name: 'Git Version Control',
+  description: 'Manage source control: commits, branching, and diffing.',
+  tools: [
+    {
+      name: 'git_status',
+      description: 'Check the current state of the git repository.',
+      params: {},
+      execute: async () => {
+        try {
+          const { stdout } = await execPromise('git status');
+          return { success: true, output: stdout };
+        } catch (e) {
+          return { success: false, output: e.stderr || e.message };
+        }
+      }
+    },
+    {
+      name: 'git_commit',
+      description: 'Stage all changes and create a commit.',
+      params: {
+        message: { type: 'string', description: 'The commit message' }
+      },
+      execute: async ({ message }) => {
+        try {
+          await execPromise('git add .');
+          const { stdout } = await execPromise(`git commit -m "${message}"`);
+          return { success: true, output: stdout };
+        } catch (e) {
+          return { success: false, output: e.stderr || e.message };
+        }
+      }
+    },
+    {
+      name: 'git_diff',
+      description: 'View changes in the working directory.',
+      params: {},
+      execute: async () => {
+        try {
+          const { stdout } = await execPromise('git diff');
+          return { success: true, output: stdout };
+        } catch (e) {
+          return { success: false, output: e.stderr || e.message };
+        }
+      }
+    }
+  ]
+};
+
+export const DevToolsPlugin = {
+  id: 'plugin-devtools',
+  name: 'Development Tools',
+  description: 'Run linting, type checking, and tests to verify code quality.',
+  tools: [
+    {
+      name: 'run_lint',
+      description: 'Run the project lint command.',
+      params: {
+        command: { type: 'string', description: 'Lint command', default: 'npm run lint' }
+      },
+      execute: async ({ command = 'npm run lint' }) => {
+        try {
+          const { stdout, stderr } = await execPromise(command);
+          return { success: true, output: stdout + stderr };
+        } catch (e) {
+          return { success: false, output: e.stdout + e.stderr };
+        }
+      }
+    },
+    {
+      name: 'run_tests',
+      description: 'Run the project test suite.',
+      params: {
+        command: { type: 'string', description: 'Test command', default: 'npm test' }
+      },
+      execute: async ({ command = 'npm test' }) => {
+        try {
+          const { stdout, stderr } = await execPromise(command);
+          return { success: true, output: stdout + stderr };
+        } catch (e) {
+          return { success: false, output: e.stdout + e.stderr };
+        }
+      }
+    }
+  ]
+};
+
+// === self-test-plugin.js ===
+class SelfTestPlugin {
+  constructor() {
+    this.id = 'self-test';
+    this.name = 'Self-Test Framework';
+    this.description = 'Run automated quality tests and performance evaluations on the current project to ensure reliability.';
+    this.tools = [
+      {
+        name: 'run_llm_judge',
+        description: 'Executes the LLM-as-a-Judge suite to get a professional score on the task execution quality.',
+        execute: async ({ testCaseId }) => {
+          console.debug(`[SelfTest] Evaluating quality for case: ${testCaseId || 'Full Suite'}`);
+          try {
+            const { stdout } = await execPromise('npm run test:llm-judge');
+            const reportMatch = stdout.match(/📊 评测总结: (\{.*})/s);
+            if (reportMatch) {
+              return JSON.parse(reportMatch[1]);
+            }
+            return { success: true, output: stdout };
+          } catch (error) {
+            return { success: false, error: error.message, output: error.stdout };
+          }
+        }
+      },
+      {
+        name: 'run_chaos_test',
+        description: 'Injects faults into the system to test resilience and error recovery capabilities.',
+        execute: async () => {
+          console.debug('[SelfTest] Injecting chaos to verify robustness...');
+          try {
+            const { stdout } = await execPromise('npm run test:chaos');
+            const reportMatch = stdout.match(/📊 混沌工程测试报告:([\s\S]*)/);
+            if (reportMatch) {
+              return JSON.parse(reportMatch[1].trim());
+            }
+            return { success: true, output: stdout };
+          } catch (error) {
+            return { success: false, error: error.message, output: error.stdout };
+          }
+        }
+      },
+      {
+        name: 'run_property_test',
+        description: 'Generates random action sequences to find edge-case crashes (Fuzzing).',
+        execute: async () => {
+          console.debug('[SelfTest] Running property-based fuzzing...');
+          try {
+            const { stdout } = await execPromise('npm run test:property');
+            const reportMatch = stdout.match(/📊 基于属性测试结果: (\{.*})/s);
+            if (reportMatch) {
+              return JSON.parse(reportMatch[1]);
+            }
+            return { success: true, output: stdout };
+          } catch (error) {
+            return { success: false, error: error.message, output: error.stdout };
+          }
+        }
+      }
+    ];
+  }
+}
+
+export default new SelfTestPlugin();
+
+// === agent-tools.js helper functions ===
 async function scanDirectory(dir, pattern, maxResults = 100) {
   const results = [];
   const regex = pattern ? new RegExp(pattern.replace(/\*/g, '.*')) : null;
@@ -21,7 +241,6 @@ async function scanDirectory(dir, pattern, maxResults = 100) {
 
         const fullPath = path.join(currentDir, entry.name);
 
-        // 跳过 node_modules 和 .git
         if (entry.name === 'node_modules' || entry.name === '.git') continue;
 
         if (entry.isDirectory()) {
@@ -33,7 +252,6 @@ async function scanDirectory(dir, pattern, maxResults = 100) {
         }
       }
     } catch (e) {
-      // 忽略无权限目录
     }
   }
 
@@ -41,7 +259,6 @@ async function scanDirectory(dir, pattern, maxResults = 100) {
   return results;
 }
 
-// 跨平台代码搜索
 async function searchInFiles(dir, pattern, filePattern, maxResults = 50) {
   const results = [];
   const fileRegex = filePattern ? new RegExp(filePattern.replace(/\*/g, '.*')) : /\.(js|ts|jsx|tsx|py|java|go|rs)$/;
@@ -57,7 +274,6 @@ async function searchInFiles(dir, pattern, filePattern, maxResults = 50) {
         }
       }
     } catch (e) {
-      // 忽略读取错误
     }
   }
 
@@ -81,7 +297,6 @@ async function searchInFiles(dir, pattern, filePattern, maxResults = 50) {
         }
       }
     } catch (e) {
-      // 忽略错误
     }
   }
 
@@ -89,10 +304,7 @@ async function searchInFiles(dir, pattern, filePattern, maxResults = 50) {
   return results;
 }
 
-/**
- * CodeAnalysisPlugin - 代码分析工具
- * 提供代码搜索、符号查找、文件分析等能力
- */
+// === agent-tools.js plugins ===
 export const CodeAnalysisPlugin = {
   id: 'plugin-code-analysis',
   name: 'Code Analysis',
@@ -104,7 +316,7 @@ export const CodeAnalysisPlugin = {
       params: {
         pattern: { type: 'string', description: 'The pattern to search for' },
         path: { type: 'string', description: 'Directory or file to search in', required: false },
-        filePattern: { type: 'string', description: 'Glob pattern for files (e.g., "*.js")', required: false }
+        filePattern: { type: 'string', description: 'Glob pattern for files', required: false }
       },
       execute: async ({ pattern, path: searchPath = '.', filePattern = '' }) => {
         try {
@@ -120,7 +332,7 @@ export const CodeAnalysisPlugin = {
       description: 'List files in a directory with optional pattern matching.',
       params: {
         path: { type: 'string', description: 'Directory path', required: false },
-        pattern: { type: 'string', description: 'Glob pattern (e.g., "*.js")', required: false }
+        pattern: { type: 'string', description: 'Glob pattern', required: false }
       },
       execute: async ({ path: dirPath = '.', pattern = '' }) => {
         try {
@@ -168,10 +380,8 @@ export const CodeAnalysisPlugin = {
       },
       execute: async ({ name, type = 'all' }) => {
         try {
-          // 使用文本搜索找定义
           const matches = await searchInFiles('.', name, '*.js,*.ts', 20);
 
-          // 过滤出定义行
           const definitions = matches.filter(m => {
             const line = m.toLowerCase();
             return line.includes('function ' + name.toLowerCase()) ||
@@ -189,10 +399,6 @@ export const CodeAnalysisPlugin = {
   ]
 };
 
-/**
- * ProjectManagementPlugin - 项目管理工具
- * 提供项目信息、依赖管理、配置读取等能力
- */
 export const ProjectManagementPlugin = {
   id: 'plugin-project',
   name: 'Project Management',
@@ -292,10 +498,8 @@ export const ProjectManagementPlugin = {
             const content = await fs.readFile(pkgPath, 'utf8');
             pkgInfo = JSON.parse(content);
           } catch {
-            // No package.json
           }
 
-          // Count files using native method
           const jsFiles = await scanDirectory('.', '\\.(js|ts)$', 10000);
           const totalFiles = await scanDirectory('.', '', 10000);
 
@@ -317,10 +521,6 @@ export const ProjectManagementPlugin = {
   ]
 };
 
-/**
- * WebToolsPlugin - 网络工具
- * 提供 HTTP 请求、URL 访问等能力
- */
 export const WebToolsPlugin = {
   id: 'plugin-web',
   name: 'Web Tools',
@@ -402,10 +602,6 @@ export const WebToolsPlugin = {
   ]
 };
 
-/**
- * MemoryToolsPlugin - 记忆工具
- * 让 Agent 可以主动存储和检索信息
- */
 export const MemoryToolsPlugin = {
   id: 'plugin-memory',
   name: 'Memory Tools',
@@ -453,3 +649,16 @@ export const MemoryToolsPlugin = {
     }
   ]
 };
+
+// === init.mjs — register all plugins ===
+pluginManager.registerPlugin(ShellPlugin);
+pluginManager.registerPlugin(FilePlugin);
+pluginManager.registerPlugin(GitPlugin);
+pluginManager.registerPlugin(DevToolsPlugin);
+pluginManager.registerPlugin(CodeAnalysisPlugin);
+pluginManager.registerPlugin(ProjectManagementPlugin);
+pluginManager.registerPlugin(WebToolsPlugin);
+pluginManager.registerPlugin(MemoryToolsPlugin);
+pluginManager.registerPlugin(SelfTestPlugin);
+
+export { pluginManager };

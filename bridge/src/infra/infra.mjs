@@ -1,3 +1,81 @@
+export class BaseGateway {
+  constructor(id, router) {
+    this.id = id;
+    this.router = router;
+  }
+
+  async send(payload) {
+    throw new Error('Method send() must be implemented');
+  }
+
+  async receive(payload) {
+    await this.router.dispatch(this.id, payload);
+  }
+}
+
+export class CLIGateway extends BaseGateway {
+  constructor(id, router, stdOut) {
+    super(id, router);
+    this.stdOut = stdOut;
+  }
+
+  async send(payload) {
+    if (payload.type === 'error') {
+      this.stdOut.write(`\n[Error]: ${payload.data?.message || 'Unknown error'}\n`);
+    } else if (payload.type === 'chat_response') {
+      this.stdOut.write(`\nAgent: ${payload.data.content}\n`);
+    } else {
+      this.stdOut.write(`\n[Bridge]: ${JSON.stringify(payload.data, null, 2)}\n`);
+    }
+    this.stdOut.write('> ');
+  }
+}
+
+export class WSGateway extends BaseGateway {
+  constructor(id, router, wsClient) {
+    super(id, router);
+    this.wsClient = wsClient;
+  }
+
+  async send(payload) {
+    if (this.wsClient && this.wsClient.readyState === 1) {
+      this.wsClient.send(JSON.stringify(payload));
+    }
+  }
+}
+
+export class TelegramGateway extends BaseGateway {
+  constructor(id, router, botApi) {
+    super(id, router);
+    this.botApi = botApi;
+  }
+
+  async send(payload) {
+    const chatId = payload.chatId;
+    if (!chatId) return;
+
+    let messageText = '';
+    if (payload.type === 'chat_response') {
+      messageText = payload.data.content;
+    } else if (payload.type === 'error') {
+      messageText = `❌ Error: ${payload.data.message}`;
+    } else {
+      messageText = JSON.stringify(payload.data);
+    }
+
+    await this.botApi.sendMessage(chatId, messageText);
+  }
+
+  async onMessage(chatId, text) {
+    await this.router.dispatch(this.id, {
+      type: 'chat_message',
+      data: { message: text },
+      sessionId: `tg-${chatId}`,
+      chatId: chatId
+    });
+  }
+}
+
 import { persistentConfig } from '../core/persistent-config.js';
 import * as providerService from '../experiments/lib/llm-lib.mjs';
 import { memoryManager } from '../memory/memory-manager.js';
@@ -5,15 +83,8 @@ import { sessionManager } from '../session/session-manager.js';
 import { agentMonitor } from '../core/agent/agent-monitor.js';
 import { residentScheduler } from '../core/agent/resident-scheduler.js';
 import { router } from '../core/router.js';
-import { WSGateway } from '../gateway/base.js';
 import { MessageType } from '../protocol/message.js';
 
-/**
- * 创建所?HTTP 路由 handler，通过闭包捕获 bridge 实例
- * @param {object} bridge - Bridge 实例
- * @param {object} CONFIG - 全局配置对象
- * @param {object} crypto - crypto 模块 (用于 UUID 生成)
- */
 export function createHandlers(bridge, CONFIG, crypto) {
 
   async function handleLearningStatus(req, res) {
@@ -356,7 +427,6 @@ export function createHandlers(bridge, CONFIG, crypto) {
         await provider.connect({ mode: 'command', command: tool.command, args: [] });
         sessionManager.addProviderDirect(provider);
       } catch (e) {
-        // Auto-configuration failed, skip silently
       }
     }
   }
@@ -368,11 +438,9 @@ export function createHandlers(bridge, CONFIG, crypto) {
       try {
         await memoryManager.initialize();
       } catch (e) {
-        // 忽略初始化错误，继续处理
       }
     }
 
-    // 处理记忆/RAG 相关消息
     if (type === 'memory_save' || type === MessageType.MEMORY_SAVE) {
       try {
         const { fact, userId = 'default' } = data;
@@ -417,7 +485,6 @@ export function createHandlers(bridge, CONFIG, crypto) {
       }
     }
 
-    // Handle bridge status query
     if (type === 'bridge_status' || type === MessageType.BRIDGE_STATUS) {
       const provider = persistentConfig.getPreference('currentProvider');
       const model = persistentConfig.getPreference('currentModel');
@@ -437,11 +504,9 @@ export function createHandlers(bridge, CONFIG, crypto) {
       return;
     }
 
-    // Handle chat messages via agent-engine
     if (type === 'chat' || type === MessageType.CHAT || type === 'message') {
       const { message, sessionId: sid, to } = data || {};
 
-      // P2P message: forward to destination peer
       if (to) {
         let sent = false;
         for (const client of bridge.clients) {
@@ -485,7 +550,6 @@ export function createHandlers(bridge, CONFIG, crypto) {
       return;
     }
 
-    // 其他消息通过 Router 处理
     const gatewayId = `ws-${sessionId || crypto.randomUUID()}`;
     const wsGateway = new WSGateway(gatewayId, router, ws);
     router.registerGateway(gatewayId, wsGateway);

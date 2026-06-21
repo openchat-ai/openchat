@@ -8,7 +8,7 @@ import { EvolutionMemory } from '../core/evolution/evolution-memory.js';
 import { socialConnector } from '../core/collaboration/social-connector.js';
 import { knowledgeNetwork } from '../core/memory/knowledge-network.js';
 import { CommunityManager } from '../core/collaboration/community-manager.js';
-import { securityManager } from '../security/security-manager.js';
+import { securityManager } from '../security/security.mjs';
 import * as providerService from '../experiments/lib/llm-lib.mjs';
 import { memoryManager } from '../memory/memory-manager.js';
 import { vectorStore } from '../memory/vector-store.js';
