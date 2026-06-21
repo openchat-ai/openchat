@@ -10,10 +10,7 @@ import { knowledgeNetwork } from '../core/memory/knowledge-network.js';
 import { CommunityManager } from '../core/collaboration/community-manager.js';
 import { securityManager } from '../security/security.mjs';
 import * as providerService from '../experiments/lib/llm-lib.mjs';
-import { memoryManager } from '../memory/memory-manager.js';
-import { vectorStore } from '../memory/vector-store.js';
-import { embeddingService } from '../memory/embedding-service.js';
-import { hybridRetriever } from '../memory/hybrid-retriever.js';
+import { memoryManager, vectorStore, embeddingService, hybridRetriever } from '../memory/memory.mjs';
 import { persistentStore } from '../storage/persistent-store.js';
 
 async function fetchLocalModels(providerName) {

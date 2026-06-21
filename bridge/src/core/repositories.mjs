@@ -3,7 +3,7 @@
 
 import { persistentConfig } from './persistent-config.js';
 import { EvolutionMemory } from './evolution/evolution-memory.js';
-import { memoryManager } from '../memory/memory-manager.js';
+import { memoryManager } from '../memory/memory.mjs';
 import { knowledgeNetwork } from './memory/knowledge-network.js';
 import { getEnhancedMemoryManager } from './memory/memory-manager-enhanced.js';
 import { sessionManager } from '../session/session-manager.js';
