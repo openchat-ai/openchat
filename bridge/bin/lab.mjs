@@ -51,17 +51,9 @@
 
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { addGoal, listGoals, getStatus, listFailed, getNextPending, updateGoal, housekeeping } from '../src/lab/goal-queue.mjs';
-import { runNext, runAll } from '../src/lab/runner.mjs';
-import { listHistory, backfillFromQueue } from '../src/lab/history.mjs';
-import { getExperimentStats } from '../src/lab/aggregator.mjs';
-import { detectRegressions } from '../src/lab/regression.mjs';
-import { listEscalated, getEscalationStats } from '../src/lab/escalate.mjs';
-import { buildGraph, getGraph, getAffectedExperiments, getFileDependents } from '../src/lab/dependency-graph.mjs';
-import { getChangedFiles } from '../src/lab/git-diff.mjs';
-import { notify } from '../src/lab/notifier.mjs';
-import { startCron, stopCron, isCronRunning, getCronPid } from '../src/lab/cron.mjs';
-import { diagnose } from '../src/lab/auto-heal.mjs';
+import { addGoal, listGoals, getStatus, listFailed, getNextPending, updateGoal, housekeeping, listHistory, backfillFromQueue, getExperimentStats, detectRegressions, listEscalated, getEscalationStats, buildGraph, getGraph, getAffectedExperiments, getFileDependents, getChangedFiles, notify, diagnose, healGoal, extract, computeDigest, formatDigestText, llmDigest, explore, formatExplorerText, trimHistory, resetFailed, clearQueue } from '../src/lab/lab-core.mjs';
+import { runNext, runAll, startCron, stopCron, isCronRunning, getCronPid, startSupervisor, runGoalById } from '../src/lab/lab-runner.mjs';
+import { load as loadMemory, save as saveMemory, summary as memorySummary } from '../src/experiments/lib/misc-lib.mjs';
 
 const args = process.argv.slice(2);
 const cmd = args[0];
@@ -168,7 +160,6 @@ if (cmd === 'add') {
 
 } else if (cmd === 'run-concurrent') {
   const concurrency = parseInt(args[1], 10) || 3;
-  const { runGoalById } = await import('../src/lab/runner.mjs');
   const allResults = [];
   let running = 0;
   let idx = 0;
@@ -313,7 +304,6 @@ if (cmd === 'add') {
   }
 
 } else if (cmd === 'trim') {
-  const { trimHistory, listHistory } = await import('../src/lab/history.mjs');
   const before = listHistory().length;
   const N = parseInt(args[1], 10) || 1000;
   if (N < 10) { console.log('trim: minimum keep is 10'); process.exit(1); }
@@ -356,7 +346,6 @@ if (cmd === 'add') {
 } else if (cmd === 'heal') {
   const goalId = args[1];
   if (!goalId) { console.error('Usage: lab.mjs heal <goal-id>'); process.exit(1); }
-  const { healGoal } = await import('../src/lab/auto-heal.mjs');
   const r = await healGoal(goalId);
   if (!r.ok) { console.error(`heal failed: ${r.error}`); process.exit(1); }
   console.log(`Goal: ${r.goal.description.slice(0, 60)}`);
@@ -369,7 +358,6 @@ if (cmd === 'add') {
 } else if (cmd === 'extract') {
   const runs = listHistory().slice(-50);
   if (runs.length === 0) { console.log('no history to extract'); process.exit(0); }
-  const { extract } = await import('../src/lab/knowledge-extract.mjs');
   const r = await extract(runs);
   if (r.wrote) console.log(`extracted ${r.linesAdded} lines to ${r.path}`);
   else console.log('nothing to extract');
@@ -584,7 +572,6 @@ if (cmd === 'add') {
 
 } else if (cmd === 'supervisor') {
   const ms = args[1] ? parseInt(args[1], 10) : null;
-  const { startSupervisor } = await import('../src/lab/supervisor.mjs');
   const h = await startSupervisor(ms ? { checkIntervalMs: ms } : {});
   console.log(`supervisor started (interval ${(h.getStatus().checkIntervalMs / 1000).toFixed(0)}s)`);
   // keep alive
@@ -676,17 +663,15 @@ if (cmd === 'add') {
   }
 
 } else if (cmd === 'memory') {
-  const { load, save, summary } = await import('../src/experiments/lib/agent-memory.mjs');
   if (args.includes('--clear')) {
     const { writeFile } = await import('fs/promises');
     const { resolve } = await import('path');
-    const { fileURLToPath } = await import('url');
     const h = process.env.HOME || process.env.USERPROFILE;
     const p = resolve(h || process.cwd(), '.openchat', 'agent-memory.json');
     await writeFile(p, JSON.stringify({ facts: [], preferences: [], learnedPatterns: [], createdAt: Date.now(), updatedAt: Date.now() }, null, 2), 'utf8');
     console.log('memory cleared');
   } else {
-    const m = await load();
+    const m = await loadMemory();
     console.log(`Agent Memory (${new Date(m.updatedAt).toISOString().slice(0, 19)}):`);
     console.log(`  facts: ${m.facts.length}`);
     for (const f of m.facts.slice(-5)) console.log(`    - ${f.text.slice(0, 70)}`);
@@ -698,12 +683,10 @@ if (cmd === 'add') {
 } else if (cmd === 'reset') {
   const goalId = args.find(a => a.startsWith('--goal='))?.split('=')[1];
   if (goalId) {
-    const { updateGoal } = await import('../src/lab/goal-queue.mjs');
     const r = updateGoal(goalId, { status: 'pending', startedAt: null, finishedAt: null, result: null, retryCount: 0, classification: null, escalatedAt: null });
     if (r) console.log(`reset: ${goalId} → pending`);
     else console.log(`reset: goal not found: ${goalId}`);
   } else {
-    const { resetFailed } = await import('../src/lab/goal-queue.mjs');
     const count = resetFailed();
     console.log(`reset: ${count} failed goal(s) → pending`);
   }
@@ -711,20 +694,16 @@ if (cmd === 'add') {
 
 } else if (cmd === 'clear') {
   if (!args.includes('--force')) {
-    const { getStatus } = await import('../src/lab/goal-queue.mjs');
     const s = getStatus();
     console.log(`WARNING: This will DELETE all ${s.total} goals (${s.pending} pending, ${s.done} done, ${s.failed} failed).`);
     console.log('Use --force to confirm.');
     process.exit(1);
   }
-  const { clearQueue } = await import('../src/lab/goal-queue.mjs');
   clearQueue();
   console.log('clear: queue emptied');
   process.exit(0);
 
 } else if (cmd === 'heal-auto') {
-  const { healGoal } = await import('../src/lab/auto-heal.mjs');
-  const { listGoals } = await import('../src/lab/goal-queue.mjs');
   const failed = listGoals().filter(g => g.status === 'failed');
   if (failed.length === 0) { console.log('heal-auto: no failed goals'); process.exit(0); }
   let patched = 0;
@@ -735,13 +714,11 @@ if (cmd === 'add') {
       console.log(`    → patch: ${h.patch.file} (${h.patch.patch.slice(0, 60)})`);
       const app = await h.patch.apply();
       if (app.ok) {
-        const { updateGoal } = await import('../src/lab/goal-queue.mjs');
         updateGoal(g.id, { status: 'pending', result: null, finishedAt: null, escalatedAt: null });
         patched++;
         console.log(`    → applied, reset to pending`);
       }
     } else if (h.diagnosis?.severity === 'retry') {
-      const { updateGoal } = await import('../src/lab/goal-queue.mjs');
       updateGoal(g.id, { status: 'pending', result: null, finishedAt: null, escalatedAt: null });
       patched++;
       console.log(`    → ${h.diagnosis.suggestion} → reset to pending`);
@@ -754,13 +731,11 @@ if (cmd === 'add') {
 } else if (cmd === 'digest') {
   const N = parseInt(args[1] && args[1] !== '--llm' ? args[1] : args[2] || '20', 10);
   const useLLM = args.includes('--llm');
-  const { computeDigest, formatDigestText, llmDigest } = await import('../src/lab/digest.mjs');
   const digest = useLLM ? await llmDigest(N) : { text: formatDigestText(computeDigest(N)) };
   console.log(digest.text);
   if (digest.ok === false) console.log(`  (digest limited: ${digest.reason})`);
 
 } else if (cmd === 'explore') {
-  const { explore, formatExplorerText } = await import('../src/lab/path-explorer.mjs');
   const result = explore();
   console.log(formatExplorerText(result));
   if (result.recommendations.length > 0) {
@@ -776,7 +751,6 @@ if (cmd === 'add') {
   }
 
 } else if (cmd === 'costs') {
-  const { listHistory } = await import('../src/lab/history.mjs');
   const all = listHistory();
   if (all.length === 0) { console.log('costs: no history'); process.exit(0); }
   const byExp = {};

@@ -434,6 +434,20 @@ function listFailed() {
   return readAllLines().filter(g => g.status === 'failed');
 }
 
+function resetFailed() {
+  const lines = readAllLines();
+  let count = 0;
+  for (const g of lines) {
+    if (g.status === 'failed') { g.status = 'pending'; g.startedAt = null; g.finishedAt = null; g.result = null; g.retryCount = 0; g.classification = null; g.escalatedAt = null; count++; }
+  }
+  writeAllLines(lines);
+  return count;
+}
+
+function clearQueue() {
+  writeAllLines([]);
+}
+
 // === 自治 housekeeping ===
 
 const POLLUTION_PATTERNS = [
@@ -620,6 +634,15 @@ function backfillFromQueue() {
   return { imported };
 }
 
+function trimHistory(N) {
+  const all = listHistory();
+  if (all.length <= N) return { trimmed: 0, remaining: all.length };
+  const keep = all.slice(-N);
+  ensureDir();
+  const text = keep.map(r => JSON.stringify(r)).join('\n') + '\n';
+  writeFileSync(HISTORY_FILE, text, 'utf8');
+  return { trimmed: all.length - N, remaining: N };
+}
 
 // failure-analyzer.mjs — 把 run result 分类, 决定能不能 auto-retry
 //
@@ -1866,4 +1889,4 @@ async function applyFixer(goalText) {
   return { ok: false, info: `no fixer for: ${goalText.slice(0, 60)}` };
 }
 
-export { labEvents, initLabWatchers, registerRun, unregisterRun, getActiveRuns, getRun, appendOutput, getTail, META_activeRuns, addFinding, _resetDedup, PROJECT_ROOT, SRC_DIR, EXP_DIR, LAB_DIR, PROJECTS_FILE, MANIFEST_FILE, PERSISTENT_CONFIG, DEDUP_FILE, CONCURRENCY, MIN_PENDING, FETCH_TIMEOUT, loadDedup, saveDedup, isProcessed, markProcessed, safeAtomicWrite, readProjects, relPath, scanDir, mapLimit, fetchJson, addGoal, listGoals, getNextPending, updateGoal, removeGoal, getStatus, listFailed, detectPollution, recoverStaleRunning, purgePollution, housekeeping, recordRun, listHistory, getRunStats, backfillFromQueue, classify, notify, notifyFireAndForget, getExperimentStats, computeDigest, formatDigestText, llmDigest, META_digest, detectRegressions, escalate, listEscalated, getEscalationStats, diagnose, healGoal, META_autoHeal, explore, formatExplorerText, META_pathExplorer, buildGraph, getGraph, resetCache, getAffectedExperiments, getFileDependents, extract, META_knowledgeExtract, ping, processLabHealth, getChangedFiles, FIXER_PROJECT_ROOT, match, apply, applyFixer };
+export { labEvents, initLabWatchers, registerRun, unregisterRun, getActiveRuns, getRun, appendOutput, getTail, META_activeRuns, addFinding, _resetDedup, PROJECT_ROOT, SRC_DIR, EXP_DIR, LAB_DIR, PROJECTS_FILE, MANIFEST_FILE, PERSISTENT_CONFIG, DEDUP_FILE, CONCURRENCY, MIN_PENDING, FETCH_TIMEOUT, loadDedup, saveDedup, isProcessed, markProcessed, safeAtomicWrite, readProjects, relPath, scanDir, mapLimit, fetchJson, addGoal, listGoals, getNextPending, updateGoal, removeGoal, getStatus, listFailed, resetFailed, clearQueue, detectPollution, recoverStaleRunning, purgePollution, housekeeping, recordRun, listHistory, getRunStats, backfillFromQueue, trimHistory, classify, notify, notifyFireAndForget, getExperimentStats, computeDigest, formatDigestText, llmDigest, META_digest, detectRegressions, escalate, listEscalated, getEscalationStats, diagnose, healGoal, META_autoHeal, explore, formatExplorerText, META_pathExplorer, buildGraph, getGraph, resetCache, getAffectedExperiments, getFileDependents, extract, META_knowledgeExtract, ping, processLabHealth, getChangedFiles, FIXER_PROJECT_ROOT, match, apply, applyFixer };

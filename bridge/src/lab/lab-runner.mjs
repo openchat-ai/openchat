@@ -6,7 +6,9 @@ import { dirname, join, resolve } from 'path';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync, readdirSync } from 'fs';
 import { homedir } from 'os';
 import { spawn } from 'child_process';
-import { CONCURRENCY, addFact, addFinding, addGoal, classify, diagnose, escalate, getActiveRuns, getNextPending, getTail, housekeeping, labEvents, listGoals, parseJS, readProjects, recordRun, registerRun, relPath, unregisterRun, updateGoal } from './lab-core.mjs';
+import { CONCURRENCY, addFinding, addGoal, classify, diagnose, escalate, getActiveRuns, getNextPending, getTail, housekeeping, labEvents, listGoals, readProjects, recordRun, registerRun, relPath, unregisterRun, updateGoal } from './lab-core.mjs';
+import { addFact } from '../experiments/lib/misc-lib.mjs';
+import { parseJS } from '../experiments/lib/coding-lib.mjs';
 
 // ===============================
 // Module code
@@ -718,6 +720,14 @@ async function runAll(maxRuns = 100, turbo = true) {
   return results;
 }
 
+async function runGoalById(id) {
+  _ensureSupervisor();
+  const goals = listGoals();
+  const goal = goals.find(g => g.id === id);
+  if (!goal) return { ok: false, reason: 'goal not found' };
+  return await _runTurbo(goal);
+}
+
 
 // --- cron.mjs ---
 // cron.mjs — 定时拉 runNext, 真正"无人值守"
@@ -1254,4 +1264,4 @@ async function startSupervisor(opts = {}) {
 
 const META = { id: 'supervisor' };
 
-export { runNext, runAll, isCronRunning, getCronPid, startCron, stopCron, runScoutRound, startSupervisor, META };
+export { runNext, runAll, runGoalById, isCronRunning, getCronPid, startCron, stopCron, runScoutRound, startSupervisor, META };
