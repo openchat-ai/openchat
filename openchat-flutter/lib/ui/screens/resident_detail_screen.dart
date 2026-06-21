@@ -6,12 +6,7 @@ import '../../core/models/resident_model.dart';
 import '../../core/models/agent_model.dart';
 import '../../providers/client_providers.dart';
 import '../../core/sdui_config.dart';
-import '../components/resident/resident_profile.dart';
-import '../components/resident/resident_family.dart';
-import '../components/resident/resident_agents.dart';
-import '../components/resident/resident_timeline.dart';
-import '../components/resident/resident_mentor.dart';
-import '../components/resident/resident_music_score.dart';
+import '../components/resident/resident.dart';
 
 class ResidentDetailScreen extends ConsumerStatefulWidget {
   final String residentId;

@@ -9,7 +9,7 @@ import '../../providers/client_providers.dart';
 import '../../core/api/qiniu_direct_client.dart';
 import '../../core/audio/audio.dart';
 import '../../core/sdui_config.dart';
-import '../components/resident/resident_music_score.dart';
+import '../components/resident/resident.dart';
 import '../../core/theme/app_theme.dart';
 import 'voice_room_audio.dart';
 import 'voice_room_widgets.dart';

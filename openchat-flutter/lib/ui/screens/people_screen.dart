@@ -8,9 +8,7 @@ import '../../core/theme/app_theme.dart';
 import '../../providers/client_providers.dart';
 import '../../core/api/qiniu_direct_client.dart';
 import '../../core/sdui_config.dart';
-import '../widgets/people_sdui_view.dart';
-import '../widgets/people_fallback_view.dart';
-import '../widgets/people_action_dispatcher.dart';
+import '../widgets/widgets.dart';
 
 class PeopleScreen extends ConsumerStatefulWidget {
   const PeopleScreen({super.key});

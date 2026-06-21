@@ -3,8 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/client_providers.dart';
 import '../../core/sdui_config.dart';
-import '../widgets/settings_sdui_view.dart';
-import '../widgets/settings_hardcoded_view.dart';
+import '../widgets/widgets.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
