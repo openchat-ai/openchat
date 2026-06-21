@@ -4,7 +4,7 @@
 
 import express from 'express'
 const router = express.Router()
-import metrics from '../middleware/metrics.js'
+import { metrics } from '../middleware/api-middleware.mjs'
 
 // GET /api/v1/metrics - 获取指标摘要
 router.get('/', async (req, res, next) => {

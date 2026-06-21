@@ -15,9 +15,7 @@ import { fileURLToPath } from 'url';
 import { WebSocketServer } from 'ws';
 import swaggerUi from 'swagger-ui-express';
 
-import { errorHandler } from './middleware/error-handler.js';
-import requestValidator from './middleware/request-validator.js';
-import { securityMiddleware } from './middleware/security.js';
+import { errorHandler, requestValidator, securityMiddleware } from './middleware/api-middleware.mjs';
 import { DEFAULT_PORT } from '../constants.js';
 import { qiniuSignaling } from '../experiments/lib/storage-lib.mjs';
 import { SignalRelay } from '../experiments/lib/storage-lib.mjs';
