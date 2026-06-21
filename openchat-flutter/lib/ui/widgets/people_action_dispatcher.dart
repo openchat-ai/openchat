@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/api/qiniu_direct_client.dart';
-import '../../core/sdui_actions.dart';
+import '../../core/sdui_config.dart';
 import 'people_dialogs.dart';
 import 'people_file_actions.dart';
 

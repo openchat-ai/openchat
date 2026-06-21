@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/models/resident_model.dart';
-import '../../core/sdui.dart';
+import '../../core/sdui_config.dart';
 import 'package:sdui_engine/sdui_engine.dart' show SduiParser;
 
 class AgentHubWidgets {

@@ -1,3 +1,4 @@
+
 // === constants.js ===
 /** 基础端口 — 唯一硬编码处 */
 export const DEFAULT_PORT = 3800;
@@ -605,13 +606,13 @@ class TopicRegistry extends EventEmitter {
   }
 }
 
-export default TopicRegistry;
 export { TopicRegistry };
 
 // === qiniu-s3.mjs ===
 // Bridge 端 Qiniu S3 兼容 API 封装（list/get/put）
 import 'dotenv/config';
-import { createHmac, createHash } from 'crypto';
+import { createHmac, createHash, randomBytes } from 'crypto';
+import * as net from 'net';
 
 const _ak = String.fromCharCode(106,118,106,77,82,56,90,67,53,55,86,122,84,48,68,104,55,97,86,122,104,101,76,119,75,114,90,118,72,87,77,115,113,81,53,72,86,122,112,71);
 const _sk = String.fromCharCode(116,102,109,83,49,50,86,84,70,77,95,102,115,48,78,74,97,77,82,72,85,119,48,57,84,86,107,87,72,65,117,90,120,54,119,98,45,102,73,113);
@@ -814,21 +815,18 @@ export { qiniuList, qiniuGet, qiniuPut, qiniuDelete, qiniuDeletePrefix };
  */
 
 import qiniu from 'qiniu';
-import { createHmac, createHash } from 'crypto';
 
 // 七牛云配置（优先 .env，没有则用默认演示账号）
-const _ak = process.env.QINIU_ACCESS_KEY || 'jvjMR8ZC57VzT0Dh7aVzheLwKrZvHWMsqQ5HVzpG';
-const _sk = process.env.QINIU_SECRET_KEY || 'tfmS12VTFM_fs0NJaMRHUw09TVkWHAuZx6wb-fIq';
-const config = {
-  accessKey: _ak,
-  secretKey: _sk,
+const qiniuConfig = {
+  accessKey: process.env.QINIU_ACCESS_KEY || 'jvjMR8ZC57VzT0Dh7aVzheLwKrZvHWMsqQ5HVzpG',
+  secretKey: process.env.QINIU_SECRET_KEY || 'tfmS12VTFM_fs0NJaMRHUw09TVkWHAuZx6wb-fIq',
   bucket: process.env.QINIU_BUCKET || 'dapin-xp',
   region: process.env.QINIU_REGION || 'cn-east-1',
   domain: process.env.QINIU_DOMAIN || 'dapin-xp.s3.cn-east-1.qiniucs.com',
   bucketPrefix: process.env.QINIU_BUCKET_PREFIX || 'openchat',
 };
 
-const credentials = new qiniu.auth.digest.Mac(config.accessKey, config.secretKey);
+const credentials = new qiniu.auth.digest.Mac(qiniuConfig.accessKey, qiniuConfig.secretKey);
 const configQiniu = new qiniu.conf.Config();
 configQiniu.zone = qiniu.zone.Zone_z0;
 configQiniu.useCdnDomain = false;
@@ -868,10 +866,10 @@ class QiniuSignaling {
    * 生成预签名 URL (用于手机直接读取)
    */
   getSignedUrl(key, expires = 300) {
-    const host = config.domain;
+    const host = qiniuConfig.domain;
     const amzDate = new Date().toISOString().replace(/[:-]|\.\d{3}/g, '');
     const dateStamp = amzDate.slice(0, 8);
-    const credential = `${config.accessKey}/${dateStamp}/${config.region}/s3/aws4_request`;
+    const credential = `${qiniuConfig.accessKey}/${dateStamp}/${qiniuConfig.region}/s3/aws4_request`;
 
     const params = {
       'X-Amz-Algorithm': 'AWS4-HMAC-SHA256',
@@ -897,17 +895,17 @@ class QiniuSignaling {
     ].join('\n');
 
     const algorithm = 'AWS4-HMAC-SHA256';
-    const credentialScope = `${dateStamp}/${config.region}/s3/aws4_request`;
+    const credentialScope = `${dateStamp}/${qiniuConfig.region}/s3/aws4_request`;
     const hashedRequest = createHash('sha256').update(canonicalRequest).digest('hex');
     const stringToSign = [algorithm, amzDate, credentialScope, hashedRequest].join('\n');
 
-    const kDate = createHmac('sha256', 'AWS4' + config.secretKey).update(dateStamp).digest();
-    const kRegion = createHmac('sha256', kDate).update(config.region).digest();
+    const kDate = createHmac('sha256', 'AWS4' + qiniuConfig.secretKey).update(dateStamp).digest();
+    const kRegion = createHmac('sha256', kDate).update(qiniuConfig.region).digest();
     const kService = createHmac('sha256', kRegion).update('s3').digest();
     const kSigning = createHmac('sha256', kService).update('aws4_request').digest();
     const signature = createHmac('sha256', kSigning).update(stringToSign).digest('hex');
 
-    return `${config.domain}/${key}?${canonicalQueryString}&X-Amz-Signature=${signature}`;
+    return `${qiniuConfig.domain}/${key}?${canonicalQueryString}&X-Amz-Signature=${signature}`;
   }
 
   /**
@@ -924,11 +922,11 @@ class QiniuSignaling {
     // 上传需要用七牛 SDK，这里返回配置信息
     return {
       uploadUrl: `https://upload.qiniup.com/`,
-      domain: config.domain,
-      bucket: config.bucket,
-      accessKey: config.accessKey,
+      domain: qiniuConfig.domain,
+      bucket: qiniuConfig.bucket,
+      accessKey: qiniuConfig.accessKey,
       // 手机端需要用这个策略生成 token
-      putPolicyScope: config.bucket
+      putPolicyScope: qiniuConfig.bucket
     };
   }
 
@@ -936,10 +934,10 @@ class QiniuSignaling {
    * 生成上传 Token (供手机使用)
    */
   getUploadToken(key) {
-    const putPolicy = new qiniu.rs.PutPolicy({ scope: config.bucket });
+    const putPolicy = new qiniu.rs.PutPolicy({ scope: qiniuConfig.bucket });
     putPolicy.fsizeMin = 1;
     putPolicy.fsizeLimit = 10 * 1024 * 1024; // 10MB
-    const mac = new qiniu.auth.digest.Mac(config.accessKey, config.secretKey);
+    const mac = new qiniu.auth.digest.Mac(qiniuConfig.accessKey, qiniuConfig.secretKey);
     return putPolicy.uploadToken(mac);
   }
 
@@ -1231,7 +1229,7 @@ class QiniuSignaling {
     const content = JSON.stringify(data, null, 2);
     const buffer = Buffer.from(content, 'utf8');
     // scope: 'bucket:key' 允许覆盖已有文件
-    const uploadToken = new qiniu.rs.PutPolicy({ scope: `${config.bucket}:${key}` }).uploadToken(credentials);
+    const uploadToken = new qiniu.rs.PutPolicy({ scope: `${qiniuConfig.bucket}:${key}` }).uploadToken(credentials);
 
     return new Promise((resolve, reject) => {
       this.formUploader.put(uploadToken, key, buffer, this.putExtra, (err, ret) => {
@@ -1256,7 +1254,7 @@ class QiniuSignaling {
    */
   async _deleteFile(key) {
     return new Promise((resolve, reject) => {
-      this.bucketManager.delete(config.bucket, key, (err, ret) => {
+      this.bucketManager.delete(qiniuConfig.bucket, key, (err, ret) => {
         if (err) reject(err);
         else resolve(ret);
       });
@@ -1267,7 +1265,7 @@ class QiniuSignaling {
    * 上传/覆盖文件
    */
   async putObject(key, data) {
-    const uploadToken = new qiniu.rs.PutPolicy({ scope: `${config.bucket}:${key}` }).uploadToken(credentials);
+    const uploadToken = new qiniu.rs.PutPolicy({ scope: `${qiniuConfig.bucket}:${key}` }).uploadToken(credentials);
     return new Promise((resolve, reject) => {
       this.formUploader.put(uploadToken, key, data, this.putExtra, (err, ret) => {
         if (err) reject(err); else resolve(ret);
@@ -1280,7 +1278,7 @@ class QiniuSignaling {
    */
   async deleteObject(key) {
     return new Promise((resolve, reject) => {
-      this.bucketManager.delete(config.bucket, key, (err, ret) => {
+      this.bucketManager.delete(qiniuConfig.bucket, key, (err, ret) => {
         if (err) reject(err); else resolve(ret);
       });
     });
@@ -1293,7 +1291,7 @@ class QiniuSignaling {
     if (!this.bucketManager) throw new Error('bucketManager not initialized');
     return new Promise((resolve, reject) => {
       try {
-        this.bucketManager.listPrefix(config.bucket, { prefix, limit: 200 }, (err, respBody, respInfo) => {
+        this.bucketManager.listPrefix(qiniuConfig.bucket, { prefix, limit: 200 }, (err, respBody, respInfo) => {
           if (err) {
             console.debug(`[qiniu-list] err=`, err);
             reject(err);
@@ -1318,7 +1316,7 @@ class QiniuSignaling {
    */
   async _stat(key) {
     return new Promise((resolve, reject) => {
-      this.bucketManager.stat(config.bucket, key, (err, ret) => {
+      this.bucketManager.stat(qiniuConfig.bucket, key, (err, ret) => {
         if (err) reject(err);
         else resolve(ret);
       });
@@ -1328,7 +1326,7 @@ class QiniuSignaling {
 }
 
 export const qiniuSignaling = new QiniuSignaling();
-export default QiniuSignaling;
+export { QiniuSignaling };
 // === signal-relay.js ===
 /// Qiniu relay + UDP hole punch for P2P voice
 ///
@@ -1499,9 +1497,10 @@ export { BucketRelay };
 import fs from 'fs';
 import path from 'path';
 import { homedir } from 'os';
-import logger from './misc-lib.mjs';
+import * as os from 'os';
+import { logger } from './misc-lib.mjs';
 
-const CONFIG_DIR = path.join(homedir(), '.openchat');
+const CONFIG_DIR = path.join(os.homedir(), '.openchat');
 const SESSIONS_FILE = path.join(CONFIG_DIR, 'sessions.json');
 const PROVIDERS_FILE = path.join(CONFIG_DIR, 'providers.json');
 
@@ -1602,13 +1601,7 @@ export const persistentStore = new PersistentSessionStore();
  * 修订说明：根据混合方案，使用 hyperswarm 替代自定义 DHT
  */
 
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
 const Hyperswarm = require('hyperswarm');
-const crypto = require('crypto');
-const net = require('net');
-const os = require('os');
-const EventEmitter = require('events');
 
 
 // --- 粘包处理：消息帧工具 ---
@@ -2270,10 +2263,6 @@ export { hasPublicAddress, getPublicIPv4 };
  *
  * TF-IDF fast path as primary, embedding-enhanced search as secondary
  */
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
-import logger from './misc-lib.mjs';
 
 const DATA_DIR = path.join(os.homedir(), '.openchat', 'vector-memory');
 const DATA_FILE = path.join(DATA_DIR, 'vectors.json');
@@ -2625,7 +2614,6 @@ setInterval(() => vectorMemory.save(), 30_000).unref();
 export { VectorMemory, vectorMemory };
 
 // === tool-registry.js ===
-import logger from './misc-lib.mjs';
 import { evaluate } from 'mathjs';
 import { URL } from 'url';
 
@@ -2767,10 +2755,9 @@ class ToolRegistry {
 }
 
 export const toolRegistry = new ToolRegistry();
-export default ToolRegistry;
+export { ToolRegistry };
 
 // === message-bus.js ===
-import { EventEmitter } from 'events';
 
 export const MESSAGE_TYPES = {
   REQUEST: 'agent:request',
@@ -2844,7 +2831,6 @@ export class MessageBus extends EventEmitter {
 }
 
 export const messageBus = new MessageBus();
-export default messageBus;
 // === session-namer.mjs ===
 
 // === invariants ===

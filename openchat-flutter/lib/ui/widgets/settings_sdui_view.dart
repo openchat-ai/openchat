@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/sdui_config.dart';
-import '../../core/version.dart';
 import '../components/cards/app_cards.dart';
 
 class SettingsSduiView extends StatelessWidget {

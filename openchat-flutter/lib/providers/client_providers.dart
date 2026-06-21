@@ -1,15 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:openchat_flutter/core/api/agent_client.dart';
-import 'package:openchat_flutter/core/api/metrics_client.dart';
-import 'package:openchat_flutter/core/api/resources_client.dart';
-import 'package:openchat_flutter/core/api/p2p_client.dart';
-import 'package:openchat_flutter/core/api/skills_client.dart';
-import 'package:openchat_flutter/core/api/feedback_client.dart';
-import 'package:openchat_flutter/core/api/decisions_client.dart';
-import 'package:openchat_flutter/core/api/updates_client.dart';
-import 'package:openchat_flutter/core/api/versions_client.dart';
-import 'package:openchat_flutter/core/api/resident_client.dart';
-import 'package:openchat_flutter/core/api/sage_client.dart';
+import 'package:openchat_flutter/core/api/base_client.dart';
 import 'config_provider.dart';
 
 // Client Providers（自动读取配置）

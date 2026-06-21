@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:openchat_flutter/core/api/sage_client.dart';
-import 'package:openchat_flutter/core/models/sage_model.dart';
+import 'package:openchat_flutter/core/api/base_client.dart';
+import 'package:openchat_flutter/core/models/resident_model.dart';
 import 'client_providers.dart';
 
 /// 智者（天人点拨）对话管理

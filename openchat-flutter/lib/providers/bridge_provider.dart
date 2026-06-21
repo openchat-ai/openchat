@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../core/api/bridge_ws_client.dart';
+import '../core/api/base_client.dart';
 import 'config_provider.dart';
 
 final bridgeWsProvider = Provider<BridgeWsClient>((ref) {

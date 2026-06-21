@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:openchat_flutter/core/api/resident_client.dart';
+import 'package:openchat_flutter/core/api/base_client.dart';
 import 'package:openchat_flutter/core/models/resident_model.dart';
 import 'client_providers.dart';
 

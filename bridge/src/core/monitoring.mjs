@@ -7,7 +7,7 @@ import { spawn, exec } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import os from 'os';
-import logger from './logger.js';
+import { logger } from '../experiments/lib/misc-lib.mjs';
 
 // === AutoRestartManager ===
 

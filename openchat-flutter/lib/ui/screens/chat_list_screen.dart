@@ -4,8 +4,8 @@ import 'dart:async';
 import '../../core/theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/bridge_provider.dart';
-import '../../core/api/bridge_ws_client.dart';
-import '../../core/sdui.dart';
+import '../../core/api/base_client.dart';
+import '../../core/sdui_config.dart';
 import '../../core/sdui_config.dart';
 import 'chat_screen.dart' hide bridgeWsProvider;
 

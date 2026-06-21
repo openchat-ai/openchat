@@ -1,16 +1,13 @@
 // core/collaboration.mjs — merged from collaboration/{community-manager,multi-agent-coordinator,social-connector,task-orchestrator,task-planner}.js
 // 2026-06-21 (R1 cancelled, target 80 modules)
 
-import { AgentSession } from '../agent/agent-session.js';
-import { messageBus, MESSAGE_TYPES } from '../message-bus.js';
-import { configRepo } from './repositories.mjs';
-import { memoryRepo } from './repositories.mjs';
-import { evolutionRepo } from './repositories.mjs';
-import { sessionRepo } from './repositories.mjs';
-import { knowledgeNetwork } from '../memory/knowledge-network.js';
+import { AgentSession, MESSAGE_TYPES } from './agent.mjs';
+import { messageBus } from '../experiments/lib/storage-lib.mjs';
+import { configRepo, memoryRepo, evolutionRepo, sessionRepo } from './repositories.mjs';
+import { knowledgeNetwork } from './memory.mjs';
 import { pluginManager } from './core-config.mjs';
-import { PromptBuilder } from '../convergence/prompt-builder.js';
-import logger from '../monitoring/logger.js';
+import { PromptBuilder } from './convergence.mjs';
+import { logger } from '../experiments/lib/misc-lib.mjs';
 
 // === CommunityManager ===
 

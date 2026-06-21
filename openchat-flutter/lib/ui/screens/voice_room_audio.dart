@@ -5,7 +5,7 @@ import 'package:record/record.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../../core/api/qiniu_direct_client.dart';
 import '../../core/audio/audio.dart';
-import '../../core/ui_voice_config.dart';
+import '../../core/sdui_config.dart';
 
 /// 通话音频管理：录音/编码/上传/播放/解码
 /// 由 _VoiceRoomScreenState 持有，状态字段在调用方

@@ -7,7 +7,7 @@ import * as os from 'os';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
-import logger from '../monitoring/logger.js';
+import { logger } from '../experiments/lib/misc-lib.mjs';
 import { vectorMemory } from '../memory/vector-memory.js';
 
 // === EvolutionMemory ===

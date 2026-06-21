@@ -5,7 +5,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/models/resident_model.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/feed_provider.dart';
-import '../../core/sdui.dart';
+import '../../core/sdui_config.dart';
 import '../../core/sdui_config.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {

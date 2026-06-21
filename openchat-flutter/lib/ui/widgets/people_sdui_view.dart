@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/api/qiniu_direct_client.dart';
-import '../../core/sdui.dart';
+import '../../core/sdui_config.dart';
 import '../../core/theme/app_theme.dart';
 
 class PeopleSduiView extends StatelessWidget {

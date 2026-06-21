@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { EventEmitter } from 'events';
 import crypto from 'crypto';
-import logger from '../monitoring/logger.js';
+import { logger } from '../experiments/lib/misc-lib.mjs';
 
 // === ErrorBoundary ===
 

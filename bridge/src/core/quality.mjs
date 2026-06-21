@@ -2,7 +2,7 @@
 // 2026-06-21 (R1 cancelled, target 80 modules; QualityScorer stubbed for size)
 
 import * as providerService from '../provider-service.js';
-import logger from '../monitoring/logger.js';
+import { logger } from '../experiments/lib/misc-lib.mjs';
 
 // === AdversarialTest ===
 

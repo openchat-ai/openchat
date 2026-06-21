@@ -1,6 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/models/sage_model.dart';
+import '../../../core/models/resident_model.dart';
 
 class ResidentMentor extends StatelessWidget {
   final AppTheme theme;

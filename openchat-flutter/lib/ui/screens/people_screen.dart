@@ -8,7 +8,6 @@ import '../../core/theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
 import '../../core/api/qiniu_direct_client.dart';
 import '../../core/sdui_config.dart';
-import '../../core/ui_voice_config.dart';
 import '../widgets/people_sdui_view.dart';
 import '../widgets/people_fallback_view.dart';
 import '../widgets/people_action_dispatcher.dart';

@@ -6,7 +6,7 @@ import 'package:record/record.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/api/qiniu_direct_client.dart';
 import '../../core/audio/audio.dart';
-import '../../core/ui_voice_config.dart';
+import '../../core/sdui_config.dart';
 
 // === invariants ===
 // - _vmBuffer 只在 startRecord/stopRecord 间由 stream.listen 追加

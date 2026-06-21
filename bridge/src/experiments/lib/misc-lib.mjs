@@ -24,7 +24,7 @@ const logger = isDev ? new Proxy({}, {
   serializers: { req: (req) => ({ method: req.method, url: req.url, headers: req.headers }), err: pino.stdSerializers.err, error: pino.stdSerializers.err },
 });
 
-export default logger;
+export { logger };
 
 // === lmdn-codec.mjs ===
 // LPC + MDCT 编解码器（替代NeuralAudioCodec）
@@ -533,7 +533,7 @@ export async function run({ inputs = {} } = {}) {
   }
 }
 
-export const META = { id: 'repl-history' };
+export const META_REPL_HISTORY = { id: 'repl-history' };
 
 // === agent-hooks.mjs ===
 // agent-hooks.mjs — LLM tool-loop 的 pre/post hook 注册表 (Step 6.1 / L3 整车基础)
@@ -655,7 +655,7 @@ export function getCallLog() { return [..._callLog]; }
 
 export function clearCallLog() { _callLog.length = 0; }
 
-export const META = { id: 'hooks-builtin' };
+export const META_HOOKS = { id: 'hooks-builtin' };
 
 // === agent-memory.mjs ===
 import { readFile, writeFile, mkdir } from 'fs/promises';
@@ -716,7 +716,7 @@ export function summary() {
   return `${_cache.facts.length} facts, ${_cache.preferences.length} preferences, ${_cache.learnedPatterns.length} patterns`;
 }
 
-export const META = { id: 'agent-memory' };
+export const META_MEMORY = { id: 'agent-memory' };
 
 // === permission-gate.mjs ===
 // permission-gate.mjs — L3 件: per-tool permission check + trust 持久化
@@ -733,10 +733,8 @@ export const META = { id: 'agent-memory' };
 //   - bridge 必须不阻塞: 同步 input() 只能在 CLI / standalone; bridge 走 phone 时应 bypass
 //     → 检测到没有 TTY 或 ctx.bridgeMode → 静默 y (跟 user 确认过, 实际是 phone 端鉴权)
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
-import { homedir } from 'os';
-
 const TRUST_DIR = join(homedir(), '.openchat');
 const TRUST_FILE = join(TRUST_DIR, 'trust.json');
 
@@ -1187,7 +1185,7 @@ export async function applySlash({ cmd, arg, ctx }) {
   }
 }
 
-export const META = { id: 'slash-commands' };
+export const META_SLASH = { id: 'slash-commands' };
 
 
 // === subagent-roles.mjs ===
@@ -1469,34 +1467,7 @@ Rules:
   };
 }
 
-async function execTool(tc, dispatch) {
-  const name = tc.function?.name || tc.name;
-  const rawArgs = tc.function?.arguments || tc.arguments || '{}';
-  let args;
-  try { args = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : rawArgs; }
-  catch { args = {}; }
-  // [HOOKS] preTool — permission/限流/日志 注册的 hook 链
-  const { runPre: hPre, runPost: hPost } = await import('./agent-hooks.mjs');
-  try { await hPre(name, args); } catch (e) { return `[Hook denied] ${e.message?.slice(0, 200) || 'preTool hook rejected call'}`; }
-  let lastError = '';
-  for (const fn of Object.values(dispatch)) {
-    try {
-      let r = await fn(name, args);
-      r = await hPost(name, args, r);
-      const s = typeof r === 'string' ? r : JSON.stringify(r, null, 2);
-      const lines = s.split('\n');
-      if (lines.length > 80) return lines.slice(0, 60).join('\n') + `\n... (${lines.length - 60} more lines)`;
-      return s.length > 8000 ? s.slice(0, 8000) + '\n... (truncated)' : s;
-    } catch (e) {
-      const msg = e.message || String(e);
-      if (!msg.includes('Unknown tool:')) return `[Error] ${msg.slice(0, 200)}`;
-      lastError = msg;
-    }
-  }
-  return `[Error] Tool "${name}" not found`;
-}
-
-export const META = { id: 'subagent' };
+export const META_SUBAGENT = { id: 'subagent' };
 
 // === dev-workflow-plugin.mjs ===
 // Dev Workflow Plugin — wraps system-exec, coding-tools, auto-commit, project-context
@@ -1716,13 +1687,13 @@ async function execTool(tc, dispatch) {
   try { args = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : rawArgs; }
   catch { args = typeof rawArgs === 'string' ? JSON.parse(_repairJSON(rawArgs)) : rawArgs; }
   // [HOOKS] preTool — permission/限流/日志 注册的 hook 链, 抛 throw 中止
-  try { await hookPre(name, args); } catch (e) { return `[Hook denied] ${e.message?.slice(0, 200) || 'preTool hook rejected call'}`; }
+  try { await runPre(name, args); } catch (e) { return `[Hook denied] ${e.message?.slice(0, 200) || 'preTool hook rejected call'}`; }
   let lastError = '';
   for (const fn of Object.values(dispatch)) {
     try {
       let r = await fn(name, args);
       // [HOOKS] postTool — log/transform chain
-      r = await hookPost(name, args, r);
+      r = await runPost(name, args, r);
       const s = typeof r === 'string' ? r : JSON.stringify(r, null, 2);
       const lines = s.split('\n');
       if (lines.length > 80) return lines.slice(0, 60).join('\n') + `\n... (${lines.length - 60} more lines)`;

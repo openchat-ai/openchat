@@ -1,8 +1,163 @@
-import 'resident_activity.dart';
+export 'agent_model.dart';
 
-export 'resident_activity.dart';
-export 'feed_item.dart';
-export 'child_summary.dart';
+/// 子代摘要（用于家谱列表）
+class ChildSummary {
+  final int id;
+  final String name;
+  final String status;
+  final DateTime createdAt;
+  final int depth;
+  final Map<String, double> traits;
+  final int activityCount;
+
+  const ChildSummary({
+    required this.id,
+    required this.name,
+    required this.status,
+    required this.createdAt,
+    required this.depth,
+    required this.traits,
+    required this.activityCount,
+  });
+
+  factory ChildSummary.fromJson(Map<String, dynamic> json) {
+    Map<String, double> t = {};
+    if (json['traits'] is Map) {
+      for (final entry in (json['traits'] as Map).entries) {
+        t[entry.key.toString()] = (entry.value as num).toDouble();
+      }
+    }
+    return ChildSummary(
+      id: json['id'] as int,
+      name: json['name'] as String,
+      status: json['status'] as String,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      depth: json['depth'] as int,
+      traits: t,
+      activityCount: json['activityCount'] as int? ?? 0,
+    );
+  }
+
+  bool get isActive => status == 'active';
+}
+
+/// 社区动态流条目 — 聚合所有居民活动
+class FeedItem {
+  final String id;
+  final DateTime timestamp;
+  final String type;
+  final String message;
+  final String? agentName;
+  final String? agentRole;
+  final String? task;
+  final int residentId;
+  final String residentName;
+  final String? summary;
+
+  const FeedItem({
+    required this.id,
+    required this.timestamp,
+    required this.type,
+    required this.message,
+    this.agentName,
+    this.agentRole,
+    this.task,
+    required this.residentId,
+    required this.residentName,
+    this.summary,
+  });
+
+  factory FeedItem.fromJson(Map<String, dynamic> json) {
+    return FeedItem(
+      id: json['id'] as String,
+      timestamp: DateTime.parse(json['timestamp'] as String),
+      type: json['type'] as String,
+      message: json['message'] as String,
+      agentName: json['agentName'] as String?,
+      agentRole: json['agentRole'] as String?,
+      task: json['task'] as String?,
+      residentId: json['residentId'] as int,
+      residentName: json['residentName'] as String,
+      summary: json['summary'] as String?,
+    );
+  }
+}
+
+/// AI 居民活动记录
+class ResidentActivity {
+  final String id;
+  final DateTime timestamp;
+  final String type;
+  final String message;
+  final String? agentId;
+  final String? agentName;
+  final String? agentRole;
+  final String? task;
+  final String? summary;
+
+  const ResidentActivity({
+    required this.id,
+    required this.timestamp,
+    required this.type,
+    required this.message,
+    this.agentId,
+    this.agentName,
+    this.agentRole,
+    this.task,
+    this.summary,
+  });
+
+  factory ResidentActivity.fromJson(Map<String, dynamic> json) {
+    return ResidentActivity(
+      id: json['id'] as String,
+      timestamp: DateTime.parse(json['timestamp'] as String),
+      type: json['type'] as String,
+      message: json['message'] as String,
+      agentId: json['agentId'] as String?,
+      agentName: json['agentName'] as String?,
+      agentRole: json['agentRole'] as String?,
+      task: json['task'] as String?,
+      summary: json['summary'] as String?,
+    );
+  }
+}
+
+/// 智者对话记录
+class SageRecord {
+  final String id;
+  final int residentId;
+  final String type; // ask | answer | guide | praise
+  final String content;
+  final bool answered;
+  final String? parentId;
+  final DateTime createdAt;
+
+  const SageRecord({
+    required this.id,
+    required this.residentId,
+    required this.type,
+    required this.content,
+    this.answered = false,
+    this.parentId,
+    required this.createdAt,
+  });
+
+  bool get isFromResident => type == 'ask';
+  bool get isFromSage => type == 'answer' || type == 'guide' || type == 'praise';
+  bool get isQuestion => type == 'ask' && !answered;
+
+  factory SageRecord.fromJson(Map<String, dynamic> json) {
+    return SageRecord(
+      id: json['id'] as String,
+      residentId: json['residentId'] as int,
+      type: json['type'] as String,
+      content: json['content'] as String,
+      answered: json['answered'] as bool? ?? false,
+      parentId: json['parentId'] as String?,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+    );
+  }
+}
 
 /// 性格特征标签映射（与服务端 TRAIT_POOL 同步）
 const traitLabelMap = {

@@ -8,8 +8,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/theme_provider.dart';
 import '../../core/api/qiniu_direct_client.dart';
 import '../../core/audio/audio.dart';
-import '../../core/ui_voice_config.dart';
-import '../../core/sdui.dart';
 import '../../core/sdui_config.dart';
 import '../components/resident/resident_music_score.dart';
 import '../../core/theme/app_theme.dart';

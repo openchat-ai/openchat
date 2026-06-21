@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/api/qiniu_direct_client.dart';
-import '../../core/sdui.dart';
+import '../../core/sdui_config.dart';
 
 class PeopleDialogs {
   static Future<void> showSdui(
