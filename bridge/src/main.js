@@ -715,11 +715,20 @@ export class Bridge {
 
   _printBanner() {
     const mode = CONFIG.isSandbox ? 'SANDBOX' : CONFIG.headless ? 'HEADLESS' : 'CLI';
+    let moduleCount = '';
+    try {
+      const projectRoot = path.resolve(path.dirname(import.meta.url.replace('file://', '')), '..', '..');
+      const dnaPath = path.join(projectRoot, '.dna', 'project-dna.json');
+      if (fs.existsSync(dnaPath)) {
+        const dna = JSON.parse(fs.readFileSync(dnaPath, 'utf8'));
+        moduleCount = ` │ modules: ${dna.totalModules} │ deps: ${dna.totalDepFiles}`;
+      }
+    } catch {}
     console.debug('');
     console.debug('╔═══════════════════════════════════════════════════════════╗');
     console.debug('║                                                          ║');
     console.debug('║                   OPENCHAT BRIDGE                        ║');
-    console.debug(`║                   [${mode} MODE]                          ║`);
+    console.debug(`║                   [${mode} MODE]${moduleCount.padEnd(28, ' ')}║`);
     console.debug('║                                                          ║');
     console.debug('╚═══════════════════════════════════════════════════════════╝');
     console.debug('');

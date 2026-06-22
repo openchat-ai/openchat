@@ -29,6 +29,7 @@
     "build": "node scripts/build-deploy.js",
     "build:fast": "node scripts/build-deploy.js --skip-archive",
     "clean": "node scripts/clean.js",
+    "check": "node scripts/check-syntax.mjs",
     "lint": "eslint src/ scripts/",
     "lint:fix": "eslint src/ scripts/ --fix",
     "format": "prettier --write \"src/**/*.{js,mjs,json}\" \"scripts/**/*.js\"",

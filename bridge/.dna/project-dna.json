@@ -7,7 +7,7 @@
     "provider-kit",
     "fairy-guardian"
   ],
-  "scannedAt": 1782041943953,
+  "scannedAt": 1782099037562,
   "modules": [
     {
       "path": "/src/api/middleware/api-middleware.mjs",
@@ -727,7 +727,7 @@
     },
     {
       "path": "/src/core/core-bootstrap.mjs",
-      "size": 9439,
+      "size": 9428,
       "exports": [
         {
           "name": "parseCliArgs",
@@ -771,6 +771,19 @@
           "line": 368,
           "hash": "c40d4db9",
           "file": "/src/core/core-config.mjs"
+        }
+      ],
+      "project": "bridge-core"
+    },
+    {
+      "path": "/src/core/dev-repl.mjs",
+      "size": 914,
+      "exports": [
+        {
+          "name": "startDevRepl",
+          "line": 10,
+          "hash": "3ca6adc3",
+          "file": "/src/core/dev-repl.mjs"
         }
       ],
       "project": "bridge-core"
@@ -1074,6 +1087,19 @@
       "project": "bridge-core"
     },
     {
+      "path": "/src/core/persistent-store.js",
+      "size": 764,
+      "exports": [
+        {
+          "name": "persistentStore",
+          "line": 9,
+          "hash": "e422eacb",
+          "file": "/src/core/persistent-store.js"
+        }
+      ],
+      "project": "bridge-core"
+    },
+    {
       "path": "/src/core/provider-service.js",
       "size": 280,
       "exports": [
@@ -1246,7 +1272,7 @@
     },
     {
       "path": "/src/core/routing.mjs",
-      "size": 3064,
+      "size": 3047,
       "exports": [
         {
           "name": "Router",
@@ -1761,6 +1787,12 @@
       "project": "bridge-core"
     },
     {
+      "path": "/src/experiments/38.mjs",
+      "size": 324,
+      "exports": [],
+      "project": "experiments"
+    },
+    {
       "path": "/src/experiments/42.mjs",
       "size": 18086,
       "exports": [
@@ -1835,702 +1867,702 @@
     },
     {
       "path": "/src/experiments/experiments-all.mjs",
-      "size": 309971,
+      "size": 296256,
       "exports": [
         {
           "name": "experiment_01_META",
           "line": 10,
-          "hash": "af8d9630",
+          "hash": "48ba70c2",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_01_run",
           "line": 13,
-          "hash": "244202f2",
+          "hash": "f590bb83",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_02_META",
-          "line": 87,
-          "hash": "8905061b",
+          "line": 88,
+          "hash": "042686d4",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_02_run",
-          "line": 219,
-          "hash": "5da0689a",
+          "line": 220,
+          "hash": "675018e2",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_02_checkGate_CACHED_MAY_BE_STALE",
-          "line": 304,
-          "hash": "0049c258",
+          "line": 305,
+          "hash": "0538235a",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_02_test",
-          "line": 311,
-          "hash": "4c556a68",
+          "line": 312,
+          "hash": "c773d1cb",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_03_META",
-          "line": 402,
-          "hash": "b2e95949",
+          "line": 403,
+          "hash": "4e8d4b19",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_03_run",
-          "line": 404,
-          "hash": "66cef904",
+          "line": 405,
+          "hash": "2653fccb",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_04_META",
-          "line": 724,
-          "hash": "cf630187",
+          "line": 721,
+          "hash": "aab13099",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_04_run",
-          "line": 849,
-          "hash": "b59414c1",
+          "line": 846,
+          "hash": "1e4783f7",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_04_test",
-          "line": 942,
-          "hash": "117ccee4",
+          "line": 939,
+          "hash": "19de5496",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_05_META",
-          "line": 1038,
-          "hash": "c0f60d85",
+          "line": 1035,
+          "hash": "ec523d81",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_05_run",
-          "line": 1055,
-          "hash": "a5441956",
+          "line": 1052,
+          "hash": "af2cae08",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_06_META",
-          "line": 1173,
-          "hash": "d1a8abe6",
+          "line": 1170,
+          "hash": "ae3cb09b",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_06_run",
-          "line": 1177,
-          "hash": "480efc67",
+          "line": 1174,
+          "hash": "cda38785",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_07_META",
-          "line": 1224,
-          "hash": "2c3e6e31",
+          "line": 1221,
+          "hash": "12325f62",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_07_run",
-          "line": 1235,
-          "hash": "f22cfbfa",
+          "line": 1232,
+          "hash": "d5a89c8b",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_08_META",
-          "line": 1351,
-          "hash": "e951ca09",
+          "line": 1348,
+          "hash": "f6d33bc5",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_08_run",
-          "line": 1356,
-          "hash": "9538e17c",
+          "line": 1353,
+          "hash": "d07d97cc",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_09_META",
-          "line": 1446,
-          "hash": "ad756ee0",
+          "line": 1444,
+          "hash": "3a08a9b0",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_09_run",
-          "line": 1454,
-          "hash": "e6c59f4d",
+          "line": 1452,
+          "hash": "28a223eb",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_10_META",
-          "line": 1736,
-          "hash": "e0294705",
+          "line": 1734,
+          "hash": "fa647781",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_10_run",
-          "line": 1738,
-          "hash": "33b1b561",
+          "line": 1736,
+          "hash": "c11ea9c9",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_11_run",
-          "line": 1917,
-          "hash": "466ccb6b",
+          "line": 1915,
+          "hash": "5618852a",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_11_test",
-          "line": 1971,
-          "hash": "2c67334b",
+          "line": 1969,
+          "hash": "ff9a8c6d",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_12_run",
-          "line": 1995,
-          "hash": "4755453a",
+          "line": 1992,
+          "hash": "e6c6a3e3",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_12_test",
-          "line": 2049,
-          "hash": "eb4e5a26",
+          "line": 2046,
+          "hash": "691093d2",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_13_run",
-          "line": 2078,
-          "hash": "c442219e",
+          "line": 2073,
+          "hash": "f9fe5964",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_13_test",
-          "line": 2117,
-          "hash": "e49aaf07",
+          "line": 2112,
+          "hash": "d2d6416f",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_14_META",
-          "line": 2143,
-          "hash": "01a022fe",
+          "line": 2138,
+          "hash": "4c036597",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_14_run",
-          "line": 2165,
-          "hash": "ec7ed372",
+          "line": 2160,
+          "hash": "329be844",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_15_META",
-          "line": 2275,
-          "hash": "03ab44c4",
+          "line": 2269,
+          "hash": "2f5dd427",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_15_run",
-          "line": 2307,
-          "hash": "fc8e16fa",
+          "line": 2301,
+          "hash": "a7176f20",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_16_META",
-          "line": 2407,
-          "hash": "40d9a379",
+          "line": 2402,
+          "hash": "a521f6bd",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_16_run",
-          "line": 2430,
-          "hash": "1198099b",
+          "line": 2425,
+          "hash": "a77a58c9",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_17_META",
-          "line": 2496,
-          "hash": "d52c7068",
+          "line": 2492,
+          "hash": "4af3cba2",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_17_run",
-          "line": 2529,
-          "hash": "080c9f0c",
+          "line": 2525,
+          "hash": "b55a596d",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_18_META",
-          "line": 2656,
-          "hash": "0b373cd2",
+          "line": 2653,
+          "hash": "2e86bb6c",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_18_run",
-          "line": 2955,
-          "hash": "d46ca89a",
+          "line": 2952,
+          "hash": "b71ffda6",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_18_setRealExecutor",
-          "line": 3281,
-          "hash": "56aeb457",
+          "line": 3278,
+          "hash": "a028e9b9",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_19_META",
-          "line": 3341,
-          "hash": "7990b21c",
+          "line": 3339,
+          "hash": "65efb422",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_19_run",
-          "line": 3354,
-          "hash": "3aff3139",
+          "line": 3352,
+          "hash": "4942092c",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_20_META",
-          "line": 3388,
-          "hash": "0803a1e6",
+          "line": 3387,
+          "hash": "68bf9058",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_20_run",
-          "line": 3412,
-          "hash": "9aa8566d",
+          "line": 3411,
+          "hash": "e02be43e",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_21_META",
-          "line": 3504,
-          "hash": "12f27220",
+          "line": 3503,
+          "hash": "2c92f41f",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_21_run",
-          "line": 3608,
-          "hash": "8e2dbe3f",
+          "line": 3607,
+          "hash": "604e1a24",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_21_test",
-          "line": 3742,
-          "hash": "9e25697b",
+          "line": 3741,
+          "hash": "90c250d2",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_22_initProvider",
-          "line": 3832,
-          "hash": "9d8f7cd8",
+          "line": 3831,
+          "hash": "1aff150c",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_22_processText",
-          "line": 3868,
-          "hash": "aff8847d",
+          "line": 3867,
+          "hash": "cc49617e",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_22_getHistory",
-          "line": 4006,
-          "hash": "0e756f4a",
+          "line": 4005,
+          "hash": "a6c32b0b",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_22_run",
-          "line": 4015,
-          "hash": "e7c0e24d",
+          "line": 4014,
+          "hash": "aceb3d93",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_22_generateSessionName",
-          "line": 4028,
-          "hash": "84d85b1b",
+          "line": 4027,
+          "hash": "4cfcbfd8",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_22_test",
-          "line": 4045,
-          "hash": "132dbab7",
+          "line": 4044,
+          "hash": "5772d6cd",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_23_META",
-          "line": 4072,
-          "hash": "b0f8a166",
+          "line": 4070,
+          "hash": "235512c4",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_23_run",
-          "line": 4076,
-          "hash": "05d931f2",
+          "line": 4074,
+          "hash": "236f3d8a",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_23_test",
-          "line": 4092,
-          "hash": "d96837b9",
+          "line": 4090,
+          "hash": "f12756f8",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_24_META",
-          "line": 4158,
-          "hash": "16ebb78f",
+          "line": 4156,
+          "hash": "65fdcbf6",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_24_run",
-          "line": 4163,
-          "hash": "c2117686",
+          "line": 4161,
+          "hash": "ec7ecfd1",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_25_META",
-          "line": 4248,
-          "hash": "49212615",
+          "line": 4246,
+          "hash": "2102a3a6",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_25_run",
-          "line": 4252,
-          "hash": "b281328c",
+          "line": 4250,
+          "hash": "93834719",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_25_test",
-          "line": 4410,
-          "hash": "99d12550",
+          "line": 4408,
+          "hash": "ab9363a5",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_26_META",
-          "line": 4537,
-          "hash": "900743a9",
+          "line": 4535,
+          "hash": "7a0a6811",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_26_run",
-          "line": 4573,
-          "hash": "6a9609e1",
+          "line": 4571,
+          "hash": "730b7f0e",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_27_META",
-          "line": 4667,
-          "hash": "63175da3",
+          "line": 4666,
+          "hash": "b1c7e366",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_27_run",
-          "line": 4669,
-          "hash": "17a55c0c",
+          "line": 4668,
+          "hash": "899c8e8b",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_28_META",
           "line": 4884,
-          "hash": "7469cb33",
+          "hash": "f1b403cf",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_28_run",
           "line": 4886,
-          "hash": "24e5e074",
+          "hash": "cd73c8f9",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_29_META",
-          "line": 5068,
-          "hash": "6f2c7041",
+          "line": 5069,
+          "hash": "9b68b7e1",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_29_run",
-          "line": 5071,
-          "hash": "7c11b379",
+          "line": 5072,
+          "hash": "72eaf058",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_30_META",
-          "line": 5099,
-          "hash": "79ff5246",
+          "line": 5100,
+          "hash": "36c4519d",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_30_run",
-          "line": 5102,
-          "hash": "0837bb90",
+          "line": 5103,
+          "hash": "86b191bf",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_31_META",
-          "line": 5146,
-          "hash": "2b0309eb",
+          "line": 5147,
+          "hash": "17a94003",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_31_run",
-          "line": 5149,
-          "hash": "f9123289",
+          "line": 5150,
+          "hash": "44689173",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_32_META",
-          "line": 5259,
-          "hash": "7fb6e589",
+          "line": 5260,
+          "hash": "894f5e69",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_32_run",
-          "line": 5265,
-          "hash": "0720fe53",
+          "line": 5266,
+          "hash": "ef14c27a",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_33_META",
-          "line": 5383,
-          "hash": "87bfbe6f",
+          "line": 5384,
+          "hash": "5a00f1c6",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_33_run",
-          "line": 5407,
-          "hash": "f19b60f0",
+          "line": 5408,
+          "hash": "696fe520",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_34_META",
-          "line": 5504,
-          "hash": "a383c09f",
+          "line": 5506,
+          "hash": "6f213873",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_34_run",
-          "line": 5526,
-          "hash": "7f9608fd",
+          "line": 5528,
+          "hash": "3addba15",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_34_test",
-          "line": 5545,
-          "hash": "a52c9297",
+          "line": 5547,
+          "hash": "48928bc4",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_35_META",
-          "line": 5664,
-          "hash": "1b230836",
+          "line": 5666,
+          "hash": "136913af",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_35_run",
-          "line": 5687,
-          "hash": "27e4f364",
+          "line": 5689,
+          "hash": "fe54296e",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_36_META",
           "line": 5967,
-          "hash": "eff78cf1",
+          "hash": "4ef96083",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_36_run",
           "line": 5973,
-          "hash": "00062684",
+          "hash": "1d11350e",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_36_test",
           "line": 6032,
-          "hash": "0296c48e",
+          "hash": "f2f4c22f",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_37_META",
-          "line": 6123,
-          "hash": "79bce930",
+          "line": 6122,
+          "hash": "08efcf48",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_37_run",
-          "line": 6294,
-          "hash": "deb876e3",
+          "line": 6293,
+          "hash": "64266eae",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_37_test",
-          "line": 6375,
-          "hash": "f54df62c",
+          "line": 6374,
+          "hash": "10083a62",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_38_META",
-          "line": 6468,
-          "hash": "dba66977",
+          "line": 6464,
+          "hash": "95875167",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_38_run",
-          "line": 6538,
-          "hash": "06c728c2",
+          "line": 6534,
+          "hash": "3f2a8342",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_38_test",
-          "line": 6591,
-          "hash": "1d1f00a3",
+          "line": 6587,
+          "hash": "346a22f9",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_39_test",
-          "line": 6701,
-          "hash": "92e9ade0",
+          "line": 6697,
+          "hash": "ee46cea6",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_40_test",
-          "line": 6772,
-          "hash": "8a81ae74",
+          "line": 6768,
+          "hash": "998f6f7d",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_41_test",
-          "line": 6871,
-          "hash": "9e563ece",
+          "line": 6867,
+          "hash": "a4fd84b5",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_42_META",
-          "line": 6912,
-          "hash": "71e40fd5",
+          "line": 6906,
+          "hash": "46a2a37b",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_42_run",
-          "line": 6926,
-          "hash": "95a7dc59",
+          "line": 6920,
+          "hash": "3fb5594d",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_42_test",
-          "line": 6939,
-          "hash": "29e67232",
+          "line": 6933,
+          "hash": "3d8ae20d",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_42_scanProject",
-          "line": 6980,
-          "hash": "6b99d855",
+          "line": 6974,
+          "hash": "be7c043f",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_42_generateDNA",
-          "line": 7008,
-          "hash": "3439d710",
+          "line": 7002,
+          "hash": "8392bcac",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_42_generateMultiProjectDNA",
-          "line": 7012,
-          "hash": "62d8e0c4",
+          "line": 7006,
+          "hash": "b72dabcd",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_42_extractInvariants",
-          "line": 7030,
-          "hash": "dad4183d",
+          "line": 7024,
+          "hash": "42f07242",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_42_buildDependencyGraph",
-          "line": 7058,
-          "hash": "f8140678",
+          "line": 7052,
+          "hash": "b46e4e34",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_42_writeDNAFile",
-          "line": 7082,
-          "hash": "86cd694f",
+          "line": 7076,
+          "hash": "844c7154",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_42_getDNAContext",
-          "line": 7093,
-          "hash": "a0210de4",
+          "line": 7087,
+          "hash": "ca928d88",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_42_answerFromDNA",
-          "line": 7113,
-          "hash": "9bfd10a6",
+          "line": 7107,
+          "hash": "a2556a02",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_compose_run",
-          "line": 7614,
-          "hash": "debc3764",
+          "line": 7615,
+          "hash": "f0050fdd",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_compose_compose",
-          "line": 7630,
-          "hash": "ba10b0c2",
+          "line": 7631,
+          "hash": "c66946cb",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_compose_get",
-          "line": 7647,
-          "hash": "1f8e0631",
+          "line": 7648,
+          "hash": "3f71f75d",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_compose_list",
-          "line": 7648,
-          "hash": "d7ac9fbb",
+          "line": 7649,
+          "hash": "84cc3628",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_compose_getMeta",
-          "line": 7649,
-          "hash": "0f603b7e",
+          "line": 7650,
+          "hash": "f063db51",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_compose_getState",
-          "line": 7650,
-          "hash": "e4d18e50",
+          "line": 7651,
+          "hash": "ccc21c1e",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_compose_reset",
-          "line": 7651,
-          "hash": "e82d71ac",
+          "line": 7652,
+          "hash": "fec468c9",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_compose_printDeps",
-          "line": 7654,
-          "hash": "378e4aab",
+          "line": 7655,
+          "hash": "ae69274d",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_compose_pipeline",
-          "line": 7678,
-          "hash": "7b7a00c5",
+          "line": 7679,
+          "hash": "0bce2f46",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_compose_dump",
-          "line": 7691,
-          "hash": "fe159c35",
+          "line": 7692,
+          "hash": "340c8bba",
           "file": "/src/experiments/experiments-all.mjs"
         },
         {
           "name": "experiment_compose_test",
-          "line": 7697,
-          "hash": "75a9f6c6",
+          "line": 7698,
+          "hash": "1df572c8",
           "file": "/src/experiments/experiments-all.mjs"
         }
       ],
@@ -3796,7 +3828,7 @@
     },
     {
       "path": "/src/experiments/lingbao/40.mjs",
-      "size": 4820,
+      "size": 4822,
       "exports": [
         {
           "name": "META",
@@ -3815,7 +3847,7 @@
     },
     {
       "path": "/src/experiments/lingbao/41.mjs",
-      "size": 5903,
+      "size": 5905,
       "exports": [
         {
           "name": "META",
@@ -3834,7 +3866,7 @@
     },
     {
       "path": "/src/experiments/lingbao/42.mjs",
-      "size": 5930,
+      "size": 5932,
       "exports": [
         {
           "name": "META",
@@ -3859,7 +3891,7 @@
     },
     {
       "path": "/src/experiments/lingbao/44.mjs",
-      "size": 4292,
+      "size": 4294,
       "exports": [
         {
           "name": "META",
@@ -3878,7 +3910,7 @@
     },
     {
       "path": "/src/experiments/lingbao/45.mjs",
-      "size": 6089,
+      "size": 6091,
       "exports": [
         {
           "name": "META",
@@ -3957,14 +3989,170 @@
     },
     {
       "path": "/src/lab/lab-core.mjs",
-      "size": 67292,
+      "size": 68050,
       "exports": [],
       "project": "lab"
     },
     {
       "path": "/src/lab/lab-runner.mjs",
-      "size": 56704,
+      "size": 57045,
       "exports": [],
+      "project": "lab"
+    },
+    {
+      "path": "/src/lab/scouts/architecture.mjs",
+      "size": 1895,
+      "exports": [
+        {
+          "name": "scanLLMVision",
+          "line": 5,
+          "hash": "58877073",
+          "file": "/src/lab/scouts/architecture.mjs"
+        }
+      ],
+      "project": "lab"
+    },
+    {
+      "path": "/src/lab/scouts/experiment.mjs",
+      "size": 3914,
+      "exports": [
+        {
+          "name": "scanExplore",
+          "line": 10,
+          "hash": "3fdbe2de",
+          "file": "/src/lab/scouts/experiment.mjs"
+        },
+        {
+          "name": "scanDegradation",
+          "line": 35,
+          "hash": "bbc18db5",
+          "file": "/src/lab/scouts/experiment.mjs"
+        },
+        {
+          "name": "scanExpIntrospect",
+          "line": 61,
+          "hash": "37fdc2cd",
+          "file": "/src/lab/scouts/experiment.mjs"
+        }
+      ],
+      "project": "lab"
+    },
+    {
+      "path": "/src/lab/scouts/isolation.mjs",
+      "size": 1273,
+      "exports": [
+        {
+          "name": "scanIsolation",
+          "line": 3,
+          "hash": "7fe37a46",
+          "file": "/src/lab/scouts/isolation.mjs"
+        }
+      ],
+      "project": "lab"
+    },
+    {
+      "path": "/src/lab/scouts/network.mjs",
+      "size": 7281,
+      "exports": [
+        {
+          "name": "scanAltExists",
+          "line": 11,
+          "hash": "3ecac388",
+          "file": "/src/lab/scouts/network.mjs"
+        },
+        {
+          "name": "scanNewVersion",
+          "line": 44,
+          "hash": "2c5ffc9c",
+          "file": "/src/lab/scouts/network.mjs"
+        },
+        {
+          "name": "scanPatch",
+          "line": 67,
+          "hash": "53b9dfc6",
+          "file": "/src/lab/scouts/network.mjs"
+        },
+        {
+          "name": "scanBench",
+          "line": 92,
+          "hash": "79fb385d",
+          "file": "/src/lab/scouts/network.mjs"
+        },
+        {
+          "name": "scanNewModule",
+          "line": 117,
+          "hash": "34f1eae8",
+          "file": "/src/lab/scouts/network.mjs"
+        },
+        {
+          "name": "scanRerun",
+          "line": 163,
+          "hash": "01a0e6ee",
+          "file": "/src/lab/scouts/network.mjs"
+        }
+      ],
+      "project": "lab"
+    },
+    {
+      "path": "/src/lab/scouts/quality.mjs",
+      "size": 8744,
+      "exports": [
+        {
+          "name": "scanForLeftoverP2",
+          "line": 11,
+          "hash": "84d7e0c7",
+          "file": "/src/lab/scouts/quality.mjs"
+        },
+        {
+          "name": "scanForSyntaxErrors",
+          "line": 29,
+          "hash": "5ec43deb",
+          "file": "/src/lab/scouts/quality.mjs"
+        },
+        {
+          "name": "scanTestCoverage",
+          "line": 51,
+          "hash": "c8940a05",
+          "file": "/src/lab/scouts/quality.mjs"
+        },
+        {
+          "name": "scanDepsParity",
+          "line": 81,
+          "hash": "f8334b66",
+          "file": "/src/lab/scouts/quality.mjs"
+        },
+        {
+          "name": "scanConfigSchema",
+          "line": 130,
+          "hash": "ead0b373",
+          "file": "/src/lab/scouts/quality.mjs"
+        },
+        {
+          "name": "scanEmptyCatch",
+          "line": 177,
+          "hash": "a3c92822",
+          "file": "/src/lab/scouts/quality.mjs"
+        },
+        {
+          "name": "scanHardcodedPaths",
+          "line": 208,
+          "hash": "72e761e8",
+          "file": "/src/lab/scouts/quality.mjs"
+        }
+      ],
+      "project": "lab"
+    },
+    {
+      "path": "/src/lab/scouts/self.mjs",
+      "size": 2213,
+      "exports": [
+        {
+          "name": "scanSelf",
+          "line": 5,
+          "hash": "87b957cd",
+          "file": "/src/lab/scouts/self.mjs"
+        }
+      ],
       "project": "lab"
     },
     {
@@ -11684,8 +11872,8 @@
       "project": "fairy-guardian"
     }
   ],
-  "totalModules": 138,
-  "totalExports": 1795,
+  "totalModules": 147,
+  "totalExports": 1816,
   "invariants": [
     {
       "file": "/src/api/routes/all-routes.mjs",
@@ -11748,26 +11936,26 @@
     {
       "file": "/src/experiments/experiments-all.mjs",
       "block": [
-        "// === invariants ==='))\r",
-        "      warnings.push(`${f}: >100 行但缺少 invariants 约束块`);\r",
-        "    if (isNew && lineCount > 50 && !exists(specPath))\r",
-        "      errors.push(`${f}: 新增 >50 行但无对应 ${specPath}`);\r",
-        "    const inWhitelist = SPEC_REQUIRED.includes(f);\r",
-        "    if (inWhitelist && !isNew && lineCount > 100) {\r",
-        "      if (!specFiles.includes(specPath))\r",
-        "        errors.push(`${f}: 白名单文件改动但未同步 ${specPath}`);\r",
-        "    }\r",
-        "    if (inWhitelist && !exists(specPath))\r",
-        "      errors.push(`${f}: 白名单模块缺少 ${specPath}`);\r",
-        "  }\r",
-        "  for (const f of specFiles) {\r",
-        "    const content = await getContent(f);\r",
-        "    for (const section of REQUIRED_SPEC_SECTIONS) {\r",
-        "      if (!content.includes(section)) errors.push(`${f}: 缺少 \"${section}\"`);\r",
-        "    }\r",
-        "  }\r",
-        "  if (totalLines > 500) errors.push(`总 diff ${totalLines} 行（>500），R4 违规`);\r",
-        "  else if (totalLines > 300) warnings.push(`总 diff ${totalLines} 行（>300），接近 R4 上限`);\r"
+        "// === invariants ==='))",
+        "      warnings.push(`${f}: >100 行但缺少 invariants 约束块`);",
+        "    if (isNew && lineCount > 50 && !exists(specPath))",
+        "      errors.push(`${f}: 新增 >50 行但无对应 ${specPath}`);",
+        "    const inWhitelist = SPEC_REQUIRED.includes(f);",
+        "    if (inWhitelist && !isNew && lineCount > 100) {",
+        "      if (!specFiles.includes(specPath))",
+        "        errors.push(`${f}: 白名单文件改动但未同步 ${specPath}`);",
+        "    }",
+        "    if (inWhitelist && !exists(specPath))",
+        "      errors.push(`${f}: 白名单模块缺少 ${specPath}`);",
+        "  }",
+        "  for (const f of specFiles) {",
+        "    const content = await getContent(f);",
+        "    for (const section of REQUIRED_SPEC_SECTIONS) {",
+        "      if (!content.includes(section)) errors.push(`${f}: 缺少 \"${section}\"`);",
+        "    }",
+        "  }",
+        "  if (totalLines > 500) errors.push(`总 diff ${totalLines} 行（>500），R4 违规`);",
+        "  else if (totalLines > 300) warnings.push(`总 diff ${totalLines} 行（>300），接近 R4 上限`);"
       ]
     },
     {
@@ -12219,9 +12407,109 @@
         "    const h = await startSupervisor();",
         "    globalThis._supervisorHandle = h;"
       ]
+    },
+    {
+      "file": "/src/lab/scouts/experiment.mjs",
+      "block": [
+        "// === invariants ===",
+        "// - 同步 FS 调用仅用于小文件读写，阻塞 ≤1ms",
+        "// - try/catch 覆盖所有外部 IO 调用",
+        "// - 事件发射使用 fire-and-forget，不阻塞调用方",
+        "export async function scanExplore() {",
+        "  const mf = MANIFEST_FILE;",
+        "  if (!existsSync(mf)) return 0;",
+        "  const m = JSON.parse(readFileSync(mf, 'utf8'));",
+        "  const exps = (m.experiments || []).filter(e => e.status !== 'paused');",
+        "  const tested = new Set();",
+        "  for (const e of exps) {",
+        "    const deps = e.deps || [];",
+        "    for (let i = 0; i < deps.length; i++)",
+        "      for (let j = i + 1; j < deps.length; j++) tested.add([deps[i], deps[j]].sort().join('|'));",
+        "  }",
+        "  const cand = [];",
+        "  for (let i = 0; i < exps.length; i++) for (let j = i + 1; j < exps.length; j++) {",
+        "    const a = exps[i], b = exps[j];",
+        "    if (tested.has([a.id, b.id].sort().join('|'))) continue;",
+        "    const combined = new Set([...(a.deps || []), ...(b.deps || [])]);"
+      ]
+    },
+    {
+      "file": "/src/lab/scouts/network.mjs",
+      "block": [
+        "// === invariants ===",
+        "// - 所有异步操作使用 await 或 Promise.all 串联",
+        "// - 同步 FS 调用仅用于小文件读写，阻塞 ≤1ms",
+        "// - try/catch 覆盖所有外部 IO 调用",
+        "// - 事件发射使用 fire-and-forget，不阻塞调用方",
+        "export async function scanAltExists(project) {",
+        "  const root = project.path || project.root;",
+        "  if (!root || !existsSync(join(root, 'package.json'))) return 0;",
+        "  const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));",
+        "  const deps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };",
+        "  const names = Object.keys(deps);",
+        "  if (names.length === 0) return 0;",
+        "  const downloads = {};",
+        "  await mapLimit(names, 4, async (name) => {",
+        "    const j = await fetchJson(`https://api.npmjs.org/downloads/point/last-month/${encodeURIComponent(name)}`);",
+        "    if (j) downloads[name] = j.downloads || 0;",
+        "  });",
+        "  let findings = 0;",
+        "  await mapLimit(names, 4, async (name) => {",
+        "    if (!downloads[name]) return;"
+      ]
+    },
+    {
+      "file": "/src/lab/scouts/quality.mjs",
+      "block": [
+        "// === invariants ===",
+        "// - 同步 FS 调用仅用于小文件读写，阻塞 ≤1ms",
+        "// - AST 操作仅在验证阶段执行，不影响运行时路径",
+        "// - try/catch 覆盖所有外部 IO 调用",
+        "export function scanForLeftoverP2() {",
+        "  const files = scanDir(SRC_DIR);",
+        "  const re = /from\\s+['\"][^'\"]*\\.p2\\.[^'\"]*['\"]/g;",
+        "  let count = 0;",
+        "  for (const f of files) {",
+        "    try {",
+        "      const content = readFileSync(f, 'utf8');",
+        "      const m = content.match(re);",
+        "      if (m && m.length > 0) {",
+        "        count += m.length;",
+        "        addFinding('bridge', 'p1', `${relPath(f)}: ${m.length} leftover .p2. import(s)`);",
+        "        addGoal(`remove leftover .p2. import in ${relPath(f)}`, { priority: 1 });",
+        "      }",
+        "    } catch {}",
+        "  }",
+        "  return count;"
+      ]
+    },
+    {
+      "file": "/src/lab/scouts/self.mjs",
+      "block": [
+        "// === invariants ===')) {",
+        "        const key = `invariants:${rel}`;",
+        "        if (!isProcessed(key)) {",
+        "          addFinding('bridge', 'self', `${rel}: ${lines}L, 缺 invariants 块`);",
+        "          addGoal(`[lab-health] add invariants block to ${rel}`, { priority: 2 });",
+        "          count++;",
+        "        }",
+        "      }",
+        "      // 2. Files > 300 lines need splitting (skip — needs human)",
+        "      if (lines > 300) {",
+        "        addFinding('bridge', 'self', `${rel}: ${lines} 行, 建议手动拆分`);",
+        "      }",
+        "      // 3. Empty catch blocks (> 3 in a file = pattern, skip — needs human)",
+        "      const emptyCatches = c.match(/}\\s*catch\\s*\\{\\s*}/g);",
+        "      if (emptyCatches && emptyCatches.length > 3) {",
+        "        addFinding('bridge', 'self', `${rel}: ${emptyCatches.length} 个空 catch, 建议手动审查`);",
+        "      }",
+        "      // 4. Hardcoded path patterns (drive letters or absolute unix)",
+        "      const hardcoded = c.match(/['\"][A-Z]:[\\\\/]/g);",
+        "      if (hardcoded) {"
+      ]
     }
   ],
-  "totalInvariantBlocks": 22,
+  "totalInvariantBlocks": 26,
   "deps": [
     {
       "file": "/src/api/middleware/api-middleware.mjs",
@@ -12450,7 +12738,7 @@
         "os",
         "path",
         "crypto",
-        "./repositories/config-repo.js",
+        "./repositories.mjs",
         "../experiments/lib/storage-lib.mjs",
         "../constants.js"
       ]
@@ -12464,6 +12752,10 @@
         "crypto",
         "../constants.js"
       ]
+    },
+    {
+      "file": "/src/core/dev-repl.mjs",
+      "imports": []
     },
     {
       "file": "/src/core/evolution/evolution-memory.js",
@@ -12538,6 +12830,10 @@
       ]
     },
     {
+      "file": "/src/core/persistent-store.js",
+      "imports": []
+    },
+    {
       "file": "/src/core/provider-service.js",
       "imports": []
     },
@@ -12570,7 +12866,7 @@
       "file": "/src/core/routing.mjs",
       "imports": [
         "./runtime.mjs",
-        "./core/repositories/session-repo.js",
+        "./repositories.mjs",
         "../protocol/message.js",
         "./agent/orchestrator.mjs",
         "../experiments/lib/coding-lib.mjs"
@@ -12677,6 +12973,12 @@
       ]
     },
     {
+      "file": "/src/experiments/38.mjs",
+      "imports": [
+        "./experiments-all.mjs"
+      ]
+    },
+    {
       "file": "/src/experiments/42.mjs",
       "imports": [
         "url",
@@ -12688,109 +12990,34 @@
     {
       "file": "/src/experiments/experiments-all.mjs",
       "imports": [
-        "./lib/report.mjs",
+        "./lib/misc-lib.mjs",
         "fs/promises",
         "fs",
         "path",
         "os",
-        "./lib/report.mjs",
-        "./lib/report.mjs",
         "provider-kit",
-        "fs/promises",
-        "fs",
-        "path",
-        "./lib/report.mjs",
-        "./lib/report.mjs",
-        "./lib/report.mjs",
-        "./lib/report.mjs",
-        "./lib/report.mjs",
-        "./lib/report.mjs",
-        "fs/promises",
-        "path",
         "crypto",
-        "./lib/report.mjs",
-        "fs/promises",
-        "./lib/poller-shim.mjs",
+        "./lib/misc-lib.mjs",
         "assert",
-        "assert",
-        "assert",
-        "./lib/poller-shim.mjs",
-        "./lib/report.mjs",
-        "child_process",
-        "fs",
-        "path",
-        "fs/promises",
-        "./lib/report.mjs",
-        "./lib/rescue-utils.mjs",
-        "./lib/report.mjs",
-        "./lib/report.mjs",
-        "./lib/response-validator.mjs",
-        "./lib/step-enforcer.mjs",
-        "./lib/error-tracker.mjs",
-        "./lib/report.mjs",
-        "./lib/guardian.mjs",
-        "./lib/coding-tools.mjs",
-        "./lib/report.mjs",
-        "./lib/report.mjs",
-        "fs/promises",
-        "fs",
-        "path",
-        "os",
-        "./lib/report.mjs",
-        "./lib/config.mjs",
-        "provider-kit",
-        "./lib/epc-pipeline.mjs",
-        "./lib/coding-tools.mjs",
-        "./lib/guardian.mjs",
-        "./lib/subagent-roles.mjs",
-        "./lib/neural-bridge.mjs",
-        "./lib/permission-gate.mjs",
-        "./lib/agent-hooks.mjs",
-        "./lib/report.mjs",
+        "./lib/coding-lib.mjs",
+        "./lib/llm-lib.mjs",
+        "./lib/llm-lib.mjs",
+        "./lib/llm-lib.mjs",
+        "./lib/llm-lib.mjs",
+        "./lib/coding-lib.mjs",
+        "./lib/llm-lib.mjs",
+        "./lib/llm-lib.mjs",
+        "./lib/misc-lib.mjs",
+        "./lib/llm-lib.mjs",
+        "./lib/misc-lib.mjs",
+        "./lib/misc-lib.mjs",
         "node:assert",
-        "path",
         "url",
-        "fs/promises",
-        "./lib/report.mjs",
-        "fs/promises",
-        "path",
-        "./lib/report.mjs",
-        "node:assert",
-        "./lib/rescue-utils.mjs",
-        "./lib/report.mjs",
-        "./lib/report.mjs",
-        "./lib/report.mjs",
-        "./lib/report.mjs",
-        "./lib/report.mjs",
-        "./lib/report.mjs",
-        "./lib/report.mjs",
+        "./lib/misc-lib.mjs",
         "provider-kit",
-        "./lib/report.mjs",
-        "./lib/report.mjs",
-        "node:assert",
-        "./lib/report.mjs",
-        "url",
-        "./lib/report.mjs",
-        "fs/promises",
-        "fs",
-        "path",
-        "./lib/report.mjs",
-        "./lib/report.mjs",
-        "./lib/config.mjs",
-        "provider-kit",
-        "./lib/subagent-roles.mjs",
-        "node:assert",
-        "./lib/mcp-server.mjs",
-        "./lib/agent-hooks.mjs",
-        "./lib/hooks-builtin.mjs",
-        "url",
-        "crypto",
-        "path",
-        "fs",
-        "./compose.mjs",
-        "fs/promises",
-        "path",
-        "url"
+        "./lib/coding-lib.mjs",
+        "./lib/misc-lib.mjs",
+        "./compose.mjs"
       ]
     },
     {
@@ -12857,31 +13084,31 @@
     {
       "file": "/src/experiments/lingbao/40.mjs",
       "imports": [
-        "../lib/report.mjs"
+        "../lib/misc-lib.mjs"
       ]
     },
     {
       "file": "/src/experiments/lingbao/41.mjs",
       "imports": [
-        "../lib/report.mjs"
+        "../lib/misc-lib.mjs"
       ]
     },
     {
       "file": "/src/experiments/lingbao/42.mjs",
       "imports": [
-        "../lib/report.mjs"
+        "../lib/misc-lib.mjs"
       ]
     },
     {
       "file": "/src/experiments/lingbao/44.mjs",
       "imports": [
-        "../lib/report.mjs"
+        "../lib/misc-lib.mjs"
       ]
     },
     {
       "file": "/src/experiments/lingbao/45.mjs",
       "imports": [
-        "../lib/report.mjs"
+        "../lib/misc-lib.mjs"
       ]
     },
     {
@@ -12996,6 +13223,8 @@
         "os",
         "child_process",
         "./lab-core.mjs",
+        "../experiments/lib/misc-lib.mjs",
+        "../experiments/lib/coding-lib.mjs",
         "joi",
         "./cron.mjs",
         "./scouts/network.mjs",
@@ -13004,6 +13233,53 @@
         "./scouts/architecture.mjs",
         "./scouts/self.mjs",
         "./scouts/isolation.mjs"
+      ]
+    },
+    {
+      "file": "/src/lab/scouts/architecture.mjs",
+      "imports": [
+        "fs",
+        "path",
+        "../lab-core.mjs"
+      ]
+    },
+    {
+      "file": "/src/lab/scouts/experiment.mjs",
+      "imports": [
+        "fs",
+        "path",
+        "../lab-core.mjs"
+      ]
+    },
+    {
+      "file": "/src/lab/scouts/isolation.mjs",
+      "imports": [
+        "../lab-core.mjs"
+      ]
+    },
+    {
+      "file": "/src/lab/scouts/network.mjs",
+      "imports": [
+        "fs",
+        "path",
+        "../lab-core.mjs"
+      ]
+    },
+    {
+      "file": "/src/lab/scouts/quality.mjs",
+      "imports": [
+        "fs",
+        "path",
+        "../lab-core.mjs",
+        "../../experiments/lib/coding-lib.mjs"
+      ]
+    },
+    {
+      "file": "/src/lab/scouts/self.mjs",
+      "imports": [
+        "fs",
+        "path",
+        "../lab-core.mjs"
       ]
     },
     {
@@ -13133,5 +13409,5 @@
       ]
     }
   ],
-  "totalDepFiles": 95
+  "totalDepFiles": 104
 }
