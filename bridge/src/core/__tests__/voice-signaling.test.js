@@ -8,16 +8,14 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 describe('voice signaling', () => {
   test('voice router module loads', async () => {
-    const mod = await import('../../api/routes/voice.js');
-    assert.ok(mod.default);
+    const mod = await import('../../api/routes/all-routes.mjs');
+    assert.ok(mod.voiceRouter);
   });
 
   test('Bridge voice routes exist', async () => {
-    // Verify the voice router has expected routes by importing and checking
-    const { default: router } = await import('../../api/routes/voice.js');
-    assert.ok(router);
+    const { voiceRouter } = await import('../../api/routes/all-routes.mjs');
+    assert.ok(voiceRouter);
 
-    // Verify the voice API is mounted in server.js
     const serverFile = readFileSync(join(__dirname, '..', '..', 'api', 'server.js'), 'utf8');
     assert.ok(serverFile.includes("voiceRouter"), 'server.js should import voiceRouter');
     assert.ok(serverFile.includes("/api/v1/voice"), 'server.js should mount /api/v1/voice');

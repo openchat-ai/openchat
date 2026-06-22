@@ -225,6 +225,38 @@ function detectImportCycles(changedFiles) {
 }
 detectImportCycles(allFiles);
 
+// ── 4-Dart. Dart 导入循环检测 (ERR) ─────────────────────
+function detectDartImportCycles(changedFiles) {
+  const importRe = /^\s*import\s+['"]([^'"]+)['"]/gm;
+  const localImports = {};
+  for (const f of changedFiles) {
+    if (!f.endsWith('.dart')) continue;
+    const abs = resolve(cwd, f);
+    if (!existsSync(abs)) continue;
+    const content = readFileSync(abs, 'utf-8');
+    const dir = f.substring(0, f.lastIndexOf('/') + 1);
+    const deps = [];
+    let m;
+    while ((m = importRe.exec(content)) !== null) {
+      const imp = m[1];
+      if (imp.startsWith('package:') || imp.startsWith('dart:')) continue;
+      let resolved = normalize(dir + imp).replace(/\\/g, '/');
+      if (!resolved.endsWith('.dart')) resolved += '.dart';
+      deps.push(resolved);
+    }
+    localImports[f] = deps;
+  }
+  for (const [a, aDeps] of Object.entries(localImports)) {
+    for (const dep of aDeps) {
+      const bDeps = localImports[dep];
+      if (bDeps && bDeps.some(d => d === a || localImports[d]?.includes(a))) {
+        err(`Dart 导入循环: ${a} ↔ ${dep}`);
+      }
+    }
+  }
+}
+detectDartImportCycles(allFiles);
+
 // ── 5. 总 diff 行数 (ERR if >500) ─────────────────────────
 const diffStat = run('git diff --cached --stat');
 const totalLines = diffStat.split('\n')

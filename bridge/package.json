@@ -34,7 +34,7 @@
     "lint:fix": "eslint src/ scripts/ --fix",
     "format": "prettier --write \"src/**/*.{js,mjs,json}\" \"scripts/**/*.js\"",
     "format:check": "prettier --check \"src/**/*.{js,mjs,json}\" \"scripts/**/*.js\"",
-    "test": "node scripts/check-syntax.mjs",
+    "test": "node scripts/check-syntax.mjs && node tests-runner.mjs",
     "test:unit": "node --test src/core/__tests__/*.test.js src/p2p/__tests__/*.test.js",
     "test:integration": "node --test test/integration/*.test.js",
     "test:e2e": "node --test test/e2e/*.test.js",

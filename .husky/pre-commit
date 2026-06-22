@@ -30,5 +30,21 @@ git diff --cached --name-only --diff-filter=ACM | grep -E '\.(js|mjs)$' | while 
 done
 echo "✅ 语法检查通过"
 
+# 3. Flutter 静态分析（如有 flutter，跳过无 flutter 的环境）
+if command -v flutter >/dev/null 2>&1; then
+  echo "🦋 运行 flutter analyze..."
+  if git diff --cached --name-only --diff-filter=ACM | grep -qE '\.dart$'; then
+    (cd openchat-flutter && flutter analyze --no-fatal-infos --no-fatal-warnings) 2>/dev/null || {
+      echo "❌ flutter analyze 失败"
+      exit 1
+    }
+    echo "✅ flutter analyze 通过"
+  else
+    echo "⏭  无 Dart 变更，跳过"
+  fi
+else
+  echo "⏭  未检测到 flutter，跳过（CI 仍会跑）"
+fi
+
 echo ""
 echo "✅ 所有检查通过！继续提交..."

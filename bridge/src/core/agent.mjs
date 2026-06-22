@@ -153,26 +153,33 @@ export { createSafetyProxy, createSafeAgentSession };
 
 const HEARTBEAT_INTERVAL = 5000;
 
-export const AGENT_STATES = { IDLE: 'idle', RUNNING: 'running', ERROR: 'error', STOPPED: 'stopped' };
+export const AGENT_STATES = { IDLE: 'idle', RUNNING: 'running', ERROR: 'error', STOPPED: 'stopped', READY: 'ready', TERMINATED: 'terminated' };
 
 export class AgentSession {
   constructor(agentId, config = {}) {
     this.agentId = agentId;
-    this.config = config;
+    this.config = { maxIterations: 10, ...config };
     this.state = AGENT_STATES.IDLE;
     this.createdAt = Date.now();
     this.lastHeartbeat = Date.now();
     this.history = [];
     this.context = {};
+    this.messages = [];
+    this.iterationCount = 0;
+    this._isDestroyed = false;
+    this._heartbeatInterval = null;
   }
 
   async initialize() {
-    this.state = AGENT_STATES.IDLE;
+    if (this._isDestroyed) throw new Error('AgentSession is destroyed');
+    this.state = AGENT_STATES.READY;
     agentMonitor.register(this.agentId, this);
+    this._heartbeatInterval = setInterval(() => { this.lastHeartbeat = Date.now(); }, 5000);
     return true;
   }
 
   async run(input) {
+    if (this._isDestroyed) throw new Error('AgentSession is destroyed');
     this.state = AGENT_STATES.RUNNING;
     this.lastHeartbeat = Date.now();
     try { return await this._execute(input); }
@@ -187,8 +194,47 @@ export class AgentSession {
     return await httpExecutor.execute(async () => ({ content: `Echo: ${input}`, provider, model }));
   }
 
-  cleanup() { this.state = AGENT_STATES.STOPPED; agentMonitor.setState(this.agentId, AGENT_STATES.STOPPED); }
-  getStatus() { return { agentId: this.agentId, state: this.state, uptime: Date.now() - this.createdAt }; }
+  addMessage(role, content) {
+    if (this._isDestroyed) return;
+    this.messages.push({ role, content, timestamp: Date.now() });
+  }
+
+  async think() {
+    if (this._isDestroyed) throw new Error('AgentSession is destroyed');
+    if (this.iterationCount >= (this.config.maxIterations || 10)) throw new Error('Max iterations exceeded');
+    this.iterationCount++;
+    this.state = AGENT_STATES.RUNNING;
+  }
+
+  sendTo(_target, _msg) { if (this._isDestroyed) return; }
+  broadcast(_msg) { if (this._isDestroyed) return; }
+  delegateTo(_target, _task) { if (this._isDestroyed) return; }
+
+  destroy() {
+    if (this._isDestroyed) return;
+    this._isDestroyed = true;
+    this.state = AGENT_STATES.TERMINATED;
+    if (this._heartbeatInterval) { clearInterval(this._heartbeatInterval); this._heartbeatInterval = null; }
+    agentMonitor.setState(this.agentId, AGENT_STATES.TERMINATED);
+  }
+
+  cleanup() {
+    if (this._heartbeatInterval) { clearInterval(this._heartbeatInterval); this._heartbeatInterval = null; }
+    this.state = AGENT_STATES.STOPPED;
+    agentMonitor.setState(this.agentId, AGENT_STATES.STOPPED);
+  }
+
+  getStatus() {
+    return {
+      agentId: this.agentId,
+      name: this.config.name,
+      state: this.state,
+      uptime: Date.now() - this.createdAt,
+      isDestroyed: this._isDestroyed,
+      iterationCount: this.iterationCount,
+      maxIterations: this.config.maxIterations,
+    };
+  }
 }
 
 export { createSafetyProxy as createSafetyProxyAgent, createSafeAgentSession as createSafeAgentSessionFromAgent };

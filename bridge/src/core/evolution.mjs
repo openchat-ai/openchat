@@ -29,11 +29,23 @@ export class EvolutionMemory {
     } catch (e) { logger.warn('[EvolutionMemory] save failed:', e.message); }
   }
 
-  remember(key, value, metadata = {}) { this.memories.set(key, { value, metadata, ts: Date.now() }); this.save(); return true; }
-  recall(key) { return this.memories.get(key); }
+  remember(key, value, metadata = {}) {
+    const scope = metadata.scope || '_default';
+    const scopedKey = key.includes(':') ? key : `${scope}:${key}`;
+    this.memories.set(scopedKey, { value, metadata, ts: Date.now() });
+    this.save();
+    return true;
+  }
+  recall(key) { return this.memories.get(key) || null; }
+  forget(key) { const had = this.memories.has(key); this.memories.delete(key); this.save(); return had; }
+  clear() { this.memories.clear(); this.save(); }
+  getAllKeys() { return [...this.memories.keys()]; }
+  getStats() { return { keys: [...this.memories.keys()], totalMemories: this.memories.size }; }
   search(query, options = {}) {
     const results = [];
+    const scope = options.scope;
     for (const [key, mem] of this.memories) {
+      if (scope && !key.startsWith(`${scope}:`)) continue;
       if (key.includes(query) || JSON.stringify(mem.value).includes(query)) results.push({ key, ...mem, score: 1 });
     }
     return results.slice(0, options.limit || 10);
