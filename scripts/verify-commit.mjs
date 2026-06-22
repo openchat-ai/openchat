@@ -16,7 +16,7 @@
 
 import { execSync } from 'child_process';
 import { readFileSync, existsSync } from 'fs';
-import { resolve, basename } from 'path';
+import { resolve, basename, normalize } from 'path';
 
 const cwd = process.cwd();
 const RED = '\x1b[31m';
@@ -203,7 +203,7 @@ function detectImportCycles(changedFiles) {
     const deps = [];
     let m;
     while ((m = importRe.exec(content)) !== null) {
-      const resolved = path.normalize(dir + m[1]).replace(/\\/g, '/');
+      const resolved = normalize(dir + m[1]).replace(/\\/g, '/');
       if (!resolved.endsWith('.js') && !resolved.endsWith('.mjs')) {
         deps.push(resolved + '.js');
         deps.push(resolved + '.mjs');

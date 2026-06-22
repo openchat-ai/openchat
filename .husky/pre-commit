@@ -17,7 +17,7 @@ echo "✅ ESLint 通过"
 
 # 1. Bridge 语法检查（全部文件）
 echo "📦 检查 Bridge 语法..."
-(cd bridge && npm run check) 2>/dev/null || {
+(cd bridge && node scripts/check-syntax.mjs) 2>/dev/null || {
   echo "❌ Bridge 语法检查失败"
   exit 1
 }
