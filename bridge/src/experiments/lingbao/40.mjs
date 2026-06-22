@@ -2,7 +2,7 @@
 // Manifest id: waveform-sim
 // I/O: { op: 'generate'|'batch', scenario?, sampleRate?, durationMs?, leakLevelMa? } → samples
 
-import { create } from '../lib/report.mjs';
+import { create } from '../lib/misc-lib.mjs';
 
 export const META = {
   id: 'waveform-sim',

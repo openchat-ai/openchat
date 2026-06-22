@@ -6,7 +6,7 @@
 // - First arg = free text → start dev-repl (persistent)
 // - Flags: --goal, -c/--continue, server
 
-import { TOOLS, executeTool } from '../src/tools/coding-tools.mjs';
+import { TOOLS, executeTool } from '../src/experiments/lib/coding-lib.mjs';
 import { createInterface } from 'node:readline/promises';
 
 const rawArgs = process.argv.slice(2);

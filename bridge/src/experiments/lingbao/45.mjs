@@ -2,7 +2,7 @@
 // Manifest id: calendar-parse
 // I/O: { op: 'parse'|'suggest', calendar, thresholds?, currentDate? }
 
-import { create } from '../lib/report.mjs';
+import { create } from '../lib/misc-lib.mjs';
 
 export const META = {
   id: 'calendar-parse',

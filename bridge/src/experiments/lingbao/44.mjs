@@ -2,7 +2,7 @@
 // Manifest id: doc-gen
 // I/O: { op: 'render', kind, data, meta? } → { content, ext, bytes }
 
-import { create } from '../lib/report.mjs';
+import { create } from '../lib/misc-lib.mjs';
 
 export const META = {
   id: 'doc-gen',

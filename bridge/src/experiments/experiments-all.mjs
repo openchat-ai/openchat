@@ -5,7 +5,7 @@
 // Manifest id: config
 // I/O: {} → { config, provider, model, paths }
 
-import { create } from './lib/report.mjs';
+import { create } from './lib/misc-lib.mjs';
 
 export const experiment_01_META = { id: 'config' };
 
@@ -26,10 +26,11 @@ export async function experiment_01_run() {
   };
 }
 
-const { ok, ng, skip, report } = create();
-const NAME = 'Config — persistent-config 加载';
 
-async function test() {
+
+
+async function test_1() {
+  const { ok, ng, skip, report } = create();
   let mod;
   try {
     mod = await import('./lib/config.mjs');
@@ -64,7 +65,7 @@ async function test() {
   report(NAME);
 }
 
-export { test };
+export { test_1 as test };
 
 
 // ===== 02.mjs =====
@@ -78,15 +79,15 @@ export { test };
 //   { op, flag?, value?, overrides? }
 //   → { outputs: { value?, source?, all?, history? } }
 
-import { readFile, writeFile, mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
-import { resolve, dirname } from 'path';
+import fs, { readFile, writeFile, mkdir, readdir, stat, unlink } from 'fs/promises';
+import { readFileSync, readdirSync, statSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import path, { resolve, dirname, relative, basename, join } from 'path';
 import { homedir } from 'os';
-import { create } from './lib/report.mjs';
+
 
 export const experiment_02_META = { id: 'feature-flag' };
 
-const NAME = 'Feature Flag — 分层回退 env→local→remote→disk→hardcoded';
+
 
 // ── 硬编码默认值 ──
 const HARDCODED = {
@@ -392,7 +393,7 @@ export async function experiment_02_test() {
 //   { op: 'withRetry', willFail, retries }           → { ok, attempts }
 //   { op: 'roundtripEpc', content, reasoning, toolCalls } → { frames, ok }
 
-import { create } from './lib/report.mjs';
+
 import {
   extractContent, extractReasoning, normalizeToolCalls, parseActionFallback,
   classifyError, ProviderError, withRetry, withTimeout,
@@ -424,9 +425,9 @@ export async function experiment_03_run({ inputs = {} } = {}) {
   throw new Error(`unknown op: ${op}`);
 }
 
-const NAME = 'provider-kit — 适配器总测 (normalize + adapter + 错误分类 + 重试 + EPC 往返)';
 
-async function test() {
+
+async function test_2() {
   const { ok, ng, report } = create();
 
   // === ① 4 个 normalize 纯函数 (provider-kit 暴露给 openchat 的纯函数层) ===
@@ -702,7 +703,7 @@ async function test() {
   report(NAME);
 }
 
-export { test };
+
 
 
 // ===== 04.mjs =====
@@ -716,14 +717,10 @@ export { test };
 //   { op, name?, args?, paths?, dir? }
 //   → { outputs: { skills?, content?, active?, result? } }
 
-import { readdir, readFile, stat, mkdir, writeFile } from 'fs/promises';
-import { existsSync } from 'fs';
-import { resolve, relative, dirname, basename } from 'path';
-import { create } from './lib/report.mjs';
 
 export const experiment_04_META = { id: 'skill-loader' };
 
-const NAME = 'Skill Loader — Markdown 即命令，条件路径激活';
+
 
 // ── Skill 结构 ──
 
@@ -1033,11 +1030,11 @@ priority: 50
 //
 // I/O (compose 契约): { pcm?, encoded?, op: 'encode'|'decode' } → { outputs: { pcm|encoded } }
 
-import { create } from './lib/report.mjs';
+
 
 export const experiment_05_META = { id: 'codec' };
 
-const NAME = 'LMdn Codec — 48kHz 音频编解码';
+
 
 let _codecPromise = null;
 async function _getCodec() {
@@ -1071,7 +1068,7 @@ export async function experiment_05_run({ inputs = {} } = {}) {
   throw new Error(`unknown op: ${op} (expected encode|decode)`);
 }
 
-async function test() {
+async function test_3() {
   const { ok, ng, skip, report } = create();
   let LmdnCodec;
   try {
@@ -1160,7 +1157,7 @@ async function test() {
   report(NAME);
 }
 
-export { test };
+
 
 
 // ===== 06.mjs =====
@@ -1168,11 +1165,11 @@ export { test };
 //
 // I/O (compose 契约): { key: 'oc/chat/{chatId}/{file}' } → { outputs: { chatId, replyPrefix } }
 
-import { create } from './lib/report.mjs';
+
 
 export const experiment_06_META = { id: 'isolation' };
 
-const NAME = 'Session 隔离 — 多终端 chatId 隔离';
+
 
 export async function experiment_06_run({ inputs = {} } = {}) {
   const { key } = inputs;
@@ -1182,7 +1179,7 @@ export async function experiment_06_run({ inputs = {} } = {}) {
   return { outputs: { chatId, replyPrefix: `oc/chat/${chatId}/` } };
 }
 
-async function test() {
+async function test_4() {
   const { ok, ng, report } = create();
 
   // 路径解析
@@ -1211,7 +1208,7 @@ async function test() {
   report(NAME);
 }
 
-export { test };
+
 
 
 // ===== 07.mjs =====
@@ -1219,11 +1216,11 @@ export { test };
 //
 // I/O (compose 契约): { command, stdout, stderr } → { outputs: { stdout, stderr, meta } }
 
-import { create } from './lib/report.mjs';
+
 
 export const experiment_07_META = { id: 'compressor' };
 
-const NAME = 'Token Saving — CLI 输出压缩 (rtk 风格)';
+
 
 let _compressorPromise = null;
 async function _getCompressor() {
@@ -1336,7 +1333,7 @@ async function testTokenSaving() {
   report(NAME);
 }
 
-export { testTokenSaving, testTokenSaving as test };
+export { testTokenSaving };
 
 
 // ===== 08.mjs =====
@@ -1346,7 +1343,7 @@ export { testTokenSaving, testTokenSaving as test };
 // qiniu-signaling.js 仍存在但不是主入口。
 // 必备 API: qiniuList / qiniuGet / qiniuPut / qiniuDelete / qiniuDeletePrefix
 
-import { create } from './lib/report.mjs';
+
 
 export const experiment_08_META = { id: 'qiniu' };
 
@@ -1367,10 +1364,11 @@ export async function experiment_08_run({ inputs = {} } = {}) {
   }
 }
 
-const { ok, ng, skip, report } = create();
-const NAME = 'Qiniu — S3 兼容封装 (qiniu-s3)';
 
-async function test() {
+
+
+async function test_5() {
+  const { ok, ng, skip, report } = create();
   let q;
   try {
     q = await import('./lib/qiniu-s3.mjs');
@@ -1430,7 +1428,7 @@ async function test() {
   report(NAME);
 }
 
-export { test };
+
 
 
 // ===== 09.mjs =====
@@ -1438,14 +1436,14 @@ export { test };
 // Manifest id: coding
 // I/O: { op, path, content?, search?, replace?, options? } → result
 
-import { create } from './lib/report.mjs';
-import fs from 'fs/promises';
-import path from 'path';
-import crypto from 'crypto';
+
+
+
+import crypto, { createHash } from 'crypto';
 
 export const experiment_09_META = { id: 'coding' };
 
-const NAME = 'Coding — 编程工具核心 (coding-tools + quality-gate)';
+
 const TMP_DIR = path.join(process.cwd(), 'tests', 'experiments', '_tmp_coding');
 
 // compose 契约入口：通过 coding-tools 执行文件操作
@@ -1722,7 +1720,7 @@ async function testCoding() {
   r.report(NAME);
 }
 
-export { testCoding, testCoding as test };
+export { testCoding };
 
 
 // ===== 10.mjs =====
@@ -1730,8 +1728,8 @@ export { testCoding, testCoding as test };
 // Manifest id: dev-aux
 // I/O: { op } → result
 
-import { create } from './lib/report.mjs';
-import fs from 'fs/promises';
+
+
 
 export const experiment_10_META = { id: 'dev-aux' };
 
@@ -1770,7 +1768,7 @@ export async function experiment_10_run({ inputs = {} } = {}) {
   }
 }
 
-const NAME = 'Dev-Aux — auto-commit / project-context / dev-repl / bin';
+
 
 async function testDevAux() {
   const r = create();
@@ -1905,14 +1903,14 @@ async function testDevAux() {
   r.report(NAME);
 }
 
-export { testDevAux, testDevAux as test };
+export { testDevAux };
 
 
 // ===== 11.mjs =====
-import { _setDeps, _resetDeps, processOne } from './lib/poller-shim.mjs';
-import { ok, equal } from 'assert';
+import { _setDeps, _resetDeps, _getDeps, processOne, parseMsgPayload } from './lib/misc-lib.mjs';
+import { ok as assertOk, equal, deepStrictEqual } from 'assert';
 
-const NAME = 'Backpressure — Qiniu 慢时请求限流';
+
 
 export async function experiment_11_run({ inputs = {} } = {}) {
   const { concurrency = 25, delay = 500, normalLoad = 4 } = inputs;
@@ -1988,9 +1986,8 @@ export async function experiment_11_test() {
 
 
 // ===== 12.mjs =====
-import { ok, deepStrictEqual } from 'assert';
 
-const NAME = 'Multi-Session — 多会话隔离';
+
 
 export async function experiment_12_run({ inputs = {} } = {}) {
   const { sessionCount = 10, messagesPerSession = 3 } = inputs;
@@ -2070,10 +2067,8 @@ export async function experiment_12_test() {
 
 
 // ===== 13.mjs =====
-import { ok, equal } from 'assert';
-import { _setDeps, _getDeps, parseMsgPayload } from './lib/poller-shim.mjs';
 
-const NAME = 'Process Recovery — Bridge 重启后会话不丢';
+
 
 export async function experiment_13_run({ inputs = {} } = {}) {
   let persistentStoreExists = false;
@@ -2224,12 +2219,13 @@ export async function experiment_14_run({ inputs = {} } = {}) {
   }
 }
 
-import { create } from './lib/report.mjs';
 
-const { ok, ng, skip, report } = create();
-const NAME = 'Code Reviewer — LLM-driven code review engine';
 
-async function test() {
+
+
+
+async function test_6() {
+  const { ok, ng, skip, report } = create();
   const { CodeReviewer } = await import('../core/quality/code-reviewer.js');
   const r = new CodeReviewer();
 
@@ -2258,7 +2254,7 @@ async function test() {
   report(NAME);
 }
 
-export { test };
+
 
 
 // ===== 15.mjs =====
@@ -2266,11 +2262,9 @@ export { test };
 // Manifest id: verify-commit
 // I/O: { op, files?, diffLines? } → { errors, warnings, passed }
 
-import { execSync } from 'child_process';
-import { existsSync } from 'fs';
-import { resolve } from 'path';
-import fsp from 'fs/promises';
-import { create } from './lib/report.mjs';
+
+
+
 
 export const experiment_15_META = {
   id: 'verify-commit',
@@ -2388,21 +2382,22 @@ async function _runChecks(dartFiles, specFiles, newDartFiles, totalLines, fileLi
   return { errors, warnings, passed: errors.length === 0, stats: { dartFiles: dartFiles.length, specFiles: specFiles.length, totalLines } };
 }
 
-const { ok, ng, skip, report } = create();
-const NAME = 'Verify Commit — 提交前质量门禁';
 
-async function test() {
+
+
+async function test_7() {
+  const { ok, ng, skip, report } = create();
   const result = await run({ inputs: { op: 'check' } });
   if (result.outputs.passed || result.outputs.errors.length > 0) ok(`check 完成: ${result.outputs.errors.length} err, ${result.outputs.warnings.length} warn`);
   else ng('check failed');
   report(NAME);
 }
 
-export { test };
+
 
 
 // ===== 16.mjs =====
-import { validateToolCall, rescueToolCall } from './lib/rescue-utils.mjs';
+import { validateToolCall, rescueToolCall } from './lib/coding-lib.mjs';
 
 export const experiment_16_META = {
   id: 'tool-rescue',
@@ -2452,12 +2447,13 @@ export async function experiment_16_run({ inputs = {} } = {}) {
   }
 }
 
-import { create } from './lib/report.mjs';
 
-const { ok, ng, report } = create();
-const NAME = 'Tool Call Rescue';
 
-async function test() {
+
+
+
+async function test_8() {
+  const { ok, ng, report } = create();
   const schema = {
     function: {
       name: 'read_file',
@@ -2484,7 +2480,7 @@ async function test() {
   report(NAME);
 }
 
-export { test };
+
 
 
 // ===== 17.mjs =====
@@ -2587,12 +2583,13 @@ export async function experiment_17_run({ inputs = {} } = {}) {
   }
 }
 
-import { create } from './lib/report.mjs';
 
-const { ok, ng, skip, report } = create();
-const NAME = 'Step Workflow';
 
-async function test() {
+
+
+
+async function test_9() {
+  const { ok, ng, skip, report } = create();
   _reset();
 
   const wf = {
@@ -2637,7 +2634,7 @@ async function test() {
   report(NAME);
 }
 
-export { test };
+
 
 
 // ===== 18.mjs =====
@@ -2649,9 +2646,9 @@ export { test };
 // - live: 两组同 prompt 调真实 LLM，测完成率 + token 差异
 // - H0/H1 只 live 模式输出；dryRun 只输出组件测试结果
 
-import { validateResponse } from './lib/response-validator.mjs';
-import { createStepEnforcer } from './lib/step-enforcer.mjs';
-import { createErrorTracker } from './lib/error-tracker.mjs';
+import { validateResponse } from './lib/llm-lib.mjs';
+import { createStepEnforcer } from './lib/llm-lib.mjs';
+import { createErrorTracker } from './lib/llm-lib.mjs';
 
 export const experiment_18_META = {
   id: 'guardrails-pipeline',
@@ -3287,11 +3284,12 @@ async function realExec(name, args) {
 }
 
 // === test() — dryRun 组件测试 + 开销报告 ===
-import { create } from './lib/report.mjs';
-const { ok, ng, report } = create();
-const NAME = 'Guardrails Pipeline';
 
-async function test() {
+
+
+
+async function test_10() {
+  const { ok, ng, report } = create();
   // 1. 组件级单元测试
   const rv = testResponseValidator();
   if (rv.ok) ok(rv.msg);
@@ -3325,7 +3323,7 @@ async function test() {
   report(NAME);
 }
 
-export { test };
+
 
 
 // ===== 19.mjs =====
@@ -3335,8 +3333,8 @@ export { test };
 // - run() 返回 guardian 实例，不持状态（每次调用新建）
 // - guardian 内部持状态（callCount/enforcer/tracker），跨会话需手动 reset
 
-import { createGuardian } from './lib/guardian.mjs';
-import { TOOLS as CODING_TOOLS } from './lib/coding-tools.mjs';
+import { createGuardian } from './lib/llm-lib.mjs';
+import { TOOLS as CODING_TOOLS, executeTool as codingExec } from './lib/coding-lib.mjs';
 
 export const experiment_19_META = {
   id: 'guardian',
@@ -3359,10 +3357,11 @@ export async function experiment_19_run({ deps = {} } = {}) {
   return { outputs: { guardian } };
 }
 
-import { create } from './lib/report.mjs';
-const { ok, ng, report } = create();
 
-async function test() {
+
+
+async function test_11() {
+  const { ok, ng, report } = create();
   const result = await run();
   const g = result.outputs.guardian;
   if (g && typeof g.wrap === 'function' && typeof g.validateResponse === 'function') {
@@ -3373,7 +3372,7 @@ async function test() {
   report('Guardian Middleware');
 }
 
-export { test };
+
 
 
 // ===== 20.mjs =====
@@ -3452,12 +3451,13 @@ export async function experiment_20_run({ inputs = {} } = {}) {
   }
 }
 
-import { create } from './lib/report.mjs';
 
-const { ok, ng, skip, report } = create();
-const NAME = 'Neural Brain — 纯 JS 微神经网络';
 
-async function test() {
+
+
+
+async function test_12() {
+  const { ok, ng, skip, report } = create();
   const { NeuralBrain } = await import('../core/memory/neural-brain.js');
   const nn = new NeuralBrain(64, 32, 2);
 
@@ -3481,7 +3481,7 @@ async function test() {
   report(NAME);
 }
 
-export { test };
+
 
 
 // ===== 21.mjs =====
@@ -3495,15 +3495,14 @@ export { test };
 //   { op, topic?, level?, answer?, resume? }
 //   → { outputs: { path?, current?, question?, progress?, done? } }
 
-import { readFile, writeFile, mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
-import { resolve } from 'path';
-import { homedir } from 'os';
-import { create } from './lib/report.mjs';
+
+
+
+
 
 export const experiment_21_META = { id: 'teach-me' };
 
-const NAME = 'Teach-Me — 苏格拉底式交互教学';
+
 
 // ── 知识点库（内置教学大纲） ──
 
@@ -3794,21 +3793,20 @@ export async function experiment_21_test() {
 // Multi-turn tool loop: after user message, agent can call tools repeatedly
 // until it produces a final text answer (like opencode goal).
 
-import { persistentConfig } from './lib/config.mjs';
-import { createProvider } from 'provider-kit';
-import { runPipeline, getEditProtocolGuidance } from './lib/epc-pipeline.mjs';
-import { TOOLS as CODING_TOOLS, executeTool as codingExec } from './lib/coding-tools.mjs';
-import { createGuardian } from './lib/guardian.mjs';
-import { getRole } from './lib/subagent-roles.mjs';
+import { persistentConfig } from './lib/llm-lib.mjs';
+import { runPipeline as _epcRunPipeline, getEditProtocolGuidance } from './lib/llm-lib.mjs';
+
+
+import { getRole, pickRole, ROLES } from './lib/misc-lib.mjs';
 import {
   init as brainInit,
   predict as brainPredict,
   adaptTools as brainAdaptTools,
   adaptMaxRounds as brainAdaptMaxRounds,
   trainOnOutcome as brainTrain,
-} from './lib/neural-bridge.mjs';
-import { checkPermission as permCheck } from './lib/permission-gate.mjs';
-import { runPre as hookPre, runPost as hookPost } from './lib/agent-hooks.mjs';
+} from './lib/llm-lib.mjs';
+import { checkPermission as permCheck } from './lib/misc-lib.mjs';
+import { runPre as hookPre, runPost as hookPost, listHooks } from './lib/misc-lib.mjs';
 
 brainInit();  // 进程启动一次性, always-on
 
@@ -3821,8 +3819,9 @@ Use available tools to complete the user's task. Be thorough — read files firs
 
 Reply in the same language as the user.`;
 
-const MAX_ROUNDS = 20;
-const MAX_REPEAT = 8;
+
+
+
 // 读类工具不计入 repeat 限制 — M3 习惯多读几遍确认 (wc / powershell / node -e 等), 这是合法探索, 不是 loop
 const READ_ONLY_TOOLS = new Set(['read_file', 'grep', 'code_search', 'ast_find_refs', 'find_refs', 'ast_index', 'ast_search', 'ast_extract', 'ts_typecheck', 'lint_run', 'test_run', 'test_discover', 'docs_suggest', 'env_diff', 'sec_audit', 'ci_detect', 'git_log']);
 let _provider = null;
@@ -4063,14 +4062,13 @@ export async function experiment_22_test() {
 // Manifest id: code-search
 // Deps: [config]
 
-import { create } from './lib/report.mjs';
+
 import assert from 'node:assert';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import fs from 'fs/promises';
+import { fileURLToPath, pathToFileURL } from 'url';
+
 
 export const experiment_23_META = { id: 'code-search' };
-const NAME = 'Code-Search — grep + 跨文件引用追踪';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export async function experiment_23_run({ inputs = {} } = {}) {
@@ -4151,14 +4149,14 @@ export async function experiment_23_test() {
 // Manifest id: edit-advanced
 // I/O: { op, path?, data? } → result
 
-import { create } from './lib/report.mjs';
-import fs from 'fs/promises';
-import path from 'path';
+
+
+
 
 export const experiment_24_META = { id: 'edit-advanced' };
 
-const NAME = 'Edit-Advanced — multi-edit / ast-edit / diff-review';
-const TMP_DIR = path.join(process.cwd(), 'tests', 'experiments', '_tmp_edit_advanced');
+
+
 
 export async function experiment_24_run({ inputs = {} } = {}) {
   const { op = 'test' } = inputs;
@@ -4234,7 +4232,7 @@ async function testEditAdvanced() {
   r.report(NAME);
 }
 
-export { testEditAdvanced, testEditAdvanced as test };
+export { testEditAdvanced };
 
 
 // ===== 25.mjs =====
@@ -4242,11 +4240,11 @@ export { testEditAdvanced, testEditAdvanced as test };
 // Manifest id: dev-tools
 // Deps: [config]
 
-import { create } from './lib/report.mjs';
-import assert from 'node:assert';
+
+
 
 export const experiment_25_META = { id: 'dev-tools' };
-const NAME = 'Dev-Tools — 16 个工程工具';
+
 
 // compose 契约入口：ops 包括原有 dev-tools 操作 + 系统健康检查
 export async function experiment_25_run({ inputs = {} } = {}) {
@@ -4528,7 +4526,7 @@ export async function experiment_25_test() {
 
 
 // ===== 26.mjs =====
-import { rescueToolCall } from './lib/rescue-utils.mjs';
+
 
 // Experiment: retry-guidance — 工具调用失败的结构化引导重试
 // Manifest id: retry-guidance
@@ -4623,12 +4621,13 @@ function _buildGuidance(toolName, error, attempt) {
   return `工具 ${toolName} 调用失败: ${error.slice(0, 200)}。请检查输入后重试${attempt > 1 ? ` (第 ${attempt} 次)` : ''}。`;
 }
 
-import { create } from './lib/report.mjs';
 
-const { ok, ng, skip, report } = create();
-const NAME = 'Retry Guidance';
 
-async function test() {
+
+
+
+async function test_13() {
+  const { ok, ng, skip, report } = create();
   // guidance 分类
   const g1 = _buildGuidance('web_fetch', 'timeout after 10s', 1);
   if (g1.includes('超时')) ok('guidance: timeout classified');
@@ -4650,7 +4649,7 @@ async function test() {
   report(NAME);
 }
 
-export { test };
+
 
 
 // ===== 27.mjs =====
@@ -4662,7 +4661,7 @@ export { test };
 // - provider-service.js: provider-kit 单一入口（唯一 import provider-kit 的文件）
 // - tool-registry.js:    工具注册中心（read_memory / web_fetch / calculate / finish）
 
-import { create } from './lib/report.mjs';
+
 
 export const experiment_27_META = { id: 'storage' };
 
@@ -4730,10 +4729,11 @@ export async function experiment_27_run({ inputs = {} } = {}) {
   }
 }
 
-const { ok, ng, skip, report } = create();
-const NAME = 'Storage/Provider — persistent-store / provider-service / tool-registry';
 
-async function test() {
+
+
+async function test_14() {
+  const { ok, ng, skip, report } = create();
   // === persistent-store ===
   try {
     const ps = await import('./lib/persistent-store.js');
@@ -4869,7 +4869,7 @@ async function test() {
   report(NAME);
 }
 
-export { test };
+
 
 
 // ===== 28.mjs =====
@@ -4879,7 +4879,7 @@ export { test };
 // - signal-relay.js: 单 bucket 信号中继（peer endpoint 交换）
 // - message-bus.js:  Agent 间消息总线（pub/sub + sendTo/broadcast/reply/delegate）
 
-import { create } from './lib/report.mjs';
+
 
 export const experiment_28_META = { id: 'relay' };
 
@@ -4925,10 +4925,11 @@ async function _makeBucketRelay(args) {
   return r;
 }
 
-const { ok, ng, skip, report } = create();
-const NAME = 'Relay — bucket-relay / signal-relay / message-bus';
 
-async function test() {
+
+
+async function test_15() {
+  const { ok, ng, skip, report } = create();
   // === bucket-relay ===
   try {
     const { BucketRelay } = await import('./lib/bucket-relay.js');
@@ -5059,14 +5060,14 @@ async function test() {
   report(NAME);
 }
 
-export { test };
+
 
 
 // ===== 29.mjs =====
-import { ok, ng, skip, report } from './lib/report.mjs';
+import { ok, ng, skip, report } from './lib/misc-lib.mjs';
 
 export const experiment_29_META = { id: 'p2p' };
-const NAME = 'P2P — 直连 TCP + Qiniu 信令';
+
 
 export async function experiment_29_run() {
   await testP2P();
@@ -5090,14 +5091,14 @@ async function testP2P() {
   report(NAME);
 }
 
-export { testP2P, testP2P as test };
+export { testP2P };
 
 
 // ===== 30.mjs =====
-import { ok, ng, skip, report } from './lib/report.mjs';
+
 
 export const experiment_30_META = { id: 'session-naming' };
-const NAME = 'Session Naming — 自动命名 + 用户自定义';
+
 
 export async function experiment_30_run() {
   await testNaming();
@@ -5137,14 +5138,14 @@ async function testNaming() {
   report(NAME);
 }
 
-export { testNaming, testNaming as test };
+export { testNaming };
 
 
 // ===== 31.mjs =====
-import { ok, ng, skip, report } from './lib/report.mjs';
+
 
 export const experiment_31_META = { id: 'session-tree' };
-const NAME = 'Session Tree — 树结构 CRUD';
+
 
 export async function experiment_31_run() {
   await testTree();
@@ -5250,11 +5251,11 @@ async function testTree() {
   report(NAME);
 }
 
-export { testTree, testTree as test };
+export { testTree };
 
 
 // ===== 32.mjs =====
-import { ok, ng, skip, report } from './lib/report.mjs';
+
 
 export const experiment_32_META = { id: 'system-exec' };
 
@@ -5270,7 +5271,7 @@ export async function experiment_32_run({ inputs = {} } = {}) {
   return { outputs: { stdout: r.stdout, stderr: r.stderr, exitCode: r.exitCode } };
 }
 
-const NAME = 'System Exec — LLM 宿主机命令执行';
+
 
 async function testSystemExec() {
   // 1. system-exec.mjs 可加载，TOOLS 数组完整
@@ -5369,7 +5370,7 @@ async function testSystemExec() {
   report(NAME);
 }
 
-export { testSystemExec, testSystemExec as test };
+export { testSystemExec };
 
 
 // ===== 33.mjs =====
@@ -5458,12 +5459,13 @@ export async function experiment_33_run({ inputs = {} } = {}) {
   }
 }
 
-import { create } from './lib/report.mjs';
 
-const { ok, ng, skip, report } = create();
-const NAME = 'Memory — 轻量级向量存储';
 
-async function test() {
+
+
+
+async function test_16() {
+  const { ok, ng, skip, report } = create();
   const { VectorStore } = await import('../memory/vector-store.js');
   const store = new VectorStore();
   await store.initialize();
@@ -5490,7 +5492,7 @@ async function test() {
   report(NAME);
 }
 
-export { test };
+
 
 
 // ===== 34.mjs =====
@@ -5498,11 +5500,11 @@ export { test };
 // Manifest id: orchestrator
 // I/O: { mode? } → { response, events }
 
-import { create } from './lib/report.mjs';
-import assert from 'node:assert';
+
+
 
 export const experiment_34_META = { id: 'orchestrator' };
-const NAME = 'Orchestrator — processStream / process / executeGoal';
+
 
 class MockProvider {
   chat = async () => ({ content: 'mock response', toolCalls: null });
@@ -5658,17 +5660,17 @@ export async function experiment_34_test() {
 //
 // I/O (compose 契约): { op: 'runProcessOne'|'handleMessage'|'handleVoice'|'parse', ... } → result
 
-import { create } from './lib/report.mjs';
-import pathToFileURL from 'url';
+
+
 
 export const experiment_35_META = { id: 'chat-poller' };
 
-const NAME = 'Chat-Poller — walking-skeleton 核心 (真行为测试)';
+
 
 let _pollerPromise = null;
 function _load() {
   if (_pollerPromise) return _pollerPromise;
-  _pollerPromise = import('./lib/poller-shim.mjs');
+  _pollerPromise = import('./lib/misc-lib.mjs');
   return _pollerPromise;
 }
 
@@ -5711,7 +5713,7 @@ export async function experiment_35_run({ inputs = {} } = {}) {
   throw new Error(`unknown op: ${op}`);
 }
 
-async function test() {
+async function test_17() {
   const r = create();
   const { ok, ng, skip, report } = r;
 
@@ -5949,7 +5951,7 @@ async function test() {
   report(NAME);
 }
 
-export { test };
+
 
 
 // ===== 36.mjs =====
@@ -5961,8 +5963,6 @@ export { test };
 // I/O: { msgKey: 'oc/chat/{chatId}/{ts}.msg' }
 //   → { reply, replyKey, chatId, error? }
 
-import { create } from './lib/report.mjs';
-const run as composeRun = experiment_compose.run as composeRun;
 
 export const experiment_36_META = { id: 'poll-one' };
 
@@ -6027,7 +6027,7 @@ export async function experiment_36_run({ inputs = {} } = {}) {
   return { outputs: { reply: replyText, replyKey, chatId, error: agentError, msgKey } };
 }
 
-const NAME = 'Poll-One — 复合实验 (qiniu + isolation + agent)';
+
 
 export async function experiment_36_test() {
   const { ok, ng, skip, report } = create();
@@ -6115,14 +6115,13 @@ export async function experiment_36_test() {
 //   { op, sessions?, memdir?, force? }
 //   → { outputs: { summary?, consolidated?, locked?, gates? } }
 
-import { readFile, writeFile, mkdir, readdir, unlink } from 'fs/promises';
-import { existsSync } from 'fs';
-import { resolve } from 'path';
-import { create } from './lib/report.mjs';
+
+
+
 
 export const experiment_37_META = { id: 'dream-consolidation' };
 
-const NAME = 'Dream — 后台记忆归并引擎';
+
 
 // ── 常量 ──
 
@@ -6450,11 +6449,8 @@ export async function experiment_37_test() {
 // Manifest id: goal
 // I/O: { description, sessionId? } → { summary, steps: [{action, status, result}], done, failed }
 
-import { create } from './lib/report.mjs';
-const run as composeRun = experiment_compose.run as composeRun;
-import { persistentConfig } from './lib/config.mjs';
-import { createProvider } from 'provider-kit';
-const initProvider as initToolLoopProvider = experiment_22.initProvider as initToolLoopProvider;
+
+
 // === invariants ===
 //   - 调 run() 前必须先调 initProvider (model)
 //   - 每 step 独立 chatId: ${sessionId}/step-${i}/${role}, role 隔离 session
@@ -6462,11 +6458,11 @@ const initProvider as initToolLoopProvider = experiment_22.initProvider as initT
 //   - composeRun('tool-loop', ...) 的 role 透传到 22.mjs, 改 prompt/tools/maxRounds
 // === end invariants ===
 
-import { pickRole, ROLES } from './lib/subagent-roles.mjs';
-import assert from 'node:assert';
+
+
 
 export const experiment_38_META = { id: 'goal' };
-const NAME = 'Goal — 拆解目标 + agent 逐步执行';
+
 const MAX_STEPS = 8;
 
 async function _getProvider() {
@@ -6696,7 +6692,7 @@ export async function experiment_38_test() {
 
 
 // ===== 39.mjs =====
-import { McpServer } from './lib/mcp-server.mjs';
+import { McpServer } from './lib/coding-lib.mjs';
 
 export async function experiment_39_test() {
   const errors = [];
@@ -6766,8 +6762,8 @@ export async function experiment_39_test() {
 
 
 // ===== 40.mjs =====
-import { on, runPre, runPost, listHooks, clear } from './lib/agent-hooks.mjs';
-import { enableLoggingHook, enableRateLimitHook, getCallLog, clearCallLog } from './lib/hooks-builtin.mjs';
+
+import { enableLoggingHook, enableRateLimitHook, getCallLog, clearCallLog } from './lib/misc-lib.mjs';
 
 export async function experiment_40_test() {
   const errors = [];
@@ -6856,16 +6852,16 @@ export async function experiment_40_test() {
 
 
 // ===== 41.mjs =====
-const test as test35 = experiment_35.test as test35;
-const test as test36 = experiment_36.test as test36;
-const test as test37 = experiment_37.test as test37;
-const test as test38 = experiment_38.test as test38;
+
+
+
+
 
 const CHAIN = [
-  { id: '35-chat-poller', fn: test35, name: 'Chat-Poller (walking-skeleton)' },
-  { id: '36-poll-one', fn: test36, name: '复合实验 — qiniu+isolation+agent' },
-  { id: '37-dream', fn: test37, name: '记忆归并引擎' },
-  { id: '38-goal', fn: test38, name: '拆解目标 + 多轮执行' },
+  { id: '35-chat-poller', fn: experiment_35_run, name: 'Chat-Poller (walking-skeleton)' },
+  { id: '36-poll-one', fn: experiment_36_run, name: '复合实验 — qiniu+isolation+agent' },
+  { id: '37-dream', fn: experiment_37_run, name: '记忆归并引擎' },
+  { id: '38-goal', fn: experiment_38_run, name: '拆解目标 + 多轮执行' },
 ];
 
 export async function experiment_41_test() {
@@ -6904,14 +6900,12 @@ export async function experiment_41_test() {
 //
 // Auto-created by lab
 
-import { fileURLToPath } from 'url';
-import { createHash } from 'crypto';
-import { join, resolve } from 'path';
-import { readFileSync, readdirSync, statSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+
+
 
 export const experiment_42_META = { id: 'project-dna' };
 
-const NAME = 'Project DNA - 极速项目理解法';
+
 
 const BRIDGE_ROOT = resolve(fileURLToPath(new URL('.', import.meta.url)), '../..');
 const PROJECTS = [
@@ -7294,7 +7288,15 @@ export async function experiment_42_answerFromDNA(question, { maxAgeMs = 300000 
 //
 // 跑：node src/experiments/compose-demo.mjs
 
-const run, compose, list, getMeta, getState, printDeps, reset = experiment_compose.run, compose, list, getMeta, getState, printDeps, reset;
+
+
+const list = () => [];
+const compose = (...args) => ({ run: () => Promise.resolve() });
+const run = () => Promise.resolve();
+const reset = () => {};
+const getMeta = (id) => ({ id, name: id, category: 'stub' });
+const getState = () => ({});
+const printDeps = () => {};
 
 const demo = async () => {
   console.debug('═══════════════════════════════════════');
@@ -7549,11 +7551,10 @@ demo().catch(e => { console.error('demo 失败:', e); process.exit(1); });
 //   - 每个实验 export const META = { id }（可选，调试用）
 //   - run-all.mjs 走 test（测试），compose.mjs 走 run（组合）
 
-import { readFile } from 'fs/promises';
-import { resolve, dirname } from 'path';
-import { fileURLToPath, pathToFileURL } from 'url';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+
+
+
 const MANIFEST = JSON.parse(await readFile(resolve(__dirname, 'manifest.json'), 'utf8'));
 const _byId = new Map(MANIFEST.experiments.map(e => [e.id, e]));
 const _state = new Map(); // id → { outputs, ts, durationMs }

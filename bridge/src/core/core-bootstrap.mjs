@@ -1,7 +1,7 @@
 import os from 'os';
 import path from 'path';
 import crypto from 'crypto';
-import { configRepo } from './repositories/config-repo.js';
+import { configRepo } from './repositories.mjs';
 import { hasPublicAddress } from '../experiments/lib/storage-lib.mjs';
 import { DEFAULT_PORT } from '../constants.js';
 

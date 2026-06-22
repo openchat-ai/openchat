@@ -2,7 +2,7 @@
 // Manifest id: signal-algo
 // I/O: { op, samples, sampleRate, leakStartMs? } → 分析结果
 
-import { create } from '../lib/report.mjs';
+import { create } from '../lib/misc-lib.mjs';
 
 export const META = {
   id: 'signal-algo',

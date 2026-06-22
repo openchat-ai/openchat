@@ -1,5 +1,5 @@
 import { sessionManager } from './runtime.mjs';
-import { sessionRepo } from './core/repositories/session-repo.js';
+import { sessionRepo } from './repositories.mjs';
 import { MessageType } from '../protocol/message.js';
 import '../plugins/init.mjs';
 import { orchestrator, injectCodingTools } from './agent/orchestrator.mjs';

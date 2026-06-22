@@ -2,7 +2,7 @@
 // Manifest id: mqtt-push
 // I/O: { op: 'publish'|'subscribe'|'history'|'stats', channel, payload?, handler? }
 
-import { create } from '../lib/report.mjs';
+import { create } from '../lib/misc-lib.mjs';
 
 export const META = {
   id: 'mqtt-push',
