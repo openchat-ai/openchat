@@ -190,7 +190,42 @@ for (const f of specFiles) {
   }
 }
 
-// ── 4. 总 diff 行数 (ERR if >500) ─────────────────────────
+// ── 4. 导入循环检测 (ERR) ───────────────────────────────
+function detectImportCycles(changedFiles) {
+  const importRe = /import\s+(?:\{[^}]*\}|\*\s+as\s+\w+|\w+)\s+from\s+['"]\.\.?([^'"]+)['"]/g;
+  const localImports = {};
+  for (const f of changedFiles) {
+    if (!f.endsWith('.js') && !f.endsWith('.mjs')) continue;
+    const abs = resolve(cwd, f);
+    if (!existsSync(abs)) continue;
+    const content = readFileSync(abs, 'utf-8');
+    const dir = f.substring(0, f.lastIndexOf('/') + 1);
+    const deps = [];
+    let m;
+    while ((m = importRe.exec(content)) !== null) {
+      const resolved = path.normalize(dir + m[1]).replace(/\\/g, '/');
+      if (!resolved.endsWith('.js') && !resolved.endsWith('.mjs')) {
+        deps.push(resolved + '.js');
+        deps.push(resolved + '.mjs');
+      } else {
+        deps.push(resolved);
+      }
+    }
+    localImports[f] = deps;
+  }
+  // 双向循环检测
+  for (const [a, aDeps] of Object.entries(localImports)) {
+    for (const dep of aDeps) {
+      const bDeps = localImports[dep];
+      if (bDeps && bDeps.some(d => d === a || localImports[d]?.includes(a))) {
+        err(`导入循环: ${a} ↔ ${dep}`);
+      }
+    }
+  }
+}
+detectImportCycles(allFiles);
+
+// ── 5. 总 diff 行数 (ERR if >500) ─────────────────────────
 const diffStat = run('git diff --cached --stat');
 const totalLines = diffStat.split('\n')
   .filter(l => l.includes('insertion') || l.includes('deletion'))

@@ -8,6 +8,11 @@ import path from 'path';
 import { qiniuSignaling } from '../../core/qiniu-signaling.js';
 import { SignalRelay } from '../../core/signal-relay.js';
 import { listGoals, getStatus, listFailed, listHistory, getExperimentStats, detectRegressions, listEscalated, getEscalationStats } from '../../lab/lab-core.mjs';
+import { persistentConfig } from '../../core/core-config.mjs';
+import * as providerService from '../../experiments/lib/llm-lib.mjs';
+import { sessionManager, sessionEvents } from '../../core/runtime.mjs';
+import { memoryManager } from '../../memory/memory-manager.js';
+import fs from 'fs/promises';
 
 // ===============================
 // Voice Routes (from voice.js)

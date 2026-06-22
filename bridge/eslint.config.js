@@ -2,6 +2,7 @@ import js from '@eslint/js';
 import globals from 'globals';
 
 export default [
+  { ignores: ['**/__tests__/**', '**/experiments-all.mjs'] },
   js.configs.recommended,
   {
     languageOptions: {
@@ -17,6 +18,8 @@ export default [
       'no-unused-vars': 'off',
       'no-empty': 'warn',
       'no-undef': 'error',
+      'no-useless-assignment': 'warn',
+      'preserve-caught-error': 'warn',
       'no-console': 'off',
       'no-case-declarations': 'off',
       'no-useless-catch': 'off',
@@ -28,7 +31,6 @@ export default [
       'no-fallthrough': 'warn',
       'require-yield': 'warn',
     },
-    ignores: ['__tests__/**'],
   },
   {
     // dev/page.js 是浏览器端 dev 页面 JS，启用 browser globals

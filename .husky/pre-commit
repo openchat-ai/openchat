@@ -9,28 +9,21 @@ echo "🔍 运行提交前检查..."
 
 # Lint 检查
 echo "🔍 运行 ESLint..."
-cd bridge
-npx eslint src/ --quiet --no-ignore 2>/dev/null || {
+(cd bridge && npx eslint src/ --quiet) 2>/dev/null || {
   echo "❌ ESLint 错误，请修复后再提交"
   exit 1
 }
-cd ..
 echo "✅ ESLint 通过"
 
-# 1. Bridge 语法检查（秒级）
+# 1. Bridge 语法检查（全部文件）
 echo "📦 检查 Bridge 语法..."
-cd bridge
-for file in src/core/agent/agent-session.js src/core/agent/agent-engine.js src/core/agent/agent-monitor.js src/main.js; do
-  if [ -f "$file" ]; then
-    node --check "$file" 2>/dev/null || {
-      echo "❌ 语法错误: $file"
-      exit 1
-    }
-  fi
-done
+(cd bridge && npm run check) 2>/dev/null || {
+  echo "❌ Bridge 语法检查失败"
+  exit 1
+}
 echo "✅ Bridge 语法检查通过"
 
-# 2. 快速语法检查
+# 2. 快速语法检查（变更文件）
 echo "🧪 检查新增/修改文件的语法..."
 git diff --cached --name-only --diff-filter=ACM | grep -E '\.(js|mjs)$' | while IFS= read -r f; do
   node --check "$f" 2>/dev/null || { echo "❌ 语法错误: $f"; exit 1; }

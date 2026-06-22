@@ -340,6 +340,8 @@ export class ResidentManager extends EventEmitter {
   remove(id) { this.residents = this.residents.filter(r => r.id !== id); writeAll_residents(this.residents); this.emit('remove', { id }); }
 }
 
+export const residentManager = new ResidentManager();
+
 export { migrateSafeHouse };
 
 // === ResidentScheduler ===

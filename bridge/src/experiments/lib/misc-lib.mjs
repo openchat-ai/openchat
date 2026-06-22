@@ -1981,7 +1981,7 @@ FIRST-TURN TOOL CALL CONTRACT (硬约束):
               sessionId, cwd: process.cwd(), toolCount: tools.length, historyRounds: 0,
               availableSessions,
               costSummary: costTracker.formatSummary(),
-              onListHooks: () => listAgentHooks(),
+              onListHooks: () => listHooks(),
               onCompact: async () => {
                 costTracker.reset();
                 return { ok: true };
