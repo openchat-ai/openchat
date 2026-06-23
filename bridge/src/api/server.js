@@ -438,11 +438,63 @@ function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'
     });
 
     // 根路径 HTML Dashboard
-    this.app.get('/', (req, res) => {
-      res.send(`<html lang="zh"><head><meta charset="utf-8"><title>OpenChat</title></head>
-<body style="background:#0a0a1a;color:#e0e0e0;font-family:monospace;padding:20px">
-<h1 style="color:#7c8aff">OpenChat Bridge</h1>
-<p style="color:#888">运行中. <a href="/qiniu-browser" style="color:#7c8aff">Qiniu Browser</a></p>
+    this.app.get('/', async (req, res) => {
+      const { persistentConfig } = await import('../core/core-config.mjs');
+      const { sessionManager } = await import('../core/runtime.mjs');
+      const providers = sessionManager?.listProviders?.() || [];
+      const sessions = sessionManager?.listSessions?.() || [];
+      const pname = persistentConfig?.getPreference?.('currentProvider') || 'none';
+      const model = persistentConfig?.getPreference?.('currentModel') || 'none';
+      const uptime = Math.floor(process.uptime());
+      const h = Math.floor(uptime / 3600);
+      const m = Math.floor((uptime % 3600) / 60);
+      const s = uptime % 60;
+      const uptimeStr = h > 0 ? `${h}h ${m}m` : m > 0 ? `${m}m ${s}s` : `${s}s`;
+      const b = (s) => `<span style="color:${s}">`;
+      res.send(`<!DOCTYPE html>
+<html lang="zh">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>OpenChat Bridge</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#e0e0e0;font:13px/1.5 monospace;padding:20px;max-width:800px;margin:0 auto}
+h1{color:#7c8aff;font-size:20px;margin-bottom:20px}
+.card{background:#1a1a2e;border:1px solid #333;border-radius:6px;padding:16px;margin-bottom:16px}
+.card h2{color:#888;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
+.row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1a1a2e}
+.row:last-child{border:none}
+.label{color:#666}
+.value{color:#e0e0e0}
+.green{color:#4caf50}
+.yellow{color:#ffa502}
+a{color:#7c8aff;text-decoration:none}
+a:hover{text-decoration:underline}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px}
+.badge.green{background:#1b3a1b;color:#4caf50}
+.badge.yellow{background:#3a2e1b;color:#ffa502}
+.badge.gray{background:#2a2a2a;color:#888}
+.links{margin-top:20px;display:flex;gap:16px;font-size:12px}
+</style></head>
+<body>
+<h1>OpenChat Bridge</h1>
+<div class="card">
+  <h2>Status</h2>
+  <div class="row"><span class="label">Uptime</span><span class="value">${uptimeStr}</span></div>
+  <div class="row"><span class="label">Provider</span><span class="value">${pname === 'none' ? '<span style="color:#e04848">not configured</span>' : b('#4caf50') + pname + '</span>'}</span></div>
+  <div class="row"><span class="label">Model</span><span class="value">${model}</span></div>
+  <div class="row"><span class="label">Providers</span><span class="value">${providers.filter(p => p.connected).length}/${providers.length} connected</span></div>
+  <div class="row"><span class="label">Sessions</span><span class="value">${sessions.length} active</span></div>
+</div>
+<div class="card">
+  <h2>Sessions</h2>
+  ${sessions.length === 0 ? '<div class="row"><span class="value" style="color:#666">no active sessions</span></div>' :
+    sessions.slice(0, 10).map(s => `<div class="row"><span class="label">${s.id?.substring(0, 12) || '?'}...</span><span class="value"><span class="badge gray">${s.providerType || '?'}</span></span></div>`).join('')}
+  ${sessions.length > 10 ? `<div class="row"><span class="value" style="color:#888">... and ${sessions.length - 10} more</span></div>` : ''}
+</div>
+<div class="links">
+  <a href="/qiniu-browser">Qiniu Browser</a>
+  <a href="/api/v1">API Info</a>
+  <a href="/api-docs">API Docs</a>
+</div>
 </body></html>`);
     });
 

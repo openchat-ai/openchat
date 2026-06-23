@@ -105,10 +105,10 @@ function trimDelimTail(s) {
   return s.slice(0, i).trimEnd();
 }
 
-/** ② 提取 reasoning_content / reasoningContent (两种命名都兼容) */
+/** ② 提取 reasoning_content / reasoningContent / reasoning (兼容 OpenRouter 等) */
 export function extractReasoning(msg) {
   if (!msg || typeof msg !== 'object') return '';
-  return msg.reasoning_content || msg.reasoningContent || '';
+  return msg.reasoning_content || msg.reasoningContent || msg.reasoning || '';
 }
 
 /**

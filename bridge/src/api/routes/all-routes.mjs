@@ -506,7 +506,7 @@ export function createP2PRouter(swarm) {
   const router = express.Router();
 
   if (!swarm) {
-    router.all('*', (req, res) => {
+    router.use((req, res) => {
       res.json({ peers: [], messages: [], total: 0, swarm: null, note: 'P2P not initialized (swarm is null)' });
     });
     return router;

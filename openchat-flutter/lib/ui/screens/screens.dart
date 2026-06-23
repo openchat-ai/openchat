@@ -420,6 +420,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
   Timer? _replyPollTimer;
   final Set<String> _seenReplyKeys = {};
   bool _vmRecording = false;
+  bool _isWaiting = false;
   int _startupTs = 0;
   int _pollIntervalMs = 2000;
   int _replyPollStartTs = 0;
@@ -534,10 +535,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
           });
         }
         if (mounted) {
+          final isError = json.containsKey('error');
+          final hash = (json['meta'] is Map ? json['meta'] as Map : {})['hash'] as String?;
+          final reasoning = json['reasoning'] as String?;
           setState(() {
+            _isWaiting = false;
             _messages.add({
               'sender': 'ai', 'type': 'text', 'text': text,
               'time': DateTime.now().toString().substring(11, 16),
+              if (isError) 'isError': true,
+              if (hash != null) 'hash': hash,
+              if (reasoning != null) 'reasoning': reasoning,
             });
           });
           _scrollBottom();
@@ -567,6 +575,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
     setState(() {
       _messages.add({'sender': 'me', 'type': 'text', 'text': text,
         'time': DateTime.now().toString().substring(11, 16)});
+      _isWaiting = true;
     });
     _controller.clear();
     _scrollBottom();
@@ -691,22 +700,42 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
         );
       }
     }
-    return ListView.builder(
-        controller: _scrollController,
-        padding: const EdgeInsets.all(16),
-        itemCount: _messages.length,
-        itemBuilder: (context, index) {
-          final m = _messages[index];
-          final key = m['key'] as String?;
-          return ChatBubble(
-            message: m,
-            theme: theme,
-            layout: sduiLayout,
-            isPlaying: key != null && _playingKey == key,
-            durationMs: key != null ? _voiceDurationMs[key] : null,
-            onPlayVoice: () => _playVoiceMsg(key ?? ''),
-          );
-        });
+    return Column(children: [
+      Expanded(child: ListView.builder(
+          controller: _scrollController,
+          padding: const EdgeInsets.all(16),
+          itemCount: _messages.length,
+          itemBuilder: (context, index) {
+            final m = _messages[index];
+            final key = m['key'] as String?;
+            return ChatBubble(
+              message: m,
+              theme: theme,
+              layout: sduiLayout,
+              isPlaying: key != null && _playingKey == key,
+              durationMs: key != null ? _voiceDurationMs[key] : null,
+              onPlayVoice: () => _playVoiceMsg(key ?? ''),
+            );
+          })),
+      if (_isWaiting)
+        Padding(
+          padding: const EdgeInsets.only(left: 16, bottom: 8),
+          child: Row(children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: theme.surface.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(16).copyWith(bottomLeft: const Radius.circular(4)),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                SizedBox(width: 6, height: 6, child: CircularProgressIndicator(strokeWidth: 1.5, color: theme.textTertiary)),
+                const SizedBox(width: 8),
+                Text('AI thinking...', style: TextStyle(color: theme.textTertiary, fontSize: 12)),
+              ]),
+            ),
+          ]),
+        ),
+    ]);
   }
 }
 

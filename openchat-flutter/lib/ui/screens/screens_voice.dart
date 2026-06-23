@@ -43,13 +43,15 @@ class ChatBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final isMe = message['sender'] == 'me';
     final isVoice = message['type'] == 'voice';
+    final isError = message['isError'] == true;
+    final reasoning = message['reasoning'] as String?;
     final bc = layout['bubble'] as Map? ?? {};
     final selfColor = bc['selfColor'] as String?;
     final otherColor = bc['otherColor'] as String?;
     final radius = (bc['radius'] as num?)?.toDouble() ?? 20;
     final selfBg = selfColor != null ? Color(int.parse(selfColor.replaceAll('#', '0xFF'))) : null;
     final otherBg = otherColor != null ? Color(int.parse(otherColor.replaceAll('#', '0xFF'))) : null;
-    final fg = isMe ? Colors.white : theme.textPrimary;
+    final fg = isMe ? Colors.white : (isError ? const Color(0xFFFF6B6B) : theme.textPrimary);
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -64,8 +66,23 @@ class ChatBubble extends StatelessWidget {
           ),
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          if (!isVoice)
-            Text(message['text'] ?? '', style: TextStyle(color: fg, fontSize: 14))
+          if (!isVoice) ...[
+            if (reasoning != null && !isMe)
+              Container(
+                margin: const EdgeInsets.only(bottom: 6),
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('思考', style: TextStyle(color: theme.textTertiary.withValues(alpha: 0.6), fontSize: 9, fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 2),
+                  Text(reasoning, style: TextStyle(color: theme.textTertiary.withValues(alpha: 0.5), fontSize: 11, fontStyle: FontStyle.italic)),
+                ]),
+              ),
+            Text(message['text'] ?? '', style: TextStyle(color: fg, fontSize: 14)),
+          ]
           else
             GestureDetector(
               onTap: onPlayVoice,
@@ -81,6 +98,11 @@ class ChatBubble extends StatelessWidget {
             ),
           const SizedBox(height: 4),
           Text(message['time'] ?? '', style: TextStyle(color: isMe ? Colors.white.withValues(alpha: 0.7) : theme.textTertiary, fontSize: 10)),
+          if (!isMe && message['hash'] != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(message['hash'] as String, style: TextStyle(color: theme.textTertiary.withValues(alpha: 0.5), fontSize: 8, fontFamily: 'monospace')),
+            ),
         ]),
       ),
     );
