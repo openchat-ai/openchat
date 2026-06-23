@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,261 +11,6 @@ import '../../core/theme/app_theme.dart';
 import '../../providers/client_providers.dart';
 import '../screens/screens.dart';
 
-// ===== code_item.dart =====
-class CodeItem {
-  final String name;
-  final String type;
-  final int line;
-  CodeItem(this.name, this.type, this.line);
-}
-
-// ===== code_block.dart =====
-class CodeBlock extends StatelessWidget {
-  final List<Map<String, dynamic>> lines;
-  final Map<String, List<CodeItem>> codeItems;
-  final Function(String name, String type, int line) onItemTap;
-
-  const CodeBlock({
-    super.key,
-    required this.lines,
-    required this.codeItems,
-    required this.onItemTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: const Color(0xFF1E1E2E),
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: lines.length,
-        itemBuilder: (context, i) {
-          final line = lines[i];
-          final lineNum = i + 1;
-          final allItems = codeItems['all'] ?? [];
-          final lineItems = allItems.where((item) => item.line == lineNum).toList();
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: 40,
-                child: Text('$lineNum', style: const TextStyle(color: Colors.grey, fontSize: 13, fontFamily: 'monospace')),
-              ),
-              Expanded(
-                child: _buildLineWithLinks(line['text'] as String, line['color'] as Color, lineItems),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildLineWithLinks(String text, Color baseColor, List<CodeItem> items) {
-    if (items.isEmpty) {
-      return Text(text, style: TextStyle(color: baseColor, fontSize: 13, fontFamily: 'monospace', height: 1.6));
-    }
-    final spans = <TextSpan>[];
-    int lastEnd = 0;
-    for (final item in items) {
-      final idx = text.indexOf(item.name, lastEnd);
-      if (idx >= 0 && idx >= lastEnd) {
-        if (idx > lastEnd) {
-          spans.add(TextSpan(text: text.substring(lastEnd, idx), style: TextStyle(color: baseColor)));
-        }
-        spans.add(TextSpan(
-          text: item.name,
-          style: TextStyle(
-            color: _getTypeColor(item.type),
-            decoration: TextDecoration.underline,
-            decorationColor: _getTypeColor(item.type).withValues(alpha: 0.5),
-          ),
-        ));
-        lastEnd = idx + item.name.length;
-      }
-    }
-    if (lastEnd < text.length) {
-      spans.add(TextSpan(text: text.substring(lastEnd), style: TextStyle(color: baseColor)));
-    }
-    return RichText(
-      text: TextSpan(
-        style: TextStyle(fontSize: 13, fontFamily: 'monospace', height: 1.6),
-        children: spans,
-      ),
-    );
-  }
-
-  Color _getTypeColor(String type) {
-    switch (type) {
-      case 'class': return Colors.purple;
-      case 'function': return Colors.green;
-      case 'method': return Colors.cyan;
-      case 'variable': return Colors.orange;
-      case 'import': return Colors.cyan;
-      default: return Colors.white;
-    }
-  }
-}
-
-// ===== code_navigator_bar.dart =====
-class CodeNavigatorBar extends StatelessWidget {
-  final String currentPath;
-  final List<String> pathParts;
-  final Function(String) onPathTap;
-
-  const CodeNavigatorBar({
-    super.key,
-    required this.currentPath,
-    required this.pathParts,
-    required this.onPathTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 40,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      color: const Color(0xFF2D2D3F),
-      child: Row(
-        children: [
-          const Icon(Icons.folder, color: Colors.amber, size: 16),
-          const SizedBox(width: 8),
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  for (int i = 0; i < pathParts.length; i++) ...[
-                    GestureDetector(
-                      onTap: () => onPathTap(pathParts.sublist(0, i + 1).join('/')),
-                      child: Text(
-                        pathParts[i],
-                        style: TextStyle(
-                          color: i == pathParts.length - 1 ? Colors.white : Colors.cyan,
-                          fontFamily: 'monospace',
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                    if (i < pathParts.length - 1)
-                      const Text(' / ', style: TextStyle(color: Colors.grey, fontFamily: 'monospace')),
-                  ],
-                ],
-              ),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.arrow_drop_down, color: Colors.white70, size: 20),
-            onPressed: () {},
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ===== outline_panel.dart =====
-class OutlinePanel extends StatelessWidget {
-  final List<CodeItem> items;
-  final Function(String name, String type, int line) onItemTap;
-
-  const OutlinePanel({
-    super.key,
-    required this.items,
-    required this.onItemTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final grouped = <String, List<CodeItem>>{};
-    for (final item in items) {
-      grouped.putIfAbsent(item.type, () => []).add(item);
-    }
-    return Container(
-      width: 200,
-      color: const Color(0xFF252536),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            color: const Color(0xFF2D2D3F),
-            child: const Row(
-              children: [
-                Icon(Icons.account_tree, color: Colors.green, size: 16),
-                SizedBox(width: 8),
-                Text('大纲', style: TextStyle(color: Colors.white70, fontSize: 12)),
-              ],
-            ),
-          ),
-          Expanded(
-            child: ListView(
-              children: grouped.entries.expand((entry) => [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-                  child: Text(
-                    _getTypeName(entry.key),
-                    style: TextStyle(color: _getTypeColor(entry.key), fontSize: 11, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                ...entry.value.map((item) => ListTile(
-                  dense: true,
-                  leading: Icon(_getTypeIcon(item.type), color: _getTypeColor(item.type), size: 16),
-                  title: Text(item.name, style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'monospace')),
-                  trailing: Text('${item.line}', style: const TextStyle(color: Colors.grey, fontSize: 10)),
-                  onTap: () => onItemTap(item.name, item.type, item.line),
-                )),
-              ]).toList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _getTypeName(String type) {
-    switch (type) {
-      case 'class': return '类 (Classes)';
-      case 'function': return '函数 (Functions)';
-      case 'method': return '方法 (Methods)';
-      case 'variable': return '变量 (Variables)';
-      case 'import': return '导入 (Imports)';
-      default: return type;
-    }
-  }
-
-  Color _getTypeColor(String type) {
-    switch (type) {
-      case 'class': return Colors.purple;
-      case 'function': return Colors.green;
-      case 'method': return Colors.cyan;
-      case 'variable': return Colors.orange;
-      case 'import': return Colors.cyan;
-      default: return Colors.grey;
-    }
-  }
-
-  IconData _getTypeIcon(String type) {
-    switch (type) {
-      case 'class': return Icons.class_;
-      case 'function': return Icons.functions;
-      case 'method': return Icons.build;
-      case 'variable': return Icons.data_object;
-      case 'import': return Icons.download;
-      default: return Icons.code;
-    }
-  }
-}
-
-// ===== app_card.dart =====
-enum CardVariant {
-  filled,
-  outlined,
-  elevated,
-  gradient,
-  glass,
 }
 
 class AppCard extends ConsumerWidget {
@@ -371,138 +116,6 @@ class AppCard extends ConsumerWidget {
     }
   }
 }
-
-// ===== action_card.dart =====
-class ActionCard extends ConsumerWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback? onTap;
-  final Color? color;
-
-  const ActionCard({
-    super.key,
-    required this.icon,
-    required this.label,
-    this.onTap,
-    this.color,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = ref.watch(currentThemeProvider);
-    final actionColor = color ?? theme.gradientPrimary[0];
-    return AppCard(
-      variant: CardVariant.filled,
-      onTap: onTap,
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  actionColor.withValues(alpha: 0.2),
-                  actionColor.withValues(alpha: 0.05),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(icon, color: actionColor, size: 28),
-          ),
-          const SizedBox(height: 10),
-          Text(label, style: TextStyle(color: theme.textSecondary, fontSize: 12)),
-        ],
-      ),
-    );
-  }
-}
-
-// ===== image_card.dart =====
-class ImageCard extends ConsumerWidget {
-  final String? imageUrl;
-  final String title;
-  final String? subtitle;
-  final double aspectRatio;
-  final VoidCallback? onTap;
-
-  const ImageCard({
-    super.key,
-    this.imageUrl,
-    required this.title,
-    this.subtitle,
-    this.aspectRatio = 16 / 9,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = ref.watch(currentThemeProvider);
-    return AppCard(
-      variant: CardVariant.filled,
-      padding: EdgeInsets.zero,
-      onTap: onTap,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AspectRatio(
-            aspectRatio: aspectRatio,
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    theme.gradientPrimary[0].withValues(alpha: 0.3),
-                    theme.gradientPrimary[1].withValues(alpha: 0.1),
-                  ],
-                ),
-                borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(theme.radiusMedium),
-                ),
-              ),
-              child: imageUrl != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(theme.radiusMedium),
-                    ),
-                    child: Image.network(imageUrl!, fit: BoxFit.cover),
-                  )
-                : Center(
-                    child: Icon(Icons.image, color: theme.textTertiary, size: 40),
-                  ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: theme.textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle!,
-                    style: TextStyle(color: theme.textSecondary, fontSize: 12),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 // ===== list_card.dart =====
@@ -591,142 +204,12 @@ class ListCard extends ConsumerWidget {
     );
   }
 }
-
-// ===== stat_card.dart =====
-class StatCard extends ConsumerWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color? color;
-  final VoidCallback? onTap;
-
-  const StatCard({
-    super.key,
-    required this.label,
-    required this.value,
-    required this.icon,
-    this.color,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = ref.watch(currentThemeProvider);
-    final cardColor = color ?? theme.gradientPrimary[0];
-    return AppCard(
-      variant: CardVariant.filled,
-      onTap: onTap,
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  cardColor.withValues(alpha: 0.2),
-                  cardColor.withValues(alpha: 0.05),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: cardColor, size: 20),
-          ),
-          const Spacer(),
-          Text(
-            value,
-            style: TextStyle(
-              color: theme.textPrimary,
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              letterSpacing: -1,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(label, style: TextStyle(color: theme.textSecondary, fontSize: 12)),
-        ],
-      ),
-    );
-  }
-}
-
-// ===== audio_level_indicator.dart =====
-class AudioLevelIndicator extends StatelessWidget {
-  final double level;
-  final double size;
-
-  const AudioLevelIndicator({
-    super.key,
-    required this.level,
-    this.size = 80,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: size,
-      height: size,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          SizedBox(
-            width: size,
-            height: size,
-            child: CircularProgressIndicator(
-              value: 1,
-              strokeWidth: 4,
-              valueColor: AlwaysStoppedAnimation(Colors.grey.shade300),
-            ),
-          ),
-          SizedBox(
-            width: size,
-            height: size,
-            child: CircularProgressIndicator(
-              value: level.clamp(0, 1),
-              strokeWidth: 4,
-              valueColor: AlwaysStoppedAnimation(_getColor(level)),
-              backgroundColor: Colors.transparent,
-            ),
-          ),
-          Icon(
-            level > 0.1 ? Icons.mic : Icons.mic_off,
-            color: _getColor(level),
-            size: size * 0.4,
-          ),
-        ],
-      ),
-    );
-  }
-
   Color _getColor(double level) {
     if (level > 0.7) return Colors.red;
     if (level > 0.4) return Colors.orange;
     return Colors.green;
   }
 }
-
-// ===== audio_level_visualizer.dart =====
-class AudioLevelVisualizer extends StatefulWidget {
-  final Stream<double> audioLevelStream;
-  final Color color;
-  final double height;
-
-  const AudioLevelVisualizer({
-    super.key,
-    required this.audioLevelStream,
-    this.color = Colors.green,
-    this.height = 60,
-  });
-
-  @override
-  State<AudioLevelVisualizer> createState() => _AudioLevelVisualizerState();
-}
-
-class _AudioLevelVisualizerState extends State<AudioLevelVisualizer> {
-  final List<double> _levels = List.filled(20, 0);
-  StreamSubscription<double>? _subscription;
-
   @override
   void initState() {
     super.initState();
@@ -775,162 +258,6 @@ class _AudioLevelVisualizerState extends State<AudioLevelVisualizer> {
   }
 }
 
-// ===== speaking_indicator.dart =====
-class SpeakingIndicator extends StatefulWidget {
-  final bool isSpeaking;
-  final double size;
-
-  const SpeakingIndicator({
-    super.key,
-    required this.isSpeaking,
-    this.size = 24,
-  });
-
-  @override
-  State<SpeakingIndicator> createState() => _SpeakingIndicatorState();
-}
-
-class _SpeakingIndicatorState extends State<SpeakingIndicator>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: this,
-    );
-    if (widget.isSpeaking) {
-      _controller.repeat(reverse: true);
-    }
-  }
-
-  @override
-  void didUpdateWidget(SpeakingIndicator oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.isSpeaking && !oldWidget.isSpeaking) {
-      _controller.repeat(reverse: true);
-    } else if (!widget.isSpeaking && oldWidget.isSpeaking) {
-      _controller.stop();
-      _controller.reset();
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (!widget.isSpeaking) {
-      return SizedBox(width: widget.size, height: widget.size);
-    }
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return Container(
-          width: widget.size * (1 + _controller.value * 0.3),
-          height: widget.size * (1 + _controller.value * 0.3),
-          decoration: BoxDecoration(
-            color: Colors.green.withValues(alpha: 0.3 * (1 - _controller.value)),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            Icons.volume_up,
-            color: Colors.green,
-            size: widget.size * 0.7,
-          ),
-        );
-      },
-    );
-  }
-}
-
-// ===== agent_task_card.dart =====
-class AgentTaskCard extends ConsumerWidget {
-  final Agent agent;
-
-  const AgentTaskCard({super.key, required this.agent});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final statusColor = _getStatusColor(agent.status);
-
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              agent.name,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            _buildStatusBadge(agent.status, statusColor),
-          ],
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 8),
-            Text(
-              "Role: ${agent.role}",
-              style: TextStyle(color: Colors.grey[600], fontSize: 13),
-            ),
-            if (agent.task != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                agent.task!,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 14),
-              ),
-            ],
-          ],
-        ),
-        trailing: IconButton(
-          icon: const Icon(Icons.chevron_right),
-          onPressed: () => _navigateToDetail(context, agent.id),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatusBadge(AgentStatus status, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color, width: 1),
-      ),
-      child: Text(
-        status.name.toUpperCase(),
-        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
-      ),
-    );
-  }
-
-  Color _getStatusColor(AgentStatus status) {
-    switch (status) {
-      case AgentStatus.initializing: return Colors.blue;
-      case AgentStatus.running: return Colors.orange;
-      case AgentStatus.completed: return Colors.green;
-      case AgentStatus.failed: return Colors.red;
-      case AgentStatus.terminated: return Colors.grey;
-    }
-  }
-
-  void _navigateToDetail(BuildContext context, String agentId) {
-    Navigator.pushNamed(context, '/agent-detail', arguments: agentId);
-  }
-}
 
 // ===== bridge_url_tile.dart =====
 class BridgeUrlTile extends ConsumerStatefulWidget {
@@ -962,7 +289,7 @@ class _BridgeUrlTileState extends ConsumerState<BridgeUrlTile> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Bridge 地址', style: TextStyle(color: widget.theme.textSecondary, fontSize: 13)),
+        Text('Bridge 鍦板潃', style: TextStyle(color: widget.theme.textSecondary, fontSize: 13)),
         const SizedBox(height: 6),
         Row(children: [
           Expanded(child: TextField(
@@ -990,127 +317,6 @@ class _BridgeUrlTileState extends ConsumerState<BridgeUrlTile> {
     );
   }
 }
-
-// ===== connection_banner.dart =====
-class ConnectionBanner extends ConsumerWidget {
-  const ConnectionBanner({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final info = ref.watch(bridgeConnectionProvider);
-    final theme = ref.watch(currentThemeProvider);
-
-    return info.when(
-      data: (data) {
-        final state = data.state;
-        if (state == WsConnectionState.connected) {
-          return const SizedBox.shrink();
-        }
-        if (state == WsConnectionState.connecting) {
-          return Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: Colors.blue.shade700,
-            child: const Row(
-              children: [
-                SizedBox(
-                  width: 14, height: 14,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                ),
-                SizedBox(width: 8),
-                Text('正在连接...', style: TextStyle(color: Colors.white, fontSize: 13)),
-              ],
-            ),
-          );
-        }
-        if (state == WsConnectionState.reconnecting) {
-          final retryIn = data.nextRetrySeconds;
-          return Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: Colors.orange.shade800,
-            child: Row(
-              children: [
-                const Icon(Icons.sync, color: Colors.white, size: 16),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    retryIn != null ? '重连中 ($retryIn秒后重试)' : '重连中...',
-                    style: const TextStyle(color: Colors.white, fontSize: 13),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-        return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          color: theme.error.withValues(alpha: 0.9),
-          child: Row(
-            children: [
-              const Icon(Icons.cloud_off, color: Colors.white, size: 16),
-              const SizedBox(width: 8),
-              const Expanded(
-                child: Text(
-                  'Bridge 未连接',
-                  style: TextStyle(color: Colors.white, fontSize: 13),
-                ),
-              ),
-              TextButton(
-                onPressed: () {
-                  ref.read(bridgeWsProvider).connect();
-                },
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('重试', style: TextStyle(fontSize: 12)),
-              ),
-            ],
-          ),
-        );
-      },
-      loading: () => const SizedBox.shrink(),
-      error: (_, __) => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        color: Colors.orange.shade800,
-        child: const Row(
-          children: [
-            Icon(Icons.error_outline, color: Colors.white, size: 16),
-            SizedBox(width: 8),
-            Text('连接异常', style: TextStyle(color: Colors.white, fontSize: 13)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ===== expandable_list_item.dart =====
-class ExpandableListItem extends ConsumerStatefulWidget {
-  final Widget header;
-  final Widget content;
-  final bool initiallyExpanded;
-
-  const ExpandableListItem({
-    super.key,
-    required this.header,
-    required this.content,
-    this.initiallyExpanded = false,
-  });
-
-  @override
-  ConsumerState<ExpandableListItem> createState() => _ExpandableListItemState();
-}
-
-class _ExpandableListItemState extends ConsumerState<ExpandableListItem>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
-  bool _isExpanded = false;
-
   @override
   void initState() {
     super.initState();
@@ -1180,32 +386,6 @@ class _ExpandableListItemState extends ConsumerState<ExpandableListItem>
     );
   }
 }
-
-// ===== grouped_list.dart =====
-class GroupedList<T> extends ConsumerWidget {
-  final List<T> items;
-  final String Function(T) groupBy;
-  final Widget Function(T) itemBuilder;
-  final Widget Function(String)? groupHeaderBuilder;
-  final EdgeInsets padding;
-
-  const GroupedList({
-    super.key,
-    required this.items,
-    required this.groupBy,
-    required this.itemBuilder,
-    this.groupHeaderBuilder,
-    this.padding = const EdgeInsets.symmetric(horizontal: 16),
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = ref.watch(currentThemeProvider);
-    final groups = <String, List<T>>{};
-    for (final item in items) {
-      final key = groupBy(item);
-      groups.putIfAbsent(key, () => []).add(item);
-    }
     return ListView.builder(
       padding: padding,
       itemCount: groups.length,
@@ -1235,30 +415,6 @@ class GroupedList<T> extends ConsumerWidget {
     );
   }
 }
-
-// ===== load_more_list.dart =====
-class LoadMoreList extends ConsumerStatefulWidget {
-  final List<Widget> items;
-  final Future<void> Function() onLoadMore;
-  final bool hasMore;
-  final EdgeInsets padding;
-
-  const LoadMoreList({
-    super.key,
-    required this.items,
-    required this.onLoadMore,
-    required this.hasMore,
-    this.padding = const EdgeInsets.all(16),
-  });
-
-  @override
-  ConsumerState<LoadMoreList> createState() => _LoadMoreListState();
-}
-
-class _LoadMoreListState extends ConsumerState<LoadMoreList> {
-  final ScrollController _controller = ScrollController();
-  bool _isLoading = false;
-
   @override
   void initState() {
     super.initState();
@@ -1302,7 +458,7 @@ class _LoadMoreListState extends ConsumerState<LoadMoreList> {
           Padding(
             padding: const EdgeInsets.all(16),
             child: Center(
-              child: Text('已经到底了',
+              child: Text('宸茬粡鍒板簳浜?,
                 style: TextStyle(color: theme.textTertiary, fontSize: 12)),
             ),
           ),
@@ -1310,6 +466,7 @@ class _LoadMoreListState extends ConsumerState<LoadMoreList> {
     );
   }
 }
+
 
 // ===== people_dialogs.dart =====
 class PeopleDialogs {
@@ -1336,17 +493,17 @@ class PeopleDialogs {
   static Future<void> showRoomDialog(BuildContext context) async {
     final controller = TextEditingController(text: 'room_${DateTime.now().millisecondsSinceEpoch}');
     await showDialog(context: context, builder: (ctx) => AlertDialog(
-      title: const Text('加入语音房间'),
+      title: const Text('鍔犲叆璇煶鎴块棿'),
       content: TextField(
         controller: controller,
-        decoration: const InputDecoration(labelText: '房间 ID', hintText: '输入房间 ID 或使用默认'),
+        decoration: const InputDecoration(labelText: '鎴块棿 ID', hintText: '杈撳叆鎴块棿 ID 鎴栦娇鐢ㄩ粯璁?),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('鍙栨秷')),
         TextButton(onPressed: () {
           Navigator.pop(ctx);
           Navigator.pushNamed(context, '/room', arguments: controller.text.trim());
-        }, child: const Text('加入', style: TextStyle(color: Color(0xFF7C4DFF)))),
+        }, child: const Text('鍔犲叆', style: TextStyle(color: Color(0xFF7C4DFF)))),
       ],
     ));
   }
@@ -1883,10 +1040,10 @@ class SettingsThemeSection extends ConsumerWidget {
   });
 
   static const _modeLabels = {
-    ThemeModeSetting.auto: '跟随系统',
-    ThemeModeSetting.light: '浅色模式',
-    ThemeModeSetting.dark: '深色模式',
-    ThemeModeSetting.manual: '手动选择',
+    ThemeModeSetting.auto: '璺熼殢绯荤粺',
+    ThemeModeSetting.light: '娴呰壊妯″紡',
+    ThemeModeSetting.dark: '娣辫壊妯″紡',
+    ThemeModeSetting.manual: '鎵嬪姩閫夋嫨',
   };
 
   @override
@@ -1895,7 +1052,7 @@ class SettingsThemeSection extends ConsumerWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
-          child: Text('外观'.toUpperCase(), style: TextStyle(color: theme.textTertiary, fontSize: 11,
+          child: Text('澶栬'.toUpperCase(), style: TextStyle(color: theme.textTertiary, fontSize: 11,
             fontWeight: FontWeight.w600, letterSpacing: 2)),
         ),
         Container(
@@ -1905,7 +1062,7 @@ class SettingsThemeSection extends ConsumerWidget {
             borderRadius: BorderRadius.circular(theme.radiusMedium),
             border: Border.all(color: theme.textTertiary.withValues(alpha: 0.1), width: 1)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('主题模式', style: TextStyle(color: theme.textPrimary, fontSize: 15, fontWeight: FontWeight.w500)),
+            Text('涓婚妯″紡', style: TextStyle(color: theme.textPrimary, fontSize: 15, fontWeight: FontWeight.w500)),
             const SizedBox(height: 12),
             Wrap(spacing: 8, runSpacing: 8, children: ThemeModeSetting.values.map((mode) {
               final sel = mode == themeMode;
@@ -1941,7 +1098,7 @@ class SettingsThemeSection extends ConsumerWidget {
               borderRadius: BorderRadius.circular(theme.radiusMedium),
               border: Border.all(color: theme.textTertiary.withValues(alpha: 0.1), width: 1)),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('选择主题', style: TextStyle(color: theme.textPrimary, fontSize: 15, fontWeight: FontWeight.w500)),
+              Text('閫夋嫨涓婚', style: TextStyle(color: theme.textPrimary, fontSize: 15, fontWeight: FontWeight.w500)),
               const SizedBox(height: 12),
               for (final t in [
                 {'theme': AppTheme.glassmorphism, 'name': 'Glass'},
@@ -1969,7 +1126,7 @@ class SettingsThemeSection extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(10))),
             const SizedBox(width: 12),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('当前主题', style: TextStyle(color: theme.textSecondary, fontSize: 12)),
+              Text('褰撳墠涓婚', style: TextStyle(color: theme.textSecondary, fontSize: 12)),
               const SizedBox(height: 2),
               Text(theme.name, style: TextStyle(color: theme.textPrimary, fontSize: 15, fontWeight: FontWeight.w600)),
             ])),
@@ -2137,7 +1294,7 @@ class SettingsSduiView extends StatelessWidget {
               ],
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                child: Text('版本: $appVersion',
+                child: Text('鐗堟湰: $appVersion',
                   style: TextStyle(color: theme.textTertiary, fontSize: 11)),
               ),
               const Padding(padding: EdgeInsets.only(bottom: 100)),
@@ -2168,111 +1325,3 @@ class SettingsSduiView extends StatelessWidget {
   }
 }
 
-// ===== slidable_list_item.dart =====
-class SlidableAction {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  const SlidableAction({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-}
-
-class SlidableListItem extends ConsumerWidget {
-  final Widget child;
-  final List<SlidableAction> actions;
-  final VoidCallback? onTap;
-
-  const SlidableListItem({
-    super.key,
-    required this.child,
-    required this.actions,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = ref.watch(currentThemeProvider);
-    return Dismissible(
-      key: UniqueKey(),
-      background: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        decoration: BoxDecoration(
-          color: theme.success.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(theme.radiusMedium),
-        ),
-        alignment: Alignment.centerLeft,
-        padding: const EdgeInsets.only(left: 20),
-        child: Icon(Icons.archive, color: theme.success),
-      ),
-      secondaryBackground: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        decoration: BoxDecoration(
-          color: theme.error.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(theme.radiusMedium),
-        ),
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
-        child: Icon(Icons.delete, color: theme.error),
-      ),
-      child: GestureDetector(onTap: onTap, child: child),
-    );
-  }
-}
-
-// ===== timeline_list.dart =====
-class TimelineList<T> extends ConsumerWidget {
-  final List<T> items;
-  final Widget Function(T, int) itemBuilder;
-  final bool isReversed;
-
-  const TimelineList({
-    super.key,
-    required this.items,
-    required this.itemBuilder,
-    this.isReversed = false,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = ref.watch(currentThemeProvider);
-    final displayItems = isReversed ? items.reversed.toList() : items;
-    return ListView.builder(
-      itemCount: displayItems.length,
-      itemBuilder: (context, index) {
-        final isLast = index == displayItems.length - 1;
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Column(
-              children: [
-                Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: theme.primary,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: theme.background, width: 2),
-                  ),
-                ),
-                if (!isLast)
-                  Container(
-                    width: 2,
-                    height: 50,
-                    color: theme.textTertiary.withValues(alpha: 0.2),
-                  ),
-              ],
-            ),
-            const SizedBox(width: 12),
-            Expanded(child: itemBuilder(displayItems[index], index)),
-          ],
-        );
-      },
-    );
-  }
-}
