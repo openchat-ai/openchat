@@ -1,6 +1,6 @@
 import { qiniuList, qiniuGet, qiniuPut } from '../experiments/lib/storage-lib.mjs';
 import { persistentConfig } from './core-config.mjs';
-import { createProvider, parseEpcPayload } from 'provider-kit';
+import { createProvider, parseEpcPayload, epcFromMessage } from 'provider-kit';
 import { parseMsgPayload } from '../experiments/lib/misc-lib.mjs';
 
 const POLL_MS = 3000;
@@ -50,15 +50,16 @@ async function processOne(p, key) {
   const parsed = parseMsgPayload(key, raw);
   if (!parsed) return;
   const model = persistentConfig.getCurrentModel();
-  const rk = key.replace(/\.msg$/, '-reply.json');
+  const rk = key.replace(/\.msg$/, '-reply.epc');
   try {
     const r = await p.chat(model, [{ role: 'user', content: parsed.text }], { timeout: 30000 });
     const epc = parseEpcPayload(r.epc);
-    const text = epc.content || r.content || '';
-    const reply = { text, meta: {} };
-    if (epc.reasoningContent) reply.reasoning = epc.reasoningContent;
-    await qiniuPut(rk, Buffer.from(JSON.stringify(reply), 'utf8'));
+    const out = { content: epc.content || r.content || '' };
+    if (epc.reasoningContent) out.reasoning_content = epc.reasoningContent;
+    const epcBuf = epcFromMessage(out);
+    await qiniuPut(rk, epcBuf);
   } catch (e) {
-    await qiniuPut(rk, Buffer.from(JSON.stringify({ text: '', error: e.message }), 'utf8')).catch(() => {});
+    const errBuf = epcFromMessage({ error: e.message });
+    await qiniuPut(rk, errBuf).catch(() => {});
   }
 }

@@ -411,6 +411,37 @@ class ChatScreen extends ConsumerStatefulWidget {
 }
 
 class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, WidgetsBindingObserver {
+  // EPC sub-types (LLM/0x10)
+  static const int _EPC_LLM = 0x10;
+  static const int _EPC_SUB_CONTENT = 0x10;
+  static const int _EPC_SUB_THINKING = 0x11;
+  static const int _EPC_SUB_ERROR = 0x14;
+  static const int _EPC_SUB_META = 0x16;
+
+  static Map<String, dynamic> _parseEpc(Uint8List buf) {
+    final out = <String, dynamic>{};
+    int off = 0;
+    while (off + 8 <= buf.length) {
+      if (buf[off] != 0xBB) { off++; continue; }
+      final type = buf[off + 1];
+      final sub = buf[off + 2];
+      final plen = (buf[off + 3] << 16) | (buf[off + 4] << 8) | buf[off + 5];
+      if (off + 6 + plen + 2 > buf.length) break;
+      if (buf[off + 6 + plen + 1] != 0x7E) { off++; continue; }
+      final payload = utf8.decode(buf.sublist(off + 6, off + 6 + plen));
+      off += 6 + plen + 2;
+      if (type != _EPC_LLM) continue;
+      switch (sub) {
+        case _EPC_SUB_CONTENT: out['content'] = payload; break;
+        case _EPC_SUB_THINKING: out['reasoning_content'] = payload; break;
+        case _EPC_SUB_ERROR: out['error'] = payload; break;
+        case _EPC_SUB_META:
+          try { out['meta'] = jsonDecode(payload) as Map<String, dynamic>; } catch (_) {}
+          break;
+      }
+    }
+    return out;
+  }
   final TextEditingController _controller = TextEditingController();
   final List<Map<String, dynamic>> _messages = [];
   final ScrollController _scrollController = ScrollController();
@@ -507,22 +538,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
       final keys = await _qiniu!.listFiles('oc/chat/${widget.chatId}/');
       for (final key in keys) {
         if (_seenReplyKeys.contains(key)) continue;
-        if (!key.endsWith('-reply.json')) continue;
-        final tsMatch = RegExp(r'/(\d+)-reply\.json$').firstMatch(key);
+        if (!key.endsWith('-reply.epc')) continue;
+        final tsMatch = RegExp(r'/(\d+)-reply\.epc$').firstMatch(key);
         final ts = tsMatch != null ? int.tryParse(tsMatch.group(1) ?? '0') ?? 0 : 0;
         _seenReplyKeys.add(key);
         if (ts > 0 && ts < _startupTs) continue;
 
         final bytes = await _qiniu!.getBinary(key);
         if (bytes.isEmpty) continue;
-        Map<String, dynamic> json;
-        try {
-          json = jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
-        } catch (e) {
-          log('[C14] json parse fail $key: $e');
-          continue;
-        }
-        final text = (json['text'] as String?) ?? (json['error'] as String? ?? '');
+        final frames = _parseEpc(bytes);
+        if (frames.isEmpty) continue;
+        final content = frames['content'] as String? ?? '';
+        final reasoning = frames['reasoning_content'] as String? ?? '';
+        final error = frames['error'] as String? ?? '';
+        final meta = frames['meta'];
+        final isError = error.isNotEmpty;
+        final text = isError ? error : content;
         if (text.isEmpty) continue;
         log('[C14] reply $key text="${text.substring(0, min(60, text.length))}"');
         found = true;
@@ -535,9 +566,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
           });
         }
         if (mounted) {
-          final isError = json.containsKey('error');
-          final hash = (json['meta'] is Map ? json['meta'] as Map : {})['hash'] as String?;
-          final reasoning = json['reasoning'] as String?;
+          final hash = meta is Map ? meta['hash'] as String? : null;
           setState(() {
             _isWaiting = false;
             _messages.add({
@@ -545,7 +574,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
               'time': DateTime.now().toString().substring(11, 16),
               if (isError) 'isError': true,
               if (hash != null) 'hash': hash,
-              if (reasoning != null) 'reasoning': reasoning,
+              if (reasoning.isNotEmpty) 'reasoning': reasoning,
             });
           });
           _scrollBottom();
@@ -728,7 +757,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
                 borderRadius: BorderRadius.circular(16).copyWith(bottomLeft: const Radius.circular(4)),
               ),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                SizedBox(width: 6, height: 6, child: CircularProgressIndicator(strokeWidth: 1.5, color: theme.textTertiary)),
+                AnimatedDots(color: theme.textTertiary),
                 const SizedBox(width: 8),
                 Text('AI thinking...', style: TextStyle(color: theme.textTertiary, fontSize: 12)),
               ]),
