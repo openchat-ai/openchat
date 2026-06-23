@@ -4,6 +4,7 @@ import 'dart:developer' show log;
 import 'dart:io' show Platform;
 import 'dart:math' hide log;
 import 'dart:typed_data';
+import 'dart:ui' show ImageFilter;
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -543,6 +544,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
             _messages.add({
               'sender': 'ai', 'type': 'text', 'text': text,
               'time': DateTime.now().toString().substring(11, 16),
+              'ts': DateTime.now().millisecondsSinceEpoch,
+              '_new': true,
               if (isError) 'isError': true,
               if (hash != null) 'hash': hash,
               if (reasoning.isNotEmpty) 'reasoning': reasoning,
@@ -574,7 +577,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
     if (text.isEmpty) return;
     setState(() {
       _messages.add({'sender': 'me', 'type': 'text', 'text': text,
-        'time': DateTime.now().toString().substring(11, 16)});
+        'time': DateTime.now().toString().substring(11, 16),
+        'ts': DateTime.now().millisecondsSinceEpoch, '_new': true});
       _isWaiting = true;
     });
     _controller.clear();
@@ -640,41 +644,125 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
   Widget build(BuildContext context) {
     final theme = ref.watch(currentThemeProvider);
     final title = sduiLayout['title'] as String? ?? widget.title;
+    final subtitle = sduiLayout['subtitle'] as String?;
 
     return Scaffold(
       backgroundColor: theme.background,
-      appBar: AppBar(
-        backgroundColor: theme.surface.withValues(alpha: 0.5),
-        elevation: 0,
-        title: Text(title, style: TextStyle(color: theme.textPrimary, fontSize: 18, fontWeight: FontWeight.w600)),
-        actions: [
-          IconButton(icon: Icon(sduiLayout['callIcon'] == null ? Icons.phone_outlined : (SduiParser.icons[sduiLayout['callIcon']] ?? Icons.phone_outlined), color: theme.textSecondary), onPressed: () {}),
-          IconButton(icon: Icon(Icons.videocam_outlined, color: theme.textSecondary), onPressed: () {}),
-          IconButton(icon: Icon(Icons.more_vert, color: theme.textSecondary), onPressed: () {}),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(child: _messages.isEmpty
-            ? ChatEmptyState(theme: theme, layout: sduiLayout)
-            : _buildMessageList(theme)),
-          ChatInputArea(
-            theme: theme,
-            controller: _controller,
-            layout: sduiLayout,
-            recording: _vmRecording,
-            hasText: _hasText,
-            onSend: _sendText,
-            onStartRecord: _startVmRecord,
-            onEndRecord: _endVmRecord,
-            onTextChanged: (v) {
-              if (!mounted) return;
-              setState(() => _hasText = v.isNotEmpty);
-            },
+      extendBodyBehindAppBar: true,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(64),
+        child: ClipRRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Container(
+              decoration: BoxDecoration(
+                color: theme.surface.withValues(alpha: 0.6),
+                border: Border(
+                  bottom: BorderSide(
+                    color: theme.textTertiary.withValues(alpha: 0.08),
+                    width: 0.5,
+                  ),
+                ),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    theme.primary.withValues(alpha: 0.05),
+                    theme.secondary.withValues(alpha: 0.05),
+                  ],
+                ),
+              ),
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Row(children: [
+                    IconButton(
+                      icon: Icon(Icons.arrow_back_ios_new, color: theme.textPrimary, size: 18),
+                      onPressed: () => Navigator.of(context).maybePop(),
+                    ),
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(colors: theme.gradientPrimary, begin: Alignment.topLeft, end: Alignment.bottomRight),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [BoxShadow(color: theme.primary.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 2))],
+                      ),
+                      child: const Icon(Icons.chat_bubble_outline, color: Colors.white, size: 18),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(title, style: TextStyle(color: theme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 0.2), overflow: TextOverflow.ellipsis),
+                          if (subtitle != null || _isWaiting)
+                            Row(mainAxisSize: MainAxisSize.min, children: [
+                              Container(
+                                width: 6, height: 6,
+                                decoration: BoxDecoration(
+                                  color: _isWaiting ? theme.warning : theme.success,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [BoxShadow(color: (_isWaiting ? theme.warning : theme.success).withValues(alpha: 0.6), blurRadius: 4, spreadRadius: 0.5)],
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                _isWaiting ? 'AI thinking...' : (subtitle ?? '在线'),
+                                style: TextStyle(color: theme.textTertiary, fontSize: 11),
+                              ),
+                            ]),
+                        ],
+                      ),
+                    ),
+                    IconButton(icon: Icon(sduiLayout['callIcon'] == null ? Icons.phone_outlined : (SduiParser.icons[sduiLayout['callIcon']] ?? Icons.phone_outlined), color: theme.textSecondary, size: 20), onPressed: () {}),
+                    IconButton(icon: Icon(Icons.videocam_outlined, color: theme.textSecondary, size: 20), onPressed: () {}),
+                    IconButton(icon: Icon(Icons.more_horiz, color: theme.textSecondary, size: 20), onPressed: () {}),
+                  ]),
+                ),
+              ),
+            ),
           ),
-        ],
+        ),
       ),
+      body: Stack(children: [
+        // subtle radial gradient overlay
+        Positioned.fill(child: IgnorePointer(child: Container(
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              center: Alignment.topLeft,
+              radius: 1.5,
+              colors: [
+                theme.primary.withValues(alpha: 0.08),
+                Colors.transparent,
+              ],
+            ),
+          ),
+        ))),
+        Column(
+          children: [
+            const SizedBox(height: 64), // appbar height offset
+            Expanded(child: _messages.isEmpty
+              ? ChatEmptyState(theme: theme, layout: sduiLayout)
+              : _buildMessageList(theme)),
+            ChatInputArea(
+              theme: theme,
+              controller: _controller,
+              layout: sduiLayout,
+              recording: _vmRecording,
+              hasText: _hasText,
+              onSend: _sendText,
+              onStartRecord: _startVmRecord,
+              onEndRecord: _endVmRecord,
+              onTextChanged: (v) {
+                if (!mounted) return;
+                setState(() => _hasText = v.isNotEmpty);
+              },
+            ),
+          ],
+        ),
+      ]),
     );
   }
 
@@ -703,18 +791,34 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
     return Column(children: [
       Expanded(child: ListView.builder(
           controller: _scrollController,
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
           itemCount: _messages.length,
           itemBuilder: (context, index) {
             final m = _messages[index];
             final key = m['key'] as String?;
-            return ChatBubble(
-              message: m,
-              theme: theme,
-              layout: sduiLayout,
-              isPlaying: key != null && _playingKey == key,
-              durationMs: key != null ? _voiceDurationMs[key] : null,
-              onPlayVoice: () => _playVoiceMsg(key ?? ''),
+            final isNew = m['_new'] == true;
+            return TweenAnimationBuilder<double>(
+              key: ValueKey('msg-${m['ts']}'),
+              tween: Tween(begin: isNew ? 0.0 : 1.0, end: 1.0),
+              duration: Duration(milliseconds: isNew ? 320 : 0),
+              curve: Curves.easeOutCubic,
+              builder: (context, t, child) {
+                return Opacity(
+                  opacity: t.clamp(0.0, 1.0),
+                  child: Transform.translate(
+                    offset: Offset(0, (1 - t) * 12),
+                    child: child,
+                  ),
+                );
+              },
+              child: ChatBubble(
+                message: m,
+                theme: theme,
+                layout: sduiLayout,
+                isPlaying: key != null && _playingKey == key,
+                durationMs: key != null ? _voiceDurationMs[key] : null,
+                onPlayVoice: () => _playVoiceMsg(key ?? ''),
+              ),
             );
           })),
       if (_isWaiting)

@@ -56,66 +56,105 @@ class ChatBubble extends StatelessWidget {
     final selfBg = selfColor != null ? Color(int.parse(selfColor.replaceAll('#', '0xFF'))) : null;
     final otherBg = otherColor != null ? Color(int.parse(otherColor.replaceAll('#', '0xFF'))) : null;
     final fg = isMe ? Colors.white : (isError ? const Color(0xFFFF6B6B) : theme.textPrimary);
+    final maxBubbleWidth = MediaQuery.of(context).size.width * 0.75;
+    final selfGradient = selfBg == null ? LinearGradient(
+      colors: theme.gradientPrimary,
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ) : null;
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          gradient: isMe && selfBg == null ? LinearGradient(colors: theme.gradientPrimary) : null,
-          color: isMe ? selfBg : (otherBg ?? theme.surface.withValues(alpha: 0.5)),
-          borderRadius: BorderRadius.circular(radius).copyWith(
-            bottomRight: isMe ? const Radius.circular(4) : null,
-            bottomLeft: !isMe ? const Radius.circular(4) : null,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxBubbleWidth),
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            gradient: selfGradient,
+            color: isMe ? selfBg : (otherBg ?? theme.surface.withValues(alpha: 0.7)),
+            borderRadius: BorderRadius.circular(radius).copyWith(
+              bottomRight: isMe ? const Radius.circular(5) : null,
+              bottomLeft: !isMe ? const Radius.circular(5) : null,
+            ),
+            border: !isMe ? Border.all(
+              color: theme.textTertiary.withValues(alpha: 0.12),
+              width: 0.6,
+            ) : null,
+            boxShadow: [
+              BoxShadow(
+                color: isMe
+                    ? theme.primary.withValues(alpha: 0.25)
+                    : Colors.black.withValues(alpha: 0.15),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-        ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          if (!isVoice) ...[
-            if (reasoning != null && !isMe)
-              Container(
-                margin: const EdgeInsets.only(bottom: 6),
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            if (!isVoice) ...[
+              if (reasoning != null && !isMe)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 6),
+                  padding: const EdgeInsets.fromLTRB(10, 6, 10, 8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.20),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border(
+                      left: BorderSide(color: theme.primary.withValues(alpha: 0.5), width: 2),
+                    ),
+                  ),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(children: [
+                      Icon(Icons.psychology_outlined, color: theme.textTertiary.withValues(alpha: 0.7), size: 10),
+                      const SizedBox(width: 4),
+                      Text('思考', style: TextStyle(color: theme.textTertiary.withValues(alpha: 0.7), fontSize: 9, fontWeight: FontWeight.w500, letterSpacing: 0.5)),
+                    ]),
+                    const SizedBox(height: 4),
+                    Text(reasoning, style: TextStyle(color: theme.textTertiary.withValues(alpha: 0.6), fontSize: 11, fontStyle: FontStyle.italic, height: 1.35)),
+                  ]),
                 ),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('思考', style: TextStyle(color: theme.textTertiary.withValues(alpha: 0.6), fontSize: 9, fontWeight: FontWeight.w500)),
-                  const SizedBox(height: 2),
-                  Text(reasoning, style: TextStyle(color: theme.textTertiary.withValues(alpha: 0.5), fontSize: 11, fontStyle: FontStyle.italic)),
+              GestureDetector(
+                onLongPress: () {
+                  final text = message['text'] as String? ?? '';
+                  if (text.isEmpty) return;
+                  Clipboard.setData(ClipboardData(text: text));
+                  ScaffoldMessenger.maybeOf(context)?.showSnackBar(const SnackBar(content: Text('已复制'), duration: Duration(milliseconds: 800)));
+                },
+                child: MarkdownText(source: message['text'] ?? '', base: TextStyle(color: fg, fontSize: 14)),
+              ),
+            ]
+            else
+              GestureDetector(
+                onTap: onPlayVoice,
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: isPlaying ? Colors.white.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(isPlaying ? Icons.pause : Icons.play_arrow, color: isMe ? Colors.white : theme.primary, size: 18),
+                  ),
+                  const SizedBox(width: 8),
+                  Text('\u8BED\u97F3', style: TextStyle(color: fg, fontSize: 14)),
+                  if (durationMs != null) ...[
+                    const Spacer(),
+                    Text('${(durationMs! / 1000).toStringAsFixed(1)}\u2033', style: TextStyle(color: isMe ? Colors.white.withValues(alpha: 0.85) : theme.textTertiary, fontSize: 12)),
+                  ],
                 ]),
               ),
-            GestureDetector(
-              onLongPress: () {
-                final text = message['text'] as String? ?? '';
-                if (text.isEmpty) return;
-                Clipboard.setData(ClipboardData(text: text));
-                ScaffoldMessenger.maybeOf(context)?.showSnackBar(const SnackBar(content: Text('已复制'), duration: Duration(milliseconds: 800)));
-              },
-              child: MarkdownText(source: message['text'] ?? '', base: TextStyle(color: fg, fontSize: 14)),
-            ),
-          ]
-          else
-            GestureDetector(
-              onTap: onPlayVoice,
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(isPlaying ? Icons.pause : Icons.play_arrow, color: isMe ? Colors.white : theme.primary, size: 20),
+            const SizedBox(height: 6),
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              Text(message['time'] ?? '', style: TextStyle(color: isMe ? Colors.white.withValues(alpha: 0.75) : theme.textTertiary, fontSize: 10)),
+              if (!isMe && message['hash'] != null) ...[
                 const SizedBox(width: 6),
-                Text('\u8BED\u97F3', style: TextStyle(color: fg, fontSize: 14)),
-                if (durationMs != null) ...[
-                  const Spacer(),
-                  Text('${(durationMs! / 1000).toStringAsFixed(1)}\u2033', style: TextStyle(color: isMe ? Colors.white.withValues(alpha: 0.85) : theme.textTertiary, fontSize: 12)),
-                ],
-              ]),
-            ),
-          const SizedBox(height: 4),
-          Text(message['time'] ?? '', style: TextStyle(color: isMe ? Colors.white.withValues(alpha: 0.7) : theme.textTertiary, fontSize: 10)),
-          if (!isMe && message['hash'] != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 2),
-              child: Text(message['hash'] as String, style: TextStyle(color: theme.textTertiary.withValues(alpha: 0.5), fontSize: 8, fontFamily: 'monospace')),
-            ),
-        ]),
+                Container(width: 2, height: 2, decoration: BoxDecoration(color: theme.textTertiary.withValues(alpha: 0.4), shape: BoxShape.circle)),
+                const SizedBox(width: 6),
+                Text(message['hash'] as String, style: TextStyle(color: theme.textTertiary.withValues(alpha: 0.5), fontSize: 8, fontFamily: 'monospace', letterSpacing: 0.3)),
+              ],
+            ]),
+          ]),
+        ),
       ),
     );
   }
@@ -178,45 +217,102 @@ class ChatInputArea extends StatelessWidget {
     final ia = layout['input'] as Map? ?? {};
     final hint = ia['hint'] as String? ?? '\u8F93\u5165\u6D88\u606F...';
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       decoration: BoxDecoration(
-        color: theme.surface.withValues(alpha: 0.5),
-        border: Border(top: BorderSide(color: theme.textTertiary.withValues(alpha: 0.1), width: 1))),
-      child: SafeArea(child: Row(children: [
-        IconButton(icon: Icon(Icons.add_circle_outline, color: theme.textSecondary), onPressed: () {}),
-        Expanded(child: TextField(
-          controller: controller,
-          style: TextStyle(color: theme.textPrimary),
-          maxLines: 4,
-          minLines: 1,
-          textInputAction: TextInputAction.newline,
-          keyboardType: TextInputType.multiline,
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: TextStyle(color: theme.textTertiary),
-            filled: true, fillColor: theme.background,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
-          onChanged: onTextChanged,
-        )),
-        const SizedBox(width: 4),
-        GestureDetector(
-          onLongPressStart: (_) => onStartRecord(),
-          onLongPressEnd: (_) => onEndRecord(),
-          onLongPressCancel: () => onEndRecord(),
+        color: theme.surface.withValues(alpha: 0.85),
+        border: Border(top: BorderSide(color: theme.textTertiary.withValues(alpha: 0.08), width: 1)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+        Container(
+          margin: const EdgeInsets.only(right: 4, bottom: 2),
+          child: IconButton(
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+            icon: Icon(Icons.add_circle_outline, color: theme.textSecondary, size: 24),
+            onPressed: () {},
+          ),
+        ),
+        Expanded(
           child: Container(
-            padding: const EdgeInsets.all(10),
+            constraints: const BoxConstraints(minHeight: 40, maxHeight: 120),
             decoration: BoxDecoration(
-              color: recording ? theme.error.withValues(alpha: 0.3) : null,
-              gradient: recording ? null : LinearGradient(colors: theme.gradientPrimary),
-              borderRadius: BorderRadius.circular(20)),
-            child: Icon(recording ? Icons.mic : Icons.keyboard_voice, color: Colors.white, size: 20)),
+              color: theme.background.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: hasText ? theme.primary.withValues(alpha: 0.4) : theme.textTertiary.withValues(alpha: 0.1),
+                width: 1,
+              ),
+            ),
+            child: TextField(
+              controller: controller,
+              style: TextStyle(color: theme.textPrimary, fontSize: 14.5, height: 1.35),
+              maxLines: 4,
+              minLines: 1,
+              textInputAction: TextInputAction.newline,
+              keyboardType: TextInputType.multiline,
+              decoration: InputDecoration(
+                hintText: hint,
+                hintStyle: TextStyle(color: theme.textTertiary.withValues(alpha: 0.7), fontSize: 14.5),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                isDense: true,
+              ),
+              onChanged: onTextChanged,
+            ),
+          ),
         ),
-        const SizedBox(width: 4),
-        IconButton(
-          icon: Icon(Icons.send_rounded, color: hasText ? theme.primary : theme.textTertiary),
-          onPressed: hasText ? onSend : null,
+        const SizedBox(width: 8),
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+          margin: const EdgeInsets.only(bottom: 2),
+          child: GestureDetector(
+            onLongPressStart: (_) => onStartRecord(),
+            onLongPressEnd: (_) => onEndRecord(),
+            onLongPressCancel: () => onEndRecord(),
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: recording ? theme.error : null,
+                gradient: recording ? null : (hasText ? null : LinearGradient(colors: theme.gradientPrimary, begin: Alignment.topLeft, end: Alignment.bottomRight)),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: recording
+                    ? [BoxShadow(color: theme.error.withValues(alpha: 0.5), blurRadius: 12, spreadRadius: 1)]
+                    : (hasText ? null : [BoxShadow(color: theme.primary.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 2))]),
+              ),
+              child: Icon(
+                recording ? Icons.stop_rounded : (hasText ? Icons.keyboard_voice : Icons.mic_none),
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+          ),
         ),
+        if (hasText) ...[
+          const SizedBox(width: 6),
+          GestureDetector(
+            onTap: onSend,
+            child: Container(
+              width: 40,
+              height: 40,
+              margin: const EdgeInsets.only(bottom: 2),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: theme.gradientPrimary, begin: Alignment.topLeft, end: Alignment.bottomRight),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [BoxShadow(color: theme.primary.withValues(alpha: 0.4), blurRadius: 10, offset: const Offset(0, 2))],
+              ),
+              child: const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+            ),
+          ),
+        ],
       ])),
     );
   }
