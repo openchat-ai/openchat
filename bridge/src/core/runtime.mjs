@@ -99,7 +99,7 @@ class SessionEvents {
   }
 }
 
-import { providerRegistry } from 'provider-kit';
+import { createProvider } from 'provider-kit';
 import { persistentConfig } from './core-config.mjs';
 
 class SessionManager {
@@ -117,9 +117,9 @@ class SessionManager {
     if (!effectiveKey) {
       throw new Error(`No API key for ${type}. Set with: config set ${type} <api_key>`);
     }
-    const provider = providerRegistry.getProvider(type);
+    const provider = createProvider(type, effectiveKey);
     if (!provider) throw new Error(`Unknown provider type: ${type}`);
-    await provider.connect(effectiveKey);
+    await provider.connect();
     this.providers.set(type, provider);
     console.info(`✓ Connected to ${provider.name}`);
     return provider;

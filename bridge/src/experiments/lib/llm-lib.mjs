@@ -903,7 +903,7 @@ export const persistentConfig = {
 //   // System prompt
 //   const prompt = `${baseSystemPrompt}\n\n${getEditProtocolGuidance()}`;
 
-import { epcFromResponse, extractContent, extractReasoning, normalizeToolCalls, parseActionFallback } from 'provider-kit';
+
 
 /** 把 (content, reasoningContent, toolCalls) 装进 EPC 帧 */
 export function buildEpc({ content, reasoningContent = '', toolCalls = [] }) {
@@ -956,50 +956,82 @@ export function getEditProtocolGuidance() {
 }
 
 // === provider-service.js ===
-// Bridge-side provider-kit wrapper.
-// This is the ONLY file that imports from 'provider-kit'.
-// All other bridge code must use this service or go through sessionManager/agentEngine.
-import { providerManager, providerRegistry, getRuntimeApiKey, getRuntimeBaseUrl, PRESET_PROVIDERS, DEFAULT_PROVIDER } from 'provider-kit';
+// Bridge-side provider-kit wrapper (v2.0 slim).
+// provider-kit v2.0 exports only OpenAI-compatible provider + EPC codec.
+// This shim re-derives the legacy API surface from PRESET_PROVIDERS + persistentConfig.
+import { createProvider, PRESET_PROVIDERS, epcFromResponse, extractContent, extractReasoning, normalizeToolCalls, parseActionFallback } from 'provider-kit';
+import { persistentConfig as corePersistentConfig } from '../../core/core-config.mjs';
 
-export { getRuntimeApiKey, getRuntimeBaseUrl, PRESET_PROVIDERS, DEFAULT_PROVIDER };
+export const DEFAULT_PROVIDER = 'openrouter';
+export { createProvider, PRESET_PROVIDERS };
 
-export function getProviderConfig(type) {
-  return providerManager.getProviderConfig(type);
+export function getRuntimeApiKey(providerName) {
+  return corePersistentConfig.getApiKey(providerName);
 }
-export function listProviders() {
-  return providerManager.listProviders();
+
+export function getRuntimeBaseUrl(providerName) {
+  return PRESET_PROVIDERS[providerName]?.baseUrl || null;
 }
+
+function presetToRecord(id) {
+  const p = PRESET_PROVIDERS[id];
+  return p ? { id, ...p } : null;
+}
+
 export function getProvider(id) {
-  return providerManager.getProvider(id);
+  return presetToRecord(id);
 }
-export function listModels(provider) {
-  return providerManager.listModels(provider);
-}
-export function getDefaultModel(providerName) {
-  return providerManager.getDefaultModel(providerName);
-}
-export function addCustomProvider(name, baseUrl, apiKey, model) {
-  return providerManager.addCustomProvider(name, baseUrl, apiKey, model);
+
+export function listProviders() {
+  return Object.keys(PRESET_PROVIDERS)
+    .map(presetToRecord)
+    .filter(p => p && corePersistentConfig.getApiKey(p.id));
 }
 
 export function listAll() {
-  return providerRegistry.listAll();
-}
-export function listConfigured() {
-  return providerRegistry.listConfigured();
-}
-export function getModels(providerId) {
-  return providerRegistry.getModels(providerId);
-}
-export function refreshModels(providerId) {
-  return providerRegistry.refreshModels(providerId);
-}
-export function configureProvider(providerId, config) {
-  return providerRegistry.configure(providerId, config);
+  return Object.keys(PRESET_PROVIDERS).map(presetToRecord).filter(Boolean);
 }
 
-export function getProviderInstance(providerId) {
-  return providerRegistry.getProvider(providerId);
+export function listConfigured() {
+  return listProviders();
+}
+
+export function getProviderConfig(name) {
+  return corePersistentConfig.getProvider(name);
+}
+
+export function listModels(provider) {
+  return PRESET_PROVIDERS[provider]?.models || [];
+}
+
+export function getDefaultModel(providerName) {
+  return PRESET_PROVIDERS[providerName]?.defaultModel || null;
+}
+
+export function getModels(providerId) {
+  return PRESET_PROVIDERS[providerId]?.models || [];
+}
+
+export function refreshModels() {
+  return PRESET_PROVIDERS;
+}
+
+export function configureProvider(providerId, config) {
+  if (config.apiKey) corePersistentConfig.setApiKey(providerId, config.apiKey);
+  if (config.model) corePersistentConfig.setPreference('currentModel', config.model);
+  if (providerId) corePersistentConfig.setCurrentProvider(providerId);
+  return { ok: true, providerId, models: PRESET_PROVIDERS[providerId]?.models || [] };
+}
+
+export function addCustomProvider(name, baseUrl, apiKey, model) {
+  corePersistentConfig.setProvider(name, { baseUrl, model, apiKey });
+  if (apiKey) corePersistentConfig.setApiKey(name, apiKey);
+  return { ok: true, name };
+}
+
+export function getProviderInstance(providerId, apiKey = null) {
+  const key = apiKey || corePersistentConfig.getApiKey(providerId);
+  return createProvider(providerId, key);
 }
 
 

@@ -12,6 +12,9 @@ import { securityManager } from '../security/security.mjs';
 import * as providerService from '../experiments/lib/llm-lib.mjs';
 import { memoryManager, vectorStore, embeddingService, hybridRetriever } from '../memory/memory.mjs';
 import { persistentStore } from '../storage/persistent-store.js';
+import { createProvider, listPresetProviders } from 'provider-kit';
+
+const PROVIDER_ALIASES = { or: 'openrouter', oa: 'openai', an: 'anthropic', ds: 'deepseek', gm: 'gemini' };
 
 async function fetchLocalModels(providerName) {
   if (providerName === 'ollama-cloud' || providerName === 'ollama') {
@@ -352,19 +355,17 @@ export const commands = {
       }
     }
 
-    if (!config.command && !config.endpoint) {
-      console.log('✗ Must specify command after -- or --api <url>');
+    if (!config.endpoint) {
+      console.log('✗ --api <url> required (OpenAI-compatible endpoint, e.g., http://localhost:11434/v1 for Ollama)');
       return;
     }
 
     try {
-      const { createLocalProvider } = await import('provider-kit');
-      const provider = createLocalProvider(name, config);
-      await provider.connect(config);
+      const provider = createProvider(name, null, { baseUrl: config.endpoint, skipAuth: true });
+      await provider.connect();
       sessionManager.providers.set(name, provider);
       console.log(`✓ Local provider "${name}" added successfully`);
-      console.log(`  Mode: ${config.mode}`);
-      if (config.command) console.log(`  Command: ${config.command} ${config.args.join(' ')}`);
+      console.log(`  Mode: api`);
       if (config.endpoint) console.log(`  Endpoint: ${config.endpoint}`);
     } catch (error) {
       console.log(`✗ Failed to add local provider: ${error.message}`);
@@ -391,7 +392,6 @@ export const commands = {
 
     // provider presets - list all preset providers
     if (name === 'presets') {
-      const { listPresetProviders } = await import('provider-kit');
       const presets = listPresetProviders();
 
       console.log('\n╔═══════════════════════════════════════════════════════════╗');
@@ -429,7 +429,6 @@ export const commands = {
 
     // provider search <keyword> - search presets
     if (name === 'search' && key) {
-      const { listPresetProviders } = await import('provider-kit');
       const presets = listPresetProviders();
       const keyword = key.toLowerCase();
 
@@ -525,7 +524,6 @@ export const commands = {
 
     // provider - list all
     const providers = providerService.listProviders();
-    const { PROVIDER_ALIASES } = await import('provider-kit');
 
     // Build reverse mapping: canonical -> aliases
     const canonicalToAliases = {};
@@ -569,7 +567,6 @@ export const commands = {
     console.log('');
 
     const pc = persistentConfig;
-    const { providerManager } = await import('provider-kit');
     const keys = Object.keys(pc.config.apiKeys);
 
     const working = [];

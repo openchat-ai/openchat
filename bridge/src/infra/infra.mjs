@@ -417,14 +417,11 @@ export function createHandlers(bridge, CONFIG, crypto) {
   async function autoConfigProviders(detectedTools) {
     if (!Array.isArray(detectedTools)) return;
     for (const tool of detectedTools) {
+      if (!tool.endpoint) continue;
       try {
-        const { createLocalProvider } = await import('provider-kit');
-        const provider = createLocalProvider(tool.name, {
-          mode: 'command',
-          command: tool.command,
-          args: []
-        });
-        await provider.connect({ mode: 'command', command: tool.command, args: [] });
+        const { createProvider } = await import('provider-kit');
+        const provider = createProvider(tool.name, null, { baseUrl: tool.endpoint, skipAuth: true });
+        await provider.connect();
         sessionManager.addProviderDirect(provider);
       } catch (e) {
       }

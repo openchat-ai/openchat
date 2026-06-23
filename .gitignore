@@ -64,6 +64,8 @@ bridge/src/ecosystem.config.cjs
 bridge/scripts/test-openrouter.mjs
 bridge/scripts/test-*.mjs
 *.err
+*.tgz
+modules/provider-kit/provider-kit-*.tgz
 bridge/src/core/analysis-*
 bridge/src/core/backups/
 bridge/src/core/age_increment*.js
