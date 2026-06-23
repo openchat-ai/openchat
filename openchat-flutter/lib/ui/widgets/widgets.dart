@@ -9,9 +9,6 @@ import '../../core/api/qiniu_direct_client.dart';
 import '../../core/sdui_config.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/client_providers.dart';
-import '../screens/screens.dart';
-
-}
 
 class AppCard extends ConsumerWidget {
   final Widget child;
@@ -115,7 +112,6 @@ class AppCard extends ConsumerWidget {
         );
     }
   }
-}
 }
 
 // ===== list_card.dart =====
