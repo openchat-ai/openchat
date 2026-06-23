@@ -13,6 +13,7 @@ import 'package:sdui_engine/sdui_engine.dart' show SduiParser;
 
 import '../../core/api/base_client.dart';
 import '../../core/api/qiniu_direct_client.dart';
+import '../../core/protocol/epc.dart';
 import '../../core/audio/audio.dart';
 import '../../core/models/agent_model.dart';
 import '../../core/models/resident_model.dart';
@@ -23,6 +24,7 @@ import '../widgets/widgets.dart';
 import '../components/resident/resident.dart';
 
 import 'screens_voice.dart';
+import '../widgets/common/animated_dots.dart';
 
 // =============================================================================
 // agent_hub_widgets.dart
@@ -411,37 +413,6 @@ class ChatScreen extends ConsumerStatefulWidget {
 }
 
 class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, WidgetsBindingObserver {
-  // EPC sub-types (LLM/0x10)
-  static const int _EPC_LLM = 0x10;
-  static const int _EPC_SUB_CONTENT = 0x10;
-  static const int _EPC_SUB_THINKING = 0x11;
-  static const int _EPC_SUB_ERROR = 0x14;
-  static const int _EPC_SUB_META = 0x16;
-
-  static Map<String, dynamic> _parseEpc(Uint8List buf) {
-    final out = <String, dynamic>{};
-    int off = 0;
-    while (off + 8 <= buf.length) {
-      if (buf[off] != 0xBB) { off++; continue; }
-      final type = buf[off + 1];
-      final sub = buf[off + 2];
-      final plen = (buf[off + 3] << 16) | (buf[off + 4] << 8) | buf[off + 5];
-      if (off + 6 + plen + 2 > buf.length) break;
-      if (buf[off + 6 + plen + 1] != 0x7E) { off++; continue; }
-      final payload = utf8.decode(buf.sublist(off + 6, off + 6 + plen));
-      off += 6 + plen + 2;
-      if (type != _EPC_LLM) continue;
-      switch (sub) {
-        case _EPC_SUB_CONTENT: out['content'] = payload; break;
-        case _EPC_SUB_THINKING: out['reasoning_content'] = payload; break;
-        case _EPC_SUB_ERROR: out['error'] = payload; break;
-        case _EPC_SUB_META:
-          try { out['meta'] = jsonDecode(payload) as Map<String, dynamic>; } catch (_) {}
-          break;
-      }
-    }
-    return out;
-  }
   final TextEditingController _controller = TextEditingController();
   final List<Map<String, dynamic>> _messages = [];
   final ScrollController _scrollController = ScrollController();
@@ -546,7 +517,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
 
         final bytes = await _qiniu!.getBinary(key);
         if (bytes.isEmpty) continue;
-        final frames = _parseEpc(bytes);
+        final frames = Epc.parseLlmReply(bytes);
         if (frames.isEmpty) continue;
         final content = frames['content'] as String? ?? '';
         final reasoning = frames['reasoning_content'] as String? ?? '';

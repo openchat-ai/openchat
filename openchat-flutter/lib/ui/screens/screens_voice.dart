@@ -17,117 +17,12 @@ import '../../core/sdui_config.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/client_providers.dart';
 import '../components/resident/resident.dart';
+import '../widgets/common/animated_dots.dart';
+import '../widgets/common/markdown_text.dart';
 
 // =============================================================================
 // chat_bubble.dart
 // =============================================================================
-
-List<InlineSpan> _parseInline(String s, TextStyle base) {
-  final spans = <InlineSpan>[];
-  final code = RegExp(r'`([^`\n]+)`');
-  final bold = RegExp(r'\*\*([^*\n]+)\*\*');
-  final italic = RegExp(r'(?<!\*)\*([^*\n]+)\*(?!\*)');
-  int i = 0;
-  while (i < s.length) {
-    final cm = code.firstMatch(s.substring(i));
-    final bm = bold.firstMatch(s.substring(i));
-    final im = italic.firstMatch(s.substring(i));
-    final next = [
-      if (cm != null) {'k': 'c', 'm': cm, 'start': cm.start, 'end': cm.end},
-      if (bm != null) {'k': 'b', 'm': bm, 'start': bm.start, 'end': bm.end},
-      if (im != null) {'k': 'i', 'm': im, 'start': im.start, 'end': im.end},
-    ];
-    if (next.isEmpty) { spans.add(TextSpan(text: s.substring(i), style: base)); break; }
-    next.sort((a, b) => (a['start'] as int).compareTo(b['start'] as int));
-    final first = next.first;
-    final start = first['start'] as int;
-    final end = first['end'] as int;
-    if (start > 0) spans.add(TextSpan(text: s.substring(i, i + start), style: base));
-    final m = first['m'] as RegExpMatch;
-    final inner = m.group(1) ?? '';
-    switch (first['k']) {
-      case 'c':
-        spans.add(TextSpan(text: inner, style: base.copyWith(fontFamily: 'monospace', fontSize: (base.fontSize ?? 14) - 1, backgroundColor: Colors.black.withValues(alpha: 0.2))));
-        break;
-      case 'b':
-        spans.add(TextSpan(text: inner, style: base.copyWith(fontWeight: FontWeight.w600)));
-        break;
-      case 'i':
-        spans.add(TextSpan(text: inner, style: base.copyWith(fontStyle: FontStyle.italic)));
-        break;
-    }
-    i += end;
-  }
-  return spans;
-}
-
-Widget _markdownText(String src, TextStyle base) {
-  final lines = src.split('\n');
-  final widgets = <Widget>[];
-  final buf = StringBuffer();
-  bool inCode = false;
-  String? codeLang;
-  final codeBuf = StringBuffer();
-  void flushPara() {
-    if (buf.isEmpty) return;
-    final spans = _parseInline(buf.toString(), base);
-    widgets.add(Padding(padding: const EdgeInsets.symmetric(vertical: 1), child: RichText(text: TextSpan(children: spans, style: base.copyWith(height: 1.35)))));
-    buf.clear();
-  }
-  void flushCode() {
-    widgets.add(Container(
-      width: double.infinity,
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.35), borderRadius: BorderRadius.circular(6)),
-      child: Text(codeBuf.toString().trimRight(), style: base.copyWith(fontFamily: 'monospace', fontSize: (base.fontSize ?? 14) - 1, height: 1.3)),
-    ));
-    codeBuf.clear();
-    codeLang = null;
-  }
-  for (final raw in lines) {
-    final line = raw;
-    final fence = RegExp(r'^```(\w*)\s*$').firstMatch(line);
-    if (fence != null) {
-      if (inCode) { flushCode(); inCode = false; }
-      else { flushPara(); inCode = true; codeLang = fence.group(1); }
-      continue;
-    }
-    if (inCode) { codeBuf.writeln(line); continue; }
-    if (line.trimLeft().startsWith('### ')) { flushPara(); widgets.add(Padding(padding: const EdgeInsets.only(top: 6, bottom: 2), child: Text(line.trimLeft().substring(4), style: base.copyWith(fontWeight: FontWeight.w700, fontSize: (base.fontSize ?? 14) + 2)))); continue; }
-    if (line.trimLeft().startsWith('## ')) { flushPara(); widgets.add(Padding(padding: const EdgeInsets.only(top: 8, bottom: 2), child: Text(line.trimLeft().substring(3), style: base.copyWith(fontWeight: FontWeight.w700, fontSize: (base.fontSize ?? 14) + 4)))); continue; }
-    if (line.trimLeft().startsWith('# ')) { flushPara(); widgets.add(Padding(padding: const EdgeInsets.only(top: 8, bottom: 2), child: Text(line.trimLeft().substring(2), style: base.copyWith(fontWeight: FontWeight.w700, fontSize: (base.fontSize ?? 14) + 6)))); continue; }
-    final bullet = RegExp(r'^\s*[-*]\s+').firstMatch(line);
-    if (bullet != null) { flushPara(); widgets.add(Row(crossAxisAlignment: CrossAxisAlignment.start, children: [const SizedBox(width: 4), Text('• ', style: base), Expanded(child: RichText(text: TextSpan(children: _parseInline(line.trimLeft().substring(2), base), style: base.copyWith(height: 1.3)))])); continue; }
-    if (line.trim().isEmpty) { flushPara(); continue; }
-    buf.writeln(line);
-  }
-  if (inCode) flushCode();
-  flushPara();
-  return Column(crossAxisAlignment: CrossAxisAlignment.start, children: widgets);
-}
-
-class AnimatedDots extends StatefulWidget {
-  final Color color;
-  const AnimatedDots({required this.color});
-  @override
-  State<AnimatedDots> createState() => _AnimatedDotsState();
-}
-class _AnimatedDotsState extends State<AnimatedDots> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat();
-  @override
-  void dispose() { _c.dispose(); super.dispose(); }
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(animation: _c, builder: (_, __) {
-      return Row(mainAxisSize: MainAxisSize.min, children: List.generate(3, (i) {
-        final phase = (_c.value - i * 0.18);
-        final t = phase < 0 ? phase + 1 : (phase > 1 ? phase - 1 : phase);
-        final alpha = (t < 0.5 ? t * 2 : (1 - t) * 2).clamp(0.2, 1.0);
-        return Padding(padding: const EdgeInsets.symmetric(horizontal: 1), child: Container(width: 5, height: 5, decoration: BoxDecoration(color: widget.color.withValues(alpha: alpha), shape: BoxShape.circle)));
-      }));
-    });
-  }
-}
 // =============================================================================
 
 class ChatBubble extends StatelessWidget {
@@ -197,7 +92,7 @@ class ChatBubble extends StatelessWidget {
                 Clipboard.setData(ClipboardData(text: text));
                 ScaffoldMessenger.maybeOf(context)?.showSnackBar(const SnackBar(content: Text('已复制'), duration: Duration(milliseconds: 800)));
               },
-              child: _markdownText(message['text'] ?? '', TextStyle(color: fg, fontSize: 14)),
+              child: MarkdownText(source: message['text'] ?? '', base: TextStyle(color: fg, fontSize: 14)),
             ),
           ]
           else
