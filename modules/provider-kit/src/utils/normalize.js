@@ -105,10 +105,25 @@ function trimDelimTail(s) {
   return s.slice(0, i).trimEnd();
 }
 
-/** ② 提取 reasoning_content / reasoningContent / reasoning (兼容 OpenRouter 等) */
+const REASONING_KEYS = [
+  'reasoning', 'reasoning_content', 'reasoningContent',
+  'thinking', 'thought', 'chainOfThought', 'chain_of_thought',
+  'cot', 'analysis', 'inner_monologue', 'innerMonologue',
+  'reflexion', 'reflection', 'scratchpad', 'plan',
+];
+
+/** ② 提取思考内容 — 跨 provider 字段名泛化扫描 (兼容 OpenRouter / Anthropic / DeepSeek 等) */
 export function extractReasoning(msg) {
   if (!msg || typeof msg !== 'object') return '';
-  return msg.reasoning_content || msg.reasoningContent || msg.reasoning || '';
+  if (Array.isArray(msg.reasoning_details)) {
+    const t = msg.reasoning_details.find(d => d?.type === 'reasoning.text' && d.text);
+    if (t) return t.text;
+  }
+  for (const k of REASONING_KEYS) {
+    const v = msg[k];
+    if (typeof v === 'string' && v.trim()) return v;
+  }
+  return '';
 }
 
 /**
