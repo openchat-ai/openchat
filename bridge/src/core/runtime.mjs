@@ -101,6 +101,7 @@ class SessionEvents {
 
 import { createProvider } from 'provider-kit';
 import { persistentConfig } from './core-config.mjs';
+import { persistentStore } from '../storage/persistent-store.js';
 
 class SessionManager {
   constructor() {
@@ -124,6 +125,27 @@ class SessionManager {
     console.info(`✓ Connected to ${provider.name}`);
     return provider;
   }
+
+  getProvider(type) { return this.providers.get(type); }
+
+  listProviders() {
+    return Array.from(this.providers.entries()).map(([type, p]) => ({
+      type, name: p.name, connected: p.connected,
+    }));
+  }
+
+  createSession(providerType, model, config = {}) {
+    const provider = this.providers.get(providerType);
+    if (!provider) throw new Error(`Provider ${providerType} not connected`);
+    const sessionId = crypto.randomUUID();
+    const session = { id: sessionId, providerType, model, config, messages: [], createdAt: Date.now(), lastActivity: Date.now() };
+    persistentStore.setSession(sessionId, session);
+    return session;
+  }
+
+  getSession(sessionId) { return persistentStore.getSession(sessionId); }
+
+  listSessions() { return persistentStore.getAllSessions(); }
 }
 
 export const sessionEvents = new SessionEvents();

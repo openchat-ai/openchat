@@ -316,7 +316,7 @@ export const identityGenerator = new IdentityGenerator();
 
 // === Orchestrator ===
 
-export const OrchestratorEvents = { START: 'start', STOP: 'stop', STEP: 'step', COMPLETE: 'complete', ERROR: 'error' };
+export const OrchestratorEvents = { START: 'start', STOP: 'stop', STEP: 'step', THINKING: 'thinking', CONTENT: 'content', COMPLETE: 'complete', ERROR: 'error' };
 export const AgentEvents = OrchestratorEvents;
 
 let _injectedTools = [];
@@ -327,10 +327,42 @@ function mapActionToCommand(name, args) { return { name, args }; }
 export function injectCodingTools(tools, execFn) { _injectedTools = tools; }
 
 export class Orchestrator {
-  constructor() { this.events = []; this.handlers = new Map(); }
+  constructor(config = {}) {
+    this.events = [];
+    this.handlers = new Map();
+    this.sessionManager = config.sessionManager || null;
+    this.memoryManager = config.memoryManager || null;
+    this.maxIterations = config.maxIterations || 1;
+  }
   on(event, handler) { this.handlers.set(event, handler); }
   emit(event, data) { this.events.push({ event, data, ts: Date.now() }); const h = this.handlers.get(event); if (h) h(data); }
   async run(task, options = {}) { this.emit(OrchestratorEvents.START, { task }); return { task, success: true }; }
+
+  async processStream(sessionId, userId, message, callback, _extSm) {
+    const cb = callback || (() => {});
+    const sm = _extSm || this.sessionManager || (await import('./runtime.mjs')).sessionManager;
+    const session = sm.getSession(sessionId);
+    if (!session) throw new Error(`Session ${sessionId} not found`);
+    const provider = sm.getProvider(session.providerType);
+    if (!provider) throw new Error(`Provider ${session.providerType} not connected`);
+    const model = session.model;
+    if (!model) throw new Error(`No model for session ${sessionId}`);
+    const messages = [...(session.messages || []), { role: 'user', content: message }];
+    cb({ type: OrchestratorEvents.THINKING, iteration: 0 });
+    const result = await provider.chat(model, messages);
+    const response = result.content || '';
+    if (this.memoryManager) {
+      await this.memoryManager.addMessage(sessionId, 'user', message).catch(() => {});
+      await this.memoryManager.addMessage(sessionId, 'assistant', response).catch(() => {});
+    }
+    cb({ type: OrchestratorEvents.COMPLETE, response, iterations: 1 });
+    return response;
+  }
+
+  async process(sessionId, userId, message) {
+    const response = await this.processStream(sessionId, userId, message, null);
+    return response;
+  }
 }
 
 export const orchestrator = new Orchestrator();

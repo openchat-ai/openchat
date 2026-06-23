@@ -1823,7 +1823,7 @@ router.post('/chat', async (req, res, next) => {
     let result = '';
     await orchestrator.processStream(sid, 'mobile-user', message, (event) => {
       if (event.type === 'complete' && event.response) result = event.response;
-    });
+    }, sessionManager);
 
     // 追加 assistant 响应
     const assistNode = addChatNode(tree, result, 'assistant', userNode.id);
@@ -1893,7 +1893,7 @@ router.post('/chat/debug', async (req, res, next) => {
         const payload = { ...event, ts: Date.now() };
         res.write(`data: ${JSON.stringify(payload)}\n\n`);
       } catch (e) { console.error('[C0]', e); }
-    });
+    }, sessionManager);
 
     res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
     res.end();

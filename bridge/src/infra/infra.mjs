@@ -203,7 +203,7 @@ export function createHandlers(bridge, CONFIG, crypto) {
               sendEvent('error', { message: event.error || event.message });
               break;
           }
-        });
+        }, sessionManager);
 
         res.end();
       } catch (e) {
@@ -540,7 +540,7 @@ export function createHandlers(bridge, CONFIG, crypto) {
               ws.send(JSON.stringify({ type: 'chat_response', data: { content: fullContent, sessionId }, sessionId }));
               break;
           }
-        });
+        }, sessionManager);
       } catch (e) {
         ws.send(JSON.stringify({ type: 'error', data: { message: e.message }, sessionId }));
       }

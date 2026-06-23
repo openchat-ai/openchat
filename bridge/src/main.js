@@ -546,7 +546,7 @@ export class Bridge {
       } catch (e) {
         // WS closed
       }
-    });
+    }, sessionManager);
 
     ws.send(JSON.stringify({ type: 'done', data: {}, sessionId }));
   }
