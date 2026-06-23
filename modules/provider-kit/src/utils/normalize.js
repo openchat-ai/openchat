@@ -105,20 +105,34 @@ function trimDelimTail(s) {
   return s.slice(0, i).trimEnd();
 }
 
-const REASONING_KEYS = [
-  'reasoning', 'reasoning_content', 'reasoningContent',
-  'thinking', 'thought', 'chainOfThought', 'chain_of_thought',
-  'cot', 'analysis', 'inner_monologue', 'innerMonologue',
-  'reflexion', 'reflection', 'scratchpad', 'plan',
-];
-
-/** ② 提取思考内容 — 跨 provider 字段名泛化扫描 (兼容 OpenRouter / Anthropic / DeepSeek 等) */
+/** ② 提取思考内容 — 跨 provider 字段名泛化扫描 (兼容 OpenRouter / Anthropic / DeepSeek / Gemini / Mistral 等) */
 export function extractReasoning(msg) {
   if (!msg || typeof msg !== 'object') return '';
-  if (Array.isArray(msg.reasoning_details)) {
-    const t = msg.reasoning_details.find(d => d?.type === 'reasoning.text' && d.text);
-    if (t) return t.text;
+  for (const arr of [msg.reasoning_details, msg.reasoningDetails]) {
+    if (Array.isArray(arr) && arr.length) {
+      const parts = [];
+      for (const item of arr) {
+        if (typeof item === 'string') { parts.push(item); continue; }
+        if (!item || typeof item !== 'object') continue;
+        if (typeof item.text === 'string') parts.push(item.text);
+        else if (typeof item.reasoning === 'string') parts.push(item.reasoning);
+        else if (typeof item.thinking === 'string') parts.push(item.thinking);
+      }
+      if (parts.length) return parts.join('\n');
+    }
   }
+  const REASONING_KEYS = [
+    'reasoning_text', 'summary_text',
+    'reasoning_content', 'reasoningContent',
+    'reasoning',
+    'thinking', 'thinking_text', 'thinking_content',
+    'thoughts', 'thought',
+    'thinking_blocks', 'thinkingBlock',
+    'chainOfThought', 'chain_of_thought', 'cot',
+    'analysis', 'inner_monologue', 'innerMonologue',
+    'reflexion', 'reflection', 'scratchpad', 'plan',
+    'reasoningSummary', 'reasoning_summary', 'think',
+  ];
   for (const k of REASONING_KEYS) {
     const v = msg[k];
     if (typeof v === 'string' && v.trim()) return v;

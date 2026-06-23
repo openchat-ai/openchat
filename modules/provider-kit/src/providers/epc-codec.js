@@ -327,22 +327,95 @@ export const EPC_SUB_DB_TX_ROLLBACK = 0xAA;
  * 字段名 → EPC sub-type 对应表
  * 跨 provider 泛化: 同语义不同命名都映射到同一 sub-type
  * 优先级: 数组中靠前的字段优先匹配
+ *
+ * 覆盖: OpenAI Chat+Responses / Anthropic / DeepSeek / OpenRouter / Qwen /
+ *       Moonshot / GLM / Gemini / Grok / Mistral / Perplexity / Cohere /
+ *       Together / Fireworks / HuggingFace / Ollama / 任何 OpenAI-compatible
  */
 export const LLM_FIELD_MAP = {
-  [EPC_SUB_CONTENT]:     ['content', 'text', 'message', 'output_text', 'response', 'output', 'answer', 'reply', 'completion', 'delta', 'generated_text', 'result'],
-  [EPC_SUB_THINKING]:    ['reasoning', 'reasoning_content', 'reasoningContent', 'thinking', 'thought', 'chainOfThought', 'chain_of_thought', 'cot', 'analysis', 'inner_monologue', 'innerMonologue', 'reflexion', 'reflection', 'scratchpad', 'plan', 'reasoning_text'],
-  [EPC_SUB_TOOL_CALL]:   ['tool_calls', 'toolCalls', 'function_call', 'functionCall', 'tool_use', 'toolUse', 'actions', 'invocations'],
-  [EPC_SUB_TOOL_RESULT]: ['tool_results', 'toolResults', 'function_results', 'functionResults', 'tool_result', 'toolResult'],
-  [EPC_SUB_ERROR]:       ['error', 'error_message', 'errorMessage', 'err', 'refusal'],
-  [EPC_SUB_META]:        ['meta', 'metadata', 'usage', 'usage_metadata', 'usageMetadata', 'model', 'model_name', 'modelName', 'id', 'finish_reason', 'finishReason', 'stop_reason', 'stopReason', 'created', 'system_fingerprint', 'object'],
+  [EPC_SUB_CONTENT]:     ['content', 'text', 'message', 'output_text', 'response', 'output', 'answer', 'reply', 'completion', 'delta', 'generated_text', 'result', 'choices_delta_text', 'final_answer', 'answer_text', 'response_text', 'generation'],
+
+  [EPC_SUB_THINKING]:    [
+    // OpenAI Responses API
+    'reasoning_text', 'summary_text',
+    // DeepSeek / Qwen / Moonshot / GLM / 多数国产
+    'reasoning_content', 'reasoningContent',
+    // OpenRouter / Cohere / Perplexity / Together / Fireworks
+    'reasoning',
+    // Anthropic Extended Thinking
+    'thinking', 'thinking_text', 'thinking_content',
+    // Gemini (parts[].thought=true 时的 text)
+    'thoughts', 'thought',
+    // Mistral reasoning mode
+    'thinking_blocks', 'thinkingBlock',
+    // 通用 / 内部命名
+    'chainOfThought', 'chain_of_thought', 'cot',
+    'analysis', 'inner_monologue', 'innerMonologue',
+    'reflexion', 'reflection', 'scratchpad', 'plan',
+    'reasoningSummary', 'reasoning_summary', 'think',
+  ],
+
+  [EPC_SUB_TOOL_CALL]:   [
+    'tool_calls', 'toolCalls', 'function_call', 'functionCall',
+    'tool_use', 'toolUse', 'actions', 'invocations',
+    'function_calls', 'functionCalls', 'tools',
+  ],
+
+  [EPC_SUB_TOOL_RESULT]: [
+    'tool_results', 'toolResults', 'function_results', 'functionResults',
+    'tool_result', 'toolResult', 'function_result', 'functionResult',
+    'tool_outputs', 'toolOutputs',
+  ],
+
+  [EPC_SUB_ERROR]:       [
+    'error', 'error_message', 'errorMessage', 'err', 'refusal',
+    'error_info', 'errorInfo', 'fail_reason', 'failReason',
+  ],
+
+  [EPC_SUB_META]:        [
+    'meta', 'metadata', 'usage', 'usage_metadata', 'usageMetadata',
+    'token_usage', 'tokenUsage',
+    'model', 'model_name', 'modelName', 'model_id', 'modelId',
+    'id', 'request_id', 'requestId',
+    'finish_reason', 'finishReason', 'stop_reason', 'stopReason',
+    'created', 'created_at', 'createdAt',
+    'system_fingerprint', 'systemFingerprint',
+    'object', 'object_type', 'objectType',
+    'provider_metadata', 'providerMetadata',
+    'citations', 'annotations', 'sources', 'search_results',
+    'grounding_metadata', 'groundingMetadata',
+    'itemId', 'item_id', 'responseId', 'response_id',
+    'phase', 'service_tier', 'serviceTier',
+  ],
 };
 
 export const MEDIA_FIELD_MAP = {
-  [EPC_SUB_LMDN]:  ['audio', 'audio_content', 'audioContent', 'lmdn', 'lmdn_audio', 'speech'],
-  [EPC_SUB_OPUS]:  ['opus', 'opus_data', 'opusData'],
-  [EPC_SUB_PCM]:   ['pcm', 'pcm_data', 'pcmData', 'samples', 'audio_pcm'],
-  [EPC_SUB_VAD]:   ['vad', 'voice_activity', 'voiceActivity'],
+  [EPC_SUB_LMDN]:  ['audio', 'audio_content', 'audioContent', 'lmdn', 'lmdn_audio', 'speech', 'audio_data', 'audioData', 'audio_url', 'audioUrl', 'tts_audio', 'ttsAudio'],
+  [EPC_SUB_OPUS]:  ['opus', 'opus_data', 'opusData', 'opus_audio', 'opusAudio'],
+  [EPC_SUB_PCM]:   ['pcm', 'pcm_data', 'pcmData', 'samples', 'audio_pcm', 'audioSamples', 'wav', 'wav_data', 'wavData'],
+  [EPC_SUB_VAD]:   ['vad', 'voice_activity', 'voiceActivity', 'vad_result', 'vadResult'],
 };
+
+/** 思考详情数组处理 — OpenRouter / OpenAI Responses 风格 */
+const REASONING_DETAIL_KEYS = ['reasoning_details', 'reasoningDetails'];
+
+function extractReasoningDetails(msg) {
+  if (!msg || typeof msg !== 'object') return '';
+  for (const k of REASONING_DETAIL_KEYS) {
+    const arr = msg[k];
+    if (!Array.isArray(arr) || arr.length === 0) continue;
+    const parts = [];
+    for (const item of arr) {
+      if (typeof item === 'string') { parts.push(item); continue; }
+      if (!item || typeof item !== 'object') continue;
+      if (typeof item.text === 'string') parts.push(item.text);
+      else if (typeof item.reasoning === 'string') parts.push(item.reasoning);
+      else if (typeof item.thinking === 'string') parts.push(item.thinking);
+    }
+    if (parts.length) return parts.join('\n');
+  }
+  return '';
+}
 
 /** 从 raw message 提取所有 EPC 帧 payload (跨 sub-type 泛化扫描) */
 export function extractAllEpcPayload(msg) {
@@ -360,9 +433,9 @@ export function extractAllEpcPayload(msg) {
     }
   };
   for (const [sub, names] of Object.entries(LLM_FIELD_MAP)) tryField(Number(sub), names);
-  if (Array.isArray(msg.reasoning_details)) {
-    const t = msg.reasoning_details.find(d => d?.type === 'reasoning.text' && d.text);
-    if (t && !out[EPC_SUB_THINKING]) out[EPC_SUB_THINKING] = t.text;
+  if (!out[EPC_SUB_THINKING]) {
+    const r = extractReasoningDetails(msg);
+    if (r) out[EPC_SUB_THINKING] = r;
   }
   for (const [sub, names] of Object.entries(MEDIA_FIELD_MAP)) tryField(Number(sub), names);
   return out;
