@@ -1847,20 +1847,38 @@ router.post('/chat/stream', async (req, res, next) => {
     const { message, sessionId } = req.body;
     if (!message) return res.status(400).json({ error: 'MESSAGE_REQUIRED' });
 
-    if (bridgeRef?._handleChatStreamViaSSE) {
-      bridgeRef._handleChatStreamViaSSE(req, res);
-    } else {
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
-      res.write(`data: ${JSON.stringify({ type: 'session', sessionId: sessionId || `session_${Date.now()}` })}\n\n`);
-      setTimeout(() => {
-        res.write(`data: ${JSON.stringify({ type: 'chunk', content: `Response to: ${message}` })}\n\n`);
-        res.write(`data: ${JSON.stringify({ type: 'done', content: 'Response complete' })}\n\n`);
-        res.end();
-      }, 500);
+    const providerName = persistentConfig.getCurrentProvider();
+    const apiKey = persistentConfig.getApiKey(providerName);
+    const model = persistentConfig.getPreference('currentModel');
+    if (!providerName || !apiKey) return res.status(400).json({ error: 'NO_API_KEY' });
+    if (!sessionManager.getProvider(providerName)) await sessionManager.addProvider(providerName, apiKey);
+
+    let sid = sessionId;
+    if (!sid || !sessionManager.getSession(sid)) {
+      const created = await sessionManager.createSession(providerName, model);
+      sid = created.id;
     }
-  } catch (e) { next(e); }
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.write(`data: ${JSON.stringify({ type: 'session', sessionId: sid })}\n\n`);
+
+    const { orchestrator } = await import('../../core/agent/orchestrator.mjs');
+    let fullContent = '';
+    await orchestrator.processStream(sid, 'mobile-user', message, (event) => {
+      try {
+        if (event.type === 'content') fullContent += event.content;
+        const payload = { ...event, ts: Date.now() };
+        res.write(`data: ${JSON.stringify(payload)}\n\n`);
+      } catch (e) { console.error('[C0]', e); }
+    }, sessionManager);
+
+    res.write(`data: ${JSON.stringify({ type: 'done', content: fullContent })}\n\n`);
+    res.end();
+  } catch (e) {
+    try { res.write(`data: ${JSON.stringify({ type: 'error', error: e.message })}\n\n`); res.end(); } catch (e) { console.error('[C0]', e); }
+  }
 });
 
 // 5.5 Agent 内部 debug 流（SSE，带 think/tool_call 事件）
