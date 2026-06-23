@@ -35,7 +35,7 @@ export async function autoDetect() {
       if (result.available) {
         detected.push({ name: tool.name, type: tool.type, command: tool.cmd, detected: result.version, ready: true });
       }
-    } catch (e) {}
+    } catch (e) { console.warn('[cli-providers] detect failed:', e.message); }
   }
   if (detected.length === 0) {
     const additionalTools = await scanNpmGlobal();

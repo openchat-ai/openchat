@@ -124,7 +124,7 @@ class SandboxManager {
     const exec = this.executions.get(executionId);
     if (!exec) return;
     const { rm } = await import('fs/promises');
-    try { await rm(exec.path, { recursive: true, force: true }); } catch (e) {}
+    try { await rm(exec.path, { recursive: true, force: true }); } catch (e) { console.warn('[security] cleanup failed:', e.message); }
     this.executions.delete(executionId);
   }
 }

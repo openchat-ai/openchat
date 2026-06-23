@@ -186,7 +186,7 @@ export class ResponseParser {
   registerParser(name, parser) { this._parsers.set(name, parser); }
   parse(data, provider = 'generic') {
     let name = provider;
-    try { const config = providerService.getProviderConfig?.(provider); if (config?.transport === 'openai_chat') name = 'openai'; } catch (e) {}
+    try { const config = providerService.getProviderConfig?.(provider); if (config?.transport === 'openai_chat') name = 'openai'; } catch (e) { console.warn('[quality] getProviderConfig failed:', e.message); }
     const parser = this._parsers.get(name) || this._parsers.get('generic');
     const result = parser(data);
     return result ? { success: true, ...result, raw: data } : { success: false, type: 'parse_error', content: 'Failed', raw: data };

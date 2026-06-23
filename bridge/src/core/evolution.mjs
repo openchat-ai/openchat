@@ -167,8 +167,8 @@ export class SelfEvolution {
   }
 
   save() {
-    try { writeFileSync(STRATEGY_STATS_FILE, JSON.stringify(Object.fromEntries(this.strategies), null, 2), 'utf8'); } catch (e) {}
-    try { writeFileSync(PROMPT_VERSIONS_FILE, JSON.stringify(Object.fromEntries(this.promptVersions), null, 2), 'utf8'); } catch (e) {}
+    try { writeFileSync(STRATEGY_STATS_FILE, JSON.stringify(Object.fromEntries(this.strategies), null, 2), 'utf8'); } catch (e) { console.warn('[evolution] save strategies failed:', e.message); }
+    try { writeFileSync(PROMPT_VERSIONS_FILE, JSON.stringify(Object.fromEntries(this.promptVersions), null, 2), 'utf8'); } catch (e) { console.warn('[evolution] save promptVersions failed:', e.message); }
   }
 
   recordStrategy(name, result) { const cur = this.strategies.get(name) || { wins: 0, losses: 0 }; if (result.success) cur.wins++; else cur.losses++; this.strategies.set(name, cur); this.save(); }

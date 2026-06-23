@@ -108,7 +108,7 @@ class HttpBackend {
           const list = Array.isArray(body) ? body : (body.peers || []);
           if (list.length > 0) return list;
         }
-      } catch (e) {}
+      } catch (e) { console.warn('[p2p] http discover failed:', e.message); }
     }
     return [];
   }
@@ -127,7 +127,7 @@ class PeerRegistry {
       try {
         const peers = await backend.discover();
         if (Array.isArray(peers) && peers.length > 0) return peers;
-      } catch (e) {}
+      } catch (e) { console.warn('[p2p] backend discover failed:', e.message); }
     }
     return [];
   }
