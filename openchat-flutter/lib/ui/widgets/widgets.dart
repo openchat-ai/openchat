@@ -1,9 +1,10 @@
 ﻿import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:openchat_flutter/core/models/agent_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../core/api/base_client.dart';
 import '../../core/api/qiniu_direct_client.dart';
 import '../../core/sdui_config.dart';

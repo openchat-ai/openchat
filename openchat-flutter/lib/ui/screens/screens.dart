@@ -13,18 +13,18 @@ import 'package:sdui_engine/sdui_engine.dart' show SduiParser;
 
 import '../../core/api/base_client.dart';
 import '../../core/api/qiniu_direct_client.dart';
-import '../../core/protocol/epc.dart';
 import '../../core/audio/audio.dart';
 import '../../core/models/agent_model.dart';
 import '../../core/models/resident_model.dart';
+import '../../core/protocol/epc.dart';
 import '../../core/sdui_config.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/client_providers.dart';
-import '../widgets/widgets.dart';
 import '../components/resident/resident.dart';
+import '../widgets/common/animated_dots.dart';
+import '../widgets/widgets.dart';
 
 import 'screens_voice.dart';
-import '../widgets/common/animated_dots.dart';
 
 // =============================================================================
 // agent_hub_widgets.dart
