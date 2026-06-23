@@ -411,6 +411,19 @@ class ChatScreen extends ConsumerStatefulWidget {
 }
 
 class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, WidgetsBindingObserver {
+  static const _reasoningKeys = [
+    'reasoning', 'reasoning_content', 'reasoningContent',
+    'thinking', 'thought', 'chainOfThought', 'chain_of_thought',
+    'cot', 'analysis', 'inner_monologue', 'innerMonologue',
+    'reflexion', 'reflection', 'scratchpad', 'plan',
+  ];
+  static String? pickReasoning(Map<String, dynamic> json) {
+    for (final k in _reasoningKeys) {
+      final v = json[k];
+      if (v is String && v.trim().isNotEmpty) return v;
+    }
+    return null;
+  }
   final TextEditingController _controller = TextEditingController();
   final List<Map<String, dynamic>> _messages = [];
   final ScrollController _scrollController = ScrollController();
@@ -537,7 +550,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
         if (mounted) {
           final isError = json.containsKey('error');
           final hash = (json['meta'] is Map ? json['meta'] as Map : {})['hash'] as String?;
-          final reasoning = json['reasoning'] as String?;
+          final reasoning = pickReasoning(json);
           setState(() {
             _isWaiting = false;
             _messages.add({
