@@ -21,6 +21,10 @@ export {
 export {
   encodeEpcFrame,
   epcFromResponse,
+  epcFromMessage,
+  extractAllEpcPayload,
+  LLM_FIELD_MAP,
+  MEDIA_FIELD_MAP,
   parseEpcPayload,
   scanNextFrame,
   verifyFrameCs,

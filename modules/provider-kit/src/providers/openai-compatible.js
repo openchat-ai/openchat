@@ -136,7 +136,7 @@ export class OpenAICompatibleProvider {
     return {
       content,
       toolCalls,
-      epc: epcFromResponse({ content, reasoningContent, toolCalls }),
+      epc: epcFromMessage(msg),
       raw: data,
     };
   }

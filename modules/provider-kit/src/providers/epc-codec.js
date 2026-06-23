@@ -323,6 +323,51 @@ export const EPC_SUB_DB_TX_ROLLBACK = 0xAA;
 
 // =================== 编码辅助 ===================
 
+/**
+ * 字段名 → EPC sub-type 对应表
+ * 跨 provider 泛化: 同语义不同命名都映射到同一 sub-type
+ * 优先级: 数组中靠前的字段优先匹配
+ */
+export const LLM_FIELD_MAP = {
+  [EPC_SUB_CONTENT]:     ['content', 'text', 'message', 'output_text', 'response', 'output', 'answer', 'reply', 'completion', 'delta', 'generated_text', 'result'],
+  [EPC_SUB_THINKING]:    ['reasoning', 'reasoning_content', 'reasoningContent', 'thinking', 'thought', 'chainOfThought', 'chain_of_thought', 'cot', 'analysis', 'inner_monologue', 'innerMonologue', 'reflexion', 'reflection', 'scratchpad', 'plan', 'reasoning_text'],
+  [EPC_SUB_TOOL_CALL]:   ['tool_calls', 'toolCalls', 'function_call', 'functionCall', 'tool_use', 'toolUse', 'actions', 'invocations'],
+  [EPC_SUB_TOOL_RESULT]: ['tool_results', 'toolResults', 'function_results', 'functionResults', 'tool_result', 'toolResult'],
+  [EPC_SUB_ERROR]:       ['error', 'error_message', 'errorMessage', 'err', 'refusal'],
+  [EPC_SUB_META]:        ['meta', 'metadata', 'usage', 'usage_metadata', 'usageMetadata', 'model', 'model_name', 'modelName', 'id', 'finish_reason', 'finishReason', 'stop_reason', 'stopReason', 'created', 'system_fingerprint', 'object'],
+};
+
+export const MEDIA_FIELD_MAP = {
+  [EPC_SUB_LMDN]:  ['audio', 'audio_content', 'audioContent', 'lmdn', 'lmdn_audio', 'speech'],
+  [EPC_SUB_OPUS]:  ['opus', 'opus_data', 'opusData'],
+  [EPC_SUB_PCM]:   ['pcm', 'pcm_data', 'pcmData', 'samples', 'audio_pcm'],
+  [EPC_SUB_VAD]:   ['vad', 'voice_activity', 'voiceActivity'],
+};
+
+/** 从 raw message 提取所有 EPC 帧 payload (跨 sub-type 泛化扫描) */
+export function extractAllEpcPayload(msg) {
+  if (!msg || typeof msg !== 'object') return {};
+  const out = {};
+  const tryField = (sub, names) => {
+    if (out[sub]) return;
+    for (const k of names) {
+      const v = msg[k];
+      if (v === undefined || v === null) continue;
+      if (typeof v === 'string' && !v.trim()) continue;
+      if (Array.isArray(v) && v.length === 0) continue;
+      out[sub] = v;
+      return;
+    }
+  };
+  for (const [sub, names] of Object.entries(LLM_FIELD_MAP)) tryField(Number(sub), names);
+  if (Array.isArray(msg.reasoning_details)) {
+    const t = msg.reasoning_details.find(d => d?.type === 'reasoning.text' && d.text);
+    if (t && !out[EPC_SUB_THINKING]) out[EPC_SUB_THINKING] = t.text;
+  }
+  for (const [sub, names] of Object.entries(MEDIA_FIELD_MAP)) tryField(Number(sub), names);
+  return out;
+}
+
 export function epcFromResponse({ content, reasoningContent, toolCalls }) {
   const frames = [];
   if (content) frames.push(encodeEpcFrame(EPC_TYPE_LLM, EPC_SUB_CONTENT, content));
@@ -330,6 +375,32 @@ export function epcFromResponse({ content, reasoningContent, toolCalls }) {
   if (toolCalls?.length) {
     const json = JSON.stringify(toolCalls.map(t => ({ i: t.id, n: t.name, a: t.arguments })));
     frames.push(encodeEpcFrame(EPC_TYPE_LLM, EPC_SUB_TOOL_CALL, json));
+  }
+  if (frames.length === 0) {
+    frames.push(encodeEpcFrame(EPC_TYPE_LLM, EPC_SUB_CONTENT, ''));
+  }
+  return Buffer.concat(frames);
+}
+
+/** 从 raw message 构造完整 EPC buffer (跨 sub-type 泛化) */
+export function epcFromMessage(msg) {
+  const all = extractAllEpcPayload(msg);
+  const frames = [];
+  for (const [sub, value] of Object.entries(all)) {
+    const s = Number(sub);
+    if (s === EPC_SUB_TOOL_CALL || s === EPC_SUB_TOOL_RESULT) {
+      if (!Array.isArray(value) || value.length === 0) continue;
+      const json = JSON.stringify(value);
+      frames.push(encodeEpcFrame(EPC_TYPE_LLM, s, json));
+    } else if (s === EPC_SUB_META || s === EPC_SUB_ERROR) {
+      if (typeof value === 'object') {
+        frames.push(encodeEpcFrame(EPC_TYPE_LLM, s, JSON.stringify(value)));
+      } else {
+        frames.push(encodeEpcFrame(EPC_TYPE_LLM, s, String(value)));
+      }
+    } else {
+      frames.push(encodeEpcFrame(EPC_TYPE_LLM, s, String(value)));
+    }
   }
   if (frames.length === 0) {
     frames.push(encodeEpcFrame(EPC_TYPE_LLM, EPC_SUB_CONTENT, ''));
