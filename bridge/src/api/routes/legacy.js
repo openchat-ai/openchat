@@ -132,10 +132,10 @@ router.get('/sessions/stream', (req, res) => {
 router.post('/direct', async (req, res, next) => {
   try {
     const { message, system } = req.body;
-    if (!message) return res.status(400).json({ error: 'MESSAGE_REQUIRED' });
+    if (!message) return res.status(400).json({ success: false, error: 'MESSAGE_REQUIRED' });
     const providerName = persistentConfig.getCurrentProvider();
     const apiKey = persistentConfig.getApiKey(providerName);
-    if (!providerName || !apiKey) return res.status(400).json({ error: 'NO_API_KEY' });
+    if (!providerName || !apiKey) return res.status(400).json({ success: false, error: 'NO_API_KEY' });
     if (!sessionManager.getProvider(providerName)) await sessionManager.addProvider(providerName, apiKey);
     const provider = sessionManager.getProvider(providerName);
     const model = persistentConfig.getPreference('currentModel') || 'openrouter/free';
@@ -143,10 +143,14 @@ router.post('/direct', async (req, res, next) => {
     if (system) msgs.push({ role: 'system', content: system });
     msgs.push({ role: 'user', content: message });
     const result = await provider.chat(model, msgs);
-    res.json({ response: result.content, model: result.model, source: 'direct' });
+    res.json({
+      success: true,
+      data: { response: result.content },
+      meta: { model: result.model || model, provider: providerName, source: 'direct' }
+    });
   } catch (e) {
     console.error('[direct] error:', e.message);
-    if (!res.headersSent) res.status(500).json({ error: e.message });
+    if (!res.headersSent) res.status(500).json({ success: false, error: e.message });
   }
 });
 
@@ -882,12 +886,12 @@ function addChatNode(tree, content, role, parentId) {
 router.post('/chat', async (req, res, next) => {
   try {
     const { message, sessionId } = req.body;
-    if (!message) return res.status(400).json({ error: 'MESSAGE_REQUIRED' });
+    if (!message) return res.status(400).json({ success: false, error: 'MESSAGE_REQUIRED' });
 
     const providerName = persistentConfig.getCurrentProvider();
     const apiKey = persistentConfig.getApiKey(providerName);
     const model = persistentConfig.getPreference('currentModel');
-    if (!providerName || !apiKey) return res.status(400).json({ error: 'NO_API_KEY' });
+    if (!providerName || !apiKey) return res.status(400).json({ success: false, error: 'NO_API_KEY' });
 
     if (!sessionManager.getProvider(providerName)) {
       await sessionManager.addProvider(providerName, apiKey);
@@ -899,32 +903,20 @@ router.post('/chat', async (req, res, next) => {
       sid = created.id;
     }
 
-    // 树结构存储：获取当前 chat 的树，追加用户消息
-    const tree = initChatTree(sid);
-    const path = getChatTreePath(tree);
-    const parentId = path.length > 0 ? path[path.length - 1].id : null;
-    const userNode = addChatNode(tree, message, 'user', parentId);
-
     const { orchestrator } = await import('../../core/agent/orchestrator.mjs');
-    // 用 processStream 自动发布到 sessionEvents 总线（其他端可以观察）
     let result = '';
     await orchestrator.processStream(sid, 'mobile-user', message, (event) => {
       if (event.type === 'complete' && event.response) result = event.response;
     }, sessionManager);
 
-    // 追加 assistant 响应
-    const assistNode = addChatNode(tree, result, 'assistant', userNode.id);
-    const newPath = getChatTreePath(tree);
-
     res.json({
-      response: result,
-      sessionId: sid,
-      tree: newPath,
-      source: 'chat'
+      success: true,
+      data: { response: result, sessionId: sid },
+      meta: { model, provider: providerName, source: 'chat' }
     });
   } catch (e) {
     console.error('[chat] error:', e.message);
-    next(e);
+    if (!res.headersSent) res.status(500).json({ success: false, error: e.message });
   }
 });
 
@@ -949,7 +941,7 @@ router.post('/chat/stream', async (req, res, next) => {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
-    res.write(`data: ${JSON.stringify({ type: 'session', sessionId: sid })}\n\n`);
+    res.write(`data: ${JSON.stringify({ type: 'session', sessionId: sid, ts: Date.now() })}\n\n`);
 
     const { orchestrator } = await import('../../core/agent/orchestrator.mjs');
     let fullContent = '';
@@ -961,10 +953,10 @@ router.post('/chat/stream', async (req, res, next) => {
       } catch (e) { console.error('[C0]', e); }
     }, sessionManager);
 
-    res.write(`data: ${JSON.stringify({ type: 'done', content: fullContent })}\n\n`);
+    res.write(`data: ${JSON.stringify({ type: 'done', content: fullContent, ts: Date.now() })}\n\n`);
     res.end();
   } catch (e) {
-    try { res.write(`data: ${JSON.stringify({ type: 'error', error: e.message })}\n\n`); res.end(); } catch (e) { console.error('[C0]', e); }
+    try { res.write(`data: ${JSON.stringify({ type: 'error', error: e.message, ts: Date.now() })}\n\n`); res.end(); } catch (e) { console.error('[C0]', e); }
   }
 });
 
@@ -972,12 +964,12 @@ router.post('/chat/stream', async (req, res, next) => {
 router.post('/chat/debug', async (req, res, next) => {
   try {
     const { message, sessionId } = req.body;
-    if (!message) return res.status(400).json({ error: 'MESSAGE_REQUIRED' });
+    if (!message) return res.status(400).json({ success: false, error: 'MESSAGE_REQUIRED' });
 
     const providerName = persistentConfig.getCurrentProvider();
     const apiKey = persistentConfig.getApiKey(providerName);
     const model = persistentConfig.getPreference('currentModel');
-    if (!providerName || !apiKey) return res.status(400).json({ error: 'NO_API_KEY' });
+    if (!providerName || !apiKey) return res.status(400).json({ success: false, error: 'NO_API_KEY' });
     if (!sessionManager.getProvider(providerName)) await sessionManager.addProvider(providerName, apiKey);
 
     let sid = sessionId;
@@ -989,9 +981,9 @@ router.post('/chat/debug', async (req, res, next) => {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
-    res.write(`data: ${JSON.stringify({ type: 'session', sessionId: sid })}\n\n`);
+    res.write(`data: ${JSON.stringify({ type: 'session', sessionId: sid, ts: Date.now() })}\n\n`);
 
-    const { orchestrator, AgentEvents } = await import('../../core/agent/orchestrator.mjs');
+    const { orchestrator } = await import('../../core/agent/orchestrator.mjs');
 
     await orchestrator.processStream(sid, 'mobile-user', message, (event) => {
       try {
@@ -1000,10 +992,10 @@ router.post('/chat/debug', async (req, res, next) => {
       } catch (e) { console.error('[C0]', e); }
     }, sessionManager);
 
-    res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+    res.write(`data: ${JSON.stringify({ type: 'done', ts: Date.now() })}\n\n`);
     res.end();
   } catch (e) {
-    try { res.write(`data: ${JSON.stringify({ type: 'error', error: e.message })}\n\n`); res.end(); } catch (e) { console.error('[C0]', e); }
+    try { res.write(`data: ${JSON.stringify({ type: 'error', error: e.message, ts: Date.now() })}\n\n`); res.end(); } catch (e) { console.error('[C0]', e); }
   }
 });
 
