@@ -15,6 +15,7 @@ import '../../core/api/base_client.dart';
 import '../../core/api/qiniu_direct_client.dart';
 import '../../core/audio/audio.dart';
 import '../../core/models/agent_model.dart';
+import '../../core/models/chat_message.dart';
 import '../../core/models/resident_model.dart';
 import '../../core/protocol/epc.dart';
 import '../../core/sdui_config.dart';
@@ -414,7 +415,7 @@ class ChatScreen extends ConsumerStatefulWidget {
 
 class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, WidgetsBindingObserver {
   final TextEditingController _controller = TextEditingController();
-  final List<Map<String, dynamic>> _messages = [];
+  final List<ChatMessage> _messages = [];
   final ScrollController _scrollController = ScrollController();
   final _recorder = ChatVoiceRecorder();
   final _player = ChatVoicePlayer();
@@ -439,7 +440,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _startupTs = DateTime.now().millisecondsSinceEpoch;
-    _messages.add({'sender': 'ai', 'type': 'text', 'text': 'Hello! How can I help you?', 'time': '10:00'});
+    _messages.add(ChatMessage(sender: MessageSender.ai, type: MessageType.text, text: 'Hello! How can I help you?', time: '10:00', ts: DateTime.now().millisecondsSinceEpoch));
     _player.onStateChange = (key, durMs) {
       if (!mounted) return;
       setState(() {
@@ -540,15 +541,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
           final hash = meta is Map ? meta['hash'] as String? : null;
           setState(() {
             _isWaiting = false;
-            _messages.add({
-              'sender': 'ai', 'type': 'text', 'text': text,
-              'time': DateTime.now().toString().substring(11, 16),
-              'ts': DateTime.now().millisecondsSinceEpoch,
-              '_new': true,
-              if (isError) 'isError': true,
-              if (hash != null) 'hash': hash,
-              if (reasoning.isNotEmpty) 'reasoning': reasoning,
-            });
+            _messages.add(ChatMessage(
+              sender: MessageSender.ai,
+              type: MessageType.text,
+              text: text,
+              time: DateTime.now().toString().substring(11, 16),
+              ts: DateTime.now().millisecondsSinceEpoch,
+              isNew: true,
+              isError: isError,
+              hash: hash,
+              reasoning: reasoning.isNotEmpty ? reasoning : null,
+            ));
           });
           _scrollBottom();
         }
@@ -575,9 +578,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
     final text = _controller.text.trim();
     if (text.isEmpty) return;
     setState(() {
-      _messages.add({'sender': 'me', 'type': 'text', 'text': text,
-        'time': DateTime.now().toString().substring(11, 16),
-        'ts': DateTime.now().millisecondsSinceEpoch, '_new': true});
+      _messages.add(ChatMessage(
+        sender: MessageSender.me,
+        type: MessageType.text,
+        text: text,
+        time: DateTime.now().toString().substring(11, 16),
+        ts: DateTime.now().millisecondsSinceEpoch,
+        isNew: true,
+      ));
       _isWaiting = true;
     });
     _controller.clear();
@@ -615,8 +623,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
     if (key != null) {
       log('[C12] uploaded $key, polling for reply...');
       if (mounted) setState(() {
-        _messages.add({'sender': 'me', 'type': 'voice', 'key': key,
-          'time': DateTime.now().toString().substring(11, 16)});
+        _messages.add(ChatMessage(
+          sender: MessageSender.me,
+          type: MessageType.voice,
+          text: '',
+          time: DateTime.now().toString().substring(11, 16),
+          ts: DateTime.now().millisecondsSinceEpoch,
+          key: key,
+        ));
       });
       _startReplyPoll(initialDelay: 2000);
     }
@@ -769,9 +783,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
     final msgLayout = sduiLayout['messageLayout'] as Map?;
     if (msgLayout != null) {
       final msgItems = _messages.map((m) => {
-        'text': m['text'] ?? '',
-        'time': m['time'] ?? '',
-        'isMe': (m['sender'] == 'me').toString(),
+        'text': m.text,
+        'time': m.time,
+        'isMe': m.isMe.toString(),
       }).toList();
       final parser = SduiParser(onAction: null, vars: {
         'items': msgItems,
@@ -794,10 +808,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
           itemCount: _messages.length,
           itemBuilder: (context, index) {
             final m = _messages[index];
-            final key = m['key'] as String?;
-            final isNew = m['_new'] == true;
+            final key = m.key;
+            final isNew = m.isNew;
             return TweenAnimationBuilder<double>(
-              key: ValueKey('msg-${m['ts']}'),
+              key: ValueKey('msg-${m.ts}'),
               tween: Tween(begin: isNew ? 0.0 : 1.0, end: 1.0),
               duration: Duration(milliseconds: isNew ? 320 : 0),
               curve: Curves.easeOutCubic,

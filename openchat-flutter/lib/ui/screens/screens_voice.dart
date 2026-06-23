@@ -13,6 +13,7 @@ import 'package:sdui_engine/sdui_engine.dart' show SduiParser;
 
 import '../../core/api/qiniu_direct_client.dart';
 import '../../core/audio/audio.dart';
+import '../../core/models/chat_message.dart';
 import '../../core/sdui_config.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/client_providers.dart';
@@ -26,7 +27,7 @@ import '../widgets/common/markdown_text.dart';
 // =============================================================================
 
 class ChatBubble extends StatelessWidget {
-  final Map<String, dynamic> message;
+  final ChatMessage message;
   final AppTheme theme;
   final Map<String, dynamic> layout;
   final VoidCallback onPlayVoice;
@@ -45,10 +46,10 @@ class ChatBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isMe = message['sender'] == 'me';
-    final isVoice = message['type'] == 'voice';
-    final isError = message['isError'] == true;
-    final reasoning = message['reasoning'] as String?;
+    final isMe = message.isMe;
+    final isVoice = message.isVoice;
+    final isError = message.isError;
+    final reasoning = message.reasoning;
     final bc = layout['bubble'] as Map? ?? {};
     final selfColor = bc['selfColor'] as String?;
     final otherColor = bc['otherColor'] as String?;
@@ -115,12 +116,11 @@ class ChatBubble extends StatelessWidget {
                 ),
               GestureDetector(
                 onLongPress: () {
-                  final text = message['text'] as String? ?? '';
-                  if (text.isEmpty) return;
-                  Clipboard.setData(ClipboardData(text: text));
+                  if (message.text.isEmpty) return;
+                  Clipboard.setData(ClipboardData(text: message.text));
                   ScaffoldMessenger.maybeOf(context)?.showSnackBar(const SnackBar(content: Text('已复制'), duration: Duration(milliseconds: 800)));
                 },
-                child: MarkdownText(source: message['text'] ?? '', base: TextStyle(color: fg, fontSize: 14)),
+                child: MarkdownText(source: message.text, base: TextStyle(color: fg, fontSize: 14)),
               ),
             ]
             else
@@ -145,12 +145,12 @@ class ChatBubble extends StatelessWidget {
               ),
             const SizedBox(height: 6),
             Row(mainAxisSize: MainAxisSize.min, children: [
-              Text(message['time'] ?? '', style: TextStyle(color: isMe ? Colors.white.withValues(alpha: 0.75) : theme.textTertiary, fontSize: 10)),
-              if (!isMe && message['hash'] != null) ...[
+              Text(message.time, style: TextStyle(color: isMe ? Colors.white.withValues(alpha: 0.75) : theme.textTertiary, fontSize: 10)),
+              if (!isMe && message.hash != null) ...[
                 const SizedBox(width: 6),
                 Container(width: 2, height: 2, decoration: BoxDecoration(color: theme.textTertiary.withValues(alpha: 0.4), shape: BoxShape.circle)),
                 const SizedBox(width: 6),
-                Text(message['hash'] as String, style: TextStyle(color: theme.textTertiary.withValues(alpha: 0.5), fontSize: 8, fontFamily: 'monospace', letterSpacing: 0.3)),
+                Text(message.hash!, style: TextStyle(color: theme.textTertiary.withValues(alpha: 0.5), fontSize: 8, fontFamily: 'monospace', letterSpacing: 0.3)),
               ],
             ]),
           ]),
