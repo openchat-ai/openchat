@@ -136,10 +136,10 @@ export function createHandlers(bridge, CONFIG, crypto) {
 
         const { orchestrator } = await import('../core/agent/orchestrator.mjs');
         const sid = sessionId || crypto.randomUUID();
-        const result = await orchestrator.process(sid, 'api-user', message);
+        const { response, hash } = await orchestrator.process(sid, 'api-user', message);
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ response: result, sessionId: sid, source: 'agent' }));
+        res.end(JSON.stringify({ response, sessionId: sid, source: 'agent', hash }));
       } catch (e) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: e.message }));
@@ -158,7 +158,7 @@ export function createHandlers(bridge, CONFIG, crypto) {
           'Content-Type': 'text/event-stream',
           'Cache-Control': 'no-cache',
           'Connection': 'keep-alive',
-          'Access-Control-Allow-Origin': '*'
+          'Access-Control-Allow-Origin': process.env.CORS_ORIGIN || '*'
         });
 
         const sendEvent = (event, data) => {
@@ -178,6 +178,7 @@ export function createHandlers(bridge, CONFIG, crypto) {
         const { orchestrator } = await import('../core/agent/orchestrator.mjs');
 
         let fullContent = '';
+        let responseHash = '';
         await orchestrator.processStream(sid, 'default-user', message, (event) => {
           switch (event.type) {
             case 'thinking':
@@ -194,8 +195,10 @@ export function createHandlers(bridge, CONFIG, crypto) {
               sendEvent('tool_result', { tool: event.tool, result: event.result });
               break;
             case 'complete':
+              if (event.hash) responseHash = event.hash;
               sendEvent('complete', {
                 response: event.response || fullContent,
+                hash: responseHash,
                 iterations: event.iterations
               });
               break;
@@ -207,7 +210,7 @@ export function createHandlers(bridge, CONFIG, crypto) {
 
         res.end();
       } catch (e) {
-        res.write(`event: error\ndata: ${JSON.stringify({ message: e.message })}\n\n`);
+        res.write(`event: error\ndata: ${JSON.stringify({ message: 'Internal server error' })}\n\n`);
         res.end();
       }
     });
@@ -527,6 +530,7 @@ export function createHandlers(bridge, CONFIG, crypto) {
 
       try {
         let fullContent = '';
+        let responseHash = '';
         await orchestrator.processStream(session, 'ws-user', message, (event) => {
           switch (event.type) {
             case 'content':
@@ -537,7 +541,8 @@ export function createHandlers(bridge, CONFIG, crypto) {
               ws.send(JSON.stringify({ type: 'chat_thinking', data: { iteration: event.iteration }, sessionId }));
               break;
             case 'complete':
-              ws.send(JSON.stringify({ type: 'chat_response', data: { content: fullContent, sessionId }, sessionId }));
+              if (event.hash) responseHash = event.hash;
+              ws.send(JSON.stringify({ type: 'chat_response', data: { content: fullContent, hash: responseHash, sessionId }, sessionId }));
               break;
           }
         }, sessionManager);

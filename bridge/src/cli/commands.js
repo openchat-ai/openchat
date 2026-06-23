@@ -14,6 +14,15 @@ import { memoryManager, vectorStore, embeddingService, hybridRetriever } from '.
 import { persistentStore } from '../storage/persistent-store.js';
 import { createProvider, listPresetProviders } from 'provider-kit';
 
+function formatDuration(sec) {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = Math.floor(sec % 60);
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
+
 const PROVIDER_ALIASES = { or: 'openrouter', oa: 'openai', an: 'anthropic', ds: 'deepseek', gm: 'gemini' };
 
 async function fetchLocalModels(providerName) {
@@ -259,7 +268,7 @@ export const commands = {
     const pname = currentProvider ? (providerService.getProvider(currentProvider)?.nameCn || currentProvider) : null;
 
     console.log('');
-    console.log('  OPENCHAT BRIDGE v2.0');
+    console.log('  OPENCHAT BRIDGE v0.1.0');
     if (pname) {
       console.log(`  [${pname}/${currentModel || 'default'}]`);
     }
@@ -268,26 +277,36 @@ export const commands = {
     console.log('    <message>        Type anything to chat with AI');
     console.log('    chat <message>   Same as above');
     console.log('');
-    console.log('  Core commands:');
-    console.log('    m [p] [m]        Switch model (or: m, m <keyword>, m 99)');
-    console.log('    p [cmd]          Manage providers (list, add, search, presets)');
-    console.log('    connect <p> [k]  Connect to a provider');
-    console.log('    a [cmd]          Manage agents (spawn, parallel, iterate, evolve)');
-    console.log('    mem [cmd]        Memory (save, recall, search, list, stats)');
+    console.log('  Quick start:');
+    console.log('    <message>        Send message directly to AI');
     console.log('    s                System status');
     console.log('    ?                Show this help');
     console.log('');
-    console.log('  Expert commands:');
-    console.log('    cfg [cmd]        Configuration');
-    console.log('    upgrade          Sync all provider models');
-    console.log('    vector [cmd]     RAG vector operations');
-    console.log('    security [cmd]    Security settings');
-    console.log('    social [cmd]     Social network');
-    console.log('    evolution [cmd]  Evolution system');
+    console.log('  Sessions:');
+    console.log('    session list     List active sessions');
+    console.log('    session create   Create new session');
+    console.log('    session close    Close current session');
     console.log('');
-    console.log('  Keyboard shortcuts:');
-    console.log('    ↑ / ↓           Navigate command history');
-    console.log('    Ctrl+C           Cancel current input');
+    console.log('  Providers & Models:');
+    console.log('    m [p] [m]        Switch model (m, m <keyword>, m 99)');
+    console.log('    connect <p> [k]  Connect to a provider');
+    console.log('    p                Provider commands (list, add, presets)');
+    console.log('    upgrade          Sync all provider models');
+    console.log('');
+    console.log('  Memory & Agents:');
+    console.log('    mem [cmd]        Memory (save, recall, search, stats)');
+    console.log('    a [cmd]          Agents (spawn, parallel, iterate)');
+    console.log('');
+    console.log('  Expert:');
+    console.log('    cfg              Configuration');
+    console.log('    vector           RAG vector operations');
+    console.log('    security         Security settings');
+    console.log('    evolution        Evolution system');
+    console.log('    social           Social network');
+    console.log('');
+    console.log('  Shortcuts:');
+    console.log('    ↑ / ↓           History');
+    console.log('    Tab              Auto-complete');
     console.log('    Ctrl+L           Clear screen');
     console.log('    exit / q         Quit');
     console.log('');
@@ -856,14 +875,20 @@ export const commands = {
   status() {
     const providers = providerService.listProviders();
     const sessions = sessionManager.listSessions();
+    const currentProvider = persistentConfig.getPreference('currentProvider');
+    const currentModel = persistentConfig.getPreference('currentModel');
 
     console.log('');
     console.log('========================================');
     console.log('            Bridge Status');
     console.log('========================================');
-    console.log(`  Uptime:    ${Math.round(process.uptime())}s`);
-    console.log(`  Providers: ${providers.length} configured, ${providers.filter(p => p.connected).length} connected`);
-    console.log(`  Sessions:  ${sessions.length} active`);
+    console.log(`  Uptime:        ${formatDuration(process.uptime())}`);
+    console.log(`  Provider:      ${currentProvider || 'none'}`);
+    console.log(`  Model:         ${currentModel || 'none'}`);
+    console.log(`  Connected:     ${providers.filter(p => p.connected).length}/${providers.length}`);
+    console.log(`  Sessions:      ${sessions.length} active`);
+    const port = process.env.PORT || process.env.API_PORT || '3000';
+    console.log(`  API:           http://localhost:${port}`);
     console.log('');
   },
 

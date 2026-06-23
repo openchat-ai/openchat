@@ -413,7 +413,7 @@ function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'
         const testPatterns = ['latency-test', '/_test/', 'flutter_test', 'token-test', 'e2e-test', '/poll-one-test/', '/call_recordings/', '/calls/demo_', '/debug/'];
         const toDelete = items.filter(f => testPatterns.some(p => f.key.includes(p)));
         for (const f of toDelete) {
-          await qiniuSignaling.deleteObject(f.key).catch(() => {});
+          await qiniuSignaling.deleteObject(f.key).catch((e) => console.warn('[Qiniu] delete failed:', e.message));
         }
         res.json({ success: true, deleted: toDelete.length });
       } catch (e) {

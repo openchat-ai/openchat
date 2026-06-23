@@ -254,12 +254,12 @@ export class Bridge {
       if (CONFIG.localBootstrap.length > 0) p2pOpts.localBootstrap = CONFIG.localBootstrap;
       if (CONFIG.directConnect.length > 0) p2pOpts.knownPeers = CONFIG.directConnect;
       this.p2p = new P2PSwarm(p2pOpts);
-      this.p2p.start().catch(() => {});
+      this.p2p.start().catch((e) => console.debug('[P2P] start failed:', e.message));
       if (CONFIG.directListen > 0) {
         this.p2p.listenDirect(CONFIG.directListen);
       }
     } catch (p2pErr) {
-      // P2P 非必需，静默跳过
+      console.debug('[P2P] init error:', p2pErr.message);
     }
 
     // 自动构建 deploy/（静默执行，仅失败时显示错误摘要）
@@ -540,15 +540,17 @@ export class Bridge {
     ws.send(JSON.stringify({ type: 'session', data: { sessionId: sid }, sessionId }));
 
     const { orchestrator, AgentEvents } = await import('./core/agent/orchestrator.mjs');
+    let responseHash = '';
     await orchestrator.processStream(sid, 'mobile-user', message, (event) => {
       try {
+        if (event.type === 'complete' && event.hash) responseHash = event.hash;
         ws.send(JSON.stringify({ type: 'agent_event', data: { ...event, ts: Date.now() }, sessionId }));
       } catch (e) {
         // WS closed
       }
     }, sessionManager);
 
-    ws.send(JSON.stringify({ type: 'done', data: {}, sessionId }));
+    ws.send(JSON.stringify({ type: 'done', data: { hash: responseHash }, sessionId }));
   }
 
   getCompletions(line) {
@@ -559,36 +561,40 @@ export class Bridge {
     const last = parts[parts.length - 1];
     const matches = [];
 
+    const CMD_1 = ['chat', 'c', 'session', 'provider', 'connect', 'model', 'm',
+      'agent', 'a', 'mem', 'memory', 'status', 's', 'help', '?',
+      'config', 'cfg', 'upgrade', 'vector', 'vec',
+      'evolution', 'evolve', 'security', 'secure',
+      'social', 'socialize', 'new', 'clear', 'cls',
+      'exit', 'quit', 'q', 'health', 'remember', 'recall'];
+
     if (parts.length === 1) {
-      if ('session'.startsWith(last)) matches.push('session');
-      if ('provider'.startsWith(last)) matches.push('provider');
-      if ('help'.startsWith(last)) matches.push('help');
-      if ('status'.startsWith(last)) matches.push('status');
-      if ('clear'.startsWith(last)) matches.push('clear');
-      if ('exit'.startsWith(last)) matches.push('exit');
-      if ('quit'.startsWith(last)) matches.push('quit');
-      if ('chat'.startsWith(last)) matches.push('chat');
+      for (const cmd of CMD_1) {
+        if (cmd.startsWith(last)) matches.push(cmd);
+      }
       return matches;
     }
 
-    if (parts.length === 2 && parts[0] === 'session') {
-      if ('create'.startsWith(last)) matches.push('create');
-      if ('close'.startsWith(last)) matches.push('close');
-      if ('list'.startsWith(last)) matches.push('list');
-      if ('history'.startsWith(last)) matches.push('history');
-      return matches;
-    }
-
-    if (parts.length === 2 && parts[0] === 'provider') {
-      if ('add'.startsWith(last)) matches.push('add');
-      if ('remove'.startsWith(last)) matches.push('remove');
-      if ('list'.startsWith(last)) matches.push('list');
-      return matches;
-    }
-
-    if (parts.length === 3 && parts[0] === 'session' && parts[1] === 'create') {
-      if ('claude'.startsWith(last)) matches.push('claude');
-      if ('opencode'.startsWith(last)) matches.push('opencode');
+    if (parts.length === 2) {
+      const sub = {
+        session: ['create', 'close', 'list', 'history'],
+        provider: ['add', 'remove', 'list', 'presets', 'search'],
+        model: ['list', 'set'],
+        mem: ['save', 'recall', 'search', 'list', 'stats'],
+        memory: ['save', 'recall', 'search', 'list', 'stats'],
+        agent: ['spawn', 'parallel', 'iterate', 'evolve'],
+        config: ['get', 'set', 'list'],
+        cfg: ['get', 'set', 'list'],
+        evolution: ['status', 'evolve', 'history'],
+        vector: ['search', 'stats'],
+        security: ['check', 'status'],
+        social: ['status', 'connect'],
+      }[parts[0]];
+      if (sub) {
+        for (const s of sub) {
+          if (s.startsWith(last)) matches.push(s);
+        }
+      }
       return matches;
     }
 
@@ -613,7 +619,12 @@ export class Bridge {
       output: process.stdout,
       terminal: true,
       crlfDelay: Infinity,
-      prompt: this.getPromptString()
+      prompt: this.getPromptString(),
+      completer: (line) => {
+        const hits = this.getCompletions(line);
+        const partial = line.split(/\s+/).pop() || '';
+        return [hits, partial];
+      }
     });
 
     this.rl.on('line', async (line) => {
@@ -723,7 +734,7 @@ export class Bridge {
         const dna = JSON.parse(fs.readFileSync(dnaPath, 'utf8'));
         moduleCount = ` │ modules: ${dna.totalModules} │ deps: ${dna.totalDepFiles}`;
       }
-    } catch {}
+    } catch (e) { console.debug('[DNA] read error:', e.message); }
     console.debug('');
     console.debug('╔═══════════════════════════════════════════════════════════╗');
     console.debug('║                                                          ║');

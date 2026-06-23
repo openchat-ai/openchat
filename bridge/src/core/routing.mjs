@@ -76,11 +76,12 @@ export const CoreHandlers = {
   async handleChatMessage({ sessionId, data }) {
     const { message } = data;
     const userId = 'default-user';
-    const responseContent = await orchestrator.process(sessionId, userId, message);
+    const { response, hash } = await orchestrator.process(sessionId, userId, message);
     return {
       type: MessageType.CHAT_RESPONSE,
       data: {
-        content: responseContent,
+        content: response,
+        hash,
         metadata: { agent: 'hermes-core', status: 'processed' }
       },
       sessionId

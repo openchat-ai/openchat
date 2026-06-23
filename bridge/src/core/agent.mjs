@@ -6,6 +6,7 @@ import * as fs from 'fs/promises';
 import * as fsSync from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import * as crypto from 'crypto';
 import { EventEmitter } from 'events';
 import { join } from 'path';
 import { homedir } from 'os';
@@ -314,6 +315,12 @@ export class IdentityGenerator {
 
 export const identityGenerator = new IdentityGenerator();
 
+// === Content Fingerprint (hashline) ===
+
+export function hashlineHash(text) {
+  return crypto.createHash('md5').update(String(text)).digest('hex').substring(0, 8);
+}
+
 // === Orchestrator ===
 
 export const OrchestratorEvents = { START: 'start', STOP: 'stop', STEP: 'step', THINKING: 'thinking', CONTENT: 'content', COMPLETE: 'complete', ERROR: 'error' };
@@ -351,17 +358,17 @@ export class Orchestrator {
     cb({ type: OrchestratorEvents.THINKING, iteration: 0 });
     const result = await provider.chat(model, messages);
     const response = result.content || '';
+    const hash = hashlineHash(response);
     if (this.memoryManager) {
       await this.memoryManager.addMessage(sessionId, 'user', message).catch(() => {});
       await this.memoryManager.addMessage(sessionId, 'assistant', response).catch(() => {});
     }
-    cb({ type: OrchestratorEvents.COMPLETE, response, iterations: 1 });
-    return response;
+    cb({ type: OrchestratorEvents.COMPLETE, response, hash, iterations: 1 });
+    return { response, hash };
   }
 
   async process(sessionId, userId, message) {
-    const response = await this.processStream(sessionId, userId, message, null);
-    return response;
+    return await this.processStream(sessionId, userId, message, null);
   }
 }
 

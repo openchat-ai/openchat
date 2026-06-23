@@ -12,6 +12,7 @@ import { memoryManager } from '../../memory/memory-manager.js';
 import { pluginManager } from '../../core/core-config.mjs';
 import { getActiveProvider, callLLM } from './lib/llm.js';
 import { extractFiles, extractHashlines, applyHashlineEdit } from './lib/file-format.js';
+import { guardPath } from './lib/path-guard.js';
 import { PROMPTS, buildMessages } from './lib/prompts.js';
 import { ensureProject, writeWithGit, describeProject, scanProjectFiles, getProjectPath } from './lib/workspace.js';
 
@@ -150,7 +151,7 @@ router.post('/direct', async (req, res, next) => {
     });
   } catch (e) {
     console.error('[direct] error:', e.message);
-    if (!res.headersSent) res.status(500).json({ success: false, error: e.message });
+    if (!res.headersSent) res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -204,14 +205,14 @@ router.post('/probe', async (req, res, next) => {
         if (c.includes('ACTION:') || c.includes('<tool_call>')) tests[tests.length-1].is_action = true;
         if (c.includes('FINAL:')) tests[tests.length-1].is_final = true;
       } catch (e) {
-        tests.push({ name: tc.name, prompt: tc.prompt, error: e.message });
+        tests.push({ name: tc.name, prompt: tc.prompt, error: 'Internal server error' });
       }
     }
 
     res.json({ provider: providerName, model, tests });
   } catch (e) {
     console.error('[probe] error:', e.message);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -294,7 +295,7 @@ function helperName(input: Type): ReturnType
     });
   } catch (e) {
     console.error('[spec] error:', e.message);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -363,7 +364,7 @@ ${spec}
     });
   } catch (e) {
     console.error('[skeleton] error:', e.message);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -407,7 +408,7 @@ router.post('/implement', async (req, res, next) => {
       const start = Date.now();
       try {
         const filePath = task.filename || task.path || task.file;
-        const workspacePath = path.resolve('workspaces', workspace);
+        const workspacePath = guardPath(path.resolve('workspaces'), workspace);
         const fullPath = path.join(workspacePath, filePath);
 
         let existingContent = '';
@@ -472,7 +473,7 @@ ${existingContent ? `现有文件内容（请在次基础上修改，不要简�
     });
   } catch (e) {
     console.error('[implement] error:', e.message);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -572,7 +573,7 @@ ${f.content}
     const implementResults = await Promise.all(implementPromises);
 
     // Step 4: 列出 workspace 中的文件
-    const workspacePath = path.resolve('workspaces', workspace);
+    const workspacePath = guardPath(path.resolve('workspaces'), workspace);
     let fileList = [];
     try {
       const entries = await fs.readdir(workspacePath, { recursive: true });
@@ -593,7 +594,7 @@ ${f.content}
     });
   } catch (e) {
     console.error('[build] error:', e.message);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -646,7 +647,7 @@ router.post('/code', async (req, res, next) => {
       const existing = existingFiles.find(f => f.path === hl.path);
       if (!existing) continue;
       const edited = applyHashlineEdit(existing.content, hl.hash, hl.newContent);
-      if (edited) fileInfos.push({ path: hl.path, content: edited.newContent });
+      if (edited?.updated) fileInfos.push({ path: hl.path, content: edited.newContent });
     }
     sessionEvents.publish(sessionId, { type: 'files_parsed', count: fileInfos.length });
 
@@ -675,7 +676,7 @@ router.post('/code', async (req, res, next) => {
     });
   } catch (e) {
     console.error('[code] error:', e.message);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -685,7 +686,7 @@ router.get('/code/:project', async (req, res, next) => {
     const { project } = req.params;
     const isCLI = process.argv.includes('--cli') || process.env.OPENCHAT_CLI === 'true';
     const workspaceRoot = isCLI ? process.cwd() : path.resolve('workspaces');
-    const projectPath = path.resolve(workspaceRoot, project);
+    const projectPath = guardPath(workspaceRoot, project);
 
     // 当前 spec
     let currentSpec = '';
@@ -695,7 +696,7 @@ router.get('/code/:project', async (req, res, next) => {
 
     res.json({ project, path: projectPath, isCLI, currentSpec: currentSpec?.substring(0, 300) });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -818,7 +819,7 @@ ${f.content}
     const implementResults = await Promise.all(implementPromises);
 
     // Step 5: 列出 workspace 中的文件
-    const workspacePath = path.resolve('workspaces', workspace);
+    const workspacePath = guardPath(path.resolve('workspaces'), workspace);
     let fileList = [];
     try {
       const entries = await fs.readdir(workspacePath, { recursive: true });
@@ -840,7 +841,7 @@ ${f.content}
     });
   } catch (e) {
     console.error('[generate] error:', e.message);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -905,18 +906,22 @@ router.post('/chat', async (req, res, next) => {
 
     const { orchestrator } = await import('../../core/agent/orchestrator.mjs');
     let result = '';
+    let resultHash = '';
     await orchestrator.processStream(sid, 'mobile-user', message, (event) => {
-      if (event.type === 'complete' && event.response) result = event.response;
+      if (event.type === 'complete' && event.response) {
+        result = event.response;
+        resultHash = event.hash;
+      }
     }, sessionManager);
 
     res.json({
       success: true,
       data: { response: result, sessionId: sid },
-      meta: { model, provider: providerName, source: 'chat' }
+      meta: { model, provider: providerName, source: 'chat', hash: resultHash }
     });
   } catch (e) {
     console.error('[chat] error:', e.message);
-    if (!res.headersSent) res.status(500).json({ success: false, error: e.message });
+    if (!res.headersSent) res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -945,18 +950,20 @@ router.post('/chat/stream', async (req, res, next) => {
 
     const { orchestrator } = await import('../../core/agent/orchestrator.mjs');
     let fullContent = '';
+    let responseHash = '';
     await orchestrator.processStream(sid, 'mobile-user', message, (event) => {
       try {
         if (event.type === 'content') fullContent += event.content;
+        if (event.type === 'complete' && event.hash) responseHash = event.hash;
         const payload = { ...event, ts: Date.now() };
         res.write(`data: ${JSON.stringify(payload)}\n\n`);
       } catch (e) { console.error('[C0]', e); }
     }, sessionManager);
 
-    res.write(`data: ${JSON.stringify({ type: 'done', content: fullContent, ts: Date.now() })}\n\n`);
+    res.write(`data: ${JSON.stringify({ type: 'done', content: fullContent, hash: responseHash, ts: Date.now() })}\n\n`);
     res.end();
   } catch (e) {
-    try { res.write(`data: ${JSON.stringify({ type: 'error', error: e.message, ts: Date.now() })}\n\n`); res.end(); } catch (e) { console.error('[C0]', e); }
+    try { res.write(`data: ${JSON.stringify({ type: 'error', error: 'Internal server error', ts: Date.now() })}\n\n`); res.end(); } catch (e) { console.error('[C0]', e); }
   }
 });
 
@@ -985,17 +992,19 @@ router.post('/chat/debug', async (req, res, next) => {
 
     const { orchestrator } = await import('../../core/agent/orchestrator.mjs');
 
+    let responseHash = '';
     await orchestrator.processStream(sid, 'mobile-user', message, (event) => {
       try {
+        if (event.type === 'complete' && event.hash) responseHash = event.hash;
         const payload = { ...event, ts: Date.now() };
         res.write(`data: ${JSON.stringify(payload)}\n\n`);
       } catch (e) { console.error('[C0]', e); }
     }, sessionManager);
 
-    res.write(`data: ${JSON.stringify({ type: 'done', ts: Date.now() })}\n\n`);
+    res.write(`data: ${JSON.stringify({ type: 'done', hash: responseHash, ts: Date.now() })}\n\n`);
     res.end();
   } catch (e) {
-    try { res.write(`data: ${JSON.stringify({ type: 'error', error: e.message, ts: Date.now() })}\n\n`); res.end(); } catch (e) { console.error('[C0]', e); }
+    try { res.write(`data: ${JSON.stringify({ type: 'error', error: 'Internal server error', ts: Date.now() })}\n\n`); res.end(); } catch (e) { console.error('[C0]', e); }
   }
 });
 
