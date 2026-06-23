@@ -13,6 +13,7 @@ import 'package:sdui_engine/sdui_engine.dart' show SduiParser;
 
 import '../../core/api/qiniu_direct_client.dart';
 import '../../core/audio/audio.dart';
+import '../../core/audio/audio_engine.dart';
 import '../../core/models/chat_message.dart';
 import '../../core/sdui_config.dart';
 import '../../core/theme/app_theme.dart';
@@ -23,7 +24,6 @@ import '../widgets/common/markdown_text.dart';
 
 // =============================================================================
 // chat_bubble.dart
-// =============================================================================
 // =============================================================================
 
 class ChatBubble extends StatelessWidget {
@@ -504,613 +504,6 @@ class ChatVoiceRecorder {
 }
 
 // =============================================================================
-// room_audio.dart
-// =============================================================================
-
-/// 房间音频管理：录音→编码→S3 上传；轮询→下载→解码→播放队列
-class RoomAudio {
-  final String roomId;
-  final void Function(Set<String> participants) onParticipants;
-  final void Function() onState;
-
-  QiniuDirectClient? _client;
-  AudioRecorder? _recorder;
-  AudioPlayer? _player;
-  LmdnProcessor? _processor;
-  StreamSubscription? _recordSub;
-  Timer? _audioTimer;
-  int _audioSeq = 0;
-  bool _muted = false;
-  bool _audioStarted = false;
-  bool _ended = false;
-  final List<Uint8List> _playQueue = [];
-  bool _playing = false;
-  String _myPeerId = '';
-  final Map<String, int> _playedSeqs = {};
-  final Map<String, bool> _mutedPeers = {};
-  final Set<String> _participants = {};
-
-  RoomAudio({required this.roomId, required this.onParticipants, required this.onState});
-
-  String get myPeerId => _myPeerId;
-  Set<String> get participants => _participants;
-  Map<String, bool> get mutedPeers => _mutedPeers;
-  bool get muted => _muted;
-  bool get ended => _ended;
-
-  Future<void> start() async {
-    log('[C15] room init enter');
-    final pid = 'room_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(99999)}';
-    _client = QiniuDirectClient(peerId: pid);
-    await _client!.register();
-    _myPeerId = _client!.peerId;
-    log('[C15] room init ok peer=$_myPeerId');
-    onState();
-    await _startAudio();
-  }
-
-  Future<void> _startAudio() async {
-    if (_audioStarted) return;
-    _audioStarted = true;
-    try {
-      final cfg = await LmdnConfig.load();
-      _recorder = AudioRecorder();
-      _player = AudioPlayer();
-      _processor = LmdnProcessor(sampleRate: cfg.sampleRate, enableDenoise: false, enableCodec: true);
-      await _processor!.initialize();
-      log('[C15] processor+player init ok');
-
-      if (await _recorder!.hasPermission() != true) {
-        await _recorder!.hasPermission(request: true);
-        if (await _recorder!.hasPermission() != true) { _audioStarted = false; log('[C15] mic perm denied'); return; }
-      }
-      log('[C15] mic perm ok');
-
-      final stream = await _recorder!.startStream(RecordConfig(
-        encoder: AudioEncoder.pcm16bits, numChannels: 1, sampleRate: cfg.sampleRate));
-      if (stream == null) { _audioStarted = false; log('[C15] stream null'); return; }
-      log('[C15] stream started');
-
-      final bufSize = cfg.bufferBytes;
-      List<int> _buffer = [];
-      _recordSub = stream.listen((chunk) async {
-        try {
-          if (_muted || _ended) { _buffer.clear(); return; }
-          _buffer.addAll(chunk);
-          if (_buffer.length >= bufSize) {
-            var frame = Uint8List.fromList(_buffer.take(bufSize).toList());
-            _buffer = _buffer.skip(bufSize).toList();
-            final processed = await _processor?.processMicrophoneInput(frame);
-            if (processed != null) {
-              final key = 'oc/rooms/$roomId/$_myPeerId/${_audioSeq++}.enc';
-              await _client?.putBinary(key, processed);
-            }
-          }
-        } catch (e) { log('[C16] record error: $e'); }
-      }, onError: (e) { log('[C16] stream error: $e'); });
-
-      log('[C15] upload path oc/rooms/$roomId/$_myPeerId/');
-      _audioTimer = Timer.periodic(Duration(milliseconds: cfg.pollMs), (_) => _pollRoom());
-    } catch (e) {
-      log('[C15] init error: $e');
-      _audioStarted = false;
-    }
-  }
-
-  Future<void> _pollRoom() async {
-    if (_ended || _client == null) return;
-    try {
-      final prefix = 'oc/rooms/$roomId/';
-      final allKeys = await _client!.listFiles(prefix);
-      log('[C16] listFiles prefix=$prefix count=${allKeys.length}');
-      final peerDirs = <String>{};
-      for (final k in allKeys) {
-        final parts = k.split('/');
-        if (parts.length >= 4) peerDirs.add(parts[3]);
-      }
-      if (peerDirs.length != _participants.length) {
-        _participants.addAll(peerDirs);
-        onParticipants(_participants);
-        log('[C16] participants updated: $peerDirs');
-      }
-      int fetched = 0, played = 0;
-      for (final peerId in peerDirs) {
-        if (peerId == _myPeerId) continue;
-        if (_mutedPeers[peerId] == true) { log('[C17] skip muted peer=$peerId'); continue; }
-        final lastSeq = _playedSeqs[peerId] ?? -1;
-        final peerPrefix = '$prefix$peerId/';
-        for (final k in allKeys) {
-          if (!k.startsWith(peerPrefix)) continue;
-          final seqStr = k.split('/').last.replaceAll('.enc', '');
-          final seq = int.tryParse(seqStr) ?? -1;
-          if (seq <= lastSeq) continue;
-          fetched++;
-          _playedSeqs[peerId] = seq;
-          final data = await _client!.getBinary(k);
-          if (data.isEmpty) { log('[C17] empty data key=$k'); continue; }
-          final result = await _processor?.processReceivedAudio(data);
-          if (result != null) { _playQueue.add(result.pcm); played++; }
-        }
-      }
-      if (fetched > 0) log('[C16] poll: fetched=$fetched played=$played');
-      if (!_playing && _playQueue.isNotEmpty) _playNext();
-    } catch (e) {
-      log('[C16] poll error: $e');
-    }
-  }
-
-  Future<void> _playNext() async {
-    if (_playQueue.isEmpty) { _playing = false; return; }
-    _playing = true;
-    try {
-      const targetBytes = 3 * 48000 * 2;
-      int total = 0;
-      final batch = <Uint8List>[];
-      while (_playQueue.isNotEmpty && total < targetBytes) {
-        final chunk = _playQueue.removeAt(0);
-        batch.add(chunk);
-        total += chunk.length;
-      }
-      final pcm = Uint8List(total);
-      int offset = 0;
-      for (final chunk in batch) {
-        pcm.setRange(offset, offset + chunk.length, chunk);
-        offset += chunk.length;
-      }
-      final sr = _processor?.sampleRate ?? 48000;
-      final wav = QiniuDirectClient.wavFromPcm(pcm, sampleRate: sr);
-      final player = _player;
-      if (player != null) {
-        player.onPlayerComplete.first.then((_) => _playNext());
-        await player.play(BytesSource(wav));
-      }
-    } catch (e) {
-      log('room _playNext error: $e');
-      _playing = false;
-    }
-  }
-
-  void toggleMuteSelf() {
-    _muted = !_muted;
-  }
-
-  void toggleMutePeer(String peerId) {
-    _mutedPeers[peerId] = !(_mutedPeers[peerId] ?? false);
-  }
-
-  bool isPeerMuted(String peerId) => _mutedPeers[peerId] ?? false;
-
-  void leave() {
-    if (_ended) return;
-    _ended = true;
-    _recordSub?.cancel();
-    _recorder?.dispose();
-    _player?.dispose();
-    _processor?.dispose();
-    _audioTimer?.cancel();
-    _client?.dispose();
-  }
-}
-
-// =============================================================================
-// room_screen.dart
-// =============================================================================
-
-class RoomScreen extends ConsumerStatefulWidget {
-  final String roomId;
-  const RoomScreen({super.key, required this.roomId});
-
-  @override
-  ConsumerState<RoomScreen> createState() => _RoomScreenState();
-}
-
-class _RoomScreenState extends ConsumerState<RoomScreen> {
-  RoomAudio? _audio;
-
-  @override
-  void initState() {
-    super.initState();
-    _initAudio();
-  }
-
-  void _initAudio() {
-    _audio = RoomAudio(
-      roomId: widget.roomId,
-      onParticipants: (_) { if (mounted) setState(() {}); },
-      onState: () { if (mounted) setState(() {}); },
-    );
-    _audio!.start();
-  }
-
-  void _leaveRoom() {
-    _audio?.leave();
-    if (mounted && Navigator.canPop(context)) Navigator.pop(context);
-  }
-
-  @override
-  void dispose() {
-    _audio?.leave();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = ref.watch(currentThemeProvider);
-    final audio = _audio;
-    if (audio == null) {
-      return Scaffold(backgroundColor: theme.background);
-    }
-    final sortedPeers = audio.participants.where((p) => p != audio.myPeerId).toList()..sort();
-
-    return Scaffold(
-      backgroundColor: theme.background,
-      appBar: AppBar(
-        backgroundColor: theme.surface.withValues(alpha: 0.5),
-        elevation: 0,
-        title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('\u623F\u95F4: ${widget.roomId}', style: TextStyle(color: theme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
-          Text('${audio.participants.length} \u4EBA\u5728\u7EBF', style: TextStyle(color: theme.textTertiary, fontSize: 12)),
-        ]),
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: theme.textPrimary),
-          onPressed: _leaveRoom,
-        ),
-      ),
-      body: Column(children: [
-        Expanded(child: sortedPeers.isEmpty
-          ? Center(child: Text('\u7B49\u5F85\u5176\u4ED6\u4EBA\u52A0\u5165...', style: TextStyle(color: theme.textTertiary, fontSize: 16)))
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: sortedPeers.length + 1,
-              itemBuilder: (context, index) {
-                final isSelf = index == 0;
-                final peerId = isSelf ? audio.myPeerId : sortedPeers[index - 1];
-                final isMuted = isSelf ? audio.muted : audio.isPeerMuted(peerId);
-                return Card(
-                  color: theme.surface.withValues(alpha: 0.4),
-                  margin: const EdgeInsets.symmetric(vertical: 4),
-                  child: ListTile(
-                    leading: CircleAvatar(child: Icon(Icons.person, color: Colors.white)),
-                    title: Text(isSelf ? '\u6211 ($peerId)' : peerId,
-                      style: TextStyle(color: theme.textPrimary, fontSize: 14)),
-                    trailing: IconButton(
-                      icon: Icon(isMuted ? Icons.mic_off : Icons.mic, color: isMuted ? theme.error : theme.textSecondary),
-                      onPressed: () {
-                        if (isSelf) audio.toggleMuteSelf();
-                        else audio.toggleMutePeer(peerId);
-                        setState(() {});
-                      },
-                    ),
-                  ),
-                );
-              },
-            )),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: theme.surface.withValues(alpha: 0.5),
-            border: Border(top: BorderSide(color: theme.textTertiary.withValues(alpha: 0.1)))),
-          child: SafeArea(child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-            IconButton(
-              icon: Icon(audio.muted ? Icons.mic_off : Icons.mic, color: audio.muted ? theme.error : theme.primary),
-              onPressed: () { audio.toggleMuteSelf(); setState(() {}); },
-            ),
-            IconButton(
-              icon: const Icon(Icons.call_end, color: Colors.red),
-              iconSize: 32,
-              onPressed: _leaveRoom,
-            ),
-          ])),
-        ),
-      ]),
-    );
-  }
-}
-
-// =============================================================================
-// voice_room_audio.dart
-// =============================================================================
-
-/// 通话音频管理：录音/编码/上传/播放/解码
-/// 由 _VoiceRoomScreenState 持有，状态字段在调用方
-class VoiceRoomAudio {
-  AudioRecorder? recorder;
-  AudioPlayer? player;
-  AudioPlayer? _vmPlayer;
-  LmdnProcessor? processor;
-  StreamSubscription? recordSub;
-  Timer? audioTimer;
-  List<int> vmBuffer = [];
-  bool vmRecording = false;
-  final List<Uint8List> playQueue = [];
-  final List<Uint8List> localQueue = [];
-  final List<Uint8List> callFrames = [];
-  List notes = [];
-  bool playing = false;
-  bool muted = false;
-  bool localMode = false;
-  int audioSeq = 0;
-  LmdnConfig audioCfg = const LmdnConfig();
-
-  QiniuDirectClient? client;
-  String? targetPeerId;
-  String state = 'calling';
-  bool Function() isMounted = () => false;
-  void Function(void Function()) setStateCb = (_) {};
-
-  int _lastCpTs = 0;
-
-  /// Write checkpoint to S3 (throttled: max 1 write/sec).
-  void _writeCp(String label, String detail) {
-    log('[$label] $detail');
-    final now = DateTime.now().millisecondsSinceEpoch;
-    if (now - _lastCpTs < 1000) return;
-    _lastCpTs = now;
-    final c = client;
-    if (c != null) {
-      c.writeFile('oc/debug/${c.peerId}/checkpoint.json', {
-        'label': label, 'detail': detail, 'ts': now,
-      });
-    }
-  }
-
-  Future<void> startAudio() async {
-    if (audioTimer != null) return;
-    try {
-      final cfg = await LmdnConfig.load();
-      audioCfg = cfg;
-      recorder = AudioRecorder();
-      player = AudioPlayer();
-      processor = LmdnProcessor(sampleRate: cfg.sampleRate, enableDenoise: cfg.denoise, enableCodec: !localMode);
-      await processor?.initialize();
-      _writeCp('C2', 'processor init ok');
-
-      if (await recorder!.hasPermission() != true) {
-        await recorder!.hasPermission(request: true);
-        if (await recorder!.hasPermission() != true) {
-          _writeCp('C2', 'mic denied');
-          return;
-        }
-      }
-      _writeCp('C2', 'mic perm ok');
-
-      final stream = await recorder!.startStream(RecordConfig(
-          encoder: AudioEncoder.pcm16bits, numChannels: 1, sampleRate: cfg.sampleRate));
-      if (stream == null) {
-        _writeCp('C3', 'stream null');
-        return;
-      }
-      _writeCp('C3', 'record stream started');
-
-      final bufSize = cfg.bufferBytes;
-      final fadeBytes = cfg.fadeBytes;
-      List<int> buffer = [];
-      Uint8List? prevOverlap;
-      final targetId = targetPeerId;
-      if (targetId == null) return;
-
-      recordSub = stream.listen((chunk) async {
-        try {
-          if (muted || state != 'connected') {
-            buffer.clear();
-            return;
-          }
-          buffer.addAll(chunk);
-          if (buffer.length >= bufSize) {
-            var frame = Uint8List.fromList(buffer.take(bufSize).toList());
-            buffer = buffer.skip(bufSize).toList();
-            final overlap = prevOverlap;
-            if (overlap != null) {
-              for (int i = 0; i < fadeBytes && i < frame.length; i += 2) {
-                final ratio = i / fadeBytes;
-                final pv = overlap[overlap.length - fadeBytes + i] | (overlap[overlap.length - fadeBytes + i + 1] << 8);
-                final cv = frame[i] | (frame[i + 1] << 8);
-                final ps = pv > 32767 ? pv - 65536 : pv;
-                final cs = cv > 32767 ? cv - 65536 : cv;
-                final blended = (ps * (1 - ratio) + cs * ratio).round().clamp(-32768, 32767);
-                final bv = blended < 0 ? blended + 65536 : blended;
-                frame[i] = bv & 0xFF;
-                frame[i + 1] = (bv >> 8) & 0xFF;
-              }
-            }
-            prevOverlap = Uint8List.fromList(frame.sublist(frame.length - fadeBytes));
-            final processed = await processor?.processMicrophoneInput(frame);
-            if (processed != null) {
-              if (localMode) {
-                localQueue.add(processed);
-                _writeCp('C4', 'local enc size=${processed.length} q=${localQueue.length}');
-              } else {
-                final seq = audioSeq++;
-                await client?.sendEncodedAudio(targetId, processed, seq);
-                _writeCp('C4', 'sent seq=$seq size=${processed.length}');
-              }
-              callFrames.add(processed);
-            } else {
-              _writeCp('C4', 'encode null');
-            }
-          }
-        } catch (e) {
-          log('record process error: $e');
-        }
-      }, onError: (e) {
-        log('record stream error: $e');
-      });
-
-      audioTimer?.cancel();
-      audioTimer = Timer.periodic(Duration(milliseconds: cfg.pollMs), (_) async {
-        if (state != 'connected' || client == null) return;
-        try {
-          final List<Uint8List> chunks;
-          if (localMode) {
-            chunks = List.from(localQueue);
-            localQueue.clear();
-            if (chunks.isNotEmpty) _writeCp('C5', 'local ${chunks.length} chunks');
-          } else {
-            chunks = await client!.pollEncodedAudio();
-            if (chunks.isNotEmpty) _writeCp('C5', 'polled ${chunks.length} chunks');
-          }
-          if (chunks.isEmpty) return;
-          for (final c in chunks) {
-            final result = await processor?.processReceivedAudio(c);
-            if (result != null) {
-              playQueue.add(result.pcm);
-              _writeCp('C6', 'decoded ${result.pcm.length} B');
-              if (result.notes.isNotEmpty && isMounted()) {
-                notes.addAll(result.notes);
-                _writeCp('C8', 'notes=${result.notes.length}');
-              }
-            } else {
-              _writeCp('C6', 'decode null');
-            }
-          }
-          if (!playing) playNext();
-        } catch (e) {
-          log('audio poll error: $e');
-        }
-      });
-    } catch (e) {
-      log('_startAudio init error: $e');
-    }
-  }
-
-  Future<void> startVmRecord() async {
-    if (vmRecording) return;
-    vmBuffer.clear();
-    try {
-      if (recorder == null) recorder = AudioRecorder();
-      if (processor == null) {
-        final cfg = await LmdnConfig.load();
-        processor = LmdnProcessor(sampleRate: cfg.sampleRate, enableDenoise: false, enableCodec: true);
-        await processor!.initialize();
-      }
-      if (_vmPlayer == null) _vmPlayer = AudioPlayer();
-      if (await recorder!.hasPermission() != true) {
-        await recorder!.hasPermission(request: true);
-        if (await recorder!.hasPermission() != true) return;
-      }
-      final stream = await recorder!.startStream(RecordConfig(
-          encoder: AudioEncoder.pcm16bits, numChannels: 1, sampleRate: processor!.sampleRate));
-      if (stream == null) return;
-      vmRecording = true;
-      recordSub = stream.listen((chunk) {
-        vmBuffer.addAll(chunk);
-      }, onError: (e) {
-        log('vm record error: $e');
-        vmRecording = false;
-      });
-    } catch (e) {
-      log('_startVmRecord error: $e');
-      vmRecording = false;
-    }
-  }
-
-  Future<void> endVmRecord() async {
-    if (!vmRecording) return;
-    vmRecording = false;
-    await recordSub?.cancel();
-    recordSub = null;
-    await recorder?.stop();
-    if (vmBuffer.isEmpty) return;
-    final pcm = Uint8List.fromList(vmBuffer);
-    vmBuffer.clear();
-    try {
-      processor?.resetCodec();
-      final encoded = await processor?.processMicrophoneInput(pcm);
-      if (encoded == null) {
-        log('vm encode failed');
-        return;
-      }
-      log('vm encoded ${pcm.length} B -> ${encoded.length} B');
-      final result = await processor?.processReceivedAudio(encoded);
-      if (result == null) {
-        log('vm decode failed');
-        return;
-      }
-      final wav = QiniuDirectClient.wavFromPcm(result.pcm, sampleRate: processor!.sampleRate);
-      await _vmPlayer?.stop();
-      await _vmPlayer?.play(BytesSource(wav));
-    } catch (e) {
-      log('_endVmRecord error: $e');
-    }
-  }
-
-  Future<void> playNext() async {
-    if (playQueue.isEmpty || !isMounted()) {
-      playing = false;
-      return;
-    }
-    playing = true;
-    try {
-      final targetBytes = 3 * audioCfg.sampleRate * 2;
-      int total = 0;
-      final batch = <Uint8List>[];
-      while (playQueue.isNotEmpty && total < targetBytes) {
-        final chunk = playQueue.removeAt(0);
-        batch.add(chunk);
-        total += chunk.length;
-      }
-      final pcm = Uint8List(total);
-      int offset = 0;
-      for (final chunk in batch) {
-        pcm.setRange(offset, offset + chunk.length, chunk);
-        offset += chunk.length;
-      }
-      final fadeSamples = audioCfg.fadeSamples;
-      for (int i = 0; i < fadeSamples && i * 2 < pcm.length; i++) {
-        final ratio = i / fadeSamples;
-        final idx = i * 2;
-        final v = pcm[idx] | (pcm[idx + 1] << 8);
-        final s = ((v > 32767 ? v - 65536 : v) * ratio).round().clamp(-32768, 32767);
-        final b = s < 0 ? s + 65536 : s;
-        pcm[idx] = b & 0xFF;
-        pcm[idx + 1] = (b >> 8) & 0xFF;
-      }
-      for (int i = 0; i < fadeSamples && pcm.length >= (i + 1) * 2; i++) {
-        final ratio = i / fadeSamples;
-        final idx = pcm.length - (i + 1) * 2;
-        final v = pcm[idx] | (pcm[idx + 1] << 8);
-        final s = ((v > 32767 ? v - 65536 : v) * (1 - ratio)).round().clamp(-32768, 32767);
-        final b = s < 0 ? s + 65536 : s;
-        pcm[idx] = b & 0xFF;
-        pcm[idx + 1] = (b >> 8) & 0xFF;
-      }
-      final wav = QiniuDirectClient.wavFromPcm(pcm, sampleRate: audioCfg.sampleRate);
-      log('[C7] play ${pcm.length} B');
-      final p = player;
-      if (p != null) {
-        p.onPlayerComplete.first.then((_) => playNext());
-        await p.play(BytesSource(wav));
-      }
-    } catch (e) {
-      log('[C7] error: $e');
-      playing = false;
-    }
-  }
-
-// === invariants ===
-// - recordSub 在 dispose() 中 cancel，不可漏
-// - audioTimer 在 dispose() 中 cancel
-// - playQueue/localQueue/callFrames dispose() 时清空
-// - _writeCp 有节流（1s 内不重复写 S3），不影响音频路径
-// - playNext 按 batch (3s) 消费 playQueue，不可重入（playing guard）
-// - 所有 catch 均已记录日志，不再静默吞错误
-// - callFrames append-only，_saveEpc 后由调用方清空
-
-  void dispose() {
-    recordSub?.cancel();
-    recorder?.dispose();
-    player?.dispose();
-    _vmPlayer?.dispose();
-    processor?.dispose();
-    audioTimer?.cancel();
-    vmBuffer.clear();
-    playQueue.clear();
-    localQueue.clear();
-    callFrames.clear();
-  }
-}
-
-// =============================================================================
 // voice_room_screen.dart
 // =============================================================================
 
@@ -1133,7 +526,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen>
   final List<ScoreNote> _allNotes = [];
   final Map<String, void Function()> _customActions = {};
   VoiceUiConfig _uiVoice = const VoiceUiConfig();
-  final VoiceRoomAudio _audio = VoiceRoomAudio();
+  late final AudioEngine _audio;
   bool _ended = false;
 
   @override
@@ -1147,10 +540,18 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen>
     _targetPeerId = argMap['targetPeerId'] as String?;
     _client = argMap['client'] as QiniuDirectClient?;
 
-    _audio.client = _client;
+    _audio = AudioEngine(
+      cfg: const AudioEngineConfig(
+        roomId: '',
+        vmRecordEnabled: true,
+        localModeEnabled: true,
+        callFramesEnabled: true,
+        notesEnabled: true,
+      ),
+      onNotes: (notes) { if (mounted) setState(() {}); },
+      externalClient: _client,
+    );
     _audio.targetPeerId = _targetPeerId;
-    _audio.isMounted = () => mounted;
-    _audio.setStateCb = (cb) { if (mounted) setState(cb); };
     _audio.notes = _allNotes;
 
     VoiceUiConfig.load().then((c) {
@@ -1170,7 +571,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen>
 
   @override
   void dispose() {
-    _audio.dispose();
+    _audio.leave();
     _signalTimer?.cancel();
     if (_isSelfTest) _client?.dispose();
     super.dispose();
@@ -1203,7 +604,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen>
         if (action == 'call-accept' && from == _targetPeerId) {
           if (mounted) setState(() => _state = 'connected');
           _audio.state = 'connected';
-          await _audio.startAudio();
+          await _audio.start();
           return;
         }
         if (action == 'call-end' && from == _targetPeerId) {
@@ -1221,18 +622,17 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen>
     _client?.sendSignal(_targetPeerId!, 'call-accept');
     if (mounted) setState(() => _state = 'connected');
     _audio.state = 'connected';
-    _audio.startAudio();
+    _audio.start();
   }
 
   void _endCall() {
     if (_ended) return;
     _ended = true;
-    _audio.localQueue.clear();
+    _audio.clearLocalQueue();
     _saveEpc();
     if (_targetPeerId != null) _client?.sendSignal(_targetPeerId!, 'call-end');
     if (mounted) setState(() => _state = 'ended');
     _signalTimer?.cancel();
-    _audio.audioTimer?.cancel();
     if (mounted && Navigator.canPop(context)) Navigator.pop(context);
   }
 
@@ -1309,7 +709,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen>
         onStartCall: () {
           setState(() => _state = 'connected');
           _audio.state = 'connected';
-          _audio.startAudio();
+          _audio.start();
         },
         onStartVoiceMsg: () => setState(() {
           _vmMode = true;
@@ -1358,7 +758,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen>
 // === invariants ===
 // - _state 单向流转: calling → connected/voiceMessage → ended
 // - _ended 单调 false→true，避免重复 _endCall
-// - _audio.dispose() 在 dispose() 中调用，释放录音/播放/定时器
+// - _audio.leave() 在 dispose() 中调用，释放录音/播放/定时器
 // - _signalTimer 在 dispose() 中 cancel
 // - [C1] 在 initState（非 selfTest 路径）和 _initSelfTest 中均打印
 
