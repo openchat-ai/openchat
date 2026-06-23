@@ -17,7 +17,7 @@
  * });
  */
 
-import { epcFromResponse } from './epc-codec.js';
+import { epcFromResponse, epcFromMessage } from './epc-codec.js';
 import { extractContent, extractReasoning, normalizeToolCalls, parseActionFallback } from '../utils/normalize.js';
 
 export class OpenAICompatibleProvider {

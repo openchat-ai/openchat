@@ -55,34 +55,10 @@ async function processOne(p, key) {
     const r = await p.chat(model, [{ role: 'user', content: parsed.text }], { timeout: 30000 });
     const epc = parseEpcPayload(r.epc);
     const text = epc.content || r.content || '';
-    const reasoning = pickReasoning(epc, r.raw);
     const reply = { text, meta: {} };
-    if (reasoning) reply.reasoning = reasoning;
+    if (epc.reasoningContent) reply.reasoning = epc.reasoningContent;
     await qiniuPut(rk, Buffer.from(JSON.stringify(reply), 'utf8'));
   } catch (e) {
     await qiniuPut(rk, Buffer.from(JSON.stringify({ text: '', error: e.message }), 'utf8')).catch(() => {});
   }
-}
-
-const REASONING_KEYS = [
-  'reasoning', 'reasoning_content', 'reasoningContent',
-  'thinking', 'thought', 'chainOfThought', 'chain_of_thought',
-  'cot', 'analysis', 'inner_monologue', 'innerMonologue',
-  'reflexion', 'reflection', 'scratchpad', 'plan',
-];
-
-function pickReasoning(epc, raw) {
-  if (epc?.reasoningContent) return epc.reasoningContent;
-  const details = raw?.choices?.[0]?.message?.reasoning_details;
-  if (Array.isArray(details)) {
-    const t = details.find(d => d?.type === 'reasoning.text' && d.text);
-    if (t) return t.text;
-  }
-  const msg = raw?.choices?.[0]?.message;
-  if (!msg || typeof msg !== 'object') return '';
-  for (const k of REASONING_KEYS) {
-    const v = msg[k];
-    if (typeof v === 'string' && v.trim()) return v;
-  }
-  return '';
 }
