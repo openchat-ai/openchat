@@ -932,13 +932,7 @@ import { ensureProject, writeWithGit, describeProject, scanProjectFiles, getProj
 
 const router = express.Router();
 const legacyRouter = router;
-
 let bridgeRef = null;
-
-
-function setBridgeContext(bridge) {
-  bridgeRef = bridge;
-}
 
 // 1. 状态检查 (扩展版)
 router.get('/status', async (req, res, next) => {
@@ -2015,4 +2009,4 @@ router.get('/ai/main', (req, res) => {
   });
 });
 
-export { voiceRouter, signalingRouter, skillsRouter, devRouter, labDashboardRouter, legacyRouter, setBridgeContext };
+export { voiceRouter, signalingRouter, skillsRouter, devRouter, labDashboardRouter };

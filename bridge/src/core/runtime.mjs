@@ -130,7 +130,7 @@ class SessionManager {
 
   listProviders() {
     return Array.from(this.providers.entries()).map(([type, p]) => ({
-      type, name: p.name, connected: p.connected,
+      type, name: p.name, connected: p.connected, models: p.getModels?.() || [],
     }));
   }
 
@@ -145,7 +145,16 @@ class SessionManager {
 
   getSession(sessionId) { return persistentStore.getSession(sessionId); }
 
-  listSessions() { return persistentStore.getAllSessions(); }
+  listSessions() {
+    return persistentStore.getAllSessions().map(s => ({
+      id: s.id,
+      providerType: s.providerType,
+      model: s.model,
+      messageCount: s.messages?.length || 0,
+      createdAt: s.createdAt,
+      lastActivity: s.lastActivity
+    }));
+  }
 }
 
 export const sessionEvents = new SessionEvents();
