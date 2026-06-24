@@ -6,7 +6,7 @@ input:  raw Map or JSON string
 output: typed ChatMessage with enums (MessageSender, MessageType)
 
 ## 接口签名
-- `ChatMessage({sender, type, text, time, ts, isError?, hash?, reasoning?, key?, isNew?})` const constructor
+- `ChatMessage({sender, type, text, time, ts, requestTs?, isError?, hash?, reasoning?, key?, isNew?})` const constructor
 - `ChatMessage.copyWith({...})`  — immutable update
 - `ChatMessage.toMap() / fromMap(Map)`  — Map round-trip
 - `ChatMessage.toJson() / fromJson(String)`  — JSON round-trip
@@ -17,6 +17,7 @@ output: typed ChatMessage with enums (MessageSender, MessageType)
 - type 不在枚举值: fromMap 默认 text
 - text/time 缺省: 默认空串
 - ts 缺省: 当前毫秒
+- requestTs: 关联的 user message 时间戳 (用于流式渲染匹配)
 - optional 字段全 null-safe
 - jsonDecode 失败: 调用方负责 catch (此处不抛)
 

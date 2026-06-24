@@ -508,9 +508,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
       final keys = await _qiniu!.listFiles('oc/chat/${widget.chatId}/');
       for (final key in keys) {
         if (_seenReplyKeys.contains(key)) continue;
-        if (!key.endsWith('-reply.epc')) continue;
-        final tsMatch = RegExp(r'/(\d+)-reply\.epc$').firstMatch(key);
-        final ts = tsMatch != null ? int.tryParse(tsMatch.group(1) ?? '0') ?? 0 : 0;
+        // 支持流式 -stream.bin 和最终 -reply.epc
+        final streamMatch = RegExp(r'/(\d+)-stream\.bin$').firstMatch(key);
+        final replyMatch = RegExp(r'/(\d+)-reply\.epc$').firstMatch(key);
+        if (streamMatch == null && replyMatch == null) continue;
+        final tsStr = (streamMatch ?? replyMatch)!.group(1) ?? '0';
+        final ts = int.tryParse(tsStr) ?? 0;
         _seenReplyKeys.add(key);
         if (ts > 0 && ts < _startupTs) continue;
 
@@ -524,7 +527,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
         final meta = frames['meta'];
         final isError = error.isNotEmpty;
         final text = isError ? error : content;
-        if (text.isEmpty) continue;
+        if (text.isEmpty && reasoning.isEmpty) continue;
         log('[C14] reply $key text="${text.substring(0, min(60, text.length))}"');
         found = true;
         if (_replyPollStartTs > 0) {
@@ -539,17 +542,31 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
           final hash = meta is Map ? meta['hash'] as String? : null;
           setState(() {
             _isWaiting = false;
-            _messages.add(ChatMessage(
-              sender: MessageSender.ai,
-              type: MessageType.text,
-              text: text,
-              time: DateTime.now().toString().substring(11, 16),
-              ts: DateTime.now().millisecondsSinceEpoch,
-              isNew: true,
-              isError: isError,
-              hash: hash,
-              reasoning: reasoning.isNotEmpty ? reasoning : null,
-            ));
+            // 查找已有的 AI 消息 (按 requestTs 匹配，用于流式累积)
+            final existingIdx = _messages.lastIndexWhere(
+              (m) => m.sender == MessageSender.ai && m.requestTs == ts,
+            );
+            if (existingIdx >= 0) {
+              _messages[existingIdx] = _messages[existingIdx].copyWith(
+                text: text,
+                reasoning: reasoning.isNotEmpty ? reasoning : null,
+                isError: isError,
+                hash: hash ?? _messages[existingIdx].hash,
+              );
+            } else {
+              _messages.add(ChatMessage(
+                sender: MessageSender.ai,
+                type: MessageType.text,
+                text: text,
+                time: DateTime.now().toString().substring(11, 16),
+                ts: DateTime.now().millisecondsSinceEpoch,
+                requestTs: ts,
+                isNew: true,
+                isError: isError,
+                hash: hash,
+                reasoning: reasoning.isNotEmpty ? reasoning : null,
+              ));
+            }
           });
           _scrollBottom();
         }
@@ -575,13 +592,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
   void _sendText() {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
+    final ts = DateTime.now().millisecondsSinceEpoch;
     setState(() {
       _messages.add(ChatMessage(
         sender: MessageSender.me,
         type: MessageType.text,
         text: text,
         time: DateTime.now().toString().substring(11, 16),
-        ts: DateTime.now().millisecondsSinceEpoch,
+        ts: ts,
+        requestTs: ts,
         isNew: true,
       ));
       _isWaiting = true;
@@ -589,7 +608,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
     _controller.clear();
     _scrollBottom();
     if (_qiniu != null) {
-      final ts = DateTime.now().millisecondsSinceEpoch;
       final frame = Epc.encodeChatMessage({
         'type': 'text', 'sender': 'user', 'text': text, 'ts': ts,
       });

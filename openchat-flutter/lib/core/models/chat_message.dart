@@ -21,6 +21,7 @@ class ChatMessage {
   final String text;
   final String time;
   final int ts;
+  final int? requestTs;
   final bool isError;
   final String? hash;
   final String? reasoning;
@@ -33,6 +34,7 @@ class ChatMessage {
     required this.text,
     required this.time,
     required this.ts,
+    this.requestTs,
     this.isError = false,
     this.hash,
     this.reasoning,
@@ -50,6 +52,7 @@ class ChatMessage {
     String? text,
     String? time,
     int? ts,
+    int? requestTs,
     bool? isError,
     String? hash,
     String? reasoning,
@@ -61,6 +64,7 @@ class ChatMessage {
     text: text ?? this.text,
     time: time ?? this.time,
     ts: ts ?? this.ts,
+    requestTs: requestTs ?? this.requestTs,
     isError: isError ?? this.isError,
     hash: hash ?? this.hash,
     reasoning: reasoning ?? this.reasoning,
@@ -74,6 +78,7 @@ class ChatMessage {
     'text': text,
     'time': time,
     'ts': ts,
+    if (requestTs != null) 'requestTs': requestTs,
     if (isError) 'isError': true,
     if (hash != null) 'hash': hash,
     if (reasoning != null) 'reasoning': reasoning,
@@ -90,6 +95,7 @@ class ChatMessage {
       text: (m['text'] as String?) ?? '',
       time: (m['time'] as String?) ?? '',
       ts: (m['ts'] as int?) ?? DateTime.now().millisecondsSinceEpoch,
+      requestTs: m['requestTs'] as int?,
       isError: m['isError'] == true,
       hash: m['hash'] as String?,
       reasoning: m['reasoning'] as String?,
