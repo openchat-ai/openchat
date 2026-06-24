@@ -10,6 +10,7 @@ import '../../core/api/qiniu_direct_client.dart';
 import '../../core/sdui_config.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/client_providers.dart';
+import '../screens/screens.dart';
 
 enum CardVariant { filled, outlined, elevated, gradient, glass }
 
@@ -291,7 +292,7 @@ class PeopleDialogs {
       title: const Text('鍔犲叆璇煶鎴块棿'),
       content: TextField(
         controller: controller,
-        decoration: const InputDecoration(labelText: '鎴块棿 ID', hintText: '杈撳叆鎴块棿 ID 鎴栦娇鐢ㄩ粯璁?),
+        decoration: const InputDecoration(labelText: '\u623F\u95F4 ID', hintText: '\u8F93\u5165\u623F\u95F4 ID \u6216\u4F7F\u7528\u9ED8\u8BA4'),
       ),
       actions: [
         TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('鍙栨秷')),
