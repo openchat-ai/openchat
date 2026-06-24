@@ -1,9 +1,7 @@
 ﻿import 'dart:async';
-import 'dart:convert';
 import 'dart:developer' show log;
 import 'dart:io' show Platform;
 import 'dart:math' hide log;
-import 'dart:typed_data';
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
@@ -592,19 +590,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
     _scrollBottom();
     if (_qiniu != null) {
       final ts = DateTime.now().millisecondsSinceEpoch;
-      final msg = utf8.encode(jsonEncode({
+      final frame = Epc.encodeChatMessage({
         'type': 'text', 'sender': 'user', 'text': text, 'ts': ts,
-      }));
-      final frame = Uint8List(7 + msg.length + 2);
-      int off = 0;
-      frame[off++] = 0xBB; frame[off++] = 0x10; frame[off++] = 0x10;
-      frame[off++] = (msg.length >> 16) & 0xFF;
-      frame[off++] = (msg.length >> 8) & 0xFF;
-      frame[off++] = msg.length & 0xFF;
-      frame.setRange(off, off + msg.length, msg); off += msg.length;
-      int cs = 0;
-      for (int i = 1; i < off; i++) cs ^= frame[i];
-      frame[off++] = cs; frame[off++] = 0x7E;
+      });
       _qiniu!.putBinary(
         'oc/chat/${widget.chatId}/$ts.msg',
         frame,
