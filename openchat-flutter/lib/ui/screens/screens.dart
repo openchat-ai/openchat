@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sdui_engine/sdui_engine.dart' show SduiParser;
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:flutter_tts/flutter_tts.dart';
 
 import '../../core/api/base_client.dart';
 import '../../core/api/qiniu_direct_client.dart';
@@ -417,13 +419,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
   final ScrollController _scrollController = ScrollController();
   final _recorder = ChatVoiceRecorder();
   final _player = ChatVoicePlayer();
+  final _speech = stt.SpeechToText();
+  final _tts = FlutterTts();
+  String? _asrText;
+  bool _asrReady = false;
   QiniuDirectClient? _qiniu;
   Timer? _replyPollTimer;
   final Set<String> _seenReplyKeys = {};
   bool _vmRecording = false;
   bool _isWaiting = false;
   int _startupTs = 0;
-  int _pollIntervalMs = 2000;
+  int _pollIntervalMs = 1000;
   int _replyPollStartTs = 0;
   bool _hasText = false;
 
@@ -460,33 +466,25 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
   }
 
   void _startReplyPoll({int initialDelay = 0}) {
+    if (!mounted) return;
     _replyPollTimer?.cancel();
-    _pollIntervalMs = 2000;
+    _pollIntervalMs = 1000;
     _replyPollStartTs = DateTime.now().millisecondsSinceEpoch;
-    SharedPreferences.getInstance().then((prefs) {
-      final history = prefs.getStringList('replyTimes')?.map((s) => int.tryParse(s) ?? 0).toList() ?? [];
-      final maxHistory = history.isEmpty ? 120000 : history.reduce((a, b) => a > b ? a : b);
-      final timeout = (maxHistory * 1.5).round().clamp(120000, 1800000);
-      final focusStart = history.isEmpty ? 5000 : (maxHistory * 0.6).round();
-      final focusEnd = history.isEmpty ? 30000 : (maxHistory * 1.2).round();
-      log('[chat] poll history=$maxHistory ms, focus=[$focusStart, $focusEnd], timeout=$timeout');
-      void poll() {
-        final elapsed = DateTime.now().millisecondsSinceEpoch - _replyPollStartTs;
-        if (elapsed > timeout) {
-          log('[chat] poll timeout after ${timeout ~/ 1000}s');
-          return;
-        }
-        _pollIntervalMs = (elapsed >= focusStart && elapsed <= focusEnd) ? 2000
-            : (_pollIntervalMs * 1.5).round().clamp(5000, 15000);
-        _replyPollTimer = Timer(Duration(milliseconds: _pollIntervalMs), () async {
-          if (await _pollReplies()) _replyPollTimer?.cancel();
-          else poll();
-        });
+    void poll() {
+      final elapsed = DateTime.now().millisecondsSinceEpoch - _replyPollStartTs;
+      if (elapsed > 120000) {
+        log('[chat] poll timeout after ${elapsed ~/ 1000}s');
+        return;
       }
-      void start() { poll(); }
-      if (initialDelay > 0) Future.delayed(Duration(milliseconds: initialDelay), start);
-      else start();
-    });
+      _replyPollTimer = Timer(Duration(milliseconds: _pollIntervalMs), () async {
+        if (!mounted) return;
+        if (await _pollReplies()) _replyPollTimer?.cancel();
+        else poll();
+      });
+    }
+    void start() { poll(); }
+    if (initialDelay > 0) Future.delayed(Duration(milliseconds: initialDelay), start);
+    else start();
   }
 
   Future<void> _initQiniuPoll() async {
@@ -514,7 +512,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
         if (streamMatch == null && replyMatch == null) continue;
         final tsStr = (streamMatch ?? replyMatch)!.group(1) ?? '0';
         final ts = int.tryParse(tsStr) ?? 0;
-        _seenReplyKeys.add(key);
+        if (replyMatch != null) _seenReplyKeys.add(key);
         if (ts > 0 && ts < _startupTs) continue;
 
         final bytes = await _qiniu!.getBinary(key);
@@ -525,19 +523,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
         final reasoning = frames['reasoning_content'] as String? ?? '';
         final error = frames['error'] as String? ?? '';
         final meta = frames['meta'];
+        final bypass = meta is Map ? meta['bypass'] == true : false;
+        final bypassText = meta is Map ? meta['bypassText'] as String? : null;
         final isError = error.isNotEmpty;
-        final text = isError ? error : content;
+        final text = bypass && bypassText != null ? bypassText : (isError ? error : content);
         if (text.isEmpty && reasoning.isEmpty) continue;
         log('[C14] reply $key text="${text.substring(0, min(60, text.length))}"');
-        found = true;
-        if (_replyPollStartTs > 0) {
-          final replyTime = DateTime.now().millisecondsSinceEpoch - _replyPollStartTs;
-          SharedPreferences.getInstance().then((prefs) {
-            final list = prefs.getStringList('replyTimes') ?? [];
-            list.add(replyTime.toString());
-            prefs.setStringList('replyTimes', list.take(20).toList());
-          });
-        }
+        if (replyMatch != null) found = true;
         if (mounted) {
           final hash = meta is Map ? meta['hash'] as String? : null;
           setState(() {
@@ -568,6 +560,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
               ));
             }
           });
+          if (replyMatch != null) _tts.speak(text);
           _scrollBottom();
         }
       }
@@ -582,10 +575,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
     WidgetsBinding.instance.removeObserver(this);
     _replyPollTimer?.cancel();
     _qiniu?.dispose();
+    _qiniu = null;
     _controller.dispose();
     _scrollController.dispose();
-    _recorder.dispose();
-    _player.dispose();
+    _recorder.dispose(); // fire-and-forget (OK in sync dispose)
+    _player.dispose(); // fire-and-forget (OK in sync dispose)
     super.dispose();
   }
 
@@ -608,34 +602,54 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
     _controller.clear();
     _scrollBottom();
     if (_qiniu != null) {
-      final frame = Epc.encodeChatMessage({
-        'type': 'text', 'sender': 'user', 'text': text, 'ts': ts,
-      });
+      final frame = Epc.encodeChatMessage(text);
       _qiniu!.putBinary(
-        'oc/chat/${widget.chatId}/$ts.msg',
+        'oc/chat/${widget.chatId}/$ts.epc',
         frame,
-      ).then((_) => _startReplyPoll(initialDelay: 1500))
-       .catchError((e) => log('[chat] text upload fail: $e'));
+      ).then((_) { if (mounted) _startReplyPoll(initialDelay: 1500); })
+       .catchError((e) {
+         log('[chat] text upload fail: $e');
+         if (mounted) setState(() => _isWaiting = false);
+       });
+    } else {
+      log('[chat] qiniu not ready');
+      if (mounted) setState(() => _isWaiting = false);
     }
   }
 
   void _startVmRecord() async {
-    final ok = await _recorder.startRecord();
-    if (ok && mounted) setState(() => _vmRecording = true);
+    final speechOk = await _speech.initialize(
+      onError: (e) { if (mounted) setState(() => _vmRecording = false); log('[asr] init error: $e'); },
+    );
+    if (!speechOk || !mounted) return;
+    _asrText = '';
+    _asrReady = true;
+    setState(() => _vmRecording = true);
+    _speech.listen(
+      onResult: (r) { _asrText = r.recognizedWords; },
+      localeId: 'zh_CN',
+    );
   }
 
   void _endVmRecord() async {
-    final key = await _recorder.stopRecord(chatId: widget.chatId);
-    if (key != null) {
-      log('[C12] uploaded $key, polling for reply...');
-      if (mounted) setState(() {
+    if (_asrReady) {
+      await _speech.stop();
+      _asrReady = false;
+    }
+    final transcribed = (_asrText ?? '').trim();
+    if (transcribed.isNotEmpty && _qiniu != null && mounted) {
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      final msgKey = 'oc/chat/${widget.chatId}/$ts.epc';
+      final frame = Epc.encodeChatMessage(transcribed);
+      await _qiniu!.putBinary(msgKey, frame);
+      log('[C12] asr epc=$msgKey text="$transcribed"');
+      setState(() {
         _messages.add(ChatMessage(
           sender: MessageSender.me,
-          type: MessageType.voice,
-          text: '',
+          type: MessageType.text,
+          text: transcribed,
           time: DateTime.now().toString().substring(11, 16),
-          ts: DateTime.now().millisecondsSinceEpoch,
-          key: key,
+          ts: ts,
         ));
       });
       _startReplyPoll(initialDelay: 2000);
@@ -1435,6 +1449,7 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
       _pollTimer = Timer.periodic(Duration(milliseconds: _client!.pollIntervalMs), (_) => _pollUsers());
       await _pollUsers().timeout(const Duration(seconds: 10));
     } catch (e) {
+      _pollTimer?.cancel();
       _client?.dispose();
       if (mounted) setState(() { _error = e.toString(); _loading = false; });
     }
@@ -1561,7 +1576,9 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
             ),
           ),
         );
-      } catch (_) {}
+      } catch (e) {
+        log('[people] SDUI build error: $e');
+      }
     }
     return PeopleFallbackView(
       loading: _loading,
@@ -1612,7 +1629,9 @@ class _ResidentDetailScreenState extends ConsumerState<ResidentDetailScreen> wit
       _agents = await notifier.getAgents(id);
       _children = (await notifier.getChildren(id)).whereType<Resident>().toList();
       ref.read(sageProvider.notifier).loadConversation(id);
-    } catch (_) {}
+    } catch (e) {
+      log('[resident] _load error: $e');
+    }
     if (mounted) setState(() => _loading = false);
   }
 
@@ -1633,25 +1652,30 @@ class _ResidentDetailScreenState extends ConsumerState<ResidentDetailScreen> wit
     final rc = TextEditingController(text: 'custom');
     final nc = TextEditingController();
     final tc = TextEditingController();
-    showDialog(context: context, builder: (ctx) => AlertDialog(
-      backgroundColor: ref.read(currentThemeProvider).surface,
-      title: Text(sduiStr('createAgentTitle', 'Spawn Agent')),
-      content: Column(mainAxisSize: MainAxisSize.min, children: [
-        TextField(controller: rc, decoration: const InputDecoration(labelText: 'Role', hintText: 'security_auditor / test_engineer / custom'), style: TextStyle(color: ref.read(currentThemeProvider).textPrimary)),
-        const SizedBox(height: 12),
-        TextField(controller: nc, decoration: const InputDecoration(labelText: 'Name (optional)'), style: TextStyle(color: ref.read(currentThemeProvider).textPrimary)),
-        const SizedBox(height: 12),
-        TextField(controller: tc, decoration: const InputDecoration(labelText: 'Task'), maxLines: 3, style: TextStyle(color: ref.read(currentThemeProvider).textPrimary)),
-      ]),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-        TextButton(onPressed: () {
-          ref.read(residentProvider.notifier).createAgent(residentId: rid, role: rc.text, name: nc.text.isEmpty ? null : nc.text, task: tc.text);
-          Navigator.pop(ctx);
-        }, child: Text('Create', style: TextStyle(color: ref.read(currentThemeProvider).primary))),
-      ],
-    ));
-    rc.dispose(); nc.dispose(); tc.dispose();
+    showDialog(context: context, builder: (ctx) {
+      return AlertDialog(
+        backgroundColor: ref.read(currentThemeProvider).surface,
+        title: Text(sduiStr('createAgentTitle', 'Spawn Agent')),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          TextField(controller: rc, decoration: const InputDecoration(labelText: 'Role', hintText: 'security_auditor / test_engineer / custom'), style: TextStyle(color: ref.read(currentThemeProvider).textPrimary)),
+          const SizedBox(height: 12),
+          TextField(controller: nc, decoration: const InputDecoration(labelText: 'Name (optional)'), style: TextStyle(color: ref.read(currentThemeProvider).textPrimary)),
+          const SizedBox(height: 12),
+          TextField(controller: tc, decoration: const InputDecoration(labelText: 'Task'), maxLines: 3, style: TextStyle(color: ref.read(currentThemeProvider).textPrimary)),
+        ]),
+        actions: [
+          TextButton(onPressed: () {
+            rc.dispose(); nc.dispose(); tc.dispose();
+            Navigator.pop(ctx);
+          }, child: const Text('Cancel')),
+          TextButton(onPressed: () {
+            ref.read(residentProvider.notifier).createAgent(residentId: rid, role: rc.text, name: nc.text.isEmpty ? null : nc.text, task: tc.text);
+            rc.dispose(); nc.dispose(); tc.dispose();
+            Navigator.pop(ctx);
+          }, child: Text('Create', style: TextStyle(color: ref.read(currentThemeProvider).primary))),
+        ],
+      );
+    });
   }
 
   @override

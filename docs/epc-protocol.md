@@ -306,13 +306,41 @@ BB [Type(1)] [Sub(1)] [PL(3BE)] [Payload(PL)] [XOR-CS(1)] 7E(1)
 | 0xA9 | TX_COMMIT | session ID |
 | 0xAA | TX_ROLLBACK | session ID |
 
+## BYPASS 门 — 数据旁路检测
+
+LLM 数据进入软件后，每次 EPC 编码处理必须经过旁路检测门：
+
+```
+BYPASS ENTRY: 捕获原始 LLM 文本（rawText / r.content）
+     │
+     ▼
+EPC 编码: encodeEpcFrame / epcFromMessage
+     │
+     ▼
+BYPASS EXIT: validateEpcFrame / validateEpcBuffer
+     │
+     ├── 校验通过 → 累加 frame（处理过的数据）
+     │
+     └── 校验失败 → bypassText += rawText（零处理，原样存 meta）
+```
+
+**验证函数：**
+- `validateEpcFrame(buf)` — 单帧校验：0xBB 开头、长度字段匹配、XOR checksum、0x7E 结尾
+- `validateEpcBuffer(buf)` — 多帧遍历，每帧调 validateEpcFrame
+
+**meta 字段：**
+- `bypass: true/false` — 是否触发旁路
+- `bypassText: string` — 旁路时携带的原始 LLM 文本（Flutter 直接显示，不经过 EPC content 解析）
+
 ## 关键文件
 
 | 路径 | 职责 |
 |------|------|
 | `modules/provider-kit/src/providers/epc-codec.js` | JS 编解码实现 + 常量 |
 | `openchat-flutter/lib/core/epc_constants.dart` | Flutter 常量（与 JS 同步） |
+| `openchat-flutter/lib/core/protocol/epc.dart` | Flutter EPC 帧解析/编码 + parseLlmReply 多帧拼接 |
 | `openchat-flutter/lib/core/audio/lmdn_codec.dart` | LMDN 帧编码（type=0x12, sub=0x30） |
+| `bridge/src/core/chat-poller.mjs` | Bridge 轮询 + BYPASS 门（validateEpcFrame/validateEpcBuffer） |
 | `docs/epc-protocol.md` | 本协议参考文档 |
 
 ## 不变量
@@ -322,3 +350,7 @@ BB [Type(1)] [Sub(1)] [PL(3BE)] [Payload(PL)] [XOR-CS(1)] 7E(1)
 - type=0x12 sub=0x30 的 LMDN 帧，payload 必须符合 LMDN 编解码格式
 - 新增操作只需分配新 opcode + 两端加常量，无需改帧结构
 - AI 仅通过 `frame[1]` (type) 和 `frame[2]` (sub) 判断操作类型
+- **BYPASS 门**：encodeEpcFrame 输出必须经过 validateEpcFrame 校验；校验失败时 raw text 入 meta.bypassText，零 EPC content 处理
+- **parseLlmReply 流式规则**：多帧 content/reasoning 必须 `join()` 拼接，不可 `=` 覆盖（否则流式只显最后一段）
+- **_seenReplyKeys 规则**：只记录 `-reply.epc` 的 key，`-stream.bin` 每轮重读（否则渐进更新永不发生）
+- **poll 停判规则**：`found=true` 只对 `-reply.epc` 设（否则首条流式即停轮询）

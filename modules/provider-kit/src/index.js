@@ -19,6 +19,7 @@ export {
 } from './providers/openai-compatible.js';
 
 export {
+  encodeChatMessage,
   encodeEpcFrame,
   epcFromResponse,
   epcFromMessage,
@@ -36,6 +37,8 @@ export {
   EPC_TYPE_BIZ_EXT, EPC_TYPE_EXPER, EPC_TYPE_RAW,
   EPC_SUB_CONTENT, EPC_SUB_THINKING, EPC_SUB_TOOL_CALL, EPC_SUB_TOOL_RESULT, EPC_SUB_ERROR,
   EPC_SUB_META, EPC_SUB_LMDN, EPC_SUB_OPUS, EPC_SUB_PCM, EPC_SUB_VAD,
+  EPC_SUB_CHAT_MSG, EPC_SUB_CHAT_TYPING, EPC_SUB_CHAT_REACTION, EPC_SUB_CHAT_ATTACH,
+  EPC_SUB_CHAT_QUOTE, EPC_SUB_CHAT_DELETE, EPC_SUB_CHAT_EDIT, EPC_SUB_CHAT_RECEIPT, EPC_SUB_CHAT_HISTORY,
 } from './providers/epc-codec.js';
 
 export {

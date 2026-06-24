@@ -1907,7 +1907,7 @@ export { testDevAux };
 
 
 // ===== 11.mjs =====
-import { _setDeps, _resetDeps, _getDeps, processOne, parseMsgPayload } from './lib/misc-lib.mjs';
+import { _setDeps, _resetDeps, _getDeps, processOne, parseChatPayload } from './lib/misc-lib.mjs';
 import { ok as assertOk, equal, deepStrictEqual } from 'assert';
 
 
@@ -2097,7 +2097,7 @@ export async function experiment_13_run({ inputs = {} } = {}) {
     composeRun: async () => ({ outputs: { reply: '', replyKey: '' } }),
   });
 
-  const parsed = parseMsgPayload('oc/chat/t1/1.msg', Buffer.from('{"type":"text","text":"hi"}'));
+  const parsed = parseChatPayload('oc/chat/t1/1.epc', Buffer.from('{"type":"text","text":"hi"}'));
   const parseOk = !!(parsed && parsed.chatId === 't1' && parsed.text === 'hi');
   _getDeps();
 
@@ -4299,8 +4299,9 @@ export async function experiment_25_run({ inputs = {} } = {}) {
       const defaultMax = 20;
       let pollerOk = false;
       try {
-        const { tsFromKey, parseMsgPayload } = await import('../core/chat-poller.mjs');
-        pollerOk = typeof tsFromKey === 'function' && typeof parseMsgPayload === 'function';
+        const { tsFromKey } = await import('../core/chat-poller.mjs');
+        const { parseChatPayload } = await import('../experiments/lib/misc-lib.mjs');
+        pollerOk = typeof tsFromKey === 'function' && typeof parseChatPayload === 'function';
       } catch (e) { console.error('[C0]', e); }
       return {
         outputs: {
@@ -5651,7 +5652,7 @@ export async function experiment_34_test() {
 // Experiment 6: chat-poller 行为测试 (walking-skeleton 核心)
 //
 // 测真行为，不只是源码静态检查。注入 mock qiniu + mock processText，验证：
-//   - parseMsgPayload: 解析 .msg JSON、剥 EPC 头、拒绝错格式
+//   - parseChatPayload: 解析 .epc JSON、剥 EPC 头、拒绝错格式
 //   - tsFromKey: 从 key 提取时间戳
 //   - handleMessage: 调 agent → 上传 reply.json
 //   - handleVoice:  校验 EPC 头 → 解码 → 调 agent → 上传
@@ -5687,7 +5688,7 @@ function _defaultMocks() {
 }
 
 export async function experiment_35_run({ inputs = {} } = {}) {
-  const { op = 'processOne', key = 'oc/chat/c1/1000.msg', raw = null } = inputs;
+  const { op = 'processOne', key = 'oc/chat/c1/1000.epc', raw = null } = inputs;
   const poller = await _load();
   poller._setDeps(_defaultMocks());
   if (op === 'processOne') {
@@ -5707,7 +5708,7 @@ export async function experiment_35_run({ inputs = {} } = {}) {
   }
   if (op === 'parse') {
     const buf = raw ? Buffer.from(raw) : Buffer.from('{"type":"text","text":"hi"}');
-    const out = poller.parseMsgPayload(key, buf);
+    const out = poller.parseChatPayload(key, buf);
     return { outputs: { result: out, key } };
   }
   throw new Error(`unknown op: ${op}`);
@@ -5727,17 +5728,17 @@ async function test_17() {
   }
 
   // === 必备导出 ===
-  for (const f of ['startChatPoll', 'processOne', 'handleMessage', 'handleVoice', 'parseMsgPayload', 'tsFromKey', '_setDeps', '_resetDeps']) {
+  for (const f of ['startChatPoll', 'processOne', 'handleMessage', 'handleVoice', 'parseChatPayload', 'tsFromKey', '_setDeps', '_resetDeps']) {
     if (typeof poller[f] === 'function') ok(`导出 ${f}()`);
     else ng(`导出 ${f} 缺失`);
   }
 
   // === tsFromKey 纯函数 ===
   const cases = [
-    { key: 'oc/chat/c1/1780720715249.msg', expect: 1780720715249 },
+    { key: 'oc/chat/c1/1780720715249.epc', expect: 1780720715249 },
     { key: 'oc/chat/c1/1234.enc',          expect: 1234 },
-    { key: 'oc/chat/c1/0.msg',             expect: 0 },
-    { key: 'oc/chat/c1/abc.msg',           expect: 0 },
+    { key: 'oc/chat/c1/0.epc',             expect: 0 },
+    { key: 'oc/chat/c1/abc.epc',           expect: 0 },
     { key: 'junk',                          expect: 0 },
   ];
   for (const c of cases) {
@@ -5746,39 +5747,34 @@ async function test_17() {
     else ng(`tsFromKey("${c.key}") → ${got} (期望 ${c.expect})`);
   }
 
-  // === parseMsgPayload: 正常 JSON ===
+  // === parseChatPayload: 正常 JSON ===
   {
     const raw = Buffer.from('{"type":"text","text":"hello"}');
-    const out = poller.parseMsgPayload('oc/chat/c1/1000.msg', raw);
-    if (out && out.text === 'hello' && out.chatId === 'c1') ok('parseMsgPayload 正常 → text=hello, chatId=c1');
-    else ng(`parseMsgPayload 异常: ${JSON.stringify(out)}`);
+    const out = poller.parseChatPayload('oc/chat/c1/1000.epc', raw);
+    if (out && out.text === 'hello' && out.chatId === 'c1') ok('parseChatPayload 正常 → text=hello, chatId=c1');
+    else ng(`parseChatPayload 异常: ${JSON.stringify(out)}`);
   }
 
-  // === parseMsgPayload: EPC 头剥离 (BB 00 06 ... 6 字节 payload) ===
+  // === encodeChatMessage → parseChatPayload 环回 ===
   {
-    const json = '{"type":"text","text":"epc"}';
-    const payload = Buffer.from(json, 'utf8');
-    const pl = payload.length; // 6 字节
-    const raw = Buffer.concat([
-      Buffer.from([0xBB, 0x00, 0xDD, (pl >> 16) & 0xFF, (pl >> 8) & 0xFF, pl & 0xFF]),
-      payload,
-    ]);
-    const out = poller.parseMsgPayload('oc/chat/c1/1001.msg', raw);
-    if (out && out.text === 'epc') ok('parseMsgPayload EPC 头剥离 → text=epc');
-    else ng(`EPC 剥离错: ${JSON.stringify(out)}`);
+    const { encodeChatMessage } = await import('provider-kit');
+    const raw = encodeChatMessage('epc');
+    const out = poller.parseChatPayload('oc/chat/c1/1001.epc', raw);
+    if (out && out.text === 'epc') ok('encodeChatMessage → parseChatPayload 环回 → text=epc');
+    else ng(`环回错: ${JSON.stringify(out)}`);
   }
 
-  // === parseMsgPayload: 无效 JSON ===
+  // === parseChatPayload: 无效 JSON ===
   {
-    const out = poller.parseMsgPayload('oc/chat/c1/x.msg', Buffer.from('not json'));
-    if (out === null) ok('parseMsgPayload 坏 JSON → null');
+    const out = poller.parseChatPayload('oc/chat/c1/x.epc', Buffer.from('not json'));
+    if (out === null) ok('parseChatPayload 坏 JSON → null');
     else ng(`坏 JSON 应 null: ${JSON.stringify(out)}`);
   }
 
-  // === parseMsgPayload: 错 type ===
+  // === parseChatPayload: 错 type ===
   {
-    const out = poller.parseMsgPayload('oc/chat/c1/x.msg', Buffer.from('{"type":"image","text":"x"}'));
-    if (out === null) ok('parseMsgPayload 错 type → null');
+    const out = poller.parseChatPayload('oc/chat/c1/x.epc', Buffer.from('{"type":"image","text":"x"}'));
+    if (out === null) ok('parseChatPayload 错 type → null');
     else ng(`错 type 应 null: ${JSON.stringify(out)}`);
   }
 

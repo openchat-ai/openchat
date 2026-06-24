@@ -68,6 +68,15 @@
 ## 最近会话摘要
 
 - [2026-06-03] **Bridge agent 端到端打通**：手机录音 → 微信 → Qiniu → bridge → agent → 文字气泡，中午实测成功。provider-kit 收口为单 import gate（provider-service.js），agent 改为 2-pass 系统（call-tools + final-answer），加 response cache + 上下文截断，prompt 改 20-token CoT。修复 config.json 缺逗号导致的静默 parse 失败。
+- [2026-06-24] **EPC 旁路检测门 + 流式修复** (18项修复，未推送)：
+  - **BYPASS 门架构**：`chat-poller.mjs` 新增 `validateEpcFrame()`/`validateEpcBuffer()` 结构校验器。流式每 chunk encodeEpcFrame → validateEpcFrame → 失败则 raw text 入 meta.bypassText（零 EPC 处理）。非流式 validateEpcBuffer(r.epc) → 失败则 raw content 入 meta.bypassText。Flutter `_pollReplies` 读 meta.bypass 标志，直接显示 bypassText 不走 content 解析。删了伪 hash 自比旁路（`sha8(r.epc)===sha8(epcBuf)` 永远 true → else 死代码）。
+  - **流式真正工作**：3 个互相掩盖的 CRITICAL bug — `parseLlmReply` 覆盖不拼接（只显最后一段）、`_seenReplyKeys` 拦 stream.bin 导致不重读、`found=true` 对 stream.bin 也设导致首条流式即停轮询。全部修通后流式才真正渐进更新。
+  - **上传失败不死锁**：`_sendText` putBinary 失败 → `_isWaiting=false` + log。Qiniu 未初始化同理。
+  - **dispose 全生命周期**：`_startReplyPoll`/`_sendText.then()`/`_endVmRecord` 加 `mounted` 守卫，`_init()` 失败时 `_pollTimer?.cancel()`，`_qiniu = null`。
+  - **桥端 200ms throttle 移除**：每 chunk 即时写 S3。Flutter 轮询简化到固定 1s（取消 adaptive backoff）。
+  - **教训**：`parseLlmReply` 的 `=` 覆盖是大模型常犯的"逐帧处理不考虑流式"错误。`_seenReplyKeys` 加 stream.bin 是"用同一个 set 管理两种不同语义的 key"。
+  - **未推送**：GitHub push 被墙。本地 main 已有全部 commit。
+
 - [2026-06-11] **lingbao 子项目落地 + M3 档 3 baseline** (本地 14 commit, 未推送)：
   - **lingbao** — 工地临时漏电 AI 协同防护，9/15 子任务完成 (60%)，5 新原语 (40-45)：waveform-sim/signal-algo/mqtt-push/doc-gen/calendar-parse, 4 task demo (10/13/14/15) 端到端跑通 (push 33ms, 5620B 报告, 1741B 方案书)。L1 硬件+L3 UI 依赖外部环境标 skeleton。
   - **cap/60.mjs** — M3 能力档位诊断骨架，5 档任务 baseline 5/5 通过（simulateIdealLLM）。U 假说雏形：retry-state 状态机下沉到 tool 层，LLM 只调 recordAttempt()。下一步跑真实 M3 填 failure-taxonomy.json。
@@ -447,3 +456,23 @@
 | `bridge/src/experiments/lib/slash-commands.mjs` | `/status` 加 costSummary 块（多 model 列表） |
 | `bridge/tests/integration/dev-repl-smoke.mjs` | +7 用例：charToToken 5 + lookupCost 3 + 基础 record + 多 model + 未知 model + formatSummary + compose 入口 |
 | `MEMORY.md` | 本节 |
+
+### 2026-06-24 测试模式：桥端到端验证
+
+**快速测试**（`bridge/scripts/test-bridge.mjs`）:
+```bash
+cd bridge && node scripts/test-bridge.mjs "你好，测试"
+```
+自动：写 .msg → Qiniu → 等桥处理 → 读 .reply.epc → 解析 EPC 内容 → 清理。
+
+**手动对照**：
+```bash
+# 发
+node -e "const {qiniuPut}=await import('./src/experiments/lib/storage-lib.mjs'); await qiniuPut('oc/chat/测试会话/'+Date.now()+'.msg', Buffer.from(JSON.stringify({type:'text',text:'你好'}),'utf8'))"
+
+# 收（等几秒）
+node -e "const {qiniuList,qiniuGet}=await import('./src/experiments/lib/storage-lib.mjs'); const {parseEpcPayload}=await import('provider-kit'); const f=(await qiniuList('oc/chat/测试会话/')).find(x=>(x.key||x).endsWith('-reply.epc')); if(f){const r=parseEpcPayload(await qiniuGet(f.key||f));console.log(r.content?.slice(0,500))}"
+
+# 删
+node -e "const {qiniuList,qiniuDelete}=await import('./src/experiments/lib/storage-lib.mjs'); (await qiniuList('oc/chat/测试会话/')).forEach(f=>qiniuDelete(f.key||f))"
+```

@@ -1,5 +1,6 @@
 // === logger.js ===
 import pino from 'pino';
+import { parseFrames } from 'provider-kit';
 
 const isDev = process.env.NODE_ENV !== 'production';
 
@@ -327,22 +328,28 @@ export function tsFromKey(key) {
   return m ? parseInt(m[1], 10) : 0;
 }
 
-export function parseMsgPayload(key, raw) {
-  let payload = raw;
-  if (raw[0] === 0xBB && raw.length >= 8) {
+export function parseChatPayload(key, raw) {
+  if (!raw || raw.length < 8) return null;
+  let text = null;
+  // 标准 CHAT MSG 帧 (0x17/0xF0) — 纯文本，无 JSON
+  for (const f of parseFrames(raw)) {
+    if (f.type === 0x17 && f.sub === 0xF0) {
+      text = f.payload.toString('utf8');
+      break;
+    }
+  }
+  // 向后兼容: 旧格式 0xBB 0x00 0xDD + JSON
+  if (!text && raw[0] === 0xBB && raw[1] === 0x00 && raw[2] === 0xDD) {
     const pl = (raw[3] << 16) | (raw[4] << 8) | raw[5];
-    payload = raw.slice(6, 6 + pl);
+    try {
+      const json = JSON.parse(raw.slice(6, 6 + pl).toString('utf8'));
+      if (json.text) text = json.text;
+    } catch {}
   }
-  let msg;
-  try {
-    msg = JSON.parse(payload.toString('utf8'));
-  } catch {
-    return null;
-  }
-  if (msg.type !== 'text' || !msg.text) return null;
+  if (!text) return null;
   const parts = key.split('/');
   const chatId = parts.length >= 3 ? parts[2] : 'default';
-  return { text: msg.text, chatId, ts: 0 };
+  return { text, chatId, ts: 0 };
 }
 
 export async function startChatPoll(intervalMs = 1000) {
@@ -356,7 +363,7 @@ export async function startChatPoll(intervalMs = 1000) {
 }
 
 export async function handleMessage(key, raw) {
-  const parsed = parseMsgPayload(key, raw);
+  const parsed = parseChatPayload(key, raw);
   if (!parsed) return { error: 'unparseable' };
   const r = await _deps.composeRun('poll-one', { msgKey: key, text: parsed.text, chatId: parsed.chatId });
   return { reply: r?.outputs?.reply || 'echo ' + parsed.text, replyKey: r?.outputs?.replyKey, sourceKey: key, chatId: parsed.chatId };
@@ -380,7 +387,7 @@ export async function processOne(key) {
   try {
     const raw = await _deps.qiniuGet(key);
     if (!raw || raw.length === 0) return { skipped: 'empty' };
-    const parsed = parseMsgPayload(key, raw);
+    const parsed = parseChatPayload(key, raw);
     if (!parsed) return { skipped: 'unparseable' };
     const r = await _deps.composeRun('poll-one', { msgKey: key, text: parsed.text, chatId: parsed.chatId });
     const reply = { reply: r.outputs.reply, replyKey: r.outputs.replyKey, error: r.outputs.error, sourceKey: key, chatId: parsed.chatId };

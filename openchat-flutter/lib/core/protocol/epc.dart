@@ -12,8 +12,8 @@
 // Audio frames (type=0x12):
 //   0x30 PCM_BATCH  — audio codec frame (handled by audio.dart)
 //
-// Chat-message frames (type=0x00):
-//   0xDD JSON       — outbound user message (EPC-wrapped JSON)
+// Chat-message frames (type=0x17):
+//   0xF0 MSG        — outbound user message (raw text, no JSON)
 
 import 'dart:convert';
 import 'dart:typed_data';
@@ -33,11 +33,11 @@ class Epc {
   static const int FRAME_START = 0xBB;
   static const int FRAME_END = 0x7E;
 
-  static const int TYPE_CHAT = 0x00;
+  static const int TYPE_CHAT = 0x17;
   static const int TYPE_LLM = 0x10;
   static const int TYPE_AUDIO = 0x12;
 
-  static const int SUB_CHAT_JSON = 0xDD;
+  static const int SUB_CHAT_MSG = 0xF0;
 
   static const int SUB_LLM_CONTENT = 0x10;
   static const int SUB_LLM_THINKING = 0x11;
@@ -89,26 +89,31 @@ class Epc {
   }
 
   // LLM 解析: 把 EPC 帧转成 {content, reasoning_content, error, meta}
+  // frames 按顺序拼接（多帧流式场景 critical）
   static Map<String, dynamic> parseLlmReply(Uint8List buf) {
     final out = <String, dynamic>{};
+    final contentParts = <String>[];
+    final reasoningParts = <String>[];
     for (final f in decode(buf)) {
       if (f.type != TYPE_LLM) continue;
       switch (f.sub) {
-        case SUB_LLM_CONTENT: out['content'] = f.text; break;
-        case SUB_LLM_THINKING: out['reasoning_content'] = f.text; break;
+        case SUB_LLM_CONTENT: contentParts.add(f.text); break;
+        case SUB_LLM_THINKING: reasoningParts.add(f.text); break;
         case SUB_LLM_ERROR: out['error'] = f.text; break;
         case SUB_LLM_META:
           try { out['meta'] = jsonDecode(f.text) as Map<String, dynamic>; } catch (_) {}
           break;
       }
     }
+    if (contentParts.isNotEmpty) out['content'] = contentParts.join();
+    if (reasoningParts.isNotEmpty) out['reasoning_content'] = reasoningParts.join();
     return out;
   }
 
-  // 用户消息封装: EPC(0x00 0xDD) + JSON payload
-  static Uint8List encodeChatMessage(Map<String, dynamic> json) {
-    final payload = Uint8List.fromList(utf8.encode(jsonEncode(json)));
-    return encodeFrame(TYPE_CHAT, SUB_CHAT_JSON, payload);
+  // 用户消息封装: EPC(0x17 0xF0) + raw text payload (无 JSON)
+  static Uint8List encodeChatMessage(String text) {
+    final payload = Uint8List.fromList(utf8.encode(text));
+    return encodeFrame(TYPE_CHAT, SUB_CHAT_MSG, payload);
   }
 
   // LLM 响应封装: 多帧拼接 (thinking + content + meta)

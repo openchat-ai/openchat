@@ -455,6 +455,15 @@ export function epcFromResponse({ content, reasoningContent, toolCalls }) {
   return Buffer.concat(frames);
 }
 
+/**
+ * 编码聊天消息为纯 EPC 帧（无 JSON）
+ * @param {string} text — 用户消息纯文本
+ * @returns {Buffer} — 标准 EPC 帧: BB 17 F0 {len} {text} {xor} 7E
+ */
+export function encodeChatMessage(text) {
+  return encodeEpcFrame(EPC_TYPE_CHAT, EPC_SUB_CHAT_MSG, String(text));
+}
+
 /** 从 raw message 构造完整 EPC buffer (跨 sub-type 泛化) */
 export function epcFromMessage(msg) {
   const all = extractAllEpcPayload(msg);
@@ -532,8 +541,8 @@ export function parseEpcPayload(epc) {
   for (const { type, sub, payload } of parseFrames(epc)) {
     if (type !== EPC_TYPE_LLM) continue;
     const text = payload.toString('utf8');
-    if (sub === EPC_SUB_CONTENT) result.content = text;
-    else if (sub === EPC_SUB_THINKING) result.reasoningContent = text;
+    if (sub === EPC_SUB_CONTENT) result.content += text;
+    else if (sub === EPC_SUB_THINKING) result.reasoningContent += text;
     else if (sub === EPC_SUB_TOOL_CALL) {
       try { result.toolCalls = JSON.parse(text).map(t => ({ id: t.i, name: t.n, arguments: t.a })); } catch {}
     }
