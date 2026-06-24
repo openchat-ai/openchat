@@ -11,6 +11,8 @@ import '../../core/sdui_config.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/client_providers.dart';
 
+enum CardVariant { filled, outlined, elevated, gradient, glass }
+
 class AppCard extends ConsumerWidget {
   final Widget child;
   final CardVariant variant;
@@ -201,60 +203,6 @@ class ListCard extends ConsumerWidget {
     );
   }
 }
-  Color _getColor(double level) {
-    if (level > 0.7) return Colors.red;
-    if (level > 0.4) return Colors.orange;
-    return Colors.green;
-  }
-}
-  @override
-  void initState() {
-    super.initState();
-    _subscription = widget.audioLevelStream.listen((level) {
-      if (mounted) {
-        setState(() {
-          _levels.removeAt(0);
-          _levels.add(level.clamp(0, 1));
-        });
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _subscription?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: widget.height,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: List.generate(_levels.length, (index) {
-          return AnimatedContainer(
-            duration: const Duration(milliseconds: 80),
-            margin: const EdgeInsets.symmetric(horizontal: 2),
-            width: 6,
-            height: 8 + (_levels[index] * (widget.height - 16)).clamp(0, widget.height - 16),
-            decoration: BoxDecoration(
-              color: _getBarColor(_levels[index]),
-              borderRadius: BorderRadius.circular(3),
-            ),
-          );
-        }),
-      ),
-    );
-  }
-
-  Color _getBarColor(double level) {
-    if (level > 0.7) return Colors.red;
-    if (level > 0.4) return Colors.orange;
-    return widget.color;
-  }
-}
-
 
 // ===== bridge_url_tile.dart =====
 class BridgeUrlTile extends ConsumerStatefulWidget {
@@ -314,156 +262,6 @@ class _BridgeUrlTileState extends ConsumerState<BridgeUrlTile> {
     );
   }
 }
-  @override
-  void initState() {
-    super.initState();
-    _isExpanded = widget.initiallyExpanded;
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
-    if (_isExpanded) _controller.value = 1.0;
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _toggle() {
-    setState(() {
-      _isExpanded = !_isExpanded;
-      if (_isExpanded) {
-        _controller.forward();
-      } else {
-        _controller.reverse();
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = ref.watch(currentThemeProvider);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: theme.surface.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(theme.radiusMedium),
-        border: Border.all(color: theme.textTertiary.withValues(alpha: 0.1), width: 1),
-      ),
-      child: Column(
-        children: [
-          GestureDetector(
-            onTap: _toggle,
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Expanded(child: widget.header),
-                  AnimatedRotation(
-                    turns: _isExpanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 300),
-                    child: Icon(Icons.expand_more, color: theme.textTertiary),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          SizeTransition(
-            sizeFactor: _animation,
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: widget.content,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-    return ListView.builder(
-      padding: padding,
-      itemCount: groups.length,
-      itemBuilder: (context, index) {
-        final groupKey = groups.keys.elementAt(index);
-        final groupItems = groups[groupKey]!;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            groupHeaderBuilder?.call(groupKey) ??
-            Padding(
-              padding: const EdgeInsets.fromLTRB(4, 20, 4, 8),
-              child: Text(
-                groupKey.toUpperCase(),
-                style: TextStyle(
-                  color: theme.textTertiary,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 2,
-                ),
-              ),
-            ),
-            ...groupItems.map((item) => itemBuilder(item)),
-          ],
-        );
-      },
-    );
-  }
-}
-  @override
-  void initState() {
-    super.initState();
-    _controller.addListener(_onScroll);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _onScroll() {
-    if (_controller.position.pixels >=
-        _controller.position.maxScrollExtent - 200) {
-      _loadMore();
-    }
-  }
-
-  Future<void> _loadMore() async {
-    if (_isLoading || !widget.hasMore) return;
-    setState(() => _isLoading = true);
-    await widget.onLoadMore();
-    setState(() => _isLoading = false);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = ref.watch(currentThemeProvider);
-    return ListView(
-      controller: _controller,
-      padding: widget.padding,
-      children: [
-        ...widget.items,
-        if (_isLoading)
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Center(child: CircularProgressIndicator(color: theme.primary)),
-          ),
-        if (!widget.hasMore && widget.items.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Center(
-              child: Text('宸茬粡鍒板簳浜?,
-                style: TextStyle(color: theme.textTertiary, fontSize: 12)),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
 
 // ===== people_dialogs.dart =====
 class PeopleDialogs {

@@ -64,9 +64,6 @@ class _OpenChatAppState extends ConsumerState<OpenChatApp>
       routes: {
         '/theme': (context) => const ThemeSelectorScreen(),
         '/voice': (context) => const VoiceRoomScreen(),
-        '/room': (context) => RoomScreen(
-          roomId: ModalRoute.of(context)!.settings.arguments as String? ?? 'default',
-        ),
       },
     );
   }

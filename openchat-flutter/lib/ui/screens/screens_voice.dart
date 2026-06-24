@@ -809,7 +809,7 @@ class _VoiceRoomScreenState extends ConsumerState<VoiceRoomScreen>
                   color: _audio.localMode ? theme.textPrimary : theme.primary,
                   onTap: () => setState(() {
                     _audio.localMode = !_audio.localMode;
-                    if (!_audio.localMode) _audio.localQueue.clear();
+                    if (!_audio.localMode) _audio.clearLocalQueue();
                   }),
                 ),
                 const SizedBox(width: 16),

@@ -23,7 +23,7 @@ import '../../core/theme/app_theme.dart';
 import '../../providers/client_providers.dart';
 import '../components/resident/resident.dart';
 import '../widgets/common/animated_dots.dart';
-import '../widgets/widgets.dart';
+import '../widgets/widgets.dart' hide ListView;
 
 import 'screens_voice.dart';
 
@@ -1768,12 +1768,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> with SduiPageSt
       Navigator.pushNamed(context, action.substring(9));
     }
   }
-}
-
-// =============================================================================
-// task_detail_header.dart
-// =============================================================================
-
 }
 
 // =============================================================================
