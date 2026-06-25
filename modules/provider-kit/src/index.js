@@ -47,3 +47,10 @@ export {
   normalizeToolCalls,
   parseActionFallback,
 } from './utils/normalize.js';
+
+export {
+  classifyError,
+  ProviderError,
+  withRetry,
+  withTimeout,
+} from './utils/retry.js';
