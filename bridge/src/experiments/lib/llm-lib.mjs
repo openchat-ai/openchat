@@ -859,15 +859,20 @@ export function getStats() {
 // === config.mjs ===
 import { existsSync, readFileSync } from 'node:fs';
 
-const NEW_CONFIG_FILE = path.join(os.homedir(), '.config', 'openchat', 'config.json');
+const NEW_CONFIG_FILE = process.env.OPENCHAT_CONFIG
+  || path.join(os.homedir(), '.config', 'openchat', 'config.json');
+const OLD_CONFIG_FILE = path.join(os.homedir(), '.openchat', 'config.json');
 
 function loadNewConfig() {
-  try {
-    if (existsSync(NEW_CONFIG_FILE)) {
-      return JSON.parse(readFileSync(NEW_CONFIG_FILE, 'utf8'));
+  // NEW 优先,OLD 只作只读 fallback (兼容老用户;kit bridge-init.js 同款策略)
+  for (const file of [NEW_CONFIG_FILE, OLD_CONFIG_FILE]) {
+    try {
+      if (existsSync(file)) {
+        return JSON.parse(readFileSync(file, 'utf8'));
+      }
+    } catch (e) {
+      if (e.code !== 'ENOENT') console.debug(`[config] load ${file}: ${e.message}`);
     }
-  } catch (e) {
-    if (e.code !== 'ENOENT') console.debug('[config] load error:', e.message);
   }
   return null;
 }

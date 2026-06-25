@@ -3034,19 +3034,8 @@ export async function experiment_18_run({ inputs = {} } = {}) {
     }
 
     // live 模式: 需要 provider-kit
-    const { createProvider } = await import('provider-kit');
-    const { persistentConfig } = await import('../core/persistent-config.js');
-    const cfg = persistentConfig.config;
-
-    // 构建 fallback 链
-    const currentProvider = cfg.current?.provider || 'minimax';
-    const defaultModel = cfg.current?.model || 'MiniMax-M3';
-    const fallbacks = [];
-    fallbacks.push({ name: currentProvider, model: defaultModel });
-    for (const [name, pcfg] of Object.entries(cfg.providers || {})) {
-      if (name !== currentProvider && pcfg.apiKey)
-        fallbacks.push({ name, model: pcfg.defaultModel || 'openrouter/auto' });
-    }
+    const { getActiveProvider } = await import('provider-kit');
+    const { config: cfg, fallbacks } = await getActiveProvider({ silent: true });
 
     const TOOLS = MOCK_TOOLS.map(t => ({ type: 'function', function: t.function }));
     const systemMsg = { role: 'system', content: '你是 AI 助手，可以用工具完成任务。每次调用一个工具，获取结果后继续。完成后直接回答用户。' };
@@ -3146,9 +3135,8 @@ async function _callLLMWithFallback(cfg, fallbacks, provider, model, tools, hist
       const nextFb = fallbacks[0];
       if (!nextFb) throw e;
       process.stdout.write(`\x1b[33m[fallback to ${nextFb.name}]\x1b[0m\n`);
-      const { createProvider } = await import('provider-kit');
-      provider = createProvider(nextFb.name, cfg.providers[nextFb.name]?.apiKey);
-      await provider.connect(cfg.providers[nextFb.name]?.apiKey).catch(() => {});
+      const { connectByName } = await import('provider-kit');
+      provider = await connectByName(nextFb.name, cfg);
       model = nextFb.model || 'openrouter/auto';
     }
   }
@@ -3160,9 +3148,8 @@ async function runBaselineLive(cfg, fallbacks, tools, history) {
   let finalText = '';
   let totalToken = 0;
   const errors = [];
-  const { createProvider } = await import('provider-kit');
-  let provider = createProvider(fallbacks[0].name, cfg.providers[fallbacks[0].name]?.apiKey);
-  await provider.connect(cfg.providers[fallbacks[0].name]?.apiKey).catch(() => {});
+  const { connectByName } = await import('provider-kit');
+  let provider = await connectByName(fallbacks[0].name, cfg);
   let model = fallbacks[0].model;
 
   for (let r = 0; r < MAX_ROUNDS; r++) {
@@ -3209,9 +3196,8 @@ async function runPipelineLive(cfg, fallbacks, tools, history) {
   let finalText = '';
   let totalToken = 0;
   const errors = [];
-  const { createProvider } = await import('provider-kit');
-  let provider = createProvider(fallbacks[0].name, cfg.providers[fallbacks[0].name]?.apiKey);
-  await provider.connect(cfg.providers[fallbacks[0].name]?.apiKey).catch(() => {});
+  const { connectByName } = await import('provider-kit');
+  let provider = await connectByName(fallbacks[0].name, cfg);
   let model = fallbacks[0].model;
 
   enforcer.defineAll({ edit_file: ['grep', 'read_file'], write_file: ['read_file'], execute_command: ['read_file'] });
@@ -3829,31 +3815,18 @@ let _model = null;
 const _sessions = new Map(); // chatId → { history, sessionId }
 
 export async function experiment_22_initProvider() {
-  const cfg = persistentConfig.config;
-  let provider = cfg.current?.provider;
-  let model = cfg.current?.model;
-  if (!provider || !model || !cfg.providers?.[provider]) {
-    const keys = Object.keys(cfg.providers || {});
-    if (keys.length === 0) throw new Error('config.json: no provider configured');
-    provider = keys[0];
-    model = cfg.providers[provider]?.defaultModel || cfg.providers[provider]?.model;
-    if (!model) throw new Error(`config.json: no model for ${provider}`);
-  }
-  const apiKey = cfg.providers[provider]?.apiKey;
-  if (!apiKey) throw new Error(`config.json: providers.${provider}.apiKey missing`);
-
-  _provider = createProvider(provider, apiKey);
-  await _provider.connect(apiKey);
+  const { provider, model } = await getActiveProvider();
+  _provider = provider;
   _model = model;
-  console.debug(`[tool-loop] init OK: ${provider}/${model} (via provider-kit)`);
-  return `${provider}/${model}`;
+  return `${provider.id}/${model}`;
 }
 
 // === invariants ===
-//   - _provider 必须先调 initProvider() 才能调 processText/run
+//   - _provider 必须先调 initProvider() 才能调 processText/run (内部委托 provider-kit.getActiveProvider)
 //   - 每个 chatId 一份 history (in-memory Map), session 不持久化
 //   - role > brain > base 的优先级: role 决定 prompt/tools/maxRounds 顶, brain 在 role 之上微调
 //   - toolSubset = (role.tools if role else callerTools) ∩ brain-adapt
+//   - bridge 不再持有 provider 创建逻辑; 所有 LLM 走 kit.getActiveProvider (per R-llm-kit-1)
 // === end invariants ===
 
 function _getOrCreateSession(chatId, systemPrompt = SYSTEM_PROMPT) {
@@ -6462,24 +6435,7 @@ export const experiment_38_META = { id: 'goal' };
 const MAX_STEPS = 8;
 
 async function _getProvider() {
-  const cfg = persistentConfig.config;
-  const currentProvider = cfg.current?.provider || 'minimax';
-  const defaultModel = cfg.current?.model || 'MiniMax-M3';
-  const fallbacks = [{ name: currentProvider, model: defaultModel }];
-  for (const [name, pcfg] of Object.entries(cfg.providers || {})) {
-    if (name !== currentProvider && pcfg.apiKey)
-      fallbacks.push({ name, model: pcfg.defaultModel || 'openrouter/auto' });
-  }
-  for (const fb of fallbacks) {
-    try {
-      const p = createProvider(fb.name, cfg.providers[fb.name]?.apiKey);
-      await p.connect(cfg.providers[fb.name]?.apiKey);
-      return { provider: p, model: fb.model, fallbacks };
-    } catch (e) {
-      console.error(`[goal] provider ${fb.name} failed: ${e.message.slice(0, 60)}`);
-    }
-  }
-  throw new Error('goal: no available provider');
+  return await getActiveProvider();
 }
 
 async function _decompose(description, p, model, fallbacks, cfg) {
@@ -6531,7 +6487,7 @@ export async function experiment_38_run({ inputs = {} } = {}) {
   const { description, sessionId = 'default' } = inputs;
   if (!description) throw new Error('goal.run: description required');
 
-  await initToolLoopProvider();
+  await experiment_22_initProvider();
 
   const cfg = persistentConfig.config;
   const { provider, model, fallbacks } = await _getProvider();

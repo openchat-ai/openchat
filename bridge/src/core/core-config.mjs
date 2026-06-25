@@ -7,6 +7,7 @@ import { DEFAULT_PORT } from '../constants.js';
 const USER_DIR = process.env.OPENCHAT_HOME || path.join(os.homedir(), '.openchat');
 const CONFIG_FILE = process.env.OPENCHAT_CONFIG || path.join(USER_DIR, 'config.json');
 const NEW_CONFIG_FILE = path.join(os.homedir(), '.config', 'openchat', 'config.json');
+const NEW_STATE_FILE = path.join(os.homedir(), '.config', 'openchat', 'state.json');
 const PROJECT_ROOT = path.resolve(process.cwd(), '..');
 const PROJECT_DIR = path.join(PROJECT_ROOT, '.openchat');
 const SESSIONS_DIR = path.join(PROJECT_DIR, 'sessions');
@@ -41,11 +42,18 @@ class PersistentConfig {
     ensureDir(USER_DIR); ensureDir(PROJECT_DIR); ensureDir(SESSIONS_DIR);
     ensureDir(SKILLS_DIR); ensureDir(MEMORY_DIR); ensureDir(LOGS_DIR); ensureDir(HOUSES_DIR);
     const newCfg = readJson(NEW_CONFIG_FILE, null);
+    const newState = readJson(NEW_STATE_FILE, null);
     const oldCfg = readJson(CONFIG_FILE, null);
     this.config = newCfg || oldCfg || DEFAULT_CONFIG;
-    if (oldCfg) {
+    // NEW_STATE_FILE 优先级 > oldCfg (新路径完全替代旧路径的非敏感字段)
+    if (newState) {
+      if (newState.bridge) this.config.bridge = newState.bridge;
+      if (newState.sessionHistory) this.config.sessionHistory = newState.sessionHistory;
+      if (newState.preferences) this.config.preferences = newState.preferences;
+    } else if (oldCfg) {
       if (oldCfg.bridge && !this.config.bridge) this.config.bridge = oldCfg.bridge;
       if (oldCfg.sessionHistory) this.config.sessionHistory = oldCfg.sessionHistory;
+      if (oldCfg.preferences) this.config.preferences = oldCfg.preferences;
     }
   }
 
@@ -182,11 +190,12 @@ class PersistentConfig {
     if (this.config.current) sensitive.current = this.config.current;
     if (this.config.providers) sensitive.providers = this.config.providers;
     writeJson(NEW_CONFIG_FILE, sensitive);
+    // 非敏感字段写到独立 state 文件 (NEW path),不再混在 OLD config.json
     const nonsensitive = {};
     if (this.config.bridge) nonsensitive.bridge = this.config.bridge;
     if (this.config.sessionHistory) nonsensitive.sessionHistory = this.config.sessionHistory;
     if (this.config.preferences) nonsensitive.preferences = this.config.preferences;
-    writeJson(CONFIG_FILE, nonsensitive);
+    writeJson(NEW_STATE_FILE, nonsensitive);
   }
 
   getPaths() {

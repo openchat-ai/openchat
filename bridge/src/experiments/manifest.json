@@ -364,7 +364,7 @@
       "category": "llm",
       "pure": false,
       "needsEnv": [],
-      "description": "Runs multi-turn LLM tool-call loops through provider-kit with middleware. Use when user asks to chat, call tools in a loop, run agent, or multi-turn tool use.",
+      "description": "Multi-turn LLM tool-call loop; provider lifecycle (config + connect) owned by `provider-kit.getActiveProvider()` (bridge no longer holds provider creation). Use when user asks to chat, call tools in a loop, run agent, or multi-turn tool use.",
       "deps": [
         "guardian"
       ],
@@ -737,6 +737,18 @@
       "status": "closed-loop",
       "intelligenceLevel": null,
       "description": "Project DNA — 极速项目理解法 (含 hashline)"
+    },
+    {
+      "id": "experiments-all",
+      "file": "experiments-all.mjs",
+      "name": "experiments-all",
+      "category": "general",
+      "pure": true,
+      "deps": [],
+      "tags": [],
+      "status": "skeleton",
+      "intelligenceLevel": null,
+      "description": "Auto-registered"
     }
   ]
 }
