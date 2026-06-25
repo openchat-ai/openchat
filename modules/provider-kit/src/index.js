@@ -54,3 +54,11 @@ export {
   withRetry,
   withTimeout,
 } from './utils/retry.js';
+
+export {
+  loadBridgeConfig,
+  pickFallback,
+  getActiveProvider,
+  connectByName,
+  getConfigPaths,
+} from './bridge-init.js';

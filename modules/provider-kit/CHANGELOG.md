@@ -2,6 +2,21 @@
 
 All notable changes to provider-kit.
 
+## [2.1.0] - 2026-06-26
+
+### Added
+
+- `bridge-init.js` — single authority for bridge config + provider lifecycle:
+  - `loadBridgeConfig()` reads `~/.config/openchat/config.json` (NEW) with fallback to `~/.openchat/config.json` (OLD)
+  - `pickFallback(config)` returns ordered `[current, ...otherProviders]`
+  - `getActiveProvider()` tries fallback chain, returns `{provider, model, fallbacks, config}`
+  - `connectByName(name, config)` — connect a specific provider by name (for runtime fallback switching without re-reading config)
+  - Exported from `index.js` as `loadBridgeConfig / pickFallback / getActiveProvider / connectByName / getConfigPaths`
+
+### Rule
+
+- **All LLM calls must go through `provider-kit.getActiveProvider()`** — bridge no longer owns provider creation. Replaces 5 ad-hoc fallback chains previously duplicated across `experiments-all.mjs` (E22 init, E34 fallback, E38 fallback, cap/60 baseline/pipeline).
+
 ## [1.5.0] - 2026-06-08
 
 ### Fixed (from expert review P0)
