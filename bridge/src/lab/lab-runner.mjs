@@ -6,7 +6,7 @@ import { dirname, join, resolve } from 'path';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync, readdirSync } from 'fs';
 import { homedir } from 'os';
 import { spawn } from 'child_process';
-import { CONCURRENCY, addFinding, addGoal, classify, diagnose, escalate, getActiveRuns, getNextPending, getTail, housekeeping, labEvents, listGoals, readProjects, recordRun, registerRun, relPath, unregisterRun, updateGoal } from './lab-core.mjs';
+import { CONCURRENCY, addFinding, addGoal, applyFixer, classify, diagnose, escalate, getActiveRuns, getNextPending, getTail, housekeeping, labEvents, listGoals, listHistory, ping, processLabHealth, readProjects, recordRun, registerRun, relPath, removeGoal, unregisterRun, updateGoal } from './lab-core.mjs';
 import { addFact } from '../experiments/lib/misc-lib.mjs';
 import { parseJS } from '../experiments/lib/coding-lib.mjs';
 
@@ -48,7 +48,6 @@ async function _ensureSupervisor() {
   if (_supervisorStarted) return;
   _supervisorStarted = true;
   try {
-    const { startSupervisor } = await import('./supervisor.mjs');
     const h = await startSupervisor();
     globalThis._supervisorHandle = h;
   } catch (e) {
@@ -202,6 +201,10 @@ async function runNext(turbo = true) {
 
 async function _runTurbo(goal) {
   const startedAt = Date.now();
+  // Guard: description might be a corrupted object {description, priority, project}
+  if (typeof goal.description !== 'string') {
+    goal = { ...goal, description: String(goal.description?.description || goal.id || '') };
+  }
   updateGoal(goal.id, { status: 'running', startedAt });
   labEvents.emit('runner', { type: 'start', goalId: goal.id, description: goal.description, startedAt });
 
@@ -263,7 +266,6 @@ async function _runTurbo(goal) {
         const [, expId, failCount, total] = ieM;
         testFn = async () => {
           try {
-            const { listHistory } = await import('./history.mjs');
             const all = listHistory({ description: expId });
             const recent = all.slice(-5);
             const classifications = recent.map(r => r.classification?.category).filter(Boolean);
@@ -585,11 +587,9 @@ async function _runTurbo(goal) {
       };
     }
     if (!testFn && goal.description.startsWith('[lab-health] ')) {
-      const { processLabHealth } = await import('./lab-health.mjs');
       testFn = async () => await processLabHealth(goal.description.slice('[lab-health] '.length), goal.id);
     }
     if (!testFn && goal.description.startsWith('[fix] ')) {
-      const { applyFixer } = await import('./fixers/index.mjs');
       testFn = async () => applyFixer(goal.description);
     }
     if (!testFn && goal.description.startsWith('evaluate ')) {
@@ -605,7 +605,6 @@ async function _runTurbo(goal) {
 
     // "no issue found" = 目标已修/误报, 直接从队列删除, 不落盘任何记录
     if (testResult?.info?.includes('no issue found')) {
-      const { removeGoal } = await import('./goal-queue.mjs');
       removeGoal(goal.id);
       unregisterRun(goal.id);
       return { ok: true, goal, removed: true, result: { info: testResult.info } };
@@ -1034,7 +1033,6 @@ async function runScoutRound() {
   if (pending > 0) {
     const batch = Math.min(pending, CONCURRENCY);
     log(`cycle: ${pending} pending, draining (max ${CONCURRENCY})`);
-    const { runNext } = await import('./runner.mjs');
     for (let i = 0; i < batch; i++) {
       const r = await runNext();
       if (r?.ok) drainOK++;
@@ -1063,7 +1061,6 @@ async function runScoutRound() {
 
   // === 元能力心跳 ===
   try {
-    const { ping } = await import('./lab-health.mjs');
     const health = ping();
     if (!health.ok) log(`[ALERT] lab-health heartbeat FAIL: ${health.issues?.join(', ')}`);
   } catch (e) {
@@ -1120,7 +1117,6 @@ function _medianDuration(description) {
 
 async function _loadHistoryForDuration(description) {
   try {
-    const { listHistory } = await import('./history.mjs');
     const all = listHistory();
     const same = all.filter(r => r.description === description && r.durationMs > 0 && r.status === 'done');
     if (same.length === 0) return null;
