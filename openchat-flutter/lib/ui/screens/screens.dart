@@ -596,6 +596,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
         ts: ts,
         requestTs: ts,
         isNew: true,
+        status: MessageStatus.pending,
       ));
       _isWaiting = true;
     });
@@ -603,17 +604,53 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
     _scrollBottom();
     if (_qiniu != null) {
       final frame = Epc.encodeChatMessage(text);
+      final msgIdx = _messages.length - 1;
       _qiniu!.putBinary(
         'oc/chat/${widget.chatId}/$ts.epc',
         frame,
-      ).then((_) { if (mounted) _startReplyPoll(initialDelay: 1500); })
-       .catchError((e) {
-         log('[chat] text upload fail: $e');
-         if (mounted) setState(() => _isWaiting = false);
-       });
+      ).then((_) {
+        if (mounted) setState(() {
+          _messages[msgIdx] = _messages[msgIdx].copyWith(status: MessageStatus.sent);
+          _startReplyPoll(initialDelay: 1500);
+        });
+      }).catchError((e) {
+        log('[chat] text upload fail: $e');
+        if (mounted) setState(() {
+          _messages[msgIdx] = _messages[msgIdx].copyWith(status: MessageStatus.failed);
+          _isWaiting = false;
+        });
+      });
     } else {
       log('[chat] qiniu not ready');
       if (mounted) setState(() => _isWaiting = false);
+    }
+  }
+
+  void _retryMessage(int idx) {
+    final m = _messages[idx];
+    if (m.status != MessageStatus.failed) return;
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    setState(() {
+      _messages[idx] = m.copyWith(status: MessageStatus.pending, ts: ts, requestTs: ts);
+      _isWaiting = true;
+    });
+    if (_qiniu != null) {
+      final frame = Epc.encodeChatMessage(m.text);
+      _qiniu!.putBinary(
+        'oc/chat/${widget.chatId}/$ts.epc',
+        frame,
+      ).then((_) {
+        if (mounted) setState(() {
+          _messages[idx] = _messages[idx].copyWith(status: MessageStatus.sent);
+          _startReplyPoll(initialDelay: 1500);
+        });
+      }).catchError((e) {
+        log('[chat] retry fail: $e');
+        if (mounted) setState(() {
+          _messages[idx] = _messages[idx].copyWith(status: MessageStatus.failed);
+          _isWaiting = false;
+        });
+      });
     }
   }
 
@@ -650,6 +687,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
           text: transcribed,
           time: DateTime.now().toString().substring(11, 16),
           ts: ts,
+          status: MessageStatus.sent,
         ));
       });
       _startReplyPoll(initialDelay: 2000);
@@ -759,23 +797,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
           ),
         ),
       ),
-      body: Stack(children: [
-        // subtle radial gradient overlay
-        Positioned.fill(child: IgnorePointer(child: Container(
-          decoration: BoxDecoration(
-            gradient: RadialGradient(
-              center: Alignment.topLeft,
-              radius: 1.5,
-              colors: [
-                theme.primary.withValues(alpha: 0.08),
-                Colors.transparent,
-              ],
-            ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment.topLeft,
+            radius: 1.5,
+            colors: [
+              theme.primary.withValues(alpha: 0.08),
+              Colors.transparent,
+            ],
           ),
-        ))),
-        Column(
+        ),
+        child: Column(
           children: [
-            const SizedBox(height: 64), // appbar height offset
+            const SizedBox(height: 64),
             Expanded(child: _messages.isEmpty
               ? ChatEmptyState(theme: theme, layout: sduiLayout)
               : _buildMessageList(theme)),
@@ -795,7 +830,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
             ),
           ],
         ),
-      ]),
+      ),
     );
   }
 
@@ -856,6 +891,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
                 onPlayVoice: () => _playVoiceMsg(key ?? ''),
                 showAvatar: showAvatar,
                 senderName: senderName,
+                onRetry: m.status == MessageStatus.failed ? () => _retryMessage(index) : null,
               ),
             );
           })),
@@ -1177,9 +1213,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SduiPageState {
   Widget _buildEmptyState(AppTheme theme, Map? state) {
     if (state == null) {
       return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.inbox_outlined, color: theme.textTertiary, size: 64),
-        const SizedBox(height: 16),
-        Text('\u793E\u533A\u8FD8\u5F88\u5B89\u9759', style: TextStyle(color: theme.textSecondary, fontSize: 16)),
+        Container(
+          width: 100, height: 100,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: theme.gradientPrimary, begin: Alignment.topLeft, end: Alignment.bottomRight),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(Icons.chat_bubble_outline, color: Colors.white, size: 44),
+        ),
+        const SizedBox(height: 24),
+        Text('\u5F00\u59CB\u5BF9\u8BDD', style: TextStyle(color: theme.textPrimary, fontSize: 18, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        Text('\u53D1\u9001\u4E00\u6761\u6D88\u606F\u5E76\u5F00\u542F\u4EBA\u5DE5\u667A\u80FD', style: TextStyle(color: theme.textSecondary, fontSize: 14)),
       ]));
     }
     final parser = SduiParser(vars: {}, onAction: null);

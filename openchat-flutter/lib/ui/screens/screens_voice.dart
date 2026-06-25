@@ -26,6 +26,23 @@ import '../widgets/common/markdown_text.dart';
 // chat_bubble.dart
 // =============================================================================
 
+String _relativeTime(int ts) {
+  final now = DateTime.now().millisecondsSinceEpoch;
+  final diff = now - ts;
+  if (diff < 60000) return '\u521A\u521A'; // 刚刚 (<1min)
+  if (diff < 3600000) return '${diff ~/ 60000}\u5206\u949F\u524D'; // N分钟前
+  final msg = DateTime.fromMillisecondsSinceEpoch(ts);
+  final today = DateTime.now();
+  if (msg.year == today.year && msg.month == today.month && msg.day == today.day) {
+    return '\u4ECA\u5929 ${msg.hour.toString().padLeft(2, '0')}:${msg.minute.toString().padLeft(2, '0')}';
+  }
+  final yesterday = today.subtract(const Duration(days: 1));
+  if (msg.year == yesterday.year && msg.month == yesterday.month && msg.day == yesterday.day) {
+    return '\u6628\u5929 ${msg.hour.toString().padLeft(2, '0')}:${msg.minute.toString().padLeft(2, '0')}';
+  }
+  return '${msg.month}/${msg.day} ${msg.hour.toString().padLeft(2, '0')}:${msg.minute.toString().padLeft(2, '0')}';
+}
+
 class ChatBubble extends StatelessWidget {
   final ChatMessage message;
   final AppTheme theme;
@@ -35,6 +52,7 @@ class ChatBubble extends StatelessWidget {
   final int? durationMs;
   final bool showAvatar;
   final String senderName;
+  final VoidCallback? onRetry;
 
   const ChatBubble({
     super.key,
@@ -46,6 +64,7 @@ class ChatBubble extends StatelessWidget {
     this.durationMs,
     this.showAvatar = false,
     this.senderName = '',
+    this.onRetry,
   });
 
   Color _avatarColor(String name) {
@@ -111,10 +130,12 @@ class ChatBubble extends StatelessWidget {
                         bottomRight: isMe ? const Radius.circular(5) : null,
                         bottomLeft: !isMe ? const Radius.circular(5) : null,
                       ),
-                      border: !isMe ? Border.all(
-                        color: theme.textTertiary.withValues(alpha: 0.12),
-                        width: 0.6,
-                      ) : null,
+                      border: message.status == MessageStatus.failed
+                          ? Border.all(color: Colors.red.shade400, width: 1.5)
+                          : (!isMe ? Border.all(
+                              color: theme.textTertiary.withValues(alpha: 0.12),
+                              width: 0.6,
+                            ) : null),
                       boxShadow: [
                         BoxShadow(
                           color: isMe ? theme.primary.withValues(alpha: 0.25) : Colors.black.withValues(alpha: 0.12),
@@ -176,13 +197,21 @@ class ChatBubble extends StatelessWidget {
                         ),
                       const SizedBox(height: 6),
                       Row(mainAxisSize: MainAxisSize.min, children: [
-                        Text(message.time, style: TextStyle(color: isMe ? Colors.white.withValues(alpha: 0.75) : theme.textTertiary, fontSize: 10)),
+                        Text(_relativeTime(message.ts), style: TextStyle(color: isMe ? Colors.white.withValues(alpha: 0.75) : theme.textTertiary, fontSize: 10)),
                         if (!isMe && message.hash != null) ...[
                           const SizedBox(width: 6),
                           Container(width: 2, height: 2, decoration: BoxDecoration(color: theme.textTertiary.withValues(alpha: 0.4), shape: BoxShape.circle)),
                           const SizedBox(width: 6),
                           Text(message.hash!, style: TextStyle(color: theme.textTertiary.withValues(alpha: 0.5), fontSize: 8, fontFamily: 'monospace', letterSpacing: 0.3)),
                         ],
+                        const Spacer(),
+                        if (message.status == MessageStatus.pending)
+                          SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 1.5, color: isMe ? Colors.white.withValues(alpha: 0.7) : theme.textTertiary))
+                        else if (message.status == MessageStatus.failed && onRetry != null)
+                          GestureDetector(
+                            onTap: onRetry,
+                            child: Icon(Icons.refresh, size: 14, color: Colors.red.shade400),
+                          ),
                       ]),
                     ]),
                   ),

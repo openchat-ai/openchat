@@ -15,6 +15,8 @@ enum MessageSender { me, ai }
 
 enum MessageType { text, voice }
 
+enum MessageStatus { pending, sent, failed }
+
 class ChatMessage {
   final MessageSender sender;
   final MessageType type;
@@ -27,6 +29,7 @@ class ChatMessage {
   final String? reasoning;
   final String? key;
   final bool isNew;
+  final MessageStatus status;
 
   const ChatMessage({
     required this.sender,
@@ -40,6 +43,7 @@ class ChatMessage {
     this.reasoning,
     this.key,
     this.isNew = false,
+    this.status = MessageStatus.sent,
   });
 
   bool get isMe => sender == MessageSender.me;
@@ -58,6 +62,7 @@ class ChatMessage {
     String? reasoning,
     String? key,
     bool? isNew,
+    MessageStatus? status,
   }) => ChatMessage(
     sender: sender ?? this.sender,
     type: type ?? this.type,
@@ -70,6 +75,7 @@ class ChatMessage {
     reasoning: reasoning ?? this.reasoning,
     key: key ?? this.key,
     isNew: isNew ?? this.isNew,
+    status: status ?? this.status,
   );
 
   Map<String, dynamic> toMap() => {
@@ -84,11 +90,15 @@ class ChatMessage {
     if (reasoning != null) 'reasoning': reasoning,
     if (key != null) 'key': key,
     if (isNew) '_new': true,
+    if (status != MessageStatus.sent) 'status': status.name,
   };
 
   factory ChatMessage.fromMap(Map<String, dynamic> m) {
     final sender = m['sender'] == 'me' ? MessageSender.me : MessageSender.ai;
     final type = m['type'] == 'voice' ? MessageType.voice : MessageType.text;
+    MessageStatus status = MessageStatus.sent;
+    if (m['status'] == 'pending') status = MessageStatus.pending;
+    else if (m['status'] == 'failed') status = MessageStatus.failed;
     return ChatMessage(
       sender: sender,
       type: type,
@@ -101,6 +111,7 @@ class ChatMessage {
       reasoning: m['reasoning'] as String?,
       key: m['key'] as String?,
       isNew: m['_new'] == true,
+      status: status,
     );
   }
 
