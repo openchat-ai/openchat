@@ -61,9 +61,24 @@ class _OpenChatAppState extends ConsumerState<OpenChatApp>
       debugShowCheckedModeBanner: false,
       theme: buildThemeData(theme),
       home: const MainScreen(),
-      routes: {
-        '/theme': (context) => const ThemeSelectorScreen(),
-        '/voice': (context) => const VoiceRoomScreen(),
+      onGenerateRoute: (settings) {
+        Widget page;
+        switch (settings.name) {
+          case '/theme':
+            page = const ThemeSelectorScreen(); break;
+          case '/voice':
+            page = const VoiceRoomScreen(); break;
+          default:
+            return null;
+        }
+        return PageRouteBuilder(
+          pageBuilder: (_, __, ___) => page,
+          transitionsBuilder: (_, a, __, child) => SlideTransition(
+            position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero).animate(a),
+            child: child,
+          ),
+          transitionDuration: const Duration(milliseconds: 300),
+        );
       },
     );
   }

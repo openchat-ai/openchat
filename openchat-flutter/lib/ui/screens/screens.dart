@@ -830,6 +830,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
             final m = _messages[index];
             final key = m.key;
             final isNew = m.isNew;
+            final prevSender = index > 0 ? _messages[index - 1].sender : null;
+            final showAvatar = prevSender != m.sender && !m.isMe;
+            final senderName = m.isMe ? '' : 'AI';
             return TweenAnimationBuilder<double>(
               key: ValueKey('msg-${m.ts}'),
               tween: Tween(begin: isNew ? 0.0 : 1.0, end: 1.0),
@@ -851,6 +854,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with SduiPageState, Wid
                 isPlaying: key != null && _playingKey == key,
                 durationMs: key != null ? _voiceDurationMs[key] : null,
                 onPlayVoice: () => _playVoiceMsg(key ?? ''),
+                showAvatar: showAvatar,
+                senderName: senderName,
               ),
             );
           })),
