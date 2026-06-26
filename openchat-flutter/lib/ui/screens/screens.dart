@@ -26,6 +26,8 @@ import '../widgets/common/animated_dots.dart';
 import '../widgets/widgets.dart' hide ListView;
 
 import 'screens_voice.dart';
+import 'screen_plan.dart';
+import 'screen_agent_page.dart';
 
 // =============================================================================
 // agent_hub_widgets.dart
@@ -1316,7 +1318,9 @@ class _MainScreenState extends ConsumerState<MainScreen> with SduiPageState {
   Widget _buildScreen(String name) {
     switch (name) {
       case 'home': return const HomeScreen();
-      case 'agent': return const AgentHubScreen();
+      case 'plan': return const PlanScreen();
+      case 'agent': return const AgentPageScreen();
+      case 'agent_hub': return const AgentHubScreen();
       case 'people': return const PeopleScreen();
       case 'chat': return const ChatListScreen();
       case 'dev': return const DevIdeScreen();
@@ -1340,6 +1344,7 @@ class _MainScreenState extends ConsumerState<MainScreen> with SduiPageState {
 
   static const _fallbackTabs = [
     {'icon': 'home', 'label': 'Home', 'screen': 'home'},
+    {'icon': 'plan', 'label': 'Plan', 'screen': 'plan'},
     {'icon': 'agent', 'label': 'Agent', 'screen': 'agent'},
     {'icon': 'chat', 'label': 'Chat', 'screen': 'chat'},
     {'icon': 'people', 'label': 'People', 'screen': 'people'},

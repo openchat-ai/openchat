@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/api/base_client.dart';
+import '../core/api/experiments_client.dart';
 import '../core/models/agent_model.dart';
 import '../core/models/resident_model.dart';
 import '../core/theme/app_theme.dart';
@@ -86,6 +87,10 @@ final residentClientProvider = Provider<ResidentClient>((ref) {
 final sageClientProvider = Provider<SageClient>((ref) {
   final config = ref.watch(configProvider);
   return SageClient(baseUrl: config.baseUrl, token: config.token);
+});
+final experimentsClientProvider = Provider<ExperimentsClient>((ref) {
+  final config = ref.watch(configProvider);
+  return ExperimentsClient(baseUrl: config.baseUrl);
 });
 
 // ===== bridge_provider.dart =====

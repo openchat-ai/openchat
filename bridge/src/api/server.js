@@ -23,6 +23,7 @@ import { SignalRelay } from '../experiments/lib/storage-lib.mjs';
 // 路由
 import { feedbackRouter, updatesRouter, versionsRouter, resourcesRouter, metricsRouter, healthRouter } from './routes/route-bundle.mjs';
 import { createP2PRouter, voiceRouter, signalingRouter, skillsRouter, devRouter, labDashboardRouter } from './routes/all-routes.mjs';
+import { createExperimentsRouter } from './routes/experiments-api.mjs';
     import legacyRouter from './routes/legacy.js';
 
 class APIServer {
@@ -533,6 +534,9 @@ a:hover{text-decoration:underline}
     // Lab Dashboard (P3) — /lab HTML + 8 JSON API endpoints
     this.app.use('/lab', labDashboardRouter);
 
+    // Experiments + Agent + Projects (Plan/Agent 页面用)
+    this.app.use('/api/v1', createExperimentsRouter());
+
     // Chat Session API
     this.app.delete('/api/v1/chat/:chatId', async (req, res) => {
       try {
@@ -583,13 +587,26 @@ a:hover{text-decoration:underline}
     // Chat WebSocket
     this.wss = new WebSocketServer({ noServer: true });
     this._wsUpgraders.set('/ws', this.wss);
-    this.wss.on('connection', (ws) => {
+    this.wss.on('connection', (ws, req) => {
       console.debug('[WS] client connected');
       ws._peerId = 'ws-' + Date.now().toString(36);
+      ws._token = null;
+      // P0-1 修复: 从 ws query (?token=xxx) 预读 token
+      try {
+        const u = new URL(req.url || '', 'ws://localhost');
+        const t = u.searchParams.get('token');
+        if (t) ws._token = t;
+      } catch { /* ignore */ }
       this.clients.add(ws);
       ws.on('message', (data) => {
         try {
           const msg = JSON.parse(data.toString());
+          // 支持 {type:'auth', token:'xxx'} 首包绑定 token
+          if (msg?.type === 'auth' && msg?.data?.token) {
+            ws._token = msg.data.token;
+            ws.send(JSON.stringify({ type: 'auth_ack', data: { ok: true } }));
+            return;
+          }
           if (this._onWSMessage) this._onWSMessage(ws, msg);
         } catch (e) {
           ws.send(JSON.stringify({ type: 'error', data: { message: e.message } }));

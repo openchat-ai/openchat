@@ -3840,9 +3840,13 @@ function _getOrCreateSession(chatId, systemPrompt = SYSTEM_PROMPT) {
 export async function experiment_22_processText(text, chatId = 'default', opts = {}) {
   if (!_provider) throw new Error('call initProvider() first');
 
+  // [P0-4] onEvent 回调: SSE 流式用, 命中时 throw 不阻断主流程
+  const emit = (ev) => { try { opts.onEvent?.(ev); } catch { /* caller 关闭时 swallow */ } };
+
   // [ROLE] opt-in role override — prompt + tools + maxRounds 一起换
   const roleDef = opts.role ? getRole(opts.role) : null;
   if (roleDef) console.debug(`[role] ${chatId}: ${roleDef.name} (tools=${roleDef.tools.length}, maxRounds=${roleDef.maxRounds})`);
+  emit({ type: 'role', role: roleDef?.name || null, chatId });
 
   // [BRAIN] predict — opt-in 读脑预测, 失败/未启 = null
   const brainPred = brainPredict(text);
@@ -3874,6 +3878,7 @@ export async function experiment_22_processText(text, chatId = 'default', opts =
   const callCount = new Map();
 
   for (let round = 0; round < effectiveMaxRounds; round++) {
+    emit({ type: 'thinking', iteration: round, chatId });
     const rawResponse = await _provider.chat(_model, entry.history, {
       tools: toolSubset,
     });
@@ -3894,6 +3899,9 @@ export async function experiment_22_processText(text, chatId = 'default', opts =
     }
 
     if (toolCalls && toolCalls.length > 0) {
+      for (const tc of toolCalls) {
+        emit({ type: 'tool_call', tool: tc.name, args: tc.function?.arguments || tc.arguments, round });
+      }
       const asstMsg = {
         role: 'assistant',
         content: rawResponse.content || null,
@@ -3928,16 +3936,19 @@ export async function experiment_22_processText(text, chatId = 'default', opts =
           try { parsedArgs = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : (rawArgs || {}); } catch { /* 留给 _execTool 报错 */ }
           const perm = permCheck(tc.name, parsedArgs, { chatId });
           if (!perm.allowed) {
+            emit({ type: 'tool_result', tool: tc.name, result: `[Denied: ${perm.reason}]`, denied: true });
             entry.history.push({ role: 'tool', tool_call_id: tc.id, content: `[Denied: ${perm.reason}]` });
             continue;
           }
           const result = await _execTool(tc.name, rawArgs);
+          emit({ type: 'tool_result', tool: tc.name, result: String(result).slice(0, 4000) });
           entry.history.push({ role: 'tool', tool_call_id: tc.id, content: result });
         }
       }
       if (finalText) break;
     } else {
       finalText = rawResponse.content || '';
+      emit({ type: 'content', text: finalText, round });
       break;
     }
   }
@@ -3956,6 +3967,7 @@ export async function experiment_22_processText(text, chatId = 'default', opts =
   const trimmed = [entry.history[0], ...entry.history.slice(-18)];
   entry.history = trimmed;
 
+  emit({ type: 'complete', response: finalText, chatId });
   return { response: finalText, toolCalls: [], sessionId: entry.sessionId };
 }
 

@@ -55,6 +55,28 @@ class PersistentConfig {
       if (oldCfg.sessionHistory) this.config.sessionHistory = oldCfg.sessionHistory;
       if (oldCfg.preferences) this.config.preferences = oldCfg.preferences;
     }
+    // P0-2 修复: 首启动自动迁移 — 如果 NEW_STATE_FILE 不存在但 OLD 有非敏感字段,
+    // 立即同步到 NEW_STATE_FILE 防止 save() 第一次覆盖前数据被覆盖
+    this._migrateOldConfig(newState, oldCfg);
+  }
+
+  // P0-2 修复: 检测旧配置,把非敏感字段一次性搬到新路径
+  // 条件: NEW_STATE_FILE 不存在 AND OLD 存在 AND OLD 里有 bridge/sessionHistory/preferences 之一
+  _migrateOldConfig(newState, oldCfg) {
+    if (newState) return;  // 新路径已就位,无需迁移
+    if (!oldCfg) return;   // 没旧数据
+    const hasLegacy = oldCfg.bridge || oldCfg.sessionHistory || oldCfg.preferences;
+    if (!hasLegacy) return;
+    const migrated = {};
+    if (oldCfg.bridge) migrated.bridge = oldCfg.bridge;
+    if (oldCfg.sessionHistory) migrated.sessionHistory = oldCfg.sessionHistory;
+    if (oldCfg.preferences) migrated.preferences = oldCfg.preferences;
+    try {
+      writeJson(NEW_STATE_FILE, migrated);
+      console.debug(`[config] migrated ${Object.keys(migrated).join(',')} from ${CONFIG_FILE} → ${NEW_STATE_FILE}`);
+    } catch (e) {
+      console.warn(`[config] migration failed: ${e.message}`);
+    }
   }
 
   getProvider(name) { return this.config.providers?.[name] || null; }

@@ -10,8 +10,9 @@ import { TOOLS, executeTool } from '../src/experiments/lib/coding-lib.mjs';
 import { createInterface } from 'node:readline/promises';
 
 const rawArgs = process.argv.slice(2);
-const isServerOnly = rawArgs[0] === 'server';
 const isHelp = rawArgs[0] === 'help' || rawArgs[0] === '--help' || rawArgs[0] === '-h';
+const isServerOnly = rawArgs[0] === 'server' || rawArgs.length === 0;
+const isRepl = rawArgs.includes('-r') || rawArgs.includes('--repl');
 const isContinue = rawArgs.includes('-c') || rawArgs.includes('--continue');
 const goalIdx = rawArgs.findIndex(a => a === '--goal' || a === '-g');
 const goalDesc = goalIdx !== -1 ? rawArgs[goalIdx + 1] : null;
@@ -29,7 +30,7 @@ function showHelp() {
 
 Options:
   --help, -h          Show this help
-  server              Start bridge only (no REPL)
+  -r, --repl          Interactive REPL mode
   -c, --continue      Continue last session
   --goal, -g <desc>   Run goal mode
   --plan, -p          Pause /goal after plan for review (sets OPENCHAT_GOAL_PLAN=1)
@@ -41,8 +42,9 @@ Tools (${TOOLS.length}):`);
     console.log(`  ${f.name.padEnd(25)} ${(f.description || '').slice(0, 55)}${params ? ' [' + params + ']' : ''}`);
   }
   console.log(`
-Interactive mode (no args):
-  openchat              Start interactive REPL
+Default (no args):
+  openchat              Start bridge server (HTTP/WS)
+  openchat -r           Interactive REPL
   <tool> <args>         Run tool directly
   <message>             Start LLM dev-repl
 
@@ -136,21 +138,20 @@ async function repl() {
 
 // ─── Main ───
 async function main() {
-  if (isHelp || (!isServerOnly && !goalDesc && !hasToolCmd && !hasFreeText && !rawArgs.length)) {
-    if (rawArgs.length === 0) {
-      await repl();
-    } else {
-      showHelp();
-    }
+  if (isHelp) {
+    showHelp();
     return;
   }
 
+  // -r / --repl → interactive REPL
+  if (isRepl) {
+    await repl();
+    return;
+  }
+
+  // 默认: 无参 / server → bridge server
   if (isServerOnly) {
-    await initBridge();
-    console.log('Bridge running. Ctrl+C to stop.');
-    process.stdin.resume();
-    process.on('SIGINT', () => process.exit(0));
-    await new Promise(() => {}); // keep alive
+    await server();
     return;
   }
 
@@ -173,7 +174,7 @@ async function main() {
     await initBridge();
     const { startDevRepl } = await import('../src/core/dev-repl.mjs');
     const msg = rawArgs.find(a => !a.startsWith('-'));
-    if (isContinue) {
+    if (isContinue && !isRepl) {
       const { persistentStore } = await import('../src/core/persistent-store.js');
       const sessions = persistentStore.getAllSessions();
       const last = sessions.sort((a, b) => (b.lastActivity || 0) - (a.lastActivity || 0))[0];
@@ -183,6 +184,14 @@ async function main() {
       await startDevRepl(undefined, undefined, msg);
     }
   }
+}
+
+async function server() {
+  await initBridge();
+  console.log('Bridge running. Ctrl+C to stop.');
+  process.stdin.resume();
+  process.on('SIGINT', () => process.exit(0));
+  await new Promise(() => {}); // keep alive
 }
 
 main().catch(e => {

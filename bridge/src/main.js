@@ -424,6 +424,26 @@ export class Bridge {
       }
     }
 
+    // === Slash command dispatch (chat 消息里的 /cmd) ===
+    // 命中走 experiment compose,未命中再走 router/LLM
+    // P0-1 修复: BRIDGE_API_TOKEN 设了之后,WS slash 也要校验 (从 query/header/msg.data.token 取)
+    if (type === 'chat' && data?.message?.startsWith?.('/')) {
+      if (!this._wsAuthOk(ws, data)) {
+        ws.send(JSON.stringify({ type: 'error', data: { message: 'UNAUTHORIZED: set X-Api-Token (BRIDGE_API_TOKEN) before slash commands' }, sessionId }));
+        return;
+      }
+      try {
+        const reply = await this._handleSlashCommand(ws, data, sessionId);
+        if (reply !== null) {
+          ws.send(JSON.stringify({ type: 'chat_response', data: { content: reply, sessionId }, sessionId }));
+          return;
+        }
+      } catch (e) {
+        ws.send(JSON.stringify({ type: 'error', data: { message: `[slash] ${e.message}` }, sessionId }));
+        return;
+      }
+    }
+
     // 处理记忆/RAG 相关消息
     if (type === 'memory_save' || type === MessageType.MEMORY_SAVE) {
       try {
@@ -508,6 +528,85 @@ export class Bridge {
       const result = await router.dispatch(gatewayId, { type, data, sessionId });
     } catch (e) {
       ws.send(JSON.stringify({ type: MessageType.ERROR, data: { message: e.message }, sessionId }));
+    }
+  }
+
+  // === WS slash auth (P0-1 修复) ===
+  // BRIDGE_API_TOKEN 未设: 视为 dev,放行
+  // 设了: token 必须从 query ?token=xxx / msg.data.token / 第一次握手时存到 ws._token 三处任一
+  _wsAuthOk(ws, data) {
+    const expected = process.env.BRIDGE_API_TOKEN;
+    if (!expected) return true;
+    if (data?.token && data.token === expected) return true;
+    if (ws?._token && ws._token === expected) return true;
+    return false;
+  }
+
+  // === Slash command dispatcher ===
+  // 命中返回 string (直接给用户),未命中返回 null (继续走 router/LLM)
+  async _handleSlashCommand(ws, data, sessionId) {
+    const text = (data.message || '').trim();
+    if (!text.startsWith('/')) return null;
+    const spaceIdx = text.indexOf(' ');
+    const cmd = (spaceIdx === -1 ? text : text.slice(0, spaceIdx)).slice(1).toLowerCase();
+    const arg = spaceIdx === -1 ? '' : text.slice(spaceIdx + 1).trim();
+    const ALL = await import('./experiments/experiments-all.mjs');
+
+    switch (cmd) {
+      case 'help': {
+        return `可用 slash 命令:
+  /help               列所有命令
+  /status             bridge 状态 (provider/model/uptime)
+  /experiments        列出所有 experiment
+  /projects           DNA 项目列表 (Plan 页用)
+  /goal <desc>        拆解目标 + 多步执行 (E38)
+  /dna <question>     查 DNA (E42 answerFromDNA)
+  /run <id> [json]    跑指定 experiment`;
+      }
+      case 'status': {
+        const provider = persistentConfig.getPreference('currentProvider') || 'none';
+        const model = persistentConfig.getPreference('currentModel') || 'none';
+        const uptime = Math.floor(process.uptime());
+        return `bridge status:
+  uptime:    ${uptime}s
+  provider:  ${provider}
+  model:     ${model}
+  wsClients: ${this.clients?.size || 0}`;
+      }
+      case 'experiments': {
+        const list = ALL.experiment_compose_list();
+        return `${list.length} experiments:\n` + list
+          .filter((e) => e.status !== 'skeleton')
+          .map((e) => `  ${String(e.id).padEnd(8)} [${(e.category || '?').padEnd(10)}] ${e.name}`)
+          .join('\n');
+      }
+      case 'projects': {
+        return (await ALL.experiment_42_answerFromDNA('ls projects')) || '(no projects)';
+      }
+      case 'dna': {
+        if (!arg) return '用法: /dna <question>';
+        return (await ALL.experiment_42_answerFromDNA(arg)) || '(no answer)';
+      }
+      case 'goal': {
+        if (!arg) return '用法: /goal <description>';
+        const sid = sessionId || 'ws-default';
+        const out = await ALL.experiment_38_run({ inputs: { description: arg, sessionId: sid } });
+        return out?.outputs?.summary || JSON.stringify(out);
+      }
+      case 'run': {
+        if (!arg) return '用法: /run <experimentId> [jsonInputs]';
+        const m = arg.match(/^(\S+)\s*([\s\S]*)$/);
+        if (!m) return '用法: /run <id> [json]';
+        const [, id, jsonStr] = m;
+        let inputs = {};
+        if (jsonStr.trim()) {
+          try { inputs = JSON.parse(jsonStr); } catch { return `[run] bad json: ${jsonStr.slice(0, 60)}`; }
+        }
+        const out = await ALL.experiment_compose_run(id, { inputs });
+        return JSON.stringify(out, null, 2);
+      }
+      default:
+        return null;  // 未识别,继续走 LLM
     }
   }
 
