@@ -720,6 +720,25 @@
       "intelligenceLevel": "L2+"
     },
     {
+      "id": "edit-gate",
+      "file": "46.mjs",
+      "name": "edit-gate — 编辑审查门（Diff + Accept/Reject）",
+      "category": "coder",
+      "pure": false,
+      "needsEnv": [],
+      "description": "Cursor-style inline diff + accept/reject gate: write tools dry-run a deterministic unified diff before landing. Use when testing edit preview, diff gate, accept/reject, or HASH_STALE.",
+      "deps": [
+        "coding"
+      ],
+      "tags": [
+        "coder",
+        "edit-gate",
+        "ux"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L2+"
+    },
+    {
       "id": 27,
       "file": "27.mjs",
       "name": "存储 + Provider 接线",
