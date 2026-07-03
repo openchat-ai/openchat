@@ -413,6 +413,8 @@ export const TOOLS = [
   { type: 'function', function: { name: 'read_file', description: 'Read a source file by path (relative to project root)', parameters: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] } } },
   { type: 'function', function: { name: 'grep', description: 'Search file contents by text/regex across the project', parameters: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] } } },
   { type: 'function', function: { name: 'hash_edit', description: 'Zero-drift edit: replace exactly one line located by its 8-char hashline anchor (obtained from dna_query). If the hash no longer matches, returns HASH_STALE — re-run dna_query to refresh.', parameters: { type: 'object', properties: { path: { type: 'string' }, hash: { type: 'string' }, newContent: { type: 'string' } }, required: ['path', 'hash', 'newContent'] } } },
+  { type: 'function', function: { name: 'write_file', description: 'Write (create/overwrite) a file with the given content', parameters: { type: 'object', properties: { path: { type: 'string' }, content: { type: 'string' } }, required: ['path', 'content'] } } },
+  { type: 'function', function: { name: 'edit_file', description: 'Search/replace edit: replace a unique search string with new content', parameters: { type: 'object', properties: { path: { type: 'string' }, search: { type: 'string' }, replace: { type: 'string' } }, required: ['path', 'search', 'replace'] } } },
 ];
 
 export async function executeTool(name, args) {
@@ -425,6 +427,8 @@ export async function executeTool(name, args) {
       return r?.answer ?? '(no result)';
     }
     case 'read_file': return readFile(args.path);
+    case 'write_file': return writeFile(args.path, args.content);
+    case 'edit_file': return editFile(args.path, args.search, args.replace, args);
     case 'grep': return grepSearch(args.query, args);
     case 'hash_edit':
       try {
