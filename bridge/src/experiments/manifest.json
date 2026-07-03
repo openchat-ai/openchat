@@ -701,6 +701,44 @@
       "intelligenceLevel": "L1.5"
     },
     {
+      "id": "dna-agent-loop",
+      "file": "43.mjs",
+      "name": "dna-agent-loop — DNA 检索 + hashline 锚点编辑自主闭环",
+      "category": "coder",
+      "pure": false,
+      "needsEnv": [],
+      "description": "Chains DNA symbol search + hashline anchor edit into an autonomous retrieve→edit→verify→self-heal loop (Cursor-parity, deterministic). Use when testing dna-aware agent editing, hash_edit, or HASH_STALE self-heal.",
+      "deps": [
+        "project-dna",
+        "coding"
+      ],
+      "tags": [
+        "coder",
+        "dna-agent-loop"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L2+"
+    },
+    {
+      "id": "edit-gate",
+      "file": "46.mjs",
+      "name": "edit-gate — 编辑审查门（Diff + Accept/Reject）",
+      "category": "coder",
+      "pure": false,
+      "needsEnv": [],
+      "description": "Cursor-style inline diff + accept/reject gate: write tools dry-run a deterministic unified diff before landing. Use when testing edit preview, diff gate, accept/reject, or HASH_STALE.",
+      "deps": [
+        "coding"
+      ],
+      "tags": [
+        "coder",
+        "edit-gate",
+        "ux"
+      ],
+      "status": "closed-loop",
+      "intelligenceLevel": "L2+"
+    },
+    {
       "id": 27,
       "file": "27.mjs",
       "name": "存储 + Provider 接线",

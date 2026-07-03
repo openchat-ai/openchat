@@ -409,13 +409,35 @@ export async function parseFile(filePath) {
 export const TOOLS = [
   { type: 'function', function: { name: 'lang_parse', description: 'Parse source code AST for any supported language: dart, js, python, rust, go', parameters: { type: 'object', properties: { language: { type: 'string' }, code: { type: 'string' } }, required: ['language', 'code'] } } },
   { type: 'function', function: { name: 'lang_parse_file', description: 'Parse a source file by path (extension determines language)', parameters: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] } } },
+  { type: 'function', function: { name: 'dna_query', description: 'Deterministic symbol-level codebase search (replaces embeddings): "find function X" | "hash XXXXXXXX" | "ls path" | "summary" | "hot" | "cat prefix" | "isolate" | "callers X". Returns file:line:hash for precise hash_edit.', parameters: { type: 'object', properties: { query: { type: 'string', description: 'e.g. "find function getDNAContext"' } }, required: ['query'] } } },
+  { type: 'function', function: { name: 'read_file', description: 'Read a source file by path (relative to project root)', parameters: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] } } },
+  { type: 'function', function: { name: 'grep', description: 'Search file contents by text/regex across the project', parameters: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] } } },
+  { type: 'function', function: { name: 'hash_edit', description: 'Zero-drift edit: replace exactly one line located by its 8-char hashline anchor (obtained from dna_query). If the hash no longer matches, returns HASH_STALE — re-run dna_query to refresh.', parameters: { type: 'object', properties: { path: { type: 'string' }, hash: { type: 'string' }, newContent: { type: 'string' } }, required: ['path', 'hash', 'newContent'] } } },
+  { type: 'function', function: { name: 'write_file', description: 'Write (create/overwrite) a file with the given content', parameters: { type: 'object', properties: { path: { type: 'string' }, content: { type: 'string' } }, required: ['path', 'content'] } } },
+  { type: 'function', function: { name: 'edit_file', description: 'Search/replace edit: replace a unique search string with new content', parameters: { type: 'object', properties: { path: { type: 'string' }, search: { type: 'string' }, replace: { type: 'string' } }, required: ['path', 'search', 'replace'] } } },
 ];
 
 export async function executeTool(name, args) {
   switch (name) {
     case 'lang_parse': return parse(args.language, args.code);
     case 'lang_parse_file': return parseFile(args.path);
-    default: throw new Error(`Unknown ast-adapter tool: ${name}`);
+    case 'dna_query': {
+      const { answerFromDNA } = await import('../42.mjs');
+      const r = await answerFromDNA(args.query);
+      return r?.answer ?? '(no result)';
+    }
+    case 'read_file': return readFile(args.path);
+    case 'write_file': return writeFile(args.path, args.content);
+    case 'edit_file': return editFile(args.path, args.search, args.replace, args);
+    case 'grep': return grepSearch(args.query, args);
+    case 'hash_edit':
+      try {
+        return await hashEdit(args.path, args.hash, args.newContent);
+      } catch (e) {
+        // 失配返回结构化 HASH_STALE 供 LLM 自修（不抛）；直接调 hashEdit() 仍抛
+        return { ok: false, code: 'HASH_STALE', hint: 'anchor not found — call dna_query to refresh the hash, then retry hash_edit', path: args.path, hash: args.hash, error: e.message };
+      }
+    default: throw new Error(`Unknown tool: ${name}`);
   }
 }
 

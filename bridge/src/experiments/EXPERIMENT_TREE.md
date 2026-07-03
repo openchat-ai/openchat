@@ -68,3 +68,8 @@ flowchart TD
 | 39 | 39.mjs | mcp-server | 0 | - | - |
 | 40 | 40.mjs | hooks-plugin | 0 | - | - |
 | 41 | 41.mjs | e2e-chat-pipeline | 2 | 35, 36, 37, 38 | - |
+| 43 | 43.mjs | dna-agent-loop *(planned)* | 2 | 42, 22, 09/24 | - |
+| 44 | 44.mjs | incremental-dna *(planned)* | 1 | 42 | 45 |
+| 45 | 45.mjs | hashline-callgraph *(planned)* | 1 | 42, 44 | - |
+
+> **对标 Cursor 路线**（确定性代码库 agent）详见 `ROADMAP-CURSOR.md`。E43/44/45 + Lab TUI 补齐"检索→锚点编辑→验证"自主闭环。

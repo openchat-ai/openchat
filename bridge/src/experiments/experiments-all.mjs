@@ -7481,7 +7481,10 @@ const userText = demos[Date.now() % demos.length];
   console.debug('   demo 8/9/10 共用 qiniu/codec/agent/isolation 四个实验 = 整个 chat 流水线');
 };
 
-demo().catch(e => { console.error('demo 失败:', e); process.exit(1); });
+// 仅在直接运行本文件时跑 demo；被 import（run-all / TUI / bin）时不自执行，避免 stub demo 崩污染宿主。
+if (import.meta.url === `file://${process.argv[1]}`) {
+  demo().catch(e => { console.error('demo 失败:', e); process.exit(1); });
+}
 
 
 // ===== compose.mjs =====

@@ -1,6 +1,7 @@
 // run-all.mjs — 按 manifest.json 跑 closed-loop 实验
 // 所有实验从 experiments-all.mjs 统⼊
 import { readFile } from 'fs/promises';
+import { existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import * as ALL from './experiments-all.mjs';
@@ -31,7 +32,7 @@ let skeletonCount = 0, referenceCount = 0;
 
 for (const exp of MANIFEST.experiments) {
   const status = exp.status || 'closed-loop';
-  const label = `${exp.id.padEnd(15)} ${exp.name}`;
+  const label = `${String(exp.id).padEnd(15)} ${exp.name}`;
   console.debug(`\n▶ ${label}  [${status}]`);
 
   if (status === 'skeleton') {
@@ -51,7 +52,14 @@ for (const exp of MANIFEST.experiments) {
 
   closedLoopTotal++;
   try {
-    if (exp.file && !exp.file.startsWith('experiments-all') && !exp.file.includes('/')) {
+    const soloPath = resolve(__dirname, exp.file || '');
+    const isSolo = /^\d+\.mjs$/.test(exp.file || '') && existsSync(soloPath);
+    if (isSolo) {
+      // 独立实验文件（如 42/43.mjs）：test 在文件自身
+      const mod = await import(pathToFileURL(soloPath).href);
+      if (typeof mod.test === 'function') await mod.test();
+      else console.debug(`  ⚠ ${exp.id}: 无 test 函数`);
+    } else if (exp.file && !exp.file.startsWith('experiments-all') && !exp.file.includes('/')) {
       const testFn = findTestFn(exp.id);
       if (testFn) {
         await testFn();

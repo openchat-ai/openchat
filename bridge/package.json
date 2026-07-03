@@ -57,6 +57,8 @@
     "pm2:logs": "pm2 logs openchat-bridge",
     "pm2:reload": "pm2 reload openchat-bridge",
     "demo": "node scripts/demo.mjs",
+    "lab": "node src/experiments/tui/tui.mjs",
+    "agent": "node src/experiments/tui/agent.mjs",
     "prepare": "husky || true"
   },
   "keywords": [
