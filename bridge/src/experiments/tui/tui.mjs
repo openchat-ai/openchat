@@ -56,6 +56,7 @@ async function onKey(str, key) {
     else if (str === 'r') await panelRun(() => runAllSummary(exps), 'run-all 结果');
     else if (str === 'd') await panelRun(dnaContext, 'DNA 摘要');
     else if (str === '/') await freeQuery();
+    else if (str === 'a') await launchAgent();
   } else if (state.view === 'detail') {
     if (k === 'escape') toList();
     else if (str === 't') await panelRun(() => runOne(state.exp), `test: ${state.exp.id}`);
@@ -88,6 +89,22 @@ async function freeQuery() {
     draw();
     state.panelText = await dnaQuery(q);
   }
+  busy = false;
+  draw();
+}
+
+async function launchAgent() {
+  busy = true;
+  process.stdout.write('\x1b[?25h');
+  if (process.stdin.isTTY) process.stdin.setRawMode(false);
+  try {
+    const { agentView } = await import('./agent.mjs');
+    await agentView();
+  } catch (e) {
+    process.stdout.write('agent error: ' + e.message + '\n');
+  }
+  if (process.stdin.isTTY) process.stdin.setRawMode(true);
+  process.stdout.write('\x1b[?25l');
   busy = false;
   draw();
 }

@@ -38,7 +38,7 @@ function clip(s, n) {
 export function header() {
   return chalk.bold.cyan('  openchat Lab TUI ') +
     chalk.dim('— 实验室 · DNA · 智能分级   ') +
-    chalk.dim('[↑↓ 选择  ⏎ 详情  d DNA  r run-all  / 查询  q 退出]');
+    chalk.dim('[↑↓ 选择  ⏎ 详情  a Agent  d DNA  r run-all  / 查询  q 退出]');
 }
 
 export function renderList(groups, flatSelected) {

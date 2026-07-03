@@ -214,3 +214,57 @@ buildDependencyGraph 已有 import 边
 
 > 遵循 Spec-First：每个 `4X.mjs` 与 `4X.spec.md` 同提交；改 `42.mjs` 同步更 `42.spec.md`。
 > 遵循小步高频：一实验一提交，diff ≤500 行。
+
+---
+
+## 7. 用户交互对齐 Cursor（不只是内核）
+
+> 内核（E43 检索+编辑闭环）只是"能做"。Cursor 真正的体验在**交互层**：
+> agent 每一步透明可见、编辑落盘前可审查、危险操作可拦截。这一层同样走确定性路线。
+
+### Cursor 交互特征 ↔ openchat 对齐
+
+| Cursor 交互 | openchat 对齐 | 状态 |
+|---|---|---|
+| Agent 工具调用实时可视化（在读/在改什么） | TUI agent 视图：工具流卡片（🔍dna_query / 📄read_file / ✏️hash_edit） | 🟡 本轮做 |
+| **内联 Diff + Accept/Reject**（编辑落盘前逐块审查） | **edit-gate (E46)**：写工具 dry-run 出 unified diff → 用户 a/r 决策 → accept 才落盘 | 🟡 本轮做 |
+| Plan mode（先给计划，用户批准再执行） | agent 视图 plan 阶段：列步骤 → y 批准 → 执行 | 🟡 本轮做 |
+| @-mention 上下文（@file/@symbol/@code） | 输入 `@符号` → 自动 dna_query 注入上下文 | ⚪ 后续 |
+| 权限门控（shell/删除需确认） | edit-gate 对写工具默认 gate；只读工具直通 | 🟡 本轮做 |
+| 可中断长任务 | agent loop 每 round 可 Esc 中止 | 🟡 本轮做 |
+
+### E46 — edit-gate（编辑审查门）
+
+**目标**：写工具（hash_edit/edit_file/write_file）落盘前 **dry-run** 出确定性 unified diff，
+经用户 accept 才真落盘。这是 Cursor Apply/Accept 的确定性版——diff 由真实文件计算，零幻觉。
+
+**数据流**
+```
+tool call (写)
+  → previewEdit(tool,args)  读文件+定位, 计算 before/after, 不落盘   [C1]
+  → unifiedDiff(before,after)  行级 +/- 彩色 diff                    [C2]
+  → 用户 [a]ccept / [r]eject / [s]kip
+  → accept → applyEdit() = executeTool(tool,args) 真落盘              [C3]
+  → reject → 丢弃, agent 记录未应用                                  [C4]
+只读工具 (dna_query/read_file/grep) 不过 gate, 直通。
+```
+
+**接口签名**（`lib/edit-gate.mjs`）
+- `previewEdit(tool, args): Promise<{path, before, after, ok, error?}>` — dry-run，hash 失配返回 HASH_STALE
+- `unifiedDiff(before, after, path): string` — 彩色行级 diff
+- `applyEdit(tool, args): Promise<result>` — 经 coding-lib executeTool 落盘
+- `isWriteTool(name): boolean`
+
+**文件清单**
+| 文件 | 职责 | 行数上限 |
+|---|---|---|
+| lib/edit-gate.mjs | dry-run 预览 + unified diff + 落盘 | 200 |
+| lib/edit-gate.spec.md | 契约 | — |
+| tui/agent.mjs | TUI agent 视图：plan + 工具流 + diff 卡片 + a/r 决策 | 200 |
+| tui/agent.spec.md | 契约 | — |
+
+**验收**
+- `previewEdit('hash_edit', 命中)` 返回 before/after，不改文件；失配返回 HASH_STALE
+- `unifiedDiff` 正确标注 `-旧行 / +新行`
+- accept → 文件变；reject → 文件不变（test 断言）
+- TUI `npm run lab` → agent 模式：输入目标 → 看 plan → 逐工具流 → 编辑出 diff 卡片 → a/r 生效
