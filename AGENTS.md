@@ -340,3 +340,16 @@ npm publish
 4. 技术经理公布统计，P0-P2 标记得票数
 票数≥3自动执行。
 ```
+
+---
+
+## Cursor Cloud specific instructions
+
+云端 VM 只能跑 **Bridge 后端**（Node/Express）；Flutter 应用（`openchat-flutter`）无 SDK/模拟器，无法在无头环境运行，只做 Bridge 的端到端验证。
+
+- **Node 版本**：用 Node 22（`bridge/package.json` 的 `engines` 锁 `>=20.10.0 <23`）。README/技术栈表里写的 “Node 24” 不适用于本地开发，别升到 23+。
+- **依赖**：仓库是两个独立 npm 工程——根 `/workspace`（仅 commitlint/husky）和 `/workspace/bridge`（主应用）。二者都要 `npm install`（已由启动更新脚本自动处理）。
+- **启动/端口**：`cd bridge && npm start`（或 `npm run dev` 文件监听）。服务在 **3800** 端口，健康检查 `GET /health`。注意 `docker-compose.yml` 里写的是 3000，与代码默认的 3800 不一致，以代码为准。
+- **启动噪声（可忽略）**：日志里的 `[P2P] init error: crypto.randomBytes is not a function` 是无头环境下 P2P/Hyperswarm 初始化失败，不影响 REST/WS API；`npm install` 时 husky 打印 `.git can't be found`（git 根在 `/workspace` 而非 `bridge/`）也无害。
+- **无头端到端首选 REST 语音房 API**：`POST /api/v1/voice/rooms` 建房 → `POST /api/v1/voice/rooms/:id/join` 加入 → `POST /api/v1/voice/rooms/:id/signal` 转发 WebRTC 信令 → `GET /api/v1/voice/rooms/:id/stats`。⚠️ 不要用原始 `/signaling` WS 发 JSON 控制帧做冒烟测试：`ws` 库把文本帧也当 Buffer，服务端 `Buffer.isBuffer(data)` 分支会把它们当二进制音频，控制消息（register 等）不会得到响应。
+- **lint/test**：`cd bridge && npm run lint`（0 error，若干 no-empty 告警属正常）、`npm test`（语法检查 + `tests-runner.mjs`）。
