@@ -10,8 +10,18 @@
     <string name="action_start">Start</string>
     <string name="action_stop">Stop</string>
     <string name="action_settings">Settings</string>
+    <string name="action_send">Ask</string>
+    <string name="action_clear">Clear</string>
     <string name="action_save">Save</string>
     <string name="title_settings">Agent Settings</string>
+    <string name="mode_ask">Ask Mode</string>
+    <string name="mode_agent">Agent Mode</string>
+    <string name="status_ask_ready">Ask mode ready</string>
+    <string name="status_ask_running">Ask request running...</string>
+    <string name="status_ask_config_needed">Configure a provider to use Ask mode</string>
+    <string name="status_ask_history_cleared">Ask history cleared</string>
+    <string name="hint_ask_prompt">Ask the model to explain, plan, or draft code changes...</string>
+    <string name="ask_placeholder">Ask mode response will appear here.</string>
     <string name="summary_provider_offline">Provider: offline scripted demo</string>
     <string name="summary_provider_ready">Provider: %1$s ready</string>
     <string name="summary_github_missing">GitHub: credentials not configured</string>
@@ -24,4 +34,8 @@
     <string name="hint_github_token">GitHub token</string>
     <string name="hint_github_base_branch">GitHub base branch</string>
     <string name="log_settings_saved">[CFG] settings saved</string>
+    <string name="log_ask_sent">[ASK] prompt sent</string>
+    <string name="log_ask_done">[ASK] response received</string>
+    <string name="log_ask_failed">[ASK] request failed</string>
+    <string name="log_ask_cleared">[ASK] history cleared</string>
 </resources>

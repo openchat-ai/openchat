@@ -1,6 +1,13 @@
 package ai.openchat.mobile.agent
 
 import android.content.Context
+import org.json.JSONArray
+import org.json.JSONObject
+
+data class AskTurn(
+    val role: String,
+    val content: String,
+)
 
 data class ProviderSettings(
     val baseUrl: String,
@@ -56,6 +63,35 @@ class AppSettingsStore(context: Context) {
             .apply()
     }
 
+    fun loadAskHistory(): List<AskTurn> {
+        val raw = prefs.getString(KEY_ASK_HISTORY, null) ?: return emptyList()
+        return runCatching {
+            val json = JSONArray(raw)
+            buildList {
+                for (index in 0 until json.length()) {
+                    val item = json.optJSONObject(index) ?: continue
+                    val role = item.optString("role")
+                    val content = item.optString("content")
+                    if (role.isNotBlank() && content.isNotBlank()) {
+                        add(AskTurn(role = role, content = content))
+                    }
+                }
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    fun saveAskHistory(history: List<AskTurn>) {
+        val json = JSONArray()
+        history.forEach { turn ->
+            json.put(
+                JSONObject()
+                    .put("role", turn.role)
+                    .put("content", turn.content)
+            )
+        }
+        prefs.edit().putString(KEY_ASK_HISTORY, json.toString()).apply()
+    }
+
     private companion object {
         const val KEY_PROVIDER_BASE_URL = "provider_base_url"
         const val KEY_PROVIDER_API_KEY = "provider_api_key"
@@ -64,5 +100,6 @@ class AppSettingsStore(context: Context) {
         const val KEY_GITHUB_REPO = "github_repo"
         const val KEY_GITHUB_TOKEN = "github_token"
         const val KEY_GITHUB_BASE_BRANCH = "github_base_branch"
+        const val KEY_ASK_HISTORY = "ask_history"
     }
 }

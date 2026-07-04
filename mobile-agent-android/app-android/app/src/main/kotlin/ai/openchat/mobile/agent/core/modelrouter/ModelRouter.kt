@@ -12,7 +12,20 @@ import java.net.URL
 // - fallback iterates in order; first success wins
 // - ModelResponse.error is non-null only on total failure
 
-data class ModelRequest(val prompt: String, val maxTokens: Int = 512)
+data class ModelMessage(
+    val role: String,
+    val content: String,
+)
+
+data class ModelRequest(
+    val prompt: String,
+    val maxTokens: Int = 512,
+    val messages: List<ModelMessage> = emptyList(),
+) {
+    fun resolvedMessages(): List<ModelMessage> =
+        if (messages.isNotEmpty()) messages else listOf(ModelMessage(role = "user", content = prompt))
+}
+
 data class ModelResponse(val text: String? = null, val error: String? = null) {
     val isSuccess: Boolean get() = text != null && error == null
 }
@@ -34,17 +47,8 @@ class OpenAiCompatibleProvider(
 ) : ModelProvider {
 
     override suspend fun ask(request: ModelRequest): ModelResponse = runCatching {
-        val connection = openConnection(config.baseUrl)
-        val payload = JSONObject()
-            .put("model", config.model)
-            .put("max_tokens", request.maxTokens)
-            .put("messages", JSONArray().put(JSONObject()
-                .put("role", "user")
-                .put("content", request.prompt)))
-
-        connection.outputStream.bufferedWriter().use { writer ->
-            writer.write(payload.toString())
-        }
+        val connection = openConnection(baseUrl = config.baseUrl, stream = false)
+        connection.writeRequestBody(request, stream = false)
 
         val responseBody = connection.readBody()
         if (connection.responseCode !in 200..299) {
@@ -67,7 +71,49 @@ class OpenAiCompatibleProvider(
         ModelResponse(error = "${config.model}: ${error.message}")
     }
 
-    private fun openConnection(baseUrl: String): HttpURLConnection {
+    suspend fun streamAsk(
+        request: ModelRequest,
+        onDelta: suspend (String) -> Unit,
+    ): ModelResponse = runCatching {
+        val connection = openConnection(baseUrl = config.baseUrl, stream = true)
+        connection.writeRequestBody(request, stream = true)
+
+        if (connection.responseCode !in 200..299) {
+            val errorBody = connection.readBody()
+            return ModelResponse(error = "${config.model}: HTTP ${connection.responseCode} $errorBody")
+        }
+
+        val stream = connection.inputStream ?: return ModelResponse(error = "${config.model}: empty stream")
+        val fullText = StringBuilder()
+        BufferedReader(InputStreamReader(stream)).useLines { lines ->
+            lines.forEach { line ->
+                if (!line.startsWith("data:")) return@forEach
+                val payload = line.removePrefix("data:").trim()
+                if (payload.isEmpty() || payload == "[DONE]") return@forEach
+                val json = runCatching { JSONObject(payload) }.getOrNull() ?: return@forEach
+                val delta = json.optJSONArray("choices")
+                    ?.optJSONObject(0)
+                    ?.optJSONObject("delta")
+                    ?.optString("content")
+                    .orEmpty()
+                if (delta.isNotEmpty()) {
+                    fullText.append(delta)
+                    onDelta(delta)
+                }
+            }
+        }
+
+        val text = fullText.toString().trim()
+        if (text.isBlank()) {
+            ModelResponse(error = "${config.model}: empty streamed response")
+        } else {
+            ModelResponse(text = text)
+        }
+    }.getOrElse { error ->
+        ModelResponse(error = "${config.model}: ${error.message}")
+    }
+
+    private fun openConnection(baseUrl: String, stream: Boolean): HttpURLConnection {
         val normalized = baseUrl.trimEnd('/')
         val url = URL("$normalized/chat/completions")
         return (url.openConnection() as HttpURLConnection).apply {
@@ -77,7 +123,27 @@ class OpenAiCompatibleProvider(
             doOutput = true
             setRequestProperty("Authorization", "Bearer ${config.apiKey}")
             setRequestProperty("Content-Type", "application/json")
-            setRequestProperty("Accept", "application/json")
+            setRequestProperty("Accept", if (stream) "text/event-stream" else "application/json")
+        }
+    }
+
+    private fun HttpURLConnection.writeRequestBody(request: ModelRequest, stream: Boolean) {
+        val messagesJson = JSONArray()
+        request.resolvedMessages().forEach { message ->
+            messagesJson.put(
+                JSONObject()
+                    .put("role", message.role)
+                    .put("content", message.content)
+            )
+        }
+        val payload = JSONObject()
+            .put("model", config.model)
+            .put("max_tokens", request.maxTokens)
+            .put("messages", messagesJson)
+            .put("stream", stream)
+
+        outputStream.bufferedWriter().use { writer ->
+            writer.write(payload.toString())
         }
     }
 }
