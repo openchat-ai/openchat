@@ -8,7 +8,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val textView = TextView(this).apply {
-            text = "OpenChat Agent"
+            setText(R.string.app_name)
             textSize = 20f
         }
         setContentView(textView)
