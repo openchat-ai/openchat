@@ -21,6 +21,7 @@
     <string name="status_ask_config_needed">Configure a provider to use Ask mode</string>
     <string name="status_ask_history_cleared">Ask history cleared</string>
     <string name="hint_ask_prompt">Ask the model to explain, plan, or draft code changes...</string>
+    <string name="hint_agent_goal">Describe the GitHub task the agent should draft and publish...</string>
     <string name="ask_placeholder">Ask mode response will appear here.</string>
     <string name="summary_provider_offline">Provider: offline scripted demo</string>
     <string name="summary_provider_ready">Provider: %1$s ready</string>
@@ -38,4 +39,5 @@
     <string name="log_ask_done">[ASK] response received</string>
     <string name="log_ask_failed">[ASK] request failed</string>
     <string name="log_ask_cleared">[ASK] history cleared</string>
+    <string name="log_agent_missing_config">[AGENT] GitHub or provider settings incomplete</string>
 </resources>

@@ -13,6 +13,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import ai.openchat.mobile.agent.core.agent.AgentLoop
 import ai.openchat.mobile.agent.core.agent.AgentState
+import ai.openchat.mobile.agent.core.github.CommitFile
+import ai.openchat.mobile.agent.core.github.GitHubClient
 import ai.openchat.mobile.agent.core.modelrouter.ModelMessage
 import ai.openchat.mobile.agent.core.modelrouter.ModelRequest
 import ai.openchat.mobile.agent.core.modelrouter.ModelRouter
@@ -33,6 +35,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvStatus: TextView
     private lateinit var tvConfigSummary: TextView
     private lateinit var etAskPrompt: EditText
+    private lateinit var etAgentGoal: EditText
     private lateinit var tvAskResponse: TextView
     private lateinit var tvLog: TextView
     private lateinit var btnModeAsk: Button
@@ -63,6 +66,7 @@ class MainActivity : AppCompatActivity() {
         tvStatus = findViewById(R.id.tvStatus)
         tvConfigSummary = findViewById(R.id.tvConfigSummary)
         etAskPrompt = findViewById(R.id.etAskPrompt)
+        etAgentGoal = findViewById(R.id.etAgentGoal)
         tvAskResponse = findViewById(R.id.tvAskResponse)
         tvLog = findViewById(R.id.tvLog)
         btnModeAsk = findViewById(R.id.btnModeAsk)
@@ -93,6 +97,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun toggleAgent() {
+        if (loopJob?.isActive != true) {
+            agentLoop = buildAgentLoop()
+        }
         if (loopJob?.isActive == true) {
             loopJob?.cancel()
         } else {
@@ -116,30 +123,70 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun buildAgentLoop(): AgentLoop {
-        return AgentLoop { request ->
-            val settings = settingsStore.load()
-            if (!settings.provider.isComplete) {
-                return@AgentLoop AgentLoop.ScriptedProvider().ask(request)
-            }
+        return AgentLoop(
+            goalProvider = { etAgentGoal.text.toString() },
+            planRequest = { request ->
+                val settings = settingsStore.load()
+                if (!settings.provider.isComplete) {
+                    return@AgentLoop AgentLoop.ScriptedProvider().ask(request)
+                }
 
-            val router = ModelRouter(
-                listOf(
-                    OpenAiCompatibleProvider(
-                        id = "primary",
-                        config = OpenAiCompatibleConfig(
-                            baseUrl = settings.provider.baseUrl,
-                            apiKey = settings.provider.apiKey,
-                            model = settings.provider.model,
+                val router = ModelRouter(
+                    listOf(
+                        OpenAiCompatibleProvider(
+                            id = "primary",
+                            config = OpenAiCompatibleConfig(
+                                baseUrl = settings.provider.baseUrl,
+                                apiKey = settings.provider.apiKey,
+                                model = settings.provider.model,
+                            )
+                        ),
+                        AgentLoop.ScriptedProvider(),
+                    )
+                )
+                withContext(Dispatchers.IO) {
+                    router.ask(request)
+                }
+            },
+            publishDraft = { goal, draft ->
+                val settings = settingsStore.load()
+                require(settings.github.isComplete) { getString(R.string.log_agent_missing_config) }
+
+                val github = GitHubClient(
+                    owner = settings.github.owner,
+                    repo = settings.github.repo,
+                    token = settings.github.token,
+                )
+                val fileSlug = goal.lowercase()
+                    .replace(Regex("[^a-z0-9]+"), "-")
+                    .trim('-')
+                    .ifBlank { "agent-draft" }
+                val branchName = buildAgentBranchName(fileSlug)
+                val baseSha = github.getBranchHeadSha(settings.github.baseBranch).getOrThrow()
+                github.createBranch(branchName, baseSha).getOrThrow()
+                github.commitFiles(
+                    branch = branchName,
+                    files = listOf(
+                        CommitFile(
+                            path = "mobile-agent-output/$fileSlug.md",
+                            content = draft,
                         )
                     ),
-                    AgentLoop.ScriptedProvider(),
-                )
-            )
-            withContext(Dispatchers.IO) {
-                router.ask(request)
+                    message = "docs(agent): add $fileSlug draft"
+                ).getOrThrow()
+                val prNumber = github.createPullRequest(
+                    branch = branchName,
+                    base = settings.github.baseBranch,
+                    title = "agent: $goal",
+                    body = "Automated draft generated by OpenChat Android agent for goal:\n\n$goal"
+                ).getOrThrow()
+                "created PR #$prNumber on ${settings.github.owner}/${settings.github.repo}"
             }
-        }
+        )
     }
+
+    private fun buildAgentBranchName(fileSlug: String): String =
+        "mobile-agent/${fileSlug.take(32)}-${System.currentTimeMillis().toString().takeLast(6)}"
 
     private fun submitAsk() {
         val prompt = etAskPrompt.text.toString().trim()

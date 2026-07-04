@@ -42,6 +42,15 @@ class GitHubClient(
         }
     }
 
+    suspend fun getBranchHeadSha(branch: String): Result<String> {
+        Log.d(TAG, "[C0] getBranchHeadSha $branch")
+        return runCatching {
+            validateBranch(branch)
+            val refJson = request("GET", "/git/ref/heads/${branch.encodePath()}")
+            refJson.getJSONObject("object").getString("sha")
+        }
+    }
+
     suspend fun commitFiles(
         branch: String,
         files: List<CommitFile>,
