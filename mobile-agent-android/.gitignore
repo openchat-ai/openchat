@@ -1,9 +1,0 @@
-# macOS
-.DS_Store
-
-# Android / Gradle
-**/.gradle/
-**/build/
-**/local.properties
-**/.idea/
-**/*.iml
