@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">OpenChat Agent</string>
+    <string name="launcher_starting">Starting launcher verification…</string>
+    <string name="launcher_started">Launcher started ✅</string>
+</resources>
