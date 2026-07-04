@@ -1,0 +1,49 @@
+name: Android Agent CI
+
+on:
+  push:
+    branches:
+      - mobile/android-agent-app
+      - 'copilot/android-*'
+    paths:
+      - 'mobile-agent-android/**'
+  pull_request:
+    branches:
+      - mobile/android-agent-app
+    paths:
+      - 'mobile-agent-android/**'
+
+defaults:
+  run:
+    working-directory: mobile-agent-android/app-android
+
+jobs:
+  build:
+    name: Build & Assemble Debug
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('mobile-agent-android/**/*.gradle*', 'mobile-agent-android/**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Assemble debug APK
+        run: ./gradlew assembleDebug --no-daemon
