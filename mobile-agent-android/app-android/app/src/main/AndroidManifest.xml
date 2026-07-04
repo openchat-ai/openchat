@@ -4,6 +4,16 @@
     <application
         android:allowBackup="true"
         android:label="OpenChat Agent"
-        android:supportsRtl="true" />
+        android:supportsRtl="true"
+        android:theme="@style/Theme.OpenChatAgent">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
 
 </manifest>
