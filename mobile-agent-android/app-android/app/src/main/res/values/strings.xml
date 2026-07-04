@@ -2,4 +2,14 @@
     <string name="app_name">OpenChat Agent</string>
     <string name="launcher_starting">Starting launcher verification…</string>
     <string name="launcher_started">Launcher started ✅</string>
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OpenChat Agent</string>
+    <string name="label_agent_idle">Agent idle</string>
+    <string name="label_agent_running">Agent running…</string>
+    <string name="label_agent_waiting">Waiting for approval</string>
+    <string name="action_approve">Approve</string>
+    <string name="action_reject">Reject</string>
+    <string name="action_start">Start</string>
+    <string name="action_stop">Stop</string>
 </resources>
