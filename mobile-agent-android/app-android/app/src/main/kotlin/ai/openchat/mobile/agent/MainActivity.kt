@@ -1,20 +1,36 @@
 package ai.openchat.mobile.agent
 
 import android.text.InputType
+import android.text.Spannable
+import android.text.SpannableStringBuilder
+import android.text.TextPaint
+import android.text.method.LinkMovementMethod
 import android.os.Bundle
+import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.view.View
+import android.widget.AdapterView
 import android.widget.Button
+import android.widget.Spinner
 import android.widget.TextView
+import android.text.style.BackgroundColorSpan
+import android.text.style.ClickableSpan
+import android.text.style.ForegroundColorSpan
+import android.text.style.StyleSpan
+import android.view.KeyEvent
+import android.view.inputmethod.EditorInfo
+import android.widget.TextView.OnEditorActionListener
 import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import ai.openchat.mobile.agent.core.agent.AgentLifecycleEvent
 import ai.openchat.mobile.agent.core.agent.AgentLoop
 import ai.openchat.mobile.agent.core.github.CommitFile
 import ai.openchat.mobile.agent.core.github.GitHubClient
+import ai.openchat.mobile.agent.core.github.GitHubDiscovery
 import ai.openchat.mobile.agent.core.modelrouter.ModelMessage
 import ai.openchat.mobile.agent.core.modelrouter.ModelRequest
 import ai.openchat.mobile.agent.core.modelrouter.ModelRouter
@@ -31,28 +47,28 @@ import kotlinx.coroutines.withContext
 class MainActivity : AppCompatActivity() {
 
     private lateinit var tvStatus: TextView
-    private lateinit var tvConfigSummary: TextView
-    private lateinit var etAskPrompt: EditText
-    private lateinit var etAgentGoal: EditText
-    private lateinit var tvAskResponse: TextView
+    private lateinit var tvConversation: TextView
     private lateinit var tvAgentRecoverySummary: TextView
-    private lateinit var tvLog: TextView
-    private lateinit var btnModeAsk: Button
-    private lateinit var btnModeAgent: Button
-    private lateinit var btnAskClear: Button
-    private lateinit var btnAsk: Button
-    private lateinit var btnStart: Button
+    private lateinit var tvModel: TextView
+    private lateinit var etInput: EditText
+    private lateinit var btnSend: Button
     private lateinit var btnApprove: Button
     private lateinit var btnReject: Button
+    private lateinit var btnResume: Button
     private lateinit var btnSettings: Button
-    private lateinit var panelAsk: View
-    private lateinit var panelAgent: View
+    private lateinit var btnAddTab: Button
+    private lateinit var btnStop: Button
+    private lateinit var spinnerMode: Spinner
+    private lateinit var layoutAgentActions: View
+    private lateinit var layoutTabs: LinearLayout
 
     private lateinit var settingsStore: AppSettingsStore
     private lateinit var agentLoop: AgentLoop
     private var loopJob: Job? = null
     private var askJob: Job? = null
     private var runtimeState = AppRuntimeState()
+    private val tabs = mutableListOf<ChatTab>()
+    private var activeTabIndex = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,33 +78,58 @@ class MainActivity : AppCompatActivity() {
         agentLoop = buildAgentLoop()
 
         tvStatus = findViewById(R.id.tvStatus)
-        tvConfigSummary = findViewById(R.id.tvConfigSummary)
-        etAskPrompt = findViewById(R.id.etAskPrompt)
-        etAgentGoal = findViewById(R.id.etAgentGoal)
-        tvAskResponse = findViewById(R.id.tvAskResponse)
+        tvConversation = findViewById(R.id.tvConversation)
         tvAgentRecoverySummary = findViewById(R.id.tvAgentRecoverySummary)
-        tvLog = findViewById(R.id.tvLog)
-        btnModeAsk = findViewById(R.id.btnModeAsk)
-        btnModeAgent = findViewById(R.id.btnModeAgent)
-        btnAskClear = findViewById(R.id.btnAskClear)
-        btnAsk = findViewById(R.id.btnAsk)
-        btnStart = findViewById(R.id.btnStart)
+        tvModel = findViewById(R.id.tvModel)
+        etInput = findViewById(R.id.etInput)
+        btnSend = findViewById(R.id.btnSend)
         btnApprove = findViewById(R.id.btnApprove)
         btnReject = findViewById(R.id.btnReject)
+        btnResume = findViewById(R.id.btnResume)
         btnSettings = findViewById(R.id.btnSettings)
-        panelAsk = findViewById(R.id.panelAsk)
-        panelAgent = findViewById(R.id.panelAgent)
+        btnAddTab = findViewById(R.id.btnAddTab)
+        btnStop = findViewById(R.id.btnStop)
+        spinnerMode = findViewById(R.id.spinnerMode)
+        layoutAgentActions = findViewById(R.id.layoutAgentActions)
+        layoutTabs = findViewById(R.id.layoutTabs)
 
-        btnModeAsk.setOnClickListener { switchMode(RuntimeMode.ASK) }
-        btnModeAgent.setOnClickListener { switchMode(RuntimeMode.AGENT) }
-        btnAskClear.setOnClickListener { clearAskHistory() }
-        btnAsk.setOnClickListener { submitAsk() }
-        btnStart.setOnClickListener { toggleAgent() }
+        val modes = arrayOf("Ask", "Agent")
+        spinnerMode.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, modes).apply {
+            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        }
+        spinnerMode.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>, view: View, position: Int, id: Long) {
+                val newMode = if (position == 0) RuntimeMode.ASK else RuntimeMode.AGENT
+                if (newMode != runtimeState.mode) switchMode(newMode)
+            }
+            override fun onNothingSelected(parent: AdapterView<*>) {}
+        }
+
+        btnSend.setOnClickListener { sendMessage() }
+        etInput.setOnEditorActionListener(OnEditorActionListener { _, actionId, event ->
+            if (actionId == EditorInfo.IME_ACTION_SEND ||
+                (event?.action == KeyEvent.ACTION_DOWN && event.keyCode == KeyEvent.KEYCODE_ENTER && !event.isShiftPressed)
+            ) {
+                sendMessage()
+                true
+            } else false
+        })
+        etInput.imeOptions = EditorInfo.IME_ACTION_SEND
+        etInput.setRawInputType(InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE)
         btnApprove.setOnClickListener { agentLoop.approve() }
         btnReject.setOnClickListener { agentLoop.reject() }
+        btnResume.setOnClickListener { resumeAgent() }
         btnSettings.setOnClickListener { showSettingsDialog() }
+        btnAddTab.setOnClickListener { addTab() }
+        btnStop.setOnClickListener { stopRunning() }
+        tvModel.setOnClickListener { showSettingsDialog() }
 
-        dispatch(RuntimeAction.HydrateAskHistory(settingsStore.loadAskHistory()))
+        val savedTabs = settingsStore.loadTabs()
+        tabs.addAll(savedTabs.ifEmpty { listOf(ChatTab(name = "Chat 1")) })
+        activeTabIndex = 0
+        val firstTab = tabs[0]
+        runtimeState = runtimeState.copy(mode = firstTab.mode)
+        dispatch(RuntimeAction.HydrateAskHistory(firstTab.askHistory))
         settingsStore.loadRuntimeSnapshot()?.let { snapshot ->
             dispatch(RuntimeAction.HydratePersistence(snapshot))
         }
@@ -97,10 +138,44 @@ class MainActivity : AppCompatActivity() {
         renderRuntimeState()
     }
 
-    private fun toggleAgent() {
-        if (loopJob?.isActive != true) {
-            agentLoop = buildAgentLoop()
+    private fun sendMessage() {
+        val text = etInput.text.toString().trim()
+        if (text.isBlank()) return
+
+        when (runtimeState.mode) {
+            RuntimeMode.ASK -> {
+                if (askJob?.isActive == true) return
+                etInput.setText("")
+                submitAsk(text)
+            }
+            RuntimeMode.AGENT -> toggleAgent(text)
         }
+    }
+
+    private fun stopRunning() {
+        if (askJob?.isActive == true) {
+            askJob?.cancel()
+            askJob = null
+        }
+        if (loopJob?.isActive == true) {
+            loopJob?.cancel()
+            val goal = etInput.text.toString()
+            dispatch(
+                RuntimeAction.AgentFailed(
+                    error = buildAppError(
+                        kind = ErrorKind.Cancellation,
+                        code = "AGENT_CANCELLED",
+                        message = "Agent execution interrupted",
+                        retryable = true,
+                    ),
+                    goal = goal,
+                )
+            )
+            loopJob = null
+        }
+    }
+
+    private fun toggleAgent(goal: String) {
         if (loopJob?.isActive == true) {
             loopJob?.cancel()
             dispatch(
@@ -111,14 +186,16 @@ class MainActivity : AppCompatActivity() {
                         message = "Agent execution interrupted",
                         retryable = true,
                     ),
-                    goal = etAgentGoal.text.toString(),
+                    goal = goal,
                 )
             )
         } else {
+            agentLoop = buildAgentLoop()
+            tvConversation.text = ""
             dispatch(
                 RuntimeAction.ObserveAgent(
                     AgentSessionState.Planning(
-                        goal = etAgentGoal.text.toString(),
+                        goal = goal,
                         startedAtMs = System.currentTimeMillis(),
                     )
                 )
@@ -127,17 +204,27 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun resumeAgent() {
+        val savedPackage = runtimeState.recovery.pendingTaskPackage ?: return
+        val checkpointId = runtimeState.recovery.lastCheckpointId
+        etInput.setText(savedPackage.goal)
+        tvConversation.text = ""
+        appendConversation("[AGENT] resuming from saved task package: ${savedPackage.id}")
+        agentLoop = buildAgentLoop()
+        loopJob = lifecycleScope.launch { agentLoop.resume(savedPackage, checkpointId) }
+    }
+
     private fun observeState() {
         lifecycleScope.launch {
             agentLoop.log.collect { entry ->
-                tvLog.append("$entry\n")
+                appendConversation(entry)
             }
         }
     }
 
     private fun buildAgentLoop(): AgentLoop {
         return AgentLoop(
-            goalProvider = { etAgentGoal.text.toString() },
+            goalProvider = { etInput.text.toString() },
             baseBranchProvider = { settingsStore.load().github.baseBranch.ifBlank { "main" } },
             planRequest = { request ->
                 val settings = settingsStore.load()
@@ -279,16 +366,14 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    private fun submitAsk() {
-        val prompt = etAskPrompt.text.toString().trim()
-        if (prompt.isBlank()) {
-            tvAskResponse.text = getString(R.string.hint_ask_prompt)
-            return
+    private fun submitAsk(prompt: String) {
+        if (activeTabIndex in tabs.indices) {
+            val tab = tabs[activeTabIndex]
+            if (tab.askHistory.isEmpty() && tab.name.startsWith("Chat ")) {
+                val short = prompt.take(24).replace("\n", " ").trim()
+                tabs[activeTabIndex] = tab.copy(name = short.ifBlank { tab.name })
+            }
         }
-        if (askJob?.isActive == true) {
-            return
-        }
-
         askJob = lifecycleScope.launch {
             dispatch(
                 RuntimeAction.AskStarted(
@@ -296,8 +381,7 @@ class MainActivity : AppCompatActivity() {
                     startedAtMs = System.currentTimeMillis(),
                 )
             )
-            etAskPrompt.setText("")
-            tvLog.append(getString(R.string.log_ask_sent) + "\n")
+            appendConversation("[ASK] sent: $prompt")
             try {
                 val result = askModel(prompt)
                 dispatch(
@@ -306,7 +390,7 @@ class MainActivity : AppCompatActivity() {
                         response = result,
                     )
                 )
-                tvLog.append(getString(R.string.log_ask_done) + "\n")
+                appendConversation("[ASK] done")
             } catch (error: TimeoutCancellationException) {
                 dispatch(
                     RuntimeAction.AskFailed(
@@ -319,10 +403,10 @@ class MainActivity : AppCompatActivity() {
                         preservePrompt = prompt,
                     )
                 )
-                tvLog.append(getString(R.string.log_ask_failed) + ": timeout\n")
+                appendConversation("[ASK] failed: timeout")
             } catch (error: CancellationException) {
                 dispatch(RuntimeAction.AskCancelled(prompt))
-                tvLog.append("[ASK] cancelled\n")
+                appendConversation("[ASK] cancelled")
             } catch (error: IllegalStateException) {
                 val errorMessage = error.message ?: getString(R.string.log_ask_failed)
                 dispatch(
@@ -336,7 +420,7 @@ class MainActivity : AppCompatActivity() {
                         preservePrompt = prompt,
                     )
                 )
-                tvLog.append(getString(R.string.log_ask_failed) + ": ${error.message}\n")
+                appendConversation("[ASK] failed: ${error.message}")
             }
         }
     }
@@ -386,22 +470,67 @@ class MainActivity : AppCompatActivity() {
         return response.text.orEmpty()
     }
 
-    private fun renderAskHistory() {
-        tvAskResponse.text = if (runtimeState.askHistory.isEmpty()) {
-            getString(R.string.ask_placeholder)
-        } else {
-            runtimeState.askHistory.joinToString(separator = "\n\n") { turn ->
-                "${turn.role}:\n${turn.content}"
+    private fun appendConversation(line: String) {
+        tvConversation.append("$line\n")
+        scrollToBottom()
+    }
+
+    private fun scrollToBottom() {
+        tvConversation.post {
+            (tvConversation.parent as? View)?.let { parent ->
+                (parent.parent as? ScrollView)?.fullScroll(View.FOCUS_DOWN)
             }
         }
     }
 
-    private fun clearAskHistory() {
-        if (askJob?.isActive == true) {
-            return
+    private fun renderConversation() {
+        when (runtimeState.mode) {
+            RuntimeMode.ASK -> {
+                if (runtimeState.askHistory.isEmpty()) {
+                    tvConversation.text = getString(R.string.ask_placeholder)
+                    tvConversation.movementMethod = null
+                } else {
+                    val ssb = SpannableStringBuilder()
+                    runtimeState.askHistory.forEachIndexed { index, turn ->
+                        if (index > 0) ssb.append("\n\n")
+                        val roleStart = ssb.length
+                        val roleText = "${turn.role}:"
+                        ssb.append(roleText)
+                        ssb.setSpan(StyleSpan(android.graphics.Typeface.BOLD), roleStart, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                        val color = if (turn.role == "You")
+                            ContextCompat.getColor(this, android.R.color.holo_blue_dark)
+                        else
+                            ContextCompat.getColor(this, android.R.color.holo_green_dark)
+                        ssb.setSpan(ForegroundColorSpan(color), roleStart, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                        ssb.append("\n")
+                        ssb.append(turn.content)
+                        if (turn.role == "You") {
+                            ssb.setSpan(
+                                object : ClickableSpan() {
+                                    override fun onClick(widget: View) {
+                                        etInput.setText(turn.content)
+                                        etInput.setSelection(turn.content.length)
+                                    }
+                                    override fun updateDrawState(ds: TextPaint) {
+                                        ds.isUnderlineText = false
+                                    }
+                                },
+                                roleStart, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
+                            )
+                        }
+                    }
+                    tvConversation.text = ssb
+                    tvConversation.movementMethod = LinkMovementMethod.getInstance()
+                }
+            }
+            RuntimeMode.AGENT -> {
+                if (tvConversation.text.isBlank()) {
+                    tvConversation.text = getString(R.string.agent_log_placeholder)
+                    tvConversation.movementMethod = null
+                }
+            }
         }
-        dispatch(RuntimeAction.ClearAskHistory)
-        tvLog.append(getString(R.string.log_ask_cleared) + "\n")
+        scrollToBottom()
     }
 
     private fun switchMode(mode: RuntimeMode) {
@@ -416,17 +545,102 @@ class MainActivity : AppCompatActivity() {
                 githubReady = settings.github.isComplete,
             )
         )
-        val providerStatus = if (settings.provider.isComplete) {
-            getString(R.string.summary_provider_ready, settings.provider.model)
+        tvModel.text = if (settings.provider.isComplete) {
+            settings.provider.model
         } else {
             getString(R.string.summary_provider_offline)
         }
-        val githubStatus = if (settings.github.isComplete) {
-            getString(R.string.summary_github_ready, settings.github.owner, settings.github.repo, settings.github.baseBranch)
-        } else {
-            getString(R.string.summary_github_missing)
+    }
+
+    private fun saveCurrentTab() {
+        if (activeTabIndex in tabs.indices) {
+            tabs[activeTabIndex] = tabs[activeTabIndex].copy(
+                askHistory = runtimeState.askHistory,
+                mode = runtimeState.mode,
+            )
         }
-        tvConfigSummary.text = listOf(providerStatus, githubStatus).joinToString(separator = "\n")
+    }
+
+    private fun switchTab(index: Int) {
+        if (index == activeTabIndex || index !in tabs.indices) return
+        saveCurrentTab()
+        loopJob?.cancel()
+        askJob?.cancel()
+        loopJob = null
+        askJob = null
+        activeTabIndex = index
+        val tab = tabs[index]
+        runtimeState = AppRuntimeState(mode = tab.mode)
+        dispatch(RuntimeAction.HydrateAskHistory(tab.askHistory))
+        dispatch(RuntimeAction.SwitchMode(tab.mode))
+        agentLoop = buildAgentLoop()
+        tvConversation.text = ""
+        syncSpinnerMode()
+    }
+
+    private fun syncSpinnerMode() {
+        spinnerMode.setSelection(if (runtimeState.mode == RuntimeMode.ASK) 0 else 1, false)
+    }
+
+    private fun addTab() {
+        saveCurrentTab()
+        val name = nextTabName()
+        tabs.add(ChatTab(name = name))
+        switchTab(tabs.lastIndex)
+    }
+
+    private fun closeTab(index: Int) {
+        if (tabs.size <= 1) return
+        tabs.removeAt(index)
+        activeTabIndex = when {
+            index < activeTabIndex -> activeTabIndex - 1
+            index == activeTabIndex -> minOf(activeTabIndex, tabs.lastIndex)
+            else -> activeTabIndex
+        }
+        val tab = tabs[activeTabIndex]
+        runtimeState = AppRuntimeState(mode = tab.mode)
+        dispatch(RuntimeAction.HydrateAskHistory(tab.askHistory))
+        dispatch(RuntimeAction.SwitchMode(tab.mode))
+        agentLoop = buildAgentLoop()
+        tvConversation.text = ""
+        syncSpinnerMode()
+    }
+
+    private fun nextTabName(): String {
+        val existing = tabs.map { it.name }.toSet()
+        var n = 1
+        while ("Chat $n" in existing) n++
+        return "Chat $n"
+    }
+
+    private fun renderTabs() {
+        layoutTabs.removeAllViews()
+        tabs.forEachIndexed { index, tab ->
+            val isActive = index == activeTabIndex
+            val tabView = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                setPadding(8, 4, 4, 4)
+                setOnClickListener { switchTab(index) }
+                isClickable = true
+                isFocusable = true
+                setBackgroundColor(if (isActive) 0x33FFFFFF.toInt() else 0x00000000)
+            }
+            val nameView = TextView(this).apply {
+                text = tab.name
+                textSize = 14f
+                setPadding(4, 4, 4, 4)
+            }
+            val closeBtn = Button(this).apply {
+                text = "×"
+                textSize = 14f
+                setPadding(4, 0, 4, 0)
+                setOnClickListener { closeTab(index) }
+                setBackgroundColor(0x00000000)
+            }
+            tabView.addView(nameView)
+            tabView.addView(closeBtn)
+            layoutTabs.addView(tabView)
+        }
     }
 
     private fun showSettingsDialog() {
@@ -439,19 +653,130 @@ class MainActivity : AppCompatActivity() {
         val providerBaseUrl = textField(getString(R.string.hint_provider_base_url), settings.provider.baseUrl)
         val providerApiKey = textField(getString(R.string.hint_provider_api_key), settings.provider.apiKey, true)
         val providerModel = textField(getString(R.string.hint_provider_model), settings.provider.model)
-        val githubOwner = textField(getString(R.string.hint_github_owner), settings.github.owner)
-        val githubRepo = textField(getString(R.string.hint_github_repo), settings.github.repo)
         val githubToken = textField(getString(R.string.hint_github_token), settings.github.token, true)
-        val githubBaseBranch = textField(getString(R.string.hint_github_base_branch), settings.github.baseBranch)
+
+        val (githubOwner, githubOwnerBtn, githubOwnerRow) = dropdownRow(
+            getString(R.string.hint_github_owner), settings.github.owner
+        )
+        val (githubRepo, githubRepoBtn, githubRepoRow) = dropdownRow(
+            getString(R.string.hint_github_repo), settings.github.repo
+        )
+        val (githubBaseBranch, githubBaseBranchBtn, githubBaseBranchRow) = dropdownRow(
+            getString(R.string.hint_github_base_branch), settings.github.baseBranch
+        )
+
+        githubOwnerBtn.setOnClickListener {
+            val token = githubToken.text.toString().trim()
+            if (token.isBlank()) {
+                appendConversation("[CFG] Set GitHub token first")
+                return@setOnClickListener
+            }
+            lifecycleScope.launch {
+                githubOwnerBtn.isEnabled = false
+                githubOwnerBtn.text = "..."
+                val result = withContext(Dispatchers.IO) { GitHubDiscovery.fetchOwners(token) }
+                githubOwnerBtn.isEnabled = true
+                githubOwnerBtn.text = "▼"
+                result.onSuccess { owners ->
+                    if (owners.isEmpty()) {
+                        appendConversation("[CFG] No owners found")
+                        return@launch
+                    }
+                    AlertDialog.Builder(this@MainActivity)
+                        .setTitle("Select Owner")
+                        .setItems(owners.toTypedArray()) { _, which ->
+                            githubOwner.setText(owners[which])
+                            githubRepo.setText("")
+                            githubBaseBranch.setText("")
+                        }
+                        .setNegativeButton(android.R.string.cancel, null)
+                        .show()
+                }.onFailure { e ->
+                    appendConversation("[CFG] Owner fetch failed: ${e.message}")
+                }
+            }
+        }
+
+        githubRepoBtn.setOnClickListener {
+            val token = githubToken.text.toString().trim()
+            val owner = githubOwner.text.toString().trim()
+            if (token.isBlank()) {
+                appendConversation("[CFG] Set GitHub token first")
+                return@setOnClickListener
+            }
+            if (owner.isBlank()) {
+                appendConversation("[CFG] Select owner first")
+                return@setOnClickListener
+            }
+            lifecycleScope.launch {
+                githubRepoBtn.isEnabled = false
+                githubRepoBtn.text = "..."
+                val result = withContext(Dispatchers.IO) { GitHubDiscovery.fetchRepos(token, owner) }
+                githubRepoBtn.isEnabled = true
+                githubRepoBtn.text = "▼"
+                result.onSuccess { repos ->
+                    if (repos.isEmpty()) {
+                        appendConversation("[CFG] No repos found for $owner")
+                        return@launch
+                    }
+                    AlertDialog.Builder(this@MainActivity)
+                        .setTitle("Select Repo")
+                        .setItems(repos.toTypedArray()) { _, which ->
+                            githubRepo.setText(repos[which])
+                            githubBaseBranch.setText("")
+                        }
+                        .setNegativeButton(android.R.string.cancel, null)
+                        .show()
+                }.onFailure { e ->
+                    appendConversation("[CFG] Repo fetch failed: ${e.message}")
+                }
+            }
+        }
+
+        githubBaseBranchBtn.setOnClickListener {
+            val token = githubToken.text.toString().trim()
+            val owner = githubOwner.text.toString().trim()
+            val repo = githubRepo.text.toString().trim()
+            if (token.isBlank()) {
+                appendConversation("[CFG] Set GitHub token first")
+                return@setOnClickListener
+            }
+            if (owner.isBlank() || repo.isBlank()) {
+                appendConversation("[CFG] Select owner and repo first")
+                return@setOnClickListener
+            }
+            lifecycleScope.launch {
+                githubBaseBranchBtn.isEnabled = false
+                githubBaseBranchBtn.text = "..."
+                val result = withContext(Dispatchers.IO) { GitHubDiscovery.fetchBranches(token, owner, repo) }
+                githubBaseBranchBtn.isEnabled = true
+                githubBaseBranchBtn.text = "▼"
+                result.onSuccess { branches ->
+                    if (branches.isEmpty()) {
+                        appendConversation("[CFG] No branches found for $owner/$repo")
+                        return@launch
+                    }
+                    AlertDialog.Builder(this@MainActivity)
+                        .setTitle("Select Base Branch")
+                        .setItems(branches.toTypedArray()) { _, which ->
+                            githubBaseBranch.setText(branches[which])
+                        }
+                        .setNegativeButton(android.R.string.cancel, null)
+                        .show()
+                }.onFailure { e ->
+                    appendConversation("[CFG] Branch fetch failed: ${e.message}")
+                }
+            }
+        }
 
         listOf(
             providerBaseUrl,
             providerApiKey,
             providerModel,
-            githubOwner,
-            githubRepo,
             githubToken,
-            githubBaseBranch,
+            githubOwnerRow,
+            githubRepoRow,
+            githubBaseBranchRow,
         ).forEach(container::addView)
 
         val scrollView = ScrollView(this).apply {
@@ -480,9 +805,32 @@ class MainActivity : AppCompatActivity() {
                 )
                 agentLoop = buildAgentLoop()
                 renderSettingsSummary()
-                tvLog.append(getString(R.string.log_settings_saved) + "\n")
+                appendConversation(getString(R.string.log_settings_saved))
             }
             .show()
+    }
+
+    private fun dropdownRow(hint: String, value: String): Triple<EditText, Button, LinearLayout> {
+        val edit = EditText(this).apply {
+            this.hint = hint
+            setText(value)
+            layoutParams = LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
+            )
+        }
+        val btn = Button(this).apply {
+            text = "▼"
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            addView(edit)
+            addView(btn)
+        }
+        return Triple(edit, btn, row)
     }
 
     private fun textField(hint: String, value: String, secret: Boolean = false): EditText {
@@ -504,49 +852,58 @@ class MainActivity : AppCompatActivity() {
             settingsStore.saveAskHistory(runtimeState.askHistory)
         }
         settingsStore.saveRuntimeSnapshot(runtimeState.toPersistenceSnapshot())
+        saveCurrentTab()
+        settingsStore.saveTabs(tabs)
         renderRuntimeState()
     }
 
     private fun renderRuntimeState() {
-        renderAskHistory()
+        renderTabs()
+        syncSpinnerMode()
+        renderConversation()
         renderAgentRecoverySummary()
         runtimeState.recovery.pendingAskPrompt?.let { pending ->
-            if (pending.isNotBlank() && etAskPrompt.text.isNullOrBlank()) {
-                etAskPrompt.setText(pending)
-                etAskPrompt.setSelection(pending.length)
+            if (pending.isNotBlank() && etInput.text.isNullOrBlank()) {
+                etInput.setText(pending)
+                etInput.setSelection(pending.length)
             }
         }
         runtimeState.recovery.pendingAgentGoal?.let { pending ->
-            if (pending.isNotBlank() && etAgentGoal.text.isNullOrBlank()) {
-                etAgentGoal.setText(pending)
-                etAgentGoal.setSelection(pending.length)
+            if (pending.isNotBlank() && etInput.text.isNullOrBlank()) {
+                etInput.setText(pending)
+                etInput.setSelection(pending.length)
             }
         }
-        panelAsk.visibility = if (runtimeState.mode == RuntimeMode.ASK) View.VISIBLE else View.GONE
-        panelAgent.visibility = if (runtimeState.mode == RuntimeMode.AGENT) View.VISIBLE else View.GONE
 
         val askBusy = runtimeState.ask is AskSessionState.Streaming
-        btnModeAsk.isEnabled = runtimeState.mode != RuntimeMode.ASK
-        btnModeAgent.isEnabled = runtimeState.mode != RuntimeMode.AGENT && !askBusy
-        btnAsk.isEnabled = !askBusy
-        btnAskClear.isEnabled = !askBusy
-        etAskPrompt.isEnabled = !askBusy
+        val agentActive = runtimeState.agent !is AgentSessionState.Idle &&
+            runtimeState.agent !is AgentSessionState.Completed
+        val busy = askBusy || agentActive
+        btnSend.isEnabled = !busy
+        btnStop.visibility = if (busy) View.VISIBLE else View.GONE
+        spinnerMode.isEnabled = !busy
+        etInput.hint = when (runtimeState.mode) {
+            RuntimeMode.ASK -> getString(R.string.hint_ask_prompt)
+            RuntimeMode.AGENT -> getString(R.string.hint_agent_goal)
+        }
 
-        if (runtimeState.mode == RuntimeMode.ASK) {
-            tvStatus.text = when {
-                runtimeState.recovery.needsResume && !runtimeState.recovery.lastRecoveryMessage.isNullOrBlank() ->
-                    runtimeState.recovery.lastRecoveryMessage
-                askBusy -> getString(R.string.status_ask_running)
-                !runtimeState.settings.providerReady -> getString(R.string.status_ask_config_needed)
-                else -> getString(R.string.status_ask_ready)
+        when (runtimeState.mode) {
+            RuntimeMode.ASK -> {
+                tvStatus.text = when {
+                    runtimeState.recovery.needsResume && !runtimeState.recovery.lastRecoveryMessage.isNullOrBlank() ->
+                        runtimeState.recovery.lastRecoveryMessage
+                    askBusy -> getString(R.string.status_ask_running)
+                    !runtimeState.settings.providerReady -> getString(R.string.status_ask_config_needed)
+                    else -> getString(R.string.status_ask_ready)
+                }
             }
-            return
+            RuntimeMode.AGENT -> {
+                if (runtimeState.recovery.needsResume && !runtimeState.recovery.lastRecoveryMessage.isNullOrBlank()) {
+                    tvStatus.text = runtimeState.recovery.lastRecoveryMessage
+                }
+                updateAgentUi(runtimeState.agent)
+            }
         }
-
-        if (runtimeState.recovery.needsResume && !runtimeState.recovery.lastRecoveryMessage.isNullOrBlank()) {
-            tvStatus.text = runtimeState.recovery.lastRecoveryMessage
-        }
-        updateAgentUi(runtimeState.agent)
     }
 
     private fun renderAgentRecoverySummary() {
@@ -584,14 +941,17 @@ class MainActivity : AppCompatActivity() {
             }
         }
         val waiting = state is AgentSessionState.AwaitingApproval
+        val resume = showResume()
         btnApprove.visibility = if (waiting) View.VISIBLE else View.GONE
         btnReject.visibility = if (waiting) View.VISIBLE else View.GONE
-        val active = state !is AgentSessionState.Idle && state !is AgentSessionState.Completed
-        btnStart.text = if (active)
-            getString(R.string.action_stop)
-        else
-            getString(R.string.action_start)
+        btnResume.visibility = if (resume) View.VISIBLE else View.GONE
+        layoutAgentActions.visibility = if (waiting || resume) View.VISIBLE else View.GONE
     }
+
+    private fun showResume(): Boolean =
+        runtimeState.recovery.needsResume &&
+        runtimeState.recovery.pendingTaskPackage != null &&
+        runtimeState.agent is AgentSessionState.Idle
 
     private fun currentAgentTaskPackage(): TaskPackage? = when (val state = runtimeState.agent) {
         AgentSessionState.Idle,

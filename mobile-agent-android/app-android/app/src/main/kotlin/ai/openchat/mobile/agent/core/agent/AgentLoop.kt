@@ -134,6 +134,40 @@ class AgentLoop(
         _state.value = AgentState.RUNNING
         onLifecycleEvent(AgentLifecycleEvent.Planning(goal))
         emit("[C1] agent loop started: $goal")
+        runMainLoop(goal)
+    }
+
+    suspend fun resume(taskPackage: TaskPackage, fromCheckpointId: String?) {
+        if (_state.value != AgentState.IDLE) {
+            emit("[C0] resume ignored: agent already active")
+            return
+        }
+
+        val goal = taskPackage.goal
+        taskQueue.clear()
+        shouldStop = false
+        cancelled = false
+        latestTaskPackage = taskPackage
+        _state.value = AgentState.RUNNING
+
+        val checkpointIndex = taskPackage.checkpoints.indexOfFirst { it.id == fromCheckpointId }
+        val startIndex = if (checkpointIndex >= 0) checkpointIndex else 0
+
+        for (i in startIndex until taskPackage.checkpoints.size) {
+            val cp = taskPackage.checkpoints[i]
+            when (cp.id) {
+                CHECKPOINT_PREVIEW -> taskQueue.addLast(AgentTask.PreviewDraft(taskPackage, cp))
+                CHECKPOINT_PUBLISH -> taskQueue.addLast(AgentTask.PublishDraft(taskPackage, cp))
+                else -> taskQueue.addLast(AgentTask.PreviewDraft(taskPackage, cp))
+            }
+        }
+        taskQueue.addLast(AgentTask.Summarize(taskPackage, "agent artifact pipeline complete for: $goal"))
+
+        emit("[C1.resume] resumed from ${fromCheckpointId ?: "start"}: ${taskQueue.size} steps for $goal")
+        runMainLoop(goal)
+    }
+
+    private suspend fun runMainLoop(goal: String) {
         try {
             while (true) {
                 val task = nextTask(goal) ?: break

@@ -36,7 +36,7 @@ data class AppSettings(
     val github: GitHubSettings,
 )
 
-class AppSettingsStore(context: Context) {
+class AppSettingsStore(private val context: Context) {
 
     private val prefs = createEncryptedPreferences(context)
 
@@ -44,7 +44,37 @@ class AppSettingsStore(context: Context) {
         migrateLegacyPreferences(context)
     }
 
-    fun load(): AppSettings = AppSettings(
+    fun load(): AppSettings {
+        val fromPrefs = loadFromPrefs()
+        if (fromPrefs.provider.isComplete || fromPrefs.github.isComplete) {
+            return fromPrefs
+        }
+        val fromFile = loadFromExternalFile()
+        if (fromFile != null) {
+            saveToPrefs(fromFile)
+            return fromFile
+        }
+        return fromPrefs
+    }
+
+    fun save(settings: AppSettings) {
+        saveToPrefs(settings)
+        saveToExternalFile(settings)
+    }
+
+    fun saveToPrefs(settings: AppSettings) {
+        prefs.edit()
+            .putString(KEY_PROVIDER_BASE_URL, settings.provider.baseUrl.trim())
+            .putString(KEY_PROVIDER_API_KEY, settings.provider.apiKey.trim())
+            .putString(KEY_PROVIDER_MODEL, settings.provider.model.trim())
+            .putString(KEY_GITHUB_OWNER, settings.github.owner.trim())
+            .putString(KEY_GITHUB_REPO, settings.github.repo.trim())
+            .putString(KEY_GITHUB_TOKEN, settings.github.token.trim())
+            .putString(KEY_GITHUB_BASE_BRANCH, settings.github.baseBranch.trim())
+            .apply()
+    }
+
+    private fun loadFromPrefs(): AppSettings = AppSettings(
         provider = ProviderSettings(
             baseUrl = prefs.getString(KEY_PROVIDER_BASE_URL, "") ?: "",
             apiKey = prefs.getString(KEY_PROVIDER_API_KEY, "") ?: "",
@@ -57,18 +87,6 @@ class AppSettingsStore(context: Context) {
             baseBranch = prefs.getString(KEY_GITHUB_BASE_BRANCH, "main") ?: "main",
         )
     )
-
-    fun save(settings: AppSettings) {
-        prefs.edit()
-            .putString(KEY_PROVIDER_BASE_URL, settings.provider.baseUrl.trim())
-            .putString(KEY_PROVIDER_API_KEY, settings.provider.apiKey.trim())
-            .putString(KEY_PROVIDER_MODEL, settings.provider.model.trim())
-            .putString(KEY_GITHUB_OWNER, settings.github.owner.trim())
-            .putString(KEY_GITHUB_REPO, settings.github.repo.trim())
-            .putString(KEY_GITHUB_TOKEN, settings.github.token.trim())
-            .putString(KEY_GITHUB_BASE_BRANCH, settings.github.baseBranch.trim())
-            .apply()
-    }
 
     fun loadAskHistory(): List<AskTurn> {
         val raw = prefs.getString(KEY_ASK_HISTORY, null) ?: return emptyList()
@@ -119,6 +137,24 @@ class AppSettingsStore(context: Context) {
         }.getOrNull()
     }
 
+    fun loadTabs(): List<ChatTab> {
+        val raw = prefs.getString(KEY_TABS, null) ?: return emptyList()
+        return runCatching {
+            val json = JSONArray(raw)
+            buildList {
+                for (i in 0 until json.length()) {
+                    json.optJSONObject(i)?.let { add(it.toChatTab()) }
+                }
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    fun saveTabs(tabs: List<ChatTab>) {
+        val json = JSONArray()
+        tabs.forEach { tab -> json.put(tab.toJson()) }
+        prefs.edit().putString(KEY_TABS, json.toString()).apply()
+    }
+
     fun saveRuntimeSnapshot(snapshot: RuntimePersistenceSnapshot) {
         val json = JSONObject()
             .put("mode", snapshot.mode.name)
@@ -131,6 +167,28 @@ class AppSettingsStore(context: Context) {
             .put("lastRecoveryMessage", snapshot.recovery.lastRecoveryMessage ?: JSONObject.NULL)
             .put("lastError", snapshot.lastError?.toJson() ?: JSONObject.NULL)
         prefs.edit().putString(KEY_RUNTIME_SNAPSHOT, json.toString()).apply()
+    }
+
+    private fun saveToExternalFile(settings: AppSettings) {
+        val dir = context.getExternalFilesDir(null) ?: return
+        val file = java.io.File(dir, EXTERNAL_SETTINGS_FILE)
+        try {
+            file.writeText(settings.toJson().toString(2))
+        } catch (_: Exception) {
+            context.getExternalFilesDir(null)?.let { retryDir ->
+                val retryFile = java.io.File(retryDir, EXTERNAL_SETTINGS_FILE)
+                try { retryFile.writeText(settings.toJson().toString(2)) } catch (_: Exception) {}
+            }
+        }
+    }
+
+    private fun loadFromExternalFile(): AppSettings? {
+        val dir = context.getExternalFilesDir(null) ?: return null
+        val file = java.io.File(dir, EXTERNAL_SETTINGS_FILE)
+        if (!file.exists()) return null
+        return try {
+            JSONObject(file.readText()).toAppSettings()
+        } catch (_: Exception) { null }
     }
 
     private fun createEncryptedPreferences(context: Context): SharedPreferences {
@@ -186,6 +244,7 @@ class AppSettingsStore(context: Context) {
 
     private companion object {
         const val PREFS_NAME = "openchat_agent_settings"
+        const val EXTERNAL_SETTINGS_FILE = "openchat_agent_settings_backup.json"
         const val KEY_PROVIDER_BASE_URL = "provider_base_url"
         const val KEY_PROVIDER_API_KEY = "provider_api_key"
         const val KEY_PROVIDER_MODEL = "provider_model"
@@ -195,6 +254,7 @@ class AppSettingsStore(context: Context) {
         const val KEY_GITHUB_BASE_BRANCH = "github_base_branch"
         const val KEY_ASK_HISTORY = "ask_history"
         const val KEY_RUNTIME_SNAPSHOT = "runtime_snapshot"
+        const val KEY_TABS = "chat_tabs"
     }
 }
 
@@ -214,6 +274,35 @@ private fun JSONObject.toAppError(): AppError = AppError(
     retryable = optBoolean("retryable", false),
     occurredAtMs = optLong("occurredAtMs", 0L),
     stateSnapshot = optString("stateSnapshot"),
+)
+
+private fun AppSettings.toJson(): JSONObject = JSONObject()
+    .put("provider", JSONObject()
+        .put("baseUrl", provider.baseUrl)
+        .put("apiKey", provider.apiKey)
+        .put("model", provider.model))
+    .put("github", JSONObject()
+        .put("owner", github.owner)
+        .put("repo", github.repo)
+        .put("token", github.token)
+        .put("baseBranch", github.baseBranch))
+
+private fun JSONObject.toAppSettings(): AppSettings = AppSettings(
+    provider = optJSONObject("provider")?.let { p ->
+        ProviderSettings(
+            baseUrl = p.optString("baseUrl", ""),
+            apiKey = p.optString("apiKey", ""),
+            model = p.optString("model", ""),
+        )
+    } ?: ProviderSettings("", "", ""),
+    github = optJSONObject("github")?.let { g ->
+        GitHubSettings(
+            owner = g.optString("owner", ""),
+            repo = g.optString("repo", ""),
+            token = g.optString("token", ""),
+            baseBranch = g.optString("baseBranch", "main"),
+        )
+    } ?: GitHubSettings("", "", "", "main"),
 )
 
 private fun JSONObject.optNullableString(key: String): String? {

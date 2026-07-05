@@ -35,6 +35,7 @@
     <string name="hint_github_repo">GitHub repo</string>
     <string name="hint_github_token">GitHub token</string>
     <string name="hint_github_base_branch">GitHub base branch</string>
+    <string name="agent_log_placeholder">Agent ready. Enter a goal and press Start.</string>
     <string name="agent_recovery_placeholder">Recovered agent task details will appear here.</string>
     <string name="agent_recovery_title">Recovered Task Package</string>
     <string name="agent_active_title">Active Task Package</string>
