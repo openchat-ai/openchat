@@ -9,6 +9,7 @@
     <string name="action_reject">Reject</string>
     <string name="action_start">Start</string>
     <string name="action_stop">Stop</string>
+    <string name="action_resume">Resume</string>
     <string name="action_settings">Settings</string>
     <string name="action_send">Ask</string>
     <string name="action_clear">Clear</string>
@@ -21,7 +22,7 @@
     <string name="status_ask_config_needed">Configure a provider to use Ask mode</string>
     <string name="status_ask_history_cleared">Ask history cleared</string>
     <string name="hint_ask_prompt">Ask the model to explain, plan, or draft code changes...</string>
-    <string name="hint_agent_goal">Describe the GitHub task the agent should draft and publish...</string>
+    <string name="hint_agent_goal">Describe the GitHub task the agent should draft and publish. Include json/config/sdui for config artifacts, or kotlin/code for .kt drafts.</string>
     <string name="ask_placeholder">Ask mode response will appear here.</string>
     <string name="summary_provider_offline">Provider: offline scripted demo</string>
     <string name="summary_provider_ready">Provider: %1$s ready</string>
@@ -34,6 +35,9 @@
     <string name="hint_github_repo">GitHub repo</string>
     <string name="hint_github_token">GitHub token</string>
     <string name="hint_github_base_branch">GitHub base branch</string>
+    <string name="agent_recovery_placeholder">Recovered agent task details will appear here.</string>
+    <string name="agent_recovery_title">Recovered Task Package</string>
+    <string name="agent_active_title">Active Task Package</string>
     <string name="log_settings_saved">[CFG] settings saved</string>
     <string name="log_ask_sent">[ASK] prompt sent</string>
     <string name="log_ask_done">[ASK] response received</string>

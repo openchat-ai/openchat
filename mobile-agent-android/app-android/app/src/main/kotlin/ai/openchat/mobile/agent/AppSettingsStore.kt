@@ -1,6 +1,9 @@
 package ai.openchat.mobile.agent
 
 import android.content.Context
+import android.content.SharedPreferences
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -35,7 +38,11 @@ data class AppSettings(
 
 class AppSettingsStore(context: Context) {
 
-    private val prefs = context.getSharedPreferences("openchat_agent_settings", Context.MODE_PRIVATE)
+    private val prefs = createEncryptedPreferences(context)
+
+    init {
+        migrateLegacyPreferences(context)
+    }
 
     fun load(): AppSettings = AppSettings(
         provider = ProviderSettings(
@@ -92,7 +99,93 @@ class AppSettingsStore(context: Context) {
         prefs.edit().putString(KEY_ASK_HISTORY, json.toString()).apply()
     }
 
+    fun loadRuntimeSnapshot(): RuntimePersistenceSnapshot? {
+        val raw = prefs.getString(KEY_RUNTIME_SNAPSHOT, null) ?: return null
+        return runCatching {
+            val json = JSONObject(raw)
+            RuntimePersistenceSnapshot(
+                mode = RuntimeMode.valueOf(json.optString("mode", RuntimeMode.ASK.name)),
+                recovery = RecoveryState(
+                    degradedMode = json.optBoolean("degradedMode", false),
+                    needsResume = json.optBoolean("needsResume", false),
+                    pendingAskPrompt = json.optNullableString("pendingAskPrompt"),
+                    pendingAgentGoal = json.optNullableString("pendingAgentGoal"),
+                    pendingTaskPackage = json.optJSONObject("pendingTaskPackage")?.toTaskPackage(),
+                    lastCheckpointId = json.optNullableString("lastCheckpointId"),
+                    lastRecoveryMessage = json.optNullableString("lastRecoveryMessage"),
+                ),
+                lastError = json.optJSONObject("lastError")?.toAppError(),
+            )
+        }.getOrNull()
+    }
+
+    fun saveRuntimeSnapshot(snapshot: RuntimePersistenceSnapshot) {
+        val json = JSONObject()
+            .put("mode", snapshot.mode.name)
+            .put("degradedMode", snapshot.recovery.degradedMode)
+            .put("needsResume", snapshot.recovery.needsResume)
+            .put("pendingAskPrompt", snapshot.recovery.pendingAskPrompt ?: JSONObject.NULL)
+            .put("pendingAgentGoal", snapshot.recovery.pendingAgentGoal ?: JSONObject.NULL)
+            .put("pendingTaskPackage", snapshot.recovery.pendingTaskPackage?.toJson() ?: JSONObject.NULL)
+            .put("lastCheckpointId", snapshot.recovery.lastCheckpointId ?: JSONObject.NULL)
+            .put("lastRecoveryMessage", snapshot.recovery.lastRecoveryMessage ?: JSONObject.NULL)
+            .put("lastError", snapshot.lastError?.toJson() ?: JSONObject.NULL)
+        prefs.edit().putString(KEY_RUNTIME_SNAPSHOT, json.toString()).apply()
+    }
+
+    private fun createEncryptedPreferences(context: Context): SharedPreferences {
+        val masterKey = MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
+
+        return EncryptedSharedPreferences.create(
+            context,
+            PREFS_NAME,
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+        )
+    }
+
+    private fun migrateLegacyPreferences(context: Context) {
+        val legacy = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        if (legacy.all.isEmpty()) return
+
+        val targetKeys = listOf(
+            KEY_PROVIDER_BASE_URL,
+            KEY_PROVIDER_API_KEY,
+            KEY_PROVIDER_MODEL,
+            KEY_GITHUB_OWNER,
+            KEY_GITHUB_REPO,
+            KEY_GITHUB_TOKEN,
+            KEY_GITHUB_BASE_BRANCH,
+            KEY_ASK_HISTORY,
+            KEY_RUNTIME_SNAPSHOT,
+        )
+        val editor = prefs.edit()
+        var migratedAny = false
+        targetKeys.forEach { key ->
+            if (!prefs.contains(key) && legacy.contains(key)) {
+                legacy.all[key]?.let { value ->
+                    when (value) {
+                        is String -> editor.putString(key, value)
+                        is Int -> editor.putInt(key, value)
+                        is Long -> editor.putLong(key, value)
+                        is Boolean -> editor.putBoolean(key, value)
+                        is Float -> editor.putFloat(key, value)
+                    }
+                    migratedAny = true
+                }
+            }
+        }
+        if (migratedAny) {
+            editor.apply()
+            legacy.edit().clear().apply()
+        }
+    }
+
     private companion object {
+        const val PREFS_NAME = "openchat_agent_settings"
         const val KEY_PROVIDER_BASE_URL = "provider_base_url"
         const val KEY_PROVIDER_API_KEY = "provider_api_key"
         const val KEY_PROVIDER_MODEL = "provider_model"
@@ -101,5 +194,129 @@ class AppSettingsStore(context: Context) {
         const val KEY_GITHUB_TOKEN = "github_token"
         const val KEY_GITHUB_BASE_BRANCH = "github_base_branch"
         const val KEY_ASK_HISTORY = "ask_history"
+        const val KEY_RUNTIME_SNAPSHOT = "runtime_snapshot"
+    }
+}
+
+private fun AppError.toJson(): JSONObject = JSONObject()
+    .put("kind", kind.name)
+    .put("code", code)
+    .put("message", message)
+    .put("retryable", retryable)
+    .put("occurredAtMs", occurredAtMs)
+    .put("stateSnapshot", stateSnapshot)
+
+private fun JSONObject.toAppError(): AppError = AppError(
+    kind = runCatching { ErrorKind.valueOf(optString("kind", ErrorKind.Unknown.name)) }
+        .getOrDefault(ErrorKind.Unknown),
+    code = optString("code"),
+    message = optString("message"),
+    retryable = optBoolean("retryable", false),
+    occurredAtMs = optLong("occurredAtMs", 0L),
+    stateSnapshot = optString("stateSnapshot"),
+)
+
+private fun JSONObject.optNullableString(key: String): String? {
+    if (isNull(key)) return null
+    return optString(key).takeIf { it.isNotBlank() && it != "null" }
+}
+
+private fun TaskPackage.toJson(): JSONObject = JSONObject()
+    .put("id", id)
+    .put("goal", goal)
+    .put("createdAtMs", createdAtMs)
+    .put("artifactKind", artifactKind.name)
+    .put("planSummary", planSummary)
+    .put("artifacts", JSONArray().apply { artifacts.forEach { put(it.toJson()) } })
+    .put("checkpoints", JSONArray().apply { checkpoints.forEach { put(it.toJson()) } })
+    .put("publishIntent", publishIntent.toJson())
+    .put("rollbackHints", JSONArray().apply { rollbackHints.forEach(::put) })
+
+private fun Artifact.toJson(): JSONObject = JSONObject()
+    .put("path", path)
+    .put("mime", mime)
+    .put("content", content)
+    .put("summary", summary)
+
+private fun Checkpoint.toJson(): JSONObject = JSONObject()
+    .put("id", id)
+    .put("label", label)
+    .put("reason", reason)
+    .put("artifactPaths", JSONArray().apply { artifactPaths.forEach(::put) })
+
+private fun PublishIntent.toJson(): JSONObject = JSONObject()
+    .put("baseBranch", baseBranch)
+    .put("branchName", branchName)
+    .put("commitMessage", commitMessage)
+    .put("prTitle", prTitle)
+    .put("prBody", prBody)
+
+private fun JSONObject.toTaskPackage(): TaskPackage = TaskPackage(
+    id = optString("id"),
+    goal = optString("goal"),
+    createdAtMs = optLong("createdAtMs", 0L),
+    artifactKind = runCatching { ArtifactKind.valueOf(optString("artifactKind", ArtifactKind.MarkdownDraft.name)) }
+        .getOrDefault(ArtifactKind.MarkdownDraft),
+    planSummary = optString("planSummary"),
+    artifacts = optJSONArray("artifacts").toArtifacts(),
+    checkpoints = optJSONArray("checkpoints").toCheckpoints(),
+    publishIntent = optJSONObject("publishIntent")?.toPublishIntent() ?: PublishIntent(
+        baseBranch = "main",
+        branchName = "mobile-agent/fallback",
+        commitMessage = "docs(agent): fallback draft",
+        prTitle = optString("goal"),
+        prBody = optString("goal"),
+    ),
+    rollbackHints = optJSONArray("rollbackHints").toStringList(),
+)
+
+private fun JSONArray?.toArtifacts(): List<Artifact> {
+    if (this == null) return emptyList()
+    return buildList {
+        for (index in 0 until length()) {
+            val item = optJSONObject(index) ?: continue
+            add(
+                Artifact(
+                    path = item.optString("path"),
+                    mime = item.optString("mime"),
+                    content = item.optString("content"),
+                    summary = item.optString("summary"),
+                )
+            )
+        }
+    }
+}
+
+private fun JSONArray?.toCheckpoints(): List<Checkpoint> {
+    if (this == null) return emptyList()
+    return buildList {
+        for (index in 0 until length()) {
+            val item = optJSONObject(index) ?: continue
+            add(
+                Checkpoint(
+                    id = item.optString("id"),
+                    label = item.optString("label"),
+                    reason = item.optString("reason"),
+                    artifactPaths = item.optJSONArray("artifactPaths").toStringList(),
+                )
+            )
+        }
+    }
+}
+
+private fun JSONObject.toPublishIntent(): PublishIntent = PublishIntent(
+    baseBranch = optString("baseBranch", "main"),
+    branchName = optString("branchName"),
+    commitMessage = optString("commitMessage"),
+    prTitle = optString("prTitle"),
+    prBody = optString("prBody"),
+)
+
+private fun JSONArray?.toStringList(): List<String> {
+    if (this == null) return emptyList()
+    return buildList {
+        for (index in 0 until length()) {
+            optString(index).takeIf { it.isNotBlank() }?.let(::add)
+        }
     }
 }

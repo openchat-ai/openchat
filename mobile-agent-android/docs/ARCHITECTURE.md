@@ -13,3 +13,7 @@
 - core/tools: tool interfaces/adapters
 - core/modelrouter: ask/agent routes + fallback
 - core/github: branch/commit/push/pr helpers
+
+## P0 design
+- See `docs/P0-CORE-DESIGN.md` for the unified state machine, failure recovery contract, and task package protocol.
+
