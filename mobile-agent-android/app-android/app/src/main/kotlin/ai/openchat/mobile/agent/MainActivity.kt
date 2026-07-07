@@ -234,7 +234,7 @@ class MainActivity : AppCompatActivity() {
             goalProvider = { etInput.text.toString() },
             baseBranchProvider = { settingsStore.load().github.baseBranch.ifBlank { "main" } },
             stopAfterPlanningProvider = { runtimeState.mode == RuntimeMode.PLAN },
-            planRequest = { request ->
+            planRequest = planRequest@{ request ->
                 val settings = settingsStore.load()
                 if (!settings.provider.isComplete) {
                     return@planRequest AgentLoop.ScriptedProvider().ask(request)
@@ -531,7 +531,7 @@ class MainActivity : AppCompatActivity() {
                     tvConversation.movementMethod = LinkMovementMethod.getInstance()
                 }
             }
-            RuntimeMode.AGENT -> {
+            RuntimeMode.PLAN, RuntimeMode.AGENT, RuntimeMode.ADAPTIVE -> {
                 if (tvConversation.text.isBlank()) {
                     tvConversation.text = getString(R.string.agent_log_placeholder)
                     tvConversation.movementMethod = null
