@@ -3,33 +3,48 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <!-- Top bar: tabs -->
+    <!-- Mode Selector: 4 static tabs -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
-
-        <HorizontalScrollView
+        android:orientation="horizontal"
+        android:padding="4dp">
+        <Button
+            android:id="@+id/btnModeAsk"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:fadeScrollbars="false">
-
-            <LinearLayout
-                android:id="@+id/layoutTabs"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal" />
-        </HorizontalScrollView>
-
-        <Button
-            android:id="@+id/btnAddTab"
             style="?android:attr/borderlessButtonStyle"
-            android:layout_width="wrap_content"
+            android:text="Ask"
+            android:textAllCaps="false"
+            android:textSize="12sp" />
+        <Button
+            android:id="@+id/btnModePlan"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="+"
-            android:textSize="20sp" />
+            android:layout_weight="1"
+            style="?android:attr/borderlessButtonStyle"
+            android:text="Plan"
+            android:textAllCaps="false"
+            android:textSize="12sp" />
+        <Button
+            android:id="@+id/btnModeAgent"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            style="?android:attr/borderlessButtonStyle"
+            android:text="Agent"
+            android:textAllCaps="false"
+            android:textSize="12sp" />
+        <Button
+            android:id="@+id/btnModeAdaptive"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            style="?android:attr/borderlessButtonStyle"
+            android:text="Adaptive"
+            android:textAllCaps="false"
+            android:textSize="12sp" />
 
         <Button
             android:id="@+id/btnSettings"
@@ -147,11 +162,6 @@
         android:orientation="horizontal"
         android:paddingHorizontal="12dp"
         android:paddingVertical="8dp">
-
-        <Spinner
-            android:id="@+id/spinnerMode"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
 
         <View
             android:layout_width="0dp"

@@ -20,6 +20,9 @@
     <string name="status_ask_ready">Ask mode ready</string>
     <string name="status_ask_running">Ask request running...</string>
     <string name="status_ask_config_needed">Configure a provider to use Ask mode</string>
+    <string name="status_agent_ready">Agent mode ready</string>
+    <string name="status_agent_running">Agent request running...</string>
+    <string name="status_agent_config_needed">Configure a provider to use Agent mode</string>
     <string name="status_ask_history_cleared">Ask history cleared</string>
     <string name="hint_ask_prompt">Ask the model to explain, plan, or draft code changes...</string>
     <string name="hint_agent_goal">Describe the GitHub task the agent should draft and publish. Include json/config/sdui for config artifacts, or kotlin/code for .kt drafts.</string>

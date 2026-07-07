@@ -56,11 +56,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnReject: Button
     private lateinit var btnResume: Button
     private lateinit var btnSettings: Button
-    private lateinit var btnAddTab: Button
     private lateinit var btnStop: Button
-    private lateinit var spinnerMode: Spinner
+    private lateinit var btnModeAsk: Button
+    private lateinit var btnModePlan: Button
+    private lateinit var btnModeAgent: Button
+    private lateinit var btnModeAdaptive: Button
     private lateinit var layoutAgentActions: View
-    private lateinit var layoutTabs: LinearLayout
 
     private lateinit var settingsStore: AppSettingsStore
     private lateinit var agentLoop: AgentLoop
@@ -87,23 +88,19 @@ class MainActivity : AppCompatActivity() {
         btnReject = findViewById(R.id.btnReject)
         btnResume = findViewById(R.id.btnResume)
         btnSettings = findViewById(R.id.btnSettings)
-        btnAddTab = findViewById(R.id.btnAddTab)
         btnStop = findViewById(R.id.btnStop)
-        spinnerMode = findViewById(R.id.spinnerMode)
-        layoutAgentActions = findViewById(R.id.layoutAgentActions)
-        layoutTabs = findViewById(R.id.layoutTabs)
 
-        val modes = arrayOf("Ask", "Agent")
-        spinnerMode.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, modes).apply {
-            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        }
-        spinnerMode.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>, view: View, position: Int, id: Long) {
-                val newMode = if (position == 0) RuntimeMode.ASK else RuntimeMode.AGENT
-                if (newMode != runtimeState.mode) switchMode(newMode)
-            }
-            override fun onNothingSelected(parent: AdapterView<*>) {}
-        }
+        btnModeAsk = findViewById(R.id.btnModeAsk)
+        btnModePlan = findViewById(R.id.btnModePlan)
+        btnModeAgent = findViewById(R.id.btnModeAgent)
+        btnModeAdaptive = findViewById(R.id.btnModeAdaptive)
+
+        layoutAgentActions = findViewById(R.id.layoutAgentActions)
+
+        btnModeAsk.setOnClickListener { switchMode(RuntimeMode.ASK) }
+        btnModePlan.setOnClickListener { switchMode(RuntimeMode.PLAN) }
+        btnModeAgent.setOnClickListener { switchMode(RuntimeMode.AGENT) }
+        btnModeAdaptive.setOnClickListener { switchMode(RuntimeMode.ADAPTIVE) }
 
         btnSend.setOnClickListener { sendMessage() }
         etInput.setOnEditorActionListener(OnEditorActionListener { _, actionId, event ->
@@ -120,7 +117,6 @@ class MainActivity : AppCompatActivity() {
         btnReject.setOnClickListener { agentLoop.reject() }
         btnResume.setOnClickListener { resumeAgent() }
         btnSettings.setOnClickListener { showSettingsDialog() }
-        btnAddTab.setOnClickListener { addTab() }
         btnStop.setOnClickListener { stopRunning() }
         tvModel.setOnClickListener { showSettingsDialog() }
 
@@ -148,7 +144,13 @@ class MainActivity : AppCompatActivity() {
                 etInput.setText("")
                 submitAsk(text)
             }
-            RuntimeMode.AGENT -> toggleAgent(text)
+            RuntimeMode.PLAN, RuntimeMode.AGENT -> toggleAgent(text)
+            RuntimeMode.ADAPTIVE -> {
+                // Adaptive placeholder: for now just behave like Ask
+                if (askJob?.isActive == true) return
+                etInput.setText("")
+                submitAsk("[Adaptive] $text")
+            }
         }
     }
 
@@ -226,6 +228,7 @@ class MainActivity : AppCompatActivity() {
         return AgentLoop(
             goalProvider = { etInput.text.toString() },
             baseBranchProvider = { settingsStore.load().github.baseBranch.ifBlank { "main" } },
+            stopAfterPlanningProvider = { runtimeState.mode == RuntimeMode.PLAN },
             planRequest = { request ->
                 val settings = settingsStore.load()
                 if (!settings.provider.isComplete) {
@@ -575,11 +578,6 @@ class MainActivity : AppCompatActivity() {
         dispatch(RuntimeAction.SwitchMode(tab.mode))
         agentLoop = buildAgentLoop()
         tvConversation.text = ""
-        syncSpinnerMode()
-    }
-
-    private fun syncSpinnerMode() {
-        spinnerMode.setSelection(if (runtimeState.mode == RuntimeMode.ASK) 0 else 1, false)
     }
 
     private fun addTab() {
@@ -603,7 +601,6 @@ class MainActivity : AppCompatActivity() {
         dispatch(RuntimeAction.SwitchMode(tab.mode))
         agentLoop = buildAgentLoop()
         tvConversation.text = ""
-        syncSpinnerMode()
     }
 
     private fun nextTabName(): String {
@@ -611,36 +608,6 @@ class MainActivity : AppCompatActivity() {
         var n = 1
         while ("Chat $n" in existing) n++
         return "Chat $n"
-    }
-
-    private fun renderTabs() {
-        layoutTabs.removeAllViews()
-        tabs.forEachIndexed { index, tab ->
-            val isActive = index == activeTabIndex
-            val tabView = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                setPadding(8, 4, 4, 4)
-                setOnClickListener { switchTab(index) }
-                isClickable = true
-                isFocusable = true
-                setBackgroundColor(if (isActive) 0x33FFFFFF.toInt() else 0x00000000)
-            }
-            val nameView = TextView(this).apply {
-                text = tab.name
-                textSize = 14f
-                setPadding(4, 4, 4, 4)
-            }
-            val closeBtn = Button(this).apply {
-                text = "×"
-                textSize = 14f
-                setPadding(4, 0, 4, 0)
-                setOnClickListener { closeTab(index) }
-                setBackgroundColor(0x00000000)
-            }
-            tabView.addView(nameView)
-            tabView.addView(closeBtn)
-            layoutTabs.addView(tabView)
-        }
     }
 
     private fun showSettingsDialog() {
@@ -858,8 +825,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun renderRuntimeState() {
-        renderTabs()
-        syncSpinnerMode()
+        renderModeButtons()
         renderConversation()
         renderAgentRecoverySummary()
         runtimeState.recovery.pendingAskPrompt?.let { pending ->
@@ -881,10 +847,11 @@ class MainActivity : AppCompatActivity() {
         val busy = askBusy || agentActive
         btnSend.isEnabled = !busy
         btnStop.visibility = if (busy) View.VISIBLE else View.GONE
-        spinnerMode.isEnabled = !busy
         etInput.hint = when (runtimeState.mode) {
             RuntimeMode.ASK -> getString(R.string.hint_ask_prompt)
+            RuntimeMode.PLAN -> "Enter plan goal..."
             RuntimeMode.AGENT -> getString(R.string.hint_agent_goal)
+            RuntimeMode.ADAPTIVE -> "Adaptive mode: enter task..."
         }
 
         when (runtimeState.mode) {
@@ -897,13 +864,35 @@ class MainActivity : AppCompatActivity() {
                     else -> getString(R.string.status_ask_ready)
                 }
             }
-            RuntimeMode.AGENT -> {
+            RuntimeMode.PLAN, RuntimeMode.AGENT -> {
                 if (runtimeState.recovery.needsResume && !runtimeState.recovery.lastRecoveryMessage.isNullOrBlank()) {
                     tvStatus.text = runtimeState.recovery.lastRecoveryMessage
                 }
                 updateAgentUi(runtimeState.agent)
             }
+            RuntimeMode.ADAPTIVE -> {
+                tvStatus.text = "Adaptive mode ready"
+            }
         }
+    }
+
+    private fun renderModeButtons() {
+        val activeColor = ContextCompat.getColor(this, android.R.color.white)
+        val inactiveColor = ContextCompat.getColor(this, android.R.color.darker_gray)
+        val activeBg = 0x33FFFFFF.toInt()
+        val inactiveBg = 0x00000000
+
+        fun updateBtn(btn: Button, mode: RuntimeMode) {
+            val isActive = runtimeState.mode == mode
+            btn.setTextColor(if (isActive) activeColor else inactiveColor)
+            btn.setBackgroundColor(if (isActive) activeBg else inactiveBg)
+            btn.setTypeface(null, if (isActive) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)
+        }
+
+        updateBtn(btnModeAsk, RuntimeMode.ASK)
+        updateBtn(btnModePlan, RuntimeMode.PLAN)
+        updateBtn(btnModeAgent, RuntimeMode.AGENT)
+        updateBtn(btnModeAdaptive, RuntimeMode.ADAPTIVE)
     }
 
     private fun renderAgentRecoverySummary() {

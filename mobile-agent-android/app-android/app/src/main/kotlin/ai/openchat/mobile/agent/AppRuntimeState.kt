@@ -279,7 +279,9 @@ fun AppRuntimeState.toPersistenceSnapshot(): RuntimePersistenceSnapshot {
 
 enum class RuntimeMode {
     ASK,
+    PLAN,
     AGENT,
+    ADAPTIVE,
 }
 
 sealed interface AskSessionState {

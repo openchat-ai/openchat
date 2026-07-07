@@ -59,6 +59,7 @@ sealed interface AgentLifecycleEvent {
 class AgentLoop(
     private val goalProvider: () -> String = { "Demo goal" },
     private val baseBranchProvider: () -> String = { "main" },
+    private val stopAfterPlanningProvider: () -> Boolean = { false },
     private val planRequest: suspend (ModelRequest) -> ModelResponse = { request ->
         ScriptedProvider().ask(request)
     },
@@ -267,6 +268,12 @@ class AgentLoop(
             taskQueue.addLast(AgentTask.PublishDraft(taskPackage, publishCheckpoint))
             taskQueue.addLast(AgentTask.Summarize(taskPackage, "agent artifact pipeline complete for: $goal"))
             emit("[C1.1] seeded ${taskQueue.size} execution steps")
+
+            if (stopAfterPlanningProvider()) {
+                emit("[C1.2] plan generated, stopping as requested by PLAN mode")
+                shouldStop = true
+                return null
+            }
         }
 
         return taskQueue.removeFirstOrNull()
