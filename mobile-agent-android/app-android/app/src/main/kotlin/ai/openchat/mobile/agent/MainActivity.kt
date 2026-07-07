@@ -44,6 +44,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withContext
 
+// === invariants ===
+// - 4 static modes (ASK, PLAN, AGENT, ADAPTIVE) are bridged to AppRuntimeState
+// - agentLoop is recreated for each new goal or resume
+// - UI state is updated via collect on runtimeState flow
+
 class MainActivity : AppCompatActivity() {
 
     private lateinit var tvStatus: TextView
@@ -232,7 +237,7 @@ class MainActivity : AppCompatActivity() {
             planRequest = { request ->
                 val settings = settingsStore.load()
                 if (!settings.provider.isComplete) {
-                    return@AgentLoop AgentLoop.ScriptedProvider().ask(request)
+                    return@planRequest AgentLoop.ScriptedProvider().ask(request)
                 }
 
                 val router = ModelRouter(

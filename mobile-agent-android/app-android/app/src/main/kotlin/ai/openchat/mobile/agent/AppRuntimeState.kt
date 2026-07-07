@@ -1,5 +1,10 @@
 package ai.openchat.mobile.agent
 
+// === invariants ===
+// - askHistory maintains user/assistant turn sequence
+// - agent state reflects current autonomous loop status
+// - recovery state contains data for resuming interrupted tasks
+
 data class AppRuntimeState(
     val mode: RuntimeMode = RuntimeMode.ASK,
     val askHistory: List<AskTurn> = emptyList(),
