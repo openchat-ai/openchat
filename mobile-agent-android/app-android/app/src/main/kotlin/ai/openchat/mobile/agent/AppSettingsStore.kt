@@ -36,6 +36,11 @@ data class AppSettings(
     val github: GitHubSettings,
 )
 
+// === invariants ===
+// - Settings are stored in EncryptedSharedPreferences for security.
+// - History data is serialized/deserialized via manual JSON mapping.
+// - Default baseBranch is always "main" if not specified.
+
 class AppSettingsStore(private val context: Context) {
 
     private val prefs = createEncryptedPreferences(context)

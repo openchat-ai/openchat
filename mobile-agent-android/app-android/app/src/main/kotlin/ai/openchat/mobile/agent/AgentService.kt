@@ -27,6 +27,11 @@ import ai.openchat.mobile.agent.core.persistence.PersistenceManager
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collectLatest
 
+// === invariants ===
+// - Only one background loop (agentLoop) runs at a time.
+// - Service lifecycle is tied to the completion of the background loop.
+// - UI state is updated globally via AgentStatusHub.
+
 class AgentService : Service() {
 
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
