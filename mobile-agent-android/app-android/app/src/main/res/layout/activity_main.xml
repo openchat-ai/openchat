@@ -78,21 +78,15 @@
         android:visibility="gone" />
 
     <!-- Conversation history -->
-    <ScrollView
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvConversation"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:paddingBottom="16dp" />
 
-        <TextView
-            android:id="@+id/tvConversation"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:fontFamily="monospace"
-            android:padding="12dp"
-            android:textSize="12sp" />
-    </ScrollView>
-
-    <!-- Agent action buttons (Approve/Reject/Resume) -->
+    <!-- Agent action buttons (Resume only) -->
     <LinearLayout
         android:id="@+id/layoutAgentActions"
         android:layout_width="match_parent"
@@ -101,21 +95,6 @@
         android:orientation="horizontal"
         android:paddingHorizontal="8dp"
         android:visibility="gone">
-
-        <Button
-            android:id="@+id/btnReject"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/action_reject"
-            android:visibility="gone" />
-
-        <Button
-            android:id="@+id/btnApprove"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:text="@string/action_approve"
-            android:visibility="gone" />
 
         <Button
             android:id="@+id/btnResume"

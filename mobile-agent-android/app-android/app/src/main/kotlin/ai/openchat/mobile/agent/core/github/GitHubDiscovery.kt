@@ -39,6 +39,19 @@ object GitHubDiscovery {
         }
     }
 
+    suspend fun fetchTree(token: String, owner: String, repo: String, sha: String, recursive: Boolean = false): Result<List<String>> = runCatching {
+        val url = "https://api.github.com/repos/$owner/$repo/git/trees/$sha${if (recursive) "?recursive=1" else ""}"
+        val tree = fetchJson(token, url).optJSONArray("tree") ?: JSONArray()
+        buildList {
+            for (i in 0 until tree.length()) {
+                val item = tree.getJSONObject(i)
+                if (item.optString("type") == "blob") {
+                    item.optString("path").takeIf { it.isNotBlank() }?.let { add(it) }
+                }
+            }
+        }
+    }
+
     private fun fetchJson(token: String, url: String): org.json.JSONObject {
         val text = fetchText(token, url)
         return if (text.isBlank()) org.json.JSONObject() else org.json.JSONObject(text)

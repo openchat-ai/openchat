@@ -24,8 +24,18 @@ import android.view.inputmethod.EditorInfo
 import android.widget.TextView.OnEditorActionListener
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
+import android.os.Build
+import android.Manifest
+import android.content.pm.PackageManager
+import android.content.Intent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.LinearLayoutManager
+import com.google.android.material.bottomsheet.BottomSheetDialog
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collect
 import ai.openchat.mobile.agent.core.agent.AgentLifecycleEvent
 import ai.openchat.mobile.agent.core.agent.AgentLoop
 import ai.openchat.mobile.agent.core.github.CommitFile
@@ -33,6 +43,7 @@ import ai.openchat.mobile.agent.core.github.GitHubClient
 import ai.openchat.mobile.agent.core.github.GitHubDiscovery
 import ai.openchat.mobile.agent.core.modelrouter.ModelMessage
 import ai.openchat.mobile.agent.core.modelrouter.ModelRequest
+import ai.openchat.mobile.agent.core.modelrouter.ModelResponse
 import ai.openchat.mobile.agent.core.modelrouter.ModelRouter
 import ai.openchat.mobile.agent.core.modelrouter.OpenAiCompatibleConfig
 import ai.openchat.mobile.agent.core.modelrouter.OpenAiCompatibleProvider
@@ -52,13 +63,11 @@ import kotlinx.coroutines.withContext
 class MainActivity : AppCompatActivity() {
 
     private lateinit var tvStatus: TextView
-    private lateinit var tvConversation: TextView
+    private lateinit var rvConversation: RecyclerView
     private lateinit var tvAgentRecoverySummary: TextView
     private lateinit var tvModel: TextView
     private lateinit var etInput: EditText
     private lateinit var btnSend: Button
-    private lateinit var btnApprove: Button
-    private lateinit var btnReject: Button
     private lateinit var btnResume: Button
     private lateinit var btnSettings: Button
     private lateinit var btnStop: Button
@@ -69,28 +78,56 @@ class MainActivity : AppCompatActivity() {
     private lateinit var layoutAgentActions: View
 
     private lateinit var settingsStore: AppSettingsStore
-    private lateinit var agentLoop: AgentLoop
     private var loopJob: Job? = null
     private var askJob: Job? = null
-    private var runtimeState = AppRuntimeState()
+    private lateinit var persistenceManager: ai.openchat.mobile.agent.core.persistence.PersistenceManager
+    private val runtimeStateFlow = MutableStateFlow(AppRuntimeState())
+    private var runtimeState: AppRuntimeState
+        get() = runtimeStateFlow.value
+        set(value) {
+            runtimeStateFlow.value = value
+            persistenceManager.save(value)
+        }
     private val tabs = mutableListOf<ChatTab>()
     private var activeTabIndex = 0
+
+    private val chatMessages = mutableListOf<ChatMessage>()
+    private lateinit var messageAdapter: MessageAdapter
+    private var approvalSheet: BottomSheetDialog? = null
+
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (!isGranted) {
+            appendConversation("[WARN] Notification permission denied. Background tasks may be interrupted.")
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+
         settingsStore = AppSettingsStore(this)
-        agentLoop = buildAgentLoop()
+        persistenceManager = ai.openchat.mobile.agent.core.persistence.PersistenceManager(this)
 
         tvStatus = findViewById(R.id.tvStatus)
-        tvConversation = findViewById(R.id.tvConversation)
+        rvConversation = findViewById(R.id.rvConversation)
         tvAgentRecoverySummary = findViewById(R.id.tvAgentRecoverySummary)
+
+        messageAdapter = MessageAdapter(chatMessages)
+        rvConversation.layoutManager = LinearLayoutManager(this).apply {
+            stackFromEnd = true
+        }
+        rvConversation.adapter = messageAdapter
         tvModel = findViewById(R.id.tvModel)
         etInput = findViewById(R.id.etInput)
         btnSend = findViewById(R.id.btnSend)
-        btnApprove = findViewById(R.id.btnApprove)
-        btnReject = findViewById(R.id.btnReject)
         btnResume = findViewById(R.id.btnResume)
         btnSettings = findViewById(R.id.btnSettings)
         btnStop = findViewById(R.id.btnStop)
@@ -118,8 +155,6 @@ class MainActivity : AppCompatActivity() {
         })
         etInput.imeOptions = EditorInfo.IME_ACTION_SEND
         etInput.setRawInputType(InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE)
-        btnApprove.setOnClickListener { agentLoop.approve() }
-        btnReject.setOnClickListener { agentLoop.reject() }
         btnResume.setOnClickListener { resumeAgent() }
         btnSettings.setOnClickListener { showSettingsDialog() }
         btnStop.setOnClickListener { stopRunning() }
@@ -128,14 +163,24 @@ class MainActivity : AppCompatActivity() {
         val savedTabs = settingsStore.loadTabs()
         tabs.addAll(savedTabs.ifEmpty { listOf(ChatTab(name = "Chat 1")) })
         activeTabIndex = 0
-        val firstTab = tabs[0]
-        runtimeState = runtimeState.copy(mode = firstTab.mode)
-        dispatch(RuntimeAction.HydrateAskHistory(firstTab.askHistory))
-        settingsStore.loadRuntimeSnapshot()?.let { snapshot ->
-            dispatch(RuntimeAction.HydratePersistence(snapshot))
+        
+        val history = persistenceManager.loadHistory()
+        val snapshot = persistenceManager.loadSnapshot()
+        
+        if (history != null) {
+            dispatch(RuntimeAction.HydrateAskHistory(history))
+        } else {
+            dispatch(RuntimeAction.HydrateAskHistory(tabs[0].askHistory))
         }
+
+        if (snapshot != null) {
+            dispatch(RuntimeAction.HydratePersistence(snapshot))
+        } else {
+            runtimeState = runtimeState.copy(mode = tabs[0].mode)
+        }
+
         renderSettingsSummary()
-        observeState()
+        observeAgentStatus()
         renderRuntimeState()
     }
 
@@ -164,8 +209,10 @@ class MainActivity : AppCompatActivity() {
             askJob?.cancel()
             askJob = null
         }
-        if (loopJob?.isActive == true) {
-            loopJob?.cancel()
+        lifecycleScope.launch {
+            ai.openchat.mobile.agent.core.agent.AgentStatusHub.sendCommand(ai.openchat.mobile.agent.core.agent.AgentCommand.Stop)
+        }
+        if (runtimeState.agent !is AgentSessionState.Idle) {
             val goal = etInput.text.toString()
             dispatch(
                 RuntimeAction.AgentFailed(
@@ -178,200 +225,49 @@ class MainActivity : AppCompatActivity() {
                     goal = goal,
                 )
             )
-            loopJob = null
         }
     }
 
     private fun toggleAgent(goal: String) {
-        if (loopJob?.isActive == true) {
-            loopJob?.cancel()
-            dispatch(
-                RuntimeAction.AgentFailed(
-                    error = buildAppError(
-                        kind = ErrorKind.Cancellation,
-                        code = "AGENT_CANCELLED",
-                        message = "Agent execution interrupted",
-                        retryable = true,
-                    ),
-                    goal = goal,
-                )
-            )
+        if (runtimeState.agent !is AgentSessionState.Idle && runtimeState.agent !is AgentSessionState.Completed) {
+            lifecycleScope.launch {
+                ai.openchat.mobile.agent.core.agent.AgentStatusHub.sendCommand(ai.openchat.mobile.agent.core.agent.AgentCommand.Stop)
+            }
         } else {
-            agentLoop = buildAgentLoop()
-            tvConversation.text = ""
-            dispatch(
-                RuntimeAction.ObserveAgent(
-                    AgentSessionState.Planning(
-                        goal = goal,
-                        startedAtMs = System.currentTimeMillis(),
-                    )
-                )
-            )
-            loopJob = lifecycleScope.launch { agentLoop.run() }
+            chatMessages.clear()
+            messageAdapter.notifyDataSetChanged()
+            val intent = Intent(this, AgentService::class.java).apply {
+                action = AgentService.ACTION_START
+                putExtra("goal", goal)
+            }
+            startService(intent)
         }
     }
 
     private fun resumeAgent() {
         val savedPackage = runtimeState.recovery.pendingTaskPackage ?: return
-        val checkpointId = runtimeState.recovery.lastCheckpointId
         etInput.setText(savedPackage.goal)
-        tvConversation.text = ""
-        appendConversation("[AGENT] resuming from saved task package: ${savedPackage.id}")
-        agentLoop = buildAgentLoop()
-        loopJob = lifecycleScope.launch { agentLoop.resume(savedPackage, checkpointId) }
+        chatMessages.clear()
+        messageAdapter.notifyDataSetChanged()
+        
+        val intent = Intent(this, AgentService::class.java).apply {
+            action = AgentService.ACTION_RESUME
+            // PersistenceManager handles saving/restoring the TaskPackage
+        }
+        startService(intent)
     }
 
-    private fun observeState() {
+    private fun observeAgentStatus() {
         lifecycleScope.launch {
-            agentLoop.log.collect { entry ->
+            ai.openchat.mobile.agent.core.agent.AgentStatusHub.state.collect { state ->
+                dispatch(RuntimeAction.ObserveAgent(state))
+            }
+        }
+        lifecycleScope.launch {
+            ai.openchat.mobile.agent.core.agent.AgentStatusHub.log.collect { entry ->
                 appendConversation(entry)
             }
         }
-    }
-
-    private fun buildAgentLoop(): AgentLoop {
-        return AgentLoop(
-            goalProvider = { etInput.text.toString() },
-            baseBranchProvider = { settingsStore.load().github.baseBranch.ifBlank { "main" } },
-            stopAfterPlanningProvider = { runtimeState.mode == RuntimeMode.PLAN },
-            planRequest = planRequest@{ request ->
-                val settings = settingsStore.load()
-                if (!settings.provider.isComplete) {
-                    return@planRequest AgentLoop.ScriptedProvider().ask(request)
-                }
-
-                val router = ModelRouter(
-                    listOf(
-                        OpenAiCompatibleProvider(
-                            id = "primary",
-                            config = OpenAiCompatibleConfig(
-                                baseUrl = settings.provider.baseUrl,
-                                apiKey = settings.provider.apiKey,
-                                model = settings.provider.model,
-                            )
-                        ),
-                        AgentLoop.ScriptedProvider(),
-                    )
-                )
-                withContext(Dispatchers.IO) {
-                    router.ask(request)
-                }
-            },
-            publishDraft = { taskPackage ->
-                val settings = settingsStore.load()
-                require(settings.github.isComplete) { getString(R.string.log_agent_missing_config) }
-
-                val github = GitHubClient(
-                    owner = settings.github.owner,
-                    repo = settings.github.repo,
-                    token = settings.github.token,
-                )
-                val publishIntent = taskPackage.publishIntent
-                withContext(Dispatchers.Main) {
-                    dispatch(
-                        RuntimeAction.ObserveAgent(
-                            AgentSessionState.Publishing(
-                                taskPackage = taskPackage,
-                                currentCheckpointId = runtimeState.recovery.lastCheckpointId,
-                            )
-                        )
-                    )
-                }
-                val artifact = taskPackage.artifacts.first()
-                val baseSha = github.getBranchHeadSha(publishIntent.baseBranch).getOrThrow()
-                github.createBranch(publishIntent.branchName, baseSha).getOrThrow()
-                github.commitFiles(
-                    branch = publishIntent.branchName,
-                    files = listOf(
-                        CommitFile(
-                            path = artifact.path,
-                            content = artifact.content,
-                        )
-                    ),
-                    message = publishIntent.commitMessage
-                ).getOrThrow()
-                val prNumber = github.createPullRequest(
-                    branch = publishIntent.branchName,
-                    base = publishIntent.baseBranch,
-                    title = publishIntent.prTitle,
-                    body = publishIntent.prBody,
-                ).getOrThrow()
-                "created PR #$prNumber on ${settings.github.owner}/${settings.github.repo}"
-            },
-            onLifecycleEvent = { event ->
-                withContext(Dispatchers.Main) {
-                    when (event) {
-                        is AgentLifecycleEvent.Planning -> dispatch(
-                            RuntimeAction.ObserveAgent(
-                                AgentSessionState.Planning(
-                                    goal = event.goal,
-                                    startedAtMs = System.currentTimeMillis(),
-                                )
-                            )
-                        )
-                        is AgentLifecycleEvent.AwaitingApproval -> dispatch(
-                            RuntimeAction.ObserveAgent(
-                                AgentSessionState.AwaitingApproval(
-                                    taskPackage = event.taskPackage,
-                                    currentCheckpoint = event.currentCheckpoint,
-                                )
-                            )
-                        )
-                        is AgentLifecycleEvent.Executing -> dispatch(
-                            RuntimeAction.ObserveAgent(
-                                AgentSessionState.Executing(
-                                    taskPackage = event.taskPackage,
-                                    currentCheckpointId = event.currentCheckpointId,
-                                    currentStepLabel = event.stepLabel,
-                                )
-                            )
-                        )
-                        is AgentLifecycleEvent.Publishing -> dispatch(
-                            RuntimeAction.ObserveAgent(
-                                AgentSessionState.Publishing(
-                                    taskPackage = event.taskPackage,
-                                    currentCheckpointId = event.currentCheckpointId,
-                                )
-                            )
-                        )
-                        is AgentLifecycleEvent.Completed -> dispatch(
-                            RuntimeAction.ObserveAgent(
-                                AgentSessionState.Completed(
-                                    taskPackage = event.taskPackage,
-                                    summary = event.summary,
-                                )
-                            )
-                        )
-                        is AgentLifecycleEvent.Cancelled -> dispatch(
-                            RuntimeAction.AgentFailed(
-                                error = buildAppError(
-                                    kind = ErrorKind.Cancellation,
-                                    code = "AGENT_CANCELLED",
-                                    message = "Agent execution interrupted",
-                                    retryable = true,
-                                ),
-                                goal = event.goal,
-                                taskPackage = event.taskPackage,
-                                checkpointId = event.checkpointId,
-                            )
-                        )
-                        is AgentLifecycleEvent.Failed -> dispatch(
-                            RuntimeAction.AgentFailed(
-                                error = buildAppError(
-                                    kind = mapAgentErrorKind(event.stage, event.message),
-                                    code = "AGENT_${event.stage.uppercase()}",
-                                    message = event.message,
-                                    retryable = event.retryable,
-                                ),
-                                goal = event.goal,
-                                taskPackage = event.taskPackage,
-                                checkpointId = event.checkpointId,
-                            )
-                        )
-                    }
-                }
-            }
-        )
     }
 
     private fun submitAsk(prompt: String) {
@@ -479,63 +375,37 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun appendConversation(line: String) {
-        tvConversation.append("$line\n")
+        val text = line.trim()
+        if (text.isEmpty()) return
+        chatMessages.add(ChatMessage(MessageType.LOG, text))
+        messageAdapter.notifyItemInserted(chatMessages.size - 1)
         scrollToBottom()
     }
 
     private fun scrollToBottom() {
-        tvConversation.post {
-            (tvConversation.parent as? View)?.let { parent ->
-                (parent.parent as? ScrollView)?.fullScroll(View.FOCUS_DOWN)
-            }
+        if (chatMessages.isNotEmpty()) {
+            rvConversation.scrollToPosition(chatMessages.size - 1)
         }
     }
 
     private fun renderConversation() {
         when (runtimeState.mode) {
             RuntimeMode.ASK -> {
-                if (runtimeState.askHistory.isEmpty()) {
-                    tvConversation.text = getString(R.string.ask_placeholder)
-                    tvConversation.movementMethod = null
-                } else {
-                    val ssb = SpannableStringBuilder()
-                    runtimeState.askHistory.forEachIndexed { index, turn ->
-                        if (index > 0) ssb.append("\n\n")
-                        val roleStart = ssb.length
-                        val roleText = "${turn.role}:"
-                        ssb.append(roleText)
-                        ssb.setSpan(StyleSpan(android.graphics.Typeface.BOLD), roleStart, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                        val color = if (turn.role == "You")
-                            ContextCompat.getColor(this, android.R.color.holo_blue_dark)
-                        else
-                            ContextCompat.getColor(this, android.R.color.holo_green_dark)
-                        ssb.setSpan(ForegroundColorSpan(color), roleStart, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                        ssb.append("\n")
-                        ssb.append(turn.content)
-                        if (turn.role == "You") {
-                            ssb.setSpan(
-                                object : ClickableSpan() {
-                                    override fun onClick(widget: View) {
-                                        etInput.setText(turn.content)
-                                        etInput.setSelection(turn.content.length)
-                                    }
-                                    override fun updateDrawState(ds: TextPaint) {
-                                        ds.isUnderlineText = false
-                                    }
-                                },
-                                roleStart, ssb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
-                            )
-                        }
-                    }
-                    tvConversation.text = ssb
-                    tvConversation.movementMethod = LinkMovementMethod.getInstance()
+                val newMessages = runtimeState.askHistory.map { turn ->
+                    ChatMessage(
+                        type = if (turn.role == "You") MessageType.USER else MessageType.AGENT,
+                        content = turn.content,
+                        role = turn.role
+                    )
+                }
+                if (chatMessages != newMessages) {
+                    chatMessages.clear()
+                    chatMessages.addAll(newMessages)
+                    messageAdapter.notifyDataSetChanged()
                 }
             }
-            RuntimeMode.PLAN, RuntimeMode.AGENT, RuntimeMode.ADAPTIVE -> {
-                if (tvConversation.text.isBlank()) {
-                    tvConversation.text = getString(R.string.agent_log_placeholder)
-                    tvConversation.movementMethod = null
-                }
+            else -> {
+                // Keep logs as they are
             }
         }
         scrollToBottom()
@@ -553,10 +423,12 @@ class MainActivity : AppCompatActivity() {
                 githubReady = settings.github.isComplete,
             )
         )
-        tvModel.text = if (settings.provider.isComplete) {
-            settings.provider.model
+        if (!settings.provider.isComplete) {
+            tvModel.text = getString(R.string.status_ask_config_needed)
+            tvModel.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
         } else {
-            getString(R.string.summary_provider_offline)
+            tvModel.text = settings.provider.model
+            tvModel.setTextColor(ContextCompat.getColor(this, android.R.color.white))
         }
     }
 
@@ -581,8 +453,8 @@ class MainActivity : AppCompatActivity() {
         runtimeState = AppRuntimeState(mode = tab.mode)
         dispatch(RuntimeAction.HydrateAskHistory(tab.askHistory))
         dispatch(RuntimeAction.SwitchMode(tab.mode))
-        agentLoop = buildAgentLoop()
-        tvConversation.text = ""
+        chatMessages.clear()
+        messageAdapter.notifyDataSetChanged()
     }
 
     private fun addTab() {
@@ -604,8 +476,8 @@ class MainActivity : AppCompatActivity() {
         runtimeState = AppRuntimeState(mode = tab.mode)
         dispatch(RuntimeAction.HydrateAskHistory(tab.askHistory))
         dispatch(RuntimeAction.SwitchMode(tab.mode))
-        agentLoop = buildAgentLoop()
-        tvConversation.text = ""
+        chatMessages.clear()
+        messageAdapter.notifyDataSetChanged()
     }
 
     private fun nextTabName(): String {
@@ -617,38 +489,56 @@ class MainActivity : AppCompatActivity() {
 
     private fun showSettingsDialog() {
         val settings = settingsStore.load()
-        val container = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(40, 24, 40, 24)
-        }
+        val view = layoutInflater.inflate(R.layout.dialog_settings, null)
+        
+        val etProviderBaseUrl = view.findViewById<EditText>(R.id.etProviderBaseUrl).apply { setText(settings.provider.baseUrl) }
+        val etProviderApiKey = view.findViewById<EditText>(R.id.etProviderApiKey).apply { setText(settings.provider.apiKey) }
+        val etProviderModel = view.findViewById<EditText>(R.id.etProviderModel).apply { setText(settings.provider.model) }
+        val btnVerifyProvider = view.findViewById<Button>(R.id.btnVerifyProvider)
+        
+        val etGithubToken = view.findViewById<EditText>(R.id.etGithubToken).apply { setText(settings.github.token) }
+        val etGithubOwner = view.findViewById<EditText>(R.id.etGithubOwner).apply { setText(settings.github.owner) }
+        val btnFetchRepos = view.findViewById<Button>(R.id.btnFetchRepos)
+        val etGithubRepo = view.findViewById<EditText>(R.id.etGithubRepo).apply { setText(settings.github.repo) }
+        val etGithubBaseBranch = view.findViewById<EditText>(R.id.etGithubBaseBranch).apply { setText(settings.github.baseBranch) }
+        val btnFetchBranches = view.findViewById<Button>(R.id.btnFetchBranches)
 
-        val providerBaseUrl = textField(getString(R.string.hint_provider_base_url), settings.provider.baseUrl)
-        val providerApiKey = textField(getString(R.string.hint_provider_api_key), settings.provider.apiKey, true)
-        val providerModel = textField(getString(R.string.hint_provider_model), settings.provider.model)
-        val githubToken = textField(getString(R.string.hint_github_token), settings.github.token, true)
-
-        val (githubOwner, githubOwnerBtn, githubOwnerRow) = dropdownRow(
-            getString(R.string.hint_github_owner), settings.github.owner
-        )
-        val (githubRepo, githubRepoBtn, githubRepoRow) = dropdownRow(
-            getString(R.string.hint_github_repo), settings.github.repo
-        )
-        val (githubBaseBranch, githubBaseBranchBtn, githubBaseBranchRow) = dropdownRow(
-            getString(R.string.hint_github_base_branch), settings.github.baseBranch
-        )
-
-        githubOwnerBtn.setOnClickListener {
-            val token = githubToken.text.toString().trim()
-            if (token.isBlank()) {
-                appendConversation("[CFG] Set GitHub token first")
+        btnVerifyProvider.setOnClickListener {
+            val baseUrl = etProviderBaseUrl.text.toString().trim()
+            val apiKey = etProviderApiKey.text.toString().trim()
+            val model = etProviderModel.text.toString().trim()
+            if (baseUrl.isBlank() || model.isBlank()) {
+                appendConversation(getString(R.string.log_cfg_base_model_required))
                 return@setOnClickListener
             }
             lifecycleScope.launch {
-                githubOwnerBtn.isEnabled = false
-                githubOwnerBtn.text = "..."
+                btnVerifyProvider.isEnabled = false
+                btnVerifyProvider.text = getString(R.string.status_verifying)
+                val p = OpenAiCompatibleProvider(id = "test", config = OpenAiCompatibleConfig(baseUrl, apiKey, model))
+                val result = withContext(Dispatchers.IO) { runCatching { p.ask(ModelRequest("Hi")) }.getOrNull() }
+                btnVerifyProvider.isEnabled = true
+                btnVerifyProvider.text = getString(R.string.action_verify_provider)
+                if (result?.isSuccess == true) {
+                    appendConversation(getString(R.string.log_cfg_provider_verified, result.text?.take(20) ?: ""))
+                } else {
+                    appendConversation(getString(R.string.log_cfg_provider_failed, result?.error ?: "Network error"))
+                }
+            }
+        }
+
+        btnFetchRepos.setOnClickListener {
+            val token = etGithubToken.text.toString().trim()
+            val owner = etGithubOwner.text.toString().trim()
+            if (token.isBlank() || owner.isBlank()) {
+                appendConversation("[CFG] Token and Owner required")
+                return@setOnClickListener
+            }
+            lifecycleScope.launch {
+                btnFetchRepos.isEnabled = false
+                btnFetchRepos.text = "..."
                 val result = withContext(Dispatchers.IO) { GitHubDiscovery.fetchOwners(token) }
-                githubOwnerBtn.isEnabled = true
-                githubOwnerBtn.text = "▼"
+                btnFetchRepos.isEnabled = true
+                btnFetchRepos.text = "▼"
                 result.onSuccess { owners ->
                     if (owners.isEmpty()) {
                         appendConversation("[CFG] No owners found")
@@ -657,164 +547,66 @@ class MainActivity : AppCompatActivity() {
                     AlertDialog.Builder(this@MainActivity)
                         .setTitle("Select Owner")
                         .setItems(owners.toTypedArray()) { _, which ->
-                            githubOwner.setText(owners[which])
-                            githubRepo.setText("")
-                            githubBaseBranch.setText("")
+                            etGithubOwner.setText(owners[which])
+                            etGithubRepo.setText("")
+                            etGithubBaseBranch.setText("")
                         }
                         .setNegativeButton(android.R.string.cancel, null)
                         .show()
-                }.onFailure { e ->
-                    appendConversation("[CFG] Owner fetch failed: ${e.message}")
-                }
+                }.onFailure { e -> appendConversation("[CFG] Owner fetch failed: ${e.message}") }
             }
         }
 
-        githubRepoBtn.setOnClickListener {
-            val token = githubToken.text.toString().trim()
-            val owner = githubOwner.text.toString().trim()
-            if (token.isBlank()) {
-                appendConversation("[CFG] Set GitHub token first")
-                return@setOnClickListener
-            }
-            if (owner.isBlank()) {
-                appendConversation("[CFG] Select owner first")
+        btnFetchBranches.setOnClickListener {
+            val token = etGithubToken.text.toString().trim()
+            val owner = etGithubOwner.text.toString().trim()
+            val repo = etGithubRepo.text.toString().trim()
+            if (token.isBlank() || owner.isBlank() || repo.isBlank()) {
+                appendConversation("[CFG] Token, Owner and Repo required")
                 return@setOnClickListener
             }
             lifecycleScope.launch {
-                githubRepoBtn.isEnabled = false
-                githubRepoBtn.text = "..."
-                val result = withContext(Dispatchers.IO) { GitHubDiscovery.fetchRepos(token, owner) }
-                githubRepoBtn.isEnabled = true
-                githubRepoBtn.text = "▼"
-                result.onSuccess { repos ->
-                    if (repos.isEmpty()) {
-                        appendConversation("[CFG] No repos found for $owner")
-                        return@launch
-                    }
-                    AlertDialog.Builder(this@MainActivity)
-                        .setTitle("Select Repo")
-                        .setItems(repos.toTypedArray()) { _, which ->
-                            githubRepo.setText(repos[which])
-                            githubBaseBranch.setText("")
-                        }
-                        .setNegativeButton(android.R.string.cancel, null)
-                        .show()
-                }.onFailure { e ->
-                    appendConversation("[CFG] Repo fetch failed: ${e.message}")
-                }
-            }
-        }
-
-        githubBaseBranchBtn.setOnClickListener {
-            val token = githubToken.text.toString().trim()
-            val owner = githubOwner.text.toString().trim()
-            val repo = githubRepo.text.toString().trim()
-            if (token.isBlank()) {
-                appendConversation("[CFG] Set GitHub token first")
-                return@setOnClickListener
-            }
-            if (owner.isBlank() || repo.isBlank()) {
-                appendConversation("[CFG] Select owner and repo first")
-                return@setOnClickListener
-            }
-            lifecycleScope.launch {
-                githubBaseBranchBtn.isEnabled = false
-                githubBaseBranchBtn.text = "..."
+                btnFetchBranches.isEnabled = false
+                btnFetchBranches.text = "..."
                 val result = withContext(Dispatchers.IO) { GitHubDiscovery.fetchBranches(token, owner, repo) }
-                githubBaseBranchBtn.isEnabled = true
-                githubBaseBranchBtn.text = "▼"
+                btnFetchBranches.isEnabled = true
+                btnFetchBranches.text = "▼"
                 result.onSuccess { branches ->
-                    if (branches.isEmpty()) {
-                        appendConversation("[CFG] No branches found for $owner/$repo")
-                        return@launch
-                    }
                     AlertDialog.Builder(this@MainActivity)
                         .setTitle("Select Base Branch")
                         .setItems(branches.toTypedArray()) { _, which ->
-                            githubBaseBranch.setText(branches[which])
+                            etGithubBaseBranch.setText(branches[which])
                         }
                         .setNegativeButton(android.R.string.cancel, null)
                         .show()
-                }.onFailure { e ->
-                    appendConversation("[CFG] Branch fetch failed: ${e.message}")
-                }
+                }.onFailure { e -> appendConversation("[CFG] Branch fetch failed: ${e.message}") }
             }
-        }
-
-        listOf(
-            providerBaseUrl,
-            providerApiKey,
-            providerModel,
-            githubToken,
-            githubOwnerRow,
-            githubRepoRow,
-            githubBaseBranchRow,
-        ).forEach(container::addView)
-
-        val scrollView = ScrollView(this).apply {
-            addView(container)
         }
 
         AlertDialog.Builder(this)
             .setTitle(R.string.title_settings)
-            .setView(scrollView)
+            .setView(view)
             .setNegativeButton(android.R.string.cancel, null)
             .setPositiveButton(R.string.action_save) { _, _ ->
                 settingsStore.save(
                     AppSettings(
                         provider = ProviderSettings(
-                            baseUrl = providerBaseUrl.text.toString(),
-                            apiKey = providerApiKey.text.toString(),
-                            model = providerModel.text.toString(),
+                            baseUrl = etProviderBaseUrl.text.toString(),
+                            apiKey = etProviderApiKey.text.toString(),
+                            model = etProviderModel.text.toString(),
                         ),
                         github = GitHubSettings(
-                            owner = githubOwner.text.toString(),
-                            repo = githubRepo.text.toString(),
-                            token = githubToken.text.toString(),
-                            baseBranch = githubBaseBranch.text.toString(),
+                            owner = etGithubOwner.text.toString(),
+                            repo = etGithubRepo.text.toString(),
+                            token = etGithubToken.text.toString(),
+                            baseBranch = etGithubBaseBranch.text.toString(),
                         )
                     )
                 )
-                agentLoop = buildAgentLoop()
                 renderSettingsSummary()
                 appendConversation(getString(R.string.log_settings_saved))
             }
             .show()
-    }
-
-    private fun dropdownRow(hint: String, value: String): Triple<EditText, Button, LinearLayout> {
-        val edit = EditText(this).apply {
-            this.hint = hint
-            setText(value)
-            layoutParams = LinearLayout.LayoutParams(
-                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
-            )
-        }
-        val btn = Button(this).apply {
-            text = "▼"
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-        }
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            addView(edit)
-            addView(btn)
-        }
-        return Triple(edit, btn, row)
-    }
-
-    private fun textField(hint: String, value: String, secret: Boolean = false): EditText {
-        return EditText(this).apply {
-            this.hint = hint
-            setText(value)
-            inputType = if (secret) {
-                InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-            } else {
-                InputType.TYPE_CLASS_TEXT
-            }
-        }
     }
 
     private fun dispatch(action: RuntimeAction) {
@@ -924,22 +716,75 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateAgentUi(state: AgentSessionState) {
-        if (!(runtimeState.recovery.needsResume && !runtimeState.recovery.lastRecoveryMessage.isNullOrBlank())) {
-            tvStatus.text = when (state) {
-                AgentSessionState.Idle,
-                is AgentSessionState.Completed -> getString(R.string.label_agent_idle)
-                is AgentSessionState.AwaitingApproval -> getString(R.string.label_agent_waiting)
-                is AgentSessionState.Planning,
-                is AgentSessionState.Executing,
-                is AgentSessionState.Publishing -> getString(R.string.label_agent_running)
-            }
-        }
         val waiting = state is AgentSessionState.AwaitingApproval
         val resume = showResume()
-        btnApprove.visibility = if (waiting) View.VISIBLE else View.GONE
-        btnReject.visibility = if (waiting) View.VISIBLE else View.GONE
+        val running = state !is AgentSessionState.Idle && state !is AgentSessionState.Completed && !waiting
+
+        if (!(runtimeState.recovery.needsResume && !runtimeState.recovery.lastRecoveryMessage.isNullOrBlank())) {
+            tvStatus.text = when (state) {
+                is AgentSessionState.Idle -> getString(R.string.label_agent_idle)
+                is AgentSessionState.Planning -> "Thinking: Analyzing task..."
+                is AgentSessionState.AwaitingApproval -> "Waiting: Needs your approval"
+                is AgentSessionState.Executing -> "Running: ${state.currentStepLabel}"
+                is AgentSessionState.Publishing -> "Publishing: Writing to GitHub..."
+                is AgentSessionState.Completed -> "Done: Task finished"
+            }
+        }
+        
+        // Disable send while running, show stop button
+        btnSend.isEnabled = !running
+        btnSend.alpha = if (running) 0.5f else 1.0f
+        btnStop.visibility = if (running || waiting) View.VISIBLE else View.GONE
+        
+        if (waiting) {
+            showApprovalSheet(state as AgentSessionState.AwaitingApproval)
+        } else {
+            approvalSheet?.dismiss()
+            approvalSheet = null
+        }
+
+        if (!running && !resume && state is AgentSessionState.Idle) {
+            stopService(Intent(this, AgentService::class.java))
+        }
+
         btnResume.visibility = if (resume) View.VISIBLE else View.GONE
-        layoutAgentActions.visibility = if (waiting || resume) View.VISIBLE else View.GONE
+        layoutAgentActions.visibility = if (resume) View.VISIBLE else View.GONE
+    }
+
+    private fun showApprovalSheet(state: AgentSessionState.AwaitingApproval) {
+        if (approvalSheet?.isShowing == true) return
+        
+        val sheet = BottomSheetDialog(this)
+        val view = layoutInflater.inflate(R.layout.sheet_agent_approval, null)
+        sheet.setContentView(view)
+        
+        val tvDetails = view.findViewById<TextView>(R.id.tvSheetDetails)
+        val btnApprove = view.findViewById<Button>(R.id.btnSheetApprove)
+        val btnReject = view.findViewById<Button>(R.id.btnSheetReject)
+        
+        tvDetails.text = buildString {
+            append("Checkpoint: ${state.currentCheckpoint.label}\n")
+            append("Artifacts:\n")
+            state.taskPackage.artifacts.forEach { art ->
+                append("- ${art.path} (${art.mime})\n")
+            }
+        }
+        
+        btnApprove.setOnClickListener {
+            lifecycleScope.launch {
+                ai.openchat.mobile.agent.core.agent.AgentStatusHub.sendCommand(ai.openchat.mobile.agent.core.agent.AgentCommand.Approve)
+            }
+            sheet.dismiss()
+        }
+        btnReject.setOnClickListener {
+            lifecycleScope.launch {
+                ai.openchat.mobile.agent.core.agent.AgentStatusHub.sendCommand(ai.openchat.mobile.agent.core.agent.AgentCommand.Reject)
+            }
+            sheet.dismiss()
+        }
+        
+        approvalSheet = sheet
+        sheet.show()
     }
 
     private fun showResume(): Boolean =

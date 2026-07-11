@@ -51,6 +51,17 @@ class GitHubClient(
         }
     }
 
+    suspend fun fetchFileContent(path: String, branch: String): Result<String> {
+        Log.d(TAG, "[C1.1] fetchFileContent $path from $branch")
+        return runCatching {
+            validateBranch(branch)
+            val urlPath = "/contents/${path.encodePath()}?ref=${branch.encodePath()}"
+            val response = request("GET", urlPath)
+            val contentBase64 = response.getString("content").replace("\n", "")
+            String(Base64.getDecoder().decode(contentBase64), StandardCharsets.UTF_8)
+        }
+    }
+
     suspend fun commitFiles(
         branch: String,
         files: List<CommitFile>,

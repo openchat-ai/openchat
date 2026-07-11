@@ -9,6 +9,7 @@ import ai.openchat.mobile.agent.core.editgate.EditGate
 import ai.openchat.mobile.agent.core.modelrouter.ModelProvider
 import ai.openchat.mobile.agent.core.modelrouter.ModelRequest
 import ai.openchat.mobile.agent.core.modelrouter.ModelResponse
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,6 +50,7 @@ sealed interface AgentLifecycleEvent {
         val taskPackage: TaskPackage? = null,
         val checkpointId: String? = null,
     ) : AgentLifecycleEvent
+    object Idle : AgentLifecycleEvent
 }
 
 // === invariants ===
@@ -67,19 +69,20 @@ class AgentLoop(
         "publish unavailable"
     },
     private val onLifecycleEvent: suspend (AgentLifecycleEvent) -> Unit = {},
+    private val repoContext: suspend () -> String = { "" },
 ) {
-
-    private data class DraftArtifact(
-        val path: String,
-        val content: String,
-        val format: ArtifactFormat,
-    )
 
     private enum class ArtifactFormat {
         MARKDOWN,
         JSON,
         KOTLIN,
     }
+
+    private data class DraftArtifact(
+        val path: String,
+        val content: String,
+        val format: ArtifactFormat,
+    )
 
     private sealed interface AgentTask {
         val taskPackage: TaskPackage
@@ -106,7 +109,11 @@ class AgentLoop(
     private val _state = MutableStateFlow(AgentState.IDLE)
     val state: StateFlow<AgentState> = _state.asStateFlow()
 
-    private val _log = MutableSharedFlow<String>(extraBufferCapacity = 64)
+    private val _log = MutableSharedFlow<String>(
+        replay = 64, // Keep history for new collectors
+        extraBufferCapacity = 64,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
     val log: SharedFlow<String> = _log.asSharedFlow()
 
     private val approvalChannel = Channel<Boolean>(capacity = 1)
@@ -181,6 +188,10 @@ class AgentLoop(
                     )
                 )
                 emit("[C3] awaiting human approval")
+                
+                // P0-5 FIX: Drain the channel before waiting to avoid stale clicks from previous runs
+                while (approvalChannel.tryReceive().isSuccess) { /* drain */ }
+
                 val approved = approvalChannel.receive()
                 if (!approved) {
                     cancelled = true
@@ -229,7 +240,8 @@ class AgentLoop(
     private suspend fun nextTask(goal: String): AgentTask? {
         if (taskQueue.isEmpty()) {
             val artifactFormat = inferArtifactFormat(goal)
-            val response = planRequest(ModelRequest(prompt = buildPlanningPrompt(goal, artifactFormat)))
+            val context = repoContext()
+            val response = planRequest(ModelRequest(prompt = buildPlanningPrompt(goal, artifactFormat, context)))
             if (!response.isSuccess) {
                 shouldStop = true
                 onLifecycleEvent(
@@ -470,13 +482,16 @@ class AgentLoop(
         }
     }
 
-    private fun buildPlanningPrompt(goal: String, format: ArtifactFormat): String = when (format) {
-        ArtifactFormat.MARKDOWN ->
-            "Create a concise markdown implementation draft for this mobile coding goal: $goal"
-        ArtifactFormat.JSON ->
-            "Create a concise JSON configuration draft for this mobile coding goal: $goal. Return JSON only."
-        ArtifactFormat.KOTLIN ->
-            "Create a concise Kotlin Android code draft for this mobile coding goal: $goal. Return Kotlin code only without markdown fences."
+    private fun buildPlanningPrompt(goal: String, format: ArtifactFormat, context: String): String {
+        val contextSnippet = if (context.isNotBlank()) "\n\nRepository Context:\n$context" else ""
+        return when (format) {
+            ArtifactFormat.MARKDOWN ->
+                "Create a concise markdown implementation draft for this mobile coding goal: $goal$contextSnippet"
+            ArtifactFormat.JSON ->
+                "Create a concise JSON configuration draft for this mobile coding goal: $goal. Return JSON only.$contextSnippet"
+            ArtifactFormat.KOTLIN ->
+                "Create a concise Kotlin Android code draft for this mobile coding goal: $goal. Return Kotlin code only without markdown fences.$contextSnippet"
+        }
     }
 
     private fun buildArtifact(goal: String, format: ArtifactFormat, rawContent: String): DraftArtifact {

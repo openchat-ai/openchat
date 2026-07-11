@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:id="@+id/tvSheetTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Agent Approval Needed"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:paddingBottom="8dp" />
+
+    <TextView
+        android:id="@+id/tvSheetSummary"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="The agent has a plan. Review and approve."
+        android:textSize="14sp"
+        android:paddingBottom="16dp" />
+
+    <TextView
+        android:id="@+id/tvSheetDetails"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fontFamily="monospace"
+        android:textSize="12sp"
+        android:background="#f5f5f5"
+        android:padding="8dp"
+        android:maxLines="10"
+        android:scrollbars="vertical" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingTop="24dp"
+        android:gravity="end">
+
+        <Button
+            android:id="@+id/btnSheetReject"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="REJECT"
+            style="?android:attr/borderlessButtonStyle"
+            android:textColor="#E91E63" />
+
+        <Button
+            android:id="@+id/btnSheetApprove"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:text="APPROVE" />
+    </LinearLayout>
+</LinearLayout>
