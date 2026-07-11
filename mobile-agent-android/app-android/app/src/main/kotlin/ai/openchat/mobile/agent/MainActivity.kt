@@ -384,7 +384,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun scrollToBottom() {
         if (chatMessages.isNotEmpty()) {
-            rvConversation.scrollToPosition(chatMessages.size - 1)
+            rvConversation.post {
+                rvConversation.smoothScrollToPosition(chatMessages.size - 1)
+            }
         }
     }
 

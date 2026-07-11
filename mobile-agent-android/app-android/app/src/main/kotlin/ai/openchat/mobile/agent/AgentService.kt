@@ -57,12 +57,14 @@ class AgentService : Service() {
             startLoop(goal)
         } else if (action == ACTION_RESUME) {
             val persistence = PersistenceManager(this)
-            val state = persistence.load()
-            val tp = state.recovery.pendingTaskPackage
+            val snapshot = persistence.loadSnapshot()
+            val tp = snapshot?.recovery?.pendingTaskPackage
             if (tp != null) {
-                resumeLoop(tp, state.recovery.lastCheckpointId)
+                resumeLoop(tp, snapshot.recovery.lastCheckpointId)
             } else {
-                AgentStatusHub.emitLog("[ERROR] Resume failed: No pending task package")
+                serviceScope.launch {
+                    AgentStatusHub.emitLog("[ERROR] Resume failed: No pending task package")
+                }
             }
         }
 
@@ -79,6 +81,14 @@ class AgentService : Service() {
         agentLoop = buildAgentLoop(goal)
         serviceScope.launch {
             agentLoop?.run()
+            stopSelf()
+        }
+    }
+
+    private fun resumeLoop(taskPackage: TaskPackage, checkpointId: String?) {
+        agentLoop = buildAgentLoop(taskPackage.goal)
+        serviceScope.launch {
+            agentLoop?.resume(taskPackage, checkpointId)
             stopSelf()
         }
     }

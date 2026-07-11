@@ -126,20 +126,21 @@ class PersistenceManager(context: Context) {
     }
 
     private fun serializeTaskPackage(tp: TaskPackage): JSONObject {
-        return JSONObject()
-            .put("id", tp.id)
-            .put("goal", tp.goal)
-            .put("createdAtMs", tp.createdAtMs)
-            .put("artifactKind", tp.artifactKind.name)
-            .put("planSummary", tp.planSummary)
-            .put("artifacts", JSONArray().apply { 
-                tp.artifacts.forEach { this.put(serializeArtifact(it) as Any) } 
+        return JSONObject().apply {
+            put("id", tp.id)
+            put("goal", tp.goal)
+            put("createdAtMs", tp.createdAtMs)
+            put("artifactKind", tp.artifactKind.name)
+            put("planSummary", tp.planSummary)
+            put("artifacts", JSONArray().apply { 
+                tp.artifacts.forEach { put(serializeArtifact(it)) } 
             })
-            .put("checkpoints", JSONArray().apply { 
-                tp.checkpoints.forEach { this.put(serializeCheckpoint(it) as Any) } 
+            put("checkpoints", JSONArray().apply { 
+                tp.checkpoints.forEach { put(serializeCheckpoint(it)) } 
             })
-            .put("publishIntent", serializePublishIntent(tp.publishIntent))
-            .put("rollbackHints", JSONArray(tp.rollbackHints))
+            put("publishIntent", serializePublishIntent(tp.publishIntent))
+            put("rollbackHints", JSONArray(tp.rollbackHints))
+        }
     }
 
     private fun deserializeTaskPackage(json: JSONObject): TaskPackage {
