@@ -396,6 +396,11 @@ class AgentLoop(
             taskPackage = taskPackage,
             currentCheckpointId = checkpoint.id,
         )
+        is AgentTask.ToolCall -> AgentLifecycleEvent.Executing(
+            taskPackage = taskPackage,
+            currentCheckpointId = checkpoint.id,
+            stepLabel = describeTask(this),
+        )
         is AgentTask.Summarize -> AgentLifecycleEvent.Executing(
             taskPackage = taskPackage,
             currentCheckpointId = null,
@@ -477,6 +482,7 @@ class AgentLoop(
     private fun describeTask(task: AgentTask): String = when (task) {
         is AgentTask.PreviewDraft -> "preview ${task.taskPackage.artifacts.first().path} for ${task.taskPackage.goal}"
         is AgentTask.PublishDraft -> "publish ${task.taskPackage.publishIntent.branchName} PR for ${task.taskPackage.goal}"
+        is AgentTask.ToolCall -> "tool ${task.toolName} for ${task.taskPackage.goal}"
         is AgentTask.Summarize -> task.text
     }
 

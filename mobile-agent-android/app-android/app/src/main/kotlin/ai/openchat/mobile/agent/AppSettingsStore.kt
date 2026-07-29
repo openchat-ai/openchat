@@ -1,3 +1,12 @@
+package ai.openchat.mobile.agent
+
+import android.content.Context
+import android.content.SharedPreferences
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
+import org.json.JSONArray
+import org.json.JSONObject
+
 // New single source: Runtime state is saved in PersistenceManager (plain prefs)
 // AppSettingsStore only manages provider/github settings + secrets
 
