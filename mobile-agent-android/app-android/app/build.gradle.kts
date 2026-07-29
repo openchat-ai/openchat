@@ -1,3 +1,5 @@
+import java.time.Duration
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -38,7 +40,7 @@ android {
 }
 
 tasks.withType<Test> {
-    timeout.set(java.time.Duration.ofMinutes(3))
+    timeout.set(Duration.ofMinutes(3))
     maxParallelForks = 1
 }
 
