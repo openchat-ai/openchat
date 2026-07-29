@@ -18,3 +18,7 @@
 
 # Keep AndroidX lifecycle
 -keep class androidx.lifecycle.** { *; }
+
+# Suppress missing javax.annotation classes referenced by com.google.crypto.tink
+-dontwarn javax.annotation.**
+-dontwarn javax.annotation.concurrent.**
