@@ -302,6 +302,7 @@ class PeopleDialogs {
         }, child: const Text('鍔犲叆', style: TextStyle(color: Color(0xFF7C4DFF)))),
       ],
     ));
+    controller.dispose();
   }
 
   static Future<void> showAudioFiles(BuildContext context, QiniuDirectClient client, Map? uiConfig) async {

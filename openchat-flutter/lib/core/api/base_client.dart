@@ -93,6 +93,8 @@ class BridgeWsClient {
   Future<void> _doConnect() async {
     _setState(WsConnectionState.connecting);
     try {
+      await _channel?.sink.close();
+      _channel = null;
       var uriStr = 'ws://$_host:$_port/ws';
       if (_token != null && _token!.isNotEmpty) uriStr += '?token=$_token';
       _channel = WebSocketChannel.connect(Uri.parse(uriStr));
@@ -152,7 +154,7 @@ class BridgeWsClient {
 
   void sendJson(Map<String, dynamic> json) { if (_channel == null || !isConnected) return; _channel!.sink.add(jsonEncode(json)); }
 
-  void disconnect() { _reconnect = false; _reconnectTimer?.cancel(); _heartbeatTimer?.cancel(); _channel?.sink.close(); _setState(WsConnectionState.disconnected); }
+  void disconnect() { _reconnect = false; _reconnectTimer?.cancel(); _heartbeatTimer?.cancel(); _channel?.sink.close(); _channel = null; _setState(WsConnectionState.disconnected); }
   void dispose() { disconnect(); _messageController.close(); _stateController.close(); }
 }
 

@@ -246,7 +246,7 @@ class _AgentHubScreenState extends ConsumerState<AgentHubScreen> with SduiPageSt
           }, child: Text('Create', style: TextStyle(color: theme.primary))),
         ],
       ),
-    );
+    ).then((_) => controller.dispose());
   }
 
   void _confirmDelete(BuildContext context, Resident resident) {
@@ -1505,7 +1505,7 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
       await QiniuDirectClient.fetchConfigFile('oc/config/app.json').timeout(const Duration(seconds: 8));
       _uiConfig = await sduiSource.load('people')
           .timeout(const Duration(seconds: 8));
-      _pollTimer = Timer.periodic(Duration(milliseconds: _client!.pollIntervalMs), (_) => _pollUsers());
+      _scheduleNextPoll();
       await _pollUsers().timeout(const Duration(seconds: 10));
     } catch (e) {
       _pollTimer?.cancel();
@@ -1537,6 +1537,7 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
     try {
       final users = await _client!.discoverUsers().timeout(const Duration(seconds: 8));
       if (!mounted) return;
+      _pollFailCount = 0;
       setState(() {
         _users = users.where((u) => u['peerId'] != _client!.peerId).toList();
         _error = null;
@@ -1561,9 +1562,13 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
       await _client!.pollDebug().timeout(const Duration(seconds: 8));
     } catch (e) {
       if (!mounted) return;
+      _pollFailCount++;
+      _scheduleNextPoll();
       setState(() => _error = e.toString());
+      return;
     }
     if (!mounted) return;
+    _scheduleNextPoll();
     setState(() => _refreshing = false);
   }
 
