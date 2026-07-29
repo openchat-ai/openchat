@@ -223,6 +223,19 @@ class AgentLoop(
                 )
                 emit("[C7] plan complete")
             }
+        } catch (error: kotlinx.coroutines.CancellationException) {
+            if (!cancelled) {
+                cancelled = true
+                onLifecycleEvent(
+                    AgentLifecycleEvent.Cancelled(
+                        goal = goal,
+                        taskPackage = latestTaskPackage,
+                        checkpointId = null,
+                    )
+                )
+                emit("[C4] cancelled by stop")
+            }
+            throw error
         } finally {
             _state.value = AgentState.IDLE
             emit("[C6] agent loop stopped")

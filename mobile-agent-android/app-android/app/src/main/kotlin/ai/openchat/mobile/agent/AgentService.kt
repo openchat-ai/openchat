@@ -13,30 +13,36 @@ import androidx.core.app.NotificationCompat
 import ai.openchat.mobile.agent.core.agent.AgentLoop
 import ai.openchat.mobile.agent.core.agent.AgentStatusHub
 import ai.openchat.mobile.agent.core.agent.AgentCommand
+import ai.openchat.mobile.agent.core.agent.AgentFailure
 import ai.openchat.mobile.agent.core.agent.AgentLifecycleEvent
 import ai.openchat.mobile.agent.core.modelrouter.ModelRouter
-import ai.openchat.mobile.agent.core.modelrouter.ModelResponse
 import ai.openchat.mobile.agent.core.modelrouter.OpenAiCompatibleProvider
 import ai.openchat.mobile.agent.core.modelrouter.OpenAiCompatibleConfig
 import ai.openchat.mobile.agent.core.github.GitHubDiscovery
 import ai.openchat.mobile.agent.core.github.GitHubClient
 import ai.openchat.mobile.agent.core.github.CommitFile
-import ai.openchat.mobile.agent.AppSettingsStore
-import ai.openchat.mobile.agent.AgentSessionState
 import ai.openchat.mobile.agent.core.persistence.PersistenceManager
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 // === invariants ===
-// - Only one background loop (agentLoop) runs at a time.
-// - Service lifecycle is tied to the completion of the background loop.
-// - UI state is updated globally via AgentStatusHub.
+// - Only one background loop (loopJob) runs at a time
+// - Network/plan/publish run on Dispatchers.IO, never Main
+// - Failed/Cancelled emit AgentFailure so UI can persist recovery
+// - UI state is updated globally via AgentStatusHub
 
 class AgentService : Service() {
 
-    private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var agentLoop: AgentLoop? = null
+    private var loopJob: Job? = null
     private lateinit var settingsStore: AppSettingsStore
+    private lateinit var persistenceManager: PersistenceManager
 
     companion object {
         const val CHANNEL_ID = "agent_service"
@@ -48,6 +54,7 @@ class AgentService : Service() {
     override fun onCreate() {
         super.onCreate()
         settingsStore = AppSettingsStore(this)
+        persistenceManager = PersistenceManager(this)
         createNotificationChannel()
         observeCommands()
     }
@@ -57,12 +64,11 @@ class AgentService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action
         val goal = intent?.getStringExtra("goal") ?: ""
-        
+
         if (action == ACTION_START && goal.isNotBlank()) {
             startLoop(goal)
         } else if (action == ACTION_RESUME) {
-            val persistence = PersistenceManager(this)
-            val snapshot = persistence.loadSnapshot()
+            val snapshot = persistenceManager.loadSnapshot()
             val tp = snapshot?.recovery?.pendingTaskPackage
             if (tp != null) {
                 resumeLoop(tp, snapshot.recovery.lastCheckpointId)
@@ -83,18 +89,50 @@ class AgentService : Service() {
     }
 
     private fun startLoop(goal: String) {
+        if (loopJob?.isActive == true) {
+            serviceScope.launch {
+                AgentStatusHub.emitLog("[C0] start ignored: agent already active")
+            }
+            return
+        }
         agentLoop = buildAgentLoop(goal)
-        serviceScope.launch {
-            agentLoop?.run()
-            stopSelf()
+        loopJob = serviceScope.launch(Dispatchers.IO) {
+            val self = coroutineContext[Job]
+            try {
+                agentLoop?.run()
+            } finally {
+                withContext(Dispatchers.Main.immediate) {
+                    if (loopJob === self) {
+                        loopJob = null
+                        agentLoop = null
+                    }
+                    stopSelf()
+                }
+            }
         }
     }
 
     private fun resumeLoop(taskPackage: TaskPackage, checkpointId: String?) {
+        if (loopJob?.isActive == true) {
+            serviceScope.launch {
+                AgentStatusHub.emitLog("[C0] resume ignored: agent already active")
+            }
+            return
+        }
         agentLoop = buildAgentLoop(taskPackage.goal)
-        serviceScope.launch {
-            agentLoop?.resume(taskPackage, checkpointId)
-            stopSelf()
+        loopJob = serviceScope.launch(Dispatchers.IO) {
+            val self = coroutineContext[Job]
+            try {
+                agentLoop?.resume(taskPackage, checkpointId)
+            } finally {
+                withContext(Dispatchers.Main.immediate) {
+                    if (loopJob === self) {
+                        loopJob = null
+                        agentLoop = null
+                    }
+                    stopSelf()
+                }
+            }
         }
     }
 
@@ -104,71 +142,151 @@ class AgentService : Service() {
             baseBranchProvider = { settingsStore.load().github.baseBranch.ifBlank { "main" } },
             stopAfterPlanningProvider = { false },
             planRequest = { request ->
-                val settings = settingsStore.load()
-                val router = ModelRouter(listOf(OpenAiCompatibleProvider("primary", OpenAiCompatibleConfig(settings.provider.baseUrl, settings.provider.apiKey, settings.provider.model))))
-                router.ask(request)
+                withContext(Dispatchers.IO) {
+                    val settings = settingsStore.load()
+                    val router = ModelRouter(
+                        listOf(
+                            OpenAiCompatibleProvider(
+                                "primary",
+                                OpenAiCompatibleConfig(
+                                    settings.provider.baseUrl,
+                                    settings.provider.apiKey,
+                                    settings.provider.model,
+                                ),
+                            ),
+                        ),
+                    )
+                    router.ask(request)
+                }
             },
             publishDraft = { taskPackage ->
-                val settings = settingsStore.load()
-                val client = GitHubClient(settings.github.owner, settings.github.repo, settings.github.token)
-                val headSha = client.getBranchHeadSha(taskPackage.publishIntent.baseBranch).getOrThrow()
-                client.createBranch(taskPackage.publishIntent.branchName, headSha).getOrThrow()
-                client.commitFiles(taskPackage.publishIntent.branchName, taskPackage.artifacts.map { CommitFile(it.path, it.content) }, taskPackage.publishIntent.commitMessage).getOrThrow()
-                val prNum = client.createPullRequest(taskPackage.publishIntent.branchName, taskPackage.publishIntent.baseBranch, taskPackage.publishIntent.prTitle, taskPackage.publishIntent.prBody).getOrThrow()
-                "PR #$prNum created"
+                withContext(Dispatchers.IO) {
+                    val settings = settingsStore.load()
+                    val client = GitHubClient(
+                        settings.github.owner,
+                        settings.github.repo,
+                        settings.github.token,
+                    )
+                    val headSha = client.getBranchHeadSha(taskPackage.publishIntent.baseBranch).getOrThrow()
+                    client.createBranch(taskPackage.publishIntent.branchName, headSha).getOrThrow()
+                    client.commitFiles(
+                        taskPackage.publishIntent.branchName,
+                        taskPackage.artifacts.map { CommitFile(it.path, it.content) },
+                        taskPackage.publishIntent.commitMessage,
+                    ).getOrThrow()
+                    val prNum = client.createPullRequest(
+                        taskPackage.publishIntent.branchName,
+                        taskPackage.publishIntent.baseBranch,
+                        taskPackage.publishIntent.prTitle,
+                        taskPackage.publishIntent.prBody,
+                    ).getOrThrow()
+                    "PR #$prNum created"
+                }
             },
             onLifecycleEvent = { event ->
                 updateStateFromEvent(event)
             },
             repoContext = {
-                val settings = settingsStore.load()
-                if (!settings.github.isComplete) return@AgentLoop ""
-                
-                val client = GitHubClient(settings.github.owner, settings.github.repo, settings.github.token)
-                val baseBranch = settings.github.baseBranch.ifBlank { "main" }
-                
-                AgentStatusHub.emitLog("[AGENT] discovering repository...")
-                val headSha = client.getBranchHeadSha(baseBranch).getOrNull() ?: return@AgentLoop ""
-                val files = GitHubDiscovery.fetchTree(settings.github.token, settings.github.owner, settings.github.repo, headSha, recursive = true).getOrNull() ?: emptyList()
-                
-                val fileListStr = files.take(50).joinToString("\n") { "- $it" }
-                var context = "Files in repository:\n$fileListStr"
-                
-                // Heuristic: if goal looks like it's about a specific file, fetch it
-                val targetFile = files.find { goal.contains(it.substringAfterLast('/'), ignoreCase = true) }
-                if (targetFile != null) {
-                    AgentStatusHub.emitLog("[AGENT] reading $targetFile for context...")
-                    val content = client.fetchFileContent(targetFile, baseBranch).getOrNull()
-                    if (content != null) {
-                        context += "\n\nContent of $targetFile:\n$content"
+                withContext(Dispatchers.IO) {
+                    val settings = settingsStore.load()
+                    if (!settings.github.isComplete) return@withContext ""
+
+                    val client = GitHubClient(
+                        settings.github.owner,
+                        settings.github.repo,
+                        settings.github.token,
+                    )
+                    val baseBranch = settings.github.baseBranch.ifBlank { "main" }
+
+                    AgentStatusHub.emitLog("[AGENT] discovering repository...")
+                    val headSha = client.getBranchHeadSha(baseBranch).getOrNull()
+                        ?: return@withContext ""
+                    val files = GitHubDiscovery.fetchTree(
+                        settings.github.token,
+                        settings.github.owner,
+                        settings.github.repo,
+                        headSha,
+                        recursive = true,
+                    ).getOrNull() ?: emptyList()
+
+                    val fileListStr = files.take(50).joinToString("\n") { "- $it" }
+                    var context = "Files in repository:\n$fileListStr"
+
+                    val targetFile = files.find {
+                        goal.contains(it.substringAfterLast('/'), ignoreCase = true)
                     }
+                    if (targetFile != null) {
+                        AgentStatusHub.emitLog("[AGENT] reading $targetFile for context...")
+                        val content = client.fetchFileContent(targetFile, baseBranch).getOrNull()
+                        if (content != null) {
+                            context += "\n\nContent of $targetFile:\n$content"
+                        }
+                    }
+                    context
                 }
-                context
-            }
-        ).apply {
+            },
+        ).also { loop ->
             serviceScope.launch {
-                log.collect { AgentStatusHub.emitLog(it) }
+                loop.log.collect { AgentStatusHub.emitLog(it) }
             }
         }
     }
 
-    private fun updateStateFromEvent(event: AgentLifecycleEvent) {
+    private suspend fun updateStateFromEvent(event: AgentLifecycleEvent) {
+        when (event) {
+            is AgentLifecycleEvent.Failed -> {
+                // Do not push Idle here: AgentFailed reducer owns Idle + recovery.
+                AgentStatusHub.reportFailure(
+                    AgentFailure(
+                        goal = event.goal,
+                        stage = event.stage,
+                        message = event.message,
+                        retryable = event.retryable,
+                        cancelled = false,
+                        taskPackage = event.taskPackage,
+                        checkpointId = event.checkpointId,
+                    ),
+                )
+                updateNotification("Failed: ${event.message}")
+                return
+            }
+            is AgentLifecycleEvent.Cancelled -> {
+                AgentStatusHub.reportFailure(
+                    AgentFailure(
+                        goal = event.goal,
+                        stage = "cancel",
+                        message = "Agent execution interrupted",
+                        retryable = true,
+                        cancelled = true,
+                        taskPackage = event.taskPackage,
+                        checkpointId = event.checkpointId,
+                    ),
+                )
+                updateNotification("Cancelled")
+                return
+            }
+            else -> Unit
+        }
+
         val newState = when (event) {
-            is AgentLifecycleEvent.Planning -> AgentSessionState.Planning(event.goal, System.currentTimeMillis())
-            is AgentLifecycleEvent.AwaitingApproval -> AgentSessionState.AwaitingApproval(event.taskPackage, event.currentCheckpoint)
+            is AgentLifecycleEvent.Planning ->
+                AgentSessionState.Planning(event.goal, System.currentTimeMillis())
+            is AgentLifecycleEvent.AwaitingApproval ->
+                AgentSessionState.AwaitingApproval(event.taskPackage, event.currentCheckpoint)
             is AgentLifecycleEvent.Executing -> AgentSessionState.Executing(
                 taskPackage = event.taskPackage,
                 currentCheckpointId = event.currentCheckpointId,
-                currentStepLabel = event.stepLabel
+                currentStepLabel = event.stepLabel,
             )
-            is AgentLifecycleEvent.Publishing -> AgentSessionState.Publishing(event.taskPackage, event.currentCheckpointId)
+            is AgentLifecycleEvent.Publishing ->
+                AgentSessionState.Publishing(event.taskPackage, event.currentCheckpointId)
             is AgentLifecycleEvent.Completed -> {
                 updateNotification("Task completed!")
                 AgentSessionState.Completed(event.taskPackage, event.summary)
             }
-            is AgentLifecycleEvent.Failed -> AgentSessionState.Idle
-            is AgentLifecycleEvent.Cancelled -> AgentSessionState.Idle
             is AgentLifecycleEvent.Idle -> AgentSessionState.Idle
+            is AgentLifecycleEvent.Failed,
+            is AgentLifecycleEvent.Cancelled -> return
         }
         AgentStatusHub.updateState(newState)
         if (event !is AgentLifecycleEvent.Completed && event !is AgentLifecycleEvent.Idle) {
@@ -181,6 +299,8 @@ class AgentService : Service() {
         is AgentLifecycleEvent.Executing -> "Executing: ${event.stepLabel}"
         is AgentLifecycleEvent.Publishing -> "Publishing changes..."
         is AgentLifecycleEvent.AwaitingApproval -> "Waiting for approval"
+        is AgentLifecycleEvent.Failed -> "Failed: ${event.message}"
+        is AgentLifecycleEvent.Cancelled -> "Cancelled"
         else -> "Working..."
     }
 
@@ -195,7 +315,7 @@ class AgentService : Service() {
         }
         val pendingIntent = PendingIntent.getActivity(
             this, 0, intent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
@@ -214,8 +334,10 @@ class AgentService : Service() {
                     AgentCommand.Approve -> agentLoop?.approve()
                     AgentCommand.Reject -> agentLoop?.reject()
                     AgentCommand.Stop -> {
-                        agentLoop?.reject() // Effectively stops
-                        stopSelf()
+                        // Prefer graceful reject so Cancelled carries taskPackage.
+                        agentLoop?.reject()
+                        // If not waiting on approval, cancel the job; Cancelled is emitted from AgentLoop.
+                        loopJob?.cancel()
                     }
                 }
             }
@@ -223,8 +345,11 @@ class AgentService : Service() {
     }
 
     override fun onDestroy() {
-        super.onDestroy()
+        loopJob?.cancel()
+        loopJob = null
+        agentLoop = null
         serviceScope.cancel()
+        super.onDestroy()
     }
 
     private fun createNotificationChannel() {
@@ -232,7 +357,7 @@ class AgentService : Service() {
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "Agent Service Channel",
-                NotificationManager.IMPORTANCE_LOW
+                NotificationManager.IMPORTANCE_LOW,
             )
             val manager = getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(channel)

@@ -37,9 +37,12 @@ data class AppSettings(
 )
 
 // === invariants ===
-// - Settings are stored in EncryptedSharedPreferences for security.
-// - History data is serialized/deserialized via manual JSON mapping.
-// - Default baseBranch is always "main" if not specified.
+// - Secrets live only in EncryptedSharedPreferences
+// - External backup never writes apiKey/token
+// - History data is serialized/deserialized via manual JSON mapping
+// - Default baseBranch is always "main" if not specified
+// - load() prefers encrypted prefs; external is non-secret fallback only
+
 
 class AppSettingsStore(private val context: Context) {
 
@@ -177,13 +180,33 @@ class AppSettingsStore(private val context: Context) {
     private fun saveToExternalFile(settings: AppSettings) {
         val dir = context.getExternalFilesDir(null) ?: return
         val file = java.io.File(dir, EXTERNAL_SETTINGS_FILE)
+        // Never write secrets to external storage. Scrub keys on every backup.
+        val safe = settings.copy(
+            provider = settings.provider.copy(apiKey = ""),
+            github = settings.github.copy(token = ""),
+        )
         try {
-            file.writeText(settings.toJson().toString(2))
+            file.writeText(safe.toJson().toString(2))
         } catch (_: Exception) {
-            context.getExternalFilesDir(null)?.let { retryDir ->
-                val retryFile = java.io.File(retryDir, EXTERNAL_SETTINGS_FILE)
-                try { retryFile.writeText(settings.toJson().toString(2)) } catch (_: Exception) {}
-            }
+            // Best-effort non-secret backup only; encrypted prefs remain source of truth.
+        }
+        // Delete legacy backups that may still contain secrets from older builds.
+        scrubLegacyExternalSecrets(dir)
+    }
+
+    private fun scrubLegacyExternalSecrets(dir: java.io.File) {
+        val file = java.io.File(dir, EXTERNAL_SETTINGS_FILE)
+        if (!file.exists()) return
+        runCatching {
+            val json = JSONObject(file.readText())
+            val provider = json.optJSONObject("provider")
+            val github = json.optJSONObject("github")
+            val hadSecret = !provider?.optString("apiKey").isNullOrBlank() ||
+                !github?.optString("token").isNullOrBlank()
+            if (!hadSecret) return
+            provider?.put("apiKey", "")
+            github?.put("token", "")
+            file.writeText(json.toString(2))
         }
     }
 
@@ -192,8 +215,15 @@ class AppSettingsStore(private val context: Context) {
         val file = java.io.File(dir, EXTERNAL_SETTINGS_FILE)
         if (!file.exists()) return null
         return try {
-            JSONObject(file.readText()).toAppSettings()
-        } catch (_: Exception) { null }
+            // External backup is non-secret; force blank secrets even if legacy file still has them.
+            val parsed = JSONObject(file.readText()).toAppSettings()
+            parsed.copy(
+                provider = parsed.provider.copy(apiKey = ""),
+                github = parsed.github.copy(token = ""),
+            )
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private fun createEncryptedPreferences(context: Context): SharedPreferences {

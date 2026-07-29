@@ -209,21 +209,10 @@ class MainActivity : AppCompatActivity() {
             askJob?.cancel()
             askJob = null
         }
+        // Service Cancelled event carries taskPackage into recovery.
         lifecycleScope.launch {
-            ai.openchat.mobile.agent.core.agent.AgentStatusHub.sendCommand(ai.openchat.mobile.agent.core.agent.AgentCommand.Stop)
-        }
-        if (runtimeState.agent !is AgentSessionState.Idle) {
-            val goal = etInput.text.toString()
-            dispatch(
-                RuntimeAction.AgentFailed(
-                    error = buildAppError(
-                        kind = ErrorKind.Cancellation,
-                        code = "AGENT_CANCELLED",
-                        message = "Agent execution interrupted",
-                        retryable = true,
-                    ),
-                    goal = goal,
-                )
+            ai.openchat.mobile.agent.core.agent.AgentStatusHub.sendCommand(
+                ai.openchat.mobile.agent.core.agent.AgentCommand.Stop,
             )
         }
     }
@@ -266,6 +255,31 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             ai.openchat.mobile.agent.core.agent.AgentStatusHub.log.collect { entry ->
                 appendConversation(entry)
+            }
+        }
+        lifecycleScope.launch {
+            ai.openchat.mobile.agent.core.agent.AgentStatusHub.failures.collect { failure ->
+                dispatch(
+                    RuntimeAction.AgentFailed(
+                        error = buildAppError(
+                            kind = if (failure.cancelled) {
+                                ErrorKind.Cancellation
+                            } else {
+                                mapAgentErrorKind(failure.stage, failure.message)
+                            },
+                            code = if (failure.cancelled) "AGENT_CANCELLED" else "AGENT_FAILED",
+                            message = failure.message,
+                            retryable = failure.retryable,
+                        ),
+                        goal = failure.goal,
+                        taskPackage = failure.taskPackage,
+                        checkpointId = failure.checkpointId,
+                    ),
+                )
+                appendConversation(
+                    if (failure.cancelled) "[AGENT] cancelled: ${failure.message}"
+                    else "[AGENT] failed@${failure.stage}: ${failure.message}",
+                )
             }
         }
     }

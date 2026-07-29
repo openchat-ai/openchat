@@ -161,7 +161,8 @@ fun AppRuntimeState.reduce(action: RuntimeAction): AppRuntimeState = when (actio
     is RuntimeAction.ObserveAgent -> copy(
         agent = action.state,
         recovery = when (action.state) {
-            AgentSessionState.Idle,
+            // Idle must NOT wipe recovery: Failed/Cancelled land on Idle with needsResume.
+            AgentSessionState.Idle -> recovery
             is AgentSessionState.Completed -> RecoveryState()
             else -> recovery.copy(
                 needsResume = false,
