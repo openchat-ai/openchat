@@ -21,11 +21,21 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = if (project.hasProperty("releaseKeystore") && project.hasProperty("releaseKeystorePassword") && project.hasProperty("releaseKeyPassword") && project.hasProperty("releaseKeyAlias")) {
+                signingConfigs.maybeCreate("release").apply {
+                    storeFile = file(project.property("releaseKeystore") as String)
+                    storePassword = project.property("releaseKeystorePassword") as String
+                    keyPassword = project.property("releaseKeyPassword") as String
+                    keyAlias = project.property("releaseKeyAlias") as String
+                }
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 

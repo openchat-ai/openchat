@@ -9,6 +9,7 @@ import ai.openchat.mobile.agent.core.editgate.EditGate
 import ai.openchat.mobile.agent.core.modelrouter.ModelProvider
 import ai.openchat.mobile.agent.core.modelrouter.ModelRequest
 import ai.openchat.mobile.agent.core.modelrouter.ModelResponse
+import ai.openchat.mobile.agent.core.tools.ToolRegistry
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -70,6 +71,7 @@ class AgentLoop(
     },
     private val onLifecycleEvent: suspend (AgentLifecycleEvent) -> Unit = {},
     private val repoContext: suspend () -> String = { "" },
+    private val toolRegistry: ToolRegistry = ToolRegistry(),
 ) {
 
     private enum class ArtifactFormat {
@@ -98,6 +100,13 @@ class AgentLoop(
             override val checkpoint: Checkpoint,
         ) : AgentTask
 
+        data class ToolCall(
+            override val taskPackage: TaskPackage,
+            override val checkpoint: Checkpoint,
+            val toolName: String,
+            val toolArgs: Map<String, String>,
+        ) : AgentTask
+
         data class Summarize(
             override val taskPackage: TaskPackage,
             val text: String,
@@ -123,6 +132,7 @@ class AgentLoop(
     private var cancelled = false
     private var latestTaskPackage: TaskPackage? = null
     private var _resumeOnly = false
+    private val toolOutputs = mutableMapOf<String, String>()
 
     suspend fun run() {
         if (_state.value != AgentState.IDLE) {
@@ -272,30 +282,49 @@ class AgentLoop(
                 return null
             }
 
-            val artifact = buildArtifact(goal, artifactFormat, response.text?.trim().orEmpty())
-            if (artifact.content.isBlank()) {
-                shouldStop = true
-                onLifecycleEvent(
-                    AgentLifecycleEvent.Failed(
-                        goal = goal,
-                        stage = "plan",
-                        message = "generated draft was empty",
-                        retryable = true,
+            val planText = response.text?.trim().orEmpty()
+            val toolCalls = parseToolCalls(planText)
+
+            if (toolCalls.isNotEmpty()) {
+                toolOutputs.clear()
+                val tp = buildToolTaskPackage(goal, toolCalls)
+                latestTaskPackage = tp
+                toolCalls.forEach { (toolName, args) ->
+                    val cp = Checkpoint(id = "tool-$toolName-${System.currentTimeMillis()}", label = "Approve $toolName", reason = "Tool call: $toolName", artifactPaths = emptyList())
+                    taskQueue.addLast(AgentTask.ToolCall(taskPackage = tp, checkpoint = cp, toolName = toolName, toolArgs = args))
+                }
+                val previewCheckpoint = tp.checkpoints.first { it.id == CHECKPOINT_PREVIEW }
+                val publishCheckpoint = tp.checkpoints.first { it.id == CHECKPOINT_PUBLISH }
+                taskQueue.addLast(AgentTask.PreviewDraft(tp, previewCheckpoint))
+                taskQueue.addLast(AgentTask.PublishDraft(tp, publishCheckpoint))
+                taskQueue.addLast(AgentTask.Summarize(tp, "agent tool pipeline complete for: $goal"))
+                emit("[C1.t] seeded ${toolCalls.size} tool(s) + preview/publish: ${taskQueue.size} total")
+            } else {
+                val artifact = buildArtifact(goal, artifactFormat, planText)
+                if (artifact.content.isBlank()) {
+                    shouldStop = true
+                    onLifecycleEvent(
+                        AgentLifecycleEvent.Failed(
+                            goal = goal,
+                            stage = "plan",
+                            message = "generated draft was empty",
+                            retryable = true,
+                        )
                     )
-                )
-                emit("[E1.1] generated draft was empty")
-                return null
+                    emit("[E1.1] generated draft was empty")
+                    return null
+                }
+
+                val taskPackage = buildTaskPackage(goal, artifact)
+                latestTaskPackage = taskPackage
+                val previewCheckpoint = taskPackage.checkpoints.first { it.id == CHECKPOINT_PREVIEW }
+                val publishCheckpoint = taskPackage.checkpoints.first { it.id == CHECKPOINT_PUBLISH }
+
+                taskQueue.addLast(AgentTask.PreviewDraft(taskPackage, previewCheckpoint))
+                taskQueue.addLast(AgentTask.PublishDraft(taskPackage, publishCheckpoint))
+                taskQueue.addLast(AgentTask.Summarize(taskPackage, "agent artifact pipeline complete for: $goal"))
+                emit("[C1.1] seeded ${taskQueue.size} execution steps")
             }
-
-            val taskPackage = buildTaskPackage(goal, artifact)
-            latestTaskPackage = taskPackage
-            val previewCheckpoint = taskPackage.checkpoints.first { it.id == CHECKPOINT_PREVIEW }
-            val publishCheckpoint = taskPackage.checkpoints.first { it.id == CHECKPOINT_PUBLISH }
-
-            taskQueue.addLast(AgentTask.PreviewDraft(taskPackage, previewCheckpoint))
-            taskQueue.addLast(AgentTask.PublishDraft(taskPackage, publishCheckpoint))
-            taskQueue.addLast(AgentTask.Summarize(taskPackage, "agent artifact pipeline complete for: $goal"))
-            emit("[C1.1] seeded ${taskQueue.size} execution steps")
 
             if (stopAfterPlanningProvider()) {
                 emit("[C1.2] plan generated, stopping as requested by PLAN mode")
@@ -311,8 +340,46 @@ class AgentLoop(
         when (task) {
             is AgentTask.PreviewDraft -> runEditGatePreview(task.taskPackage, task.checkpoint)
             is AgentTask.PublishDraft -> runPublishDraft(task.taskPackage, task.checkpoint)
+            is AgentTask.ToolCall -> executeToolCall(task)
             is AgentTask.Summarize -> emit(task.text)
         }
+    }
+
+    private suspend fun executeToolCall(task: AgentTask.ToolCall) {
+        val tool = toolRegistry.get(task.toolName)
+        if (tool == null) {
+            shouldStop = true
+            onLifecycleEvent(
+                AgentLifecycleEvent.Failed(
+                    goal = task.taskPackage.goal,
+                    stage = "tool",
+                    message = "unknown tool: ${task.toolName}",
+                    retryable = true,
+                    taskPackage = task.taskPackage,
+                    checkpointId = task.checkpoint.id,
+                )
+            )
+            emit("[E4] unknown tool: ${task.toolName}")
+            return
+        }
+        val result = tool.invoke(task.toolArgs)
+        if (!result.isSuccess) {
+            shouldStop = true
+            onLifecycleEvent(
+                AgentLifecycleEvent.Failed(
+                    goal = task.taskPackage.goal,
+                    stage = "tool",
+                    message = result.error ?: "tool ${task.toolName} failed",
+                    retryable = true,
+                    taskPackage = task.taskPackage,
+                    checkpointId = task.checkpoint.id,
+                )
+            )
+            emit("[E4] tool ${task.toolName} failed: ${result.error}")
+            return
+        }
+        emit("[C5.t] tool ${task.toolName} succeeded")
+        toolOutputs[task.toolName] = result.output
     }
 
     private suspend fun emit(msg: String) {
@@ -337,7 +404,7 @@ class AgentLoop(
     }
 
     private suspend fun runEditGatePreview(taskPackage: TaskPackage, checkpoint: Checkpoint) {
-        val artifact = taskPackage.artifacts.first()
+        val artifact = resolveArtifact(taskPackage)
         val original = when (taskPackage.artifactKind) {
             ArtifactKind.MarkdownDraft -> "# Agent Draft\n"
             ArtifactKind.JsonConfig -> "{}\n"
@@ -364,9 +431,31 @@ class AgentLoop(
         emit("[C5.2] edit gate accepted ${applied.lines().size} lines")
     }
 
+    private fun resolveArtifact(taskPackage: TaskPackage): Artifact {
+        val hashEditOutput = toolOutputs["hash_edit"]
+        if (hashEditOutput != null) {
+            val parts = hashEditOutput.split("|").associate { kv ->
+                val eq = kv.indexOf('=')
+                if (eq > 0) kv.substring(0, eq) to kv.substring(eq + 1) else "" to kv
+            }
+            return Artifact(
+                path = parts["path"] ?: taskPackage.artifacts.first().path,
+                mime = parts["mime"] ?: taskPackage.artifacts.first().mime,
+                content = parts["content"] ?: taskPackage.artifacts.first().content,
+                summary = parts["summary"] ?: taskPackage.artifacts.first().summary,
+            )
+        }
+        return taskPackage.artifacts.first()
+    }
+
     private suspend fun runPublishDraft(taskPackage: TaskPackage, checkpoint: Checkpoint) {
+        val resolvedArtifact = resolveArtifact(taskPackage)
+        val updatedPackage = taskPackage.copy(
+            artifacts = listOf(resolvedArtifact),
+            planSummary = if (toolOutputs.isNotEmpty()) "Tool pipeline: ${toolOutputs.keys.joinToString(" -> ")}" else taskPackage.planSummary,
+        )
         val result = runCatching {
-            publishDraft(taskPackage)
+            publishDraft(updatedPackage)
         }.getOrElse { error ->
             shouldStop = true
             onLifecycleEvent(
@@ -375,7 +464,7 @@ class AgentLoop(
                     stage = "publish",
                     message = error.message ?: "publish failed",
                     retryable = true,
-                    taskPackage = taskPackage,
+                    taskPackage = updatedPackage,
                     checkpointId = checkpoint.id,
                 )
             )
@@ -500,7 +589,10 @@ class AgentLoop(
 
     private fun buildPlanningPrompt(goal: String, format: ArtifactFormat, context: String): String {
         val contextSnippet = if (context.isNotBlank()) "\n\nRepository Context:\n$context" else ""
-        return when (format) {
+        val toolSnippet = if (toolRegistry.hasTools()) {
+            "\n\nAvailable tools:\n${toolRegistry.listDescriptions()}\nTo use a tool, add a line starting with TOOL: followed by the tool name and arguments. e.g. TOOL: read_file path=README.md"
+        } else ""
+        val body = when (format) {
             ArtifactFormat.MARKDOWN ->
                 "Create a concise markdown implementation draft for this mobile coding goal: $goal$contextSnippet"
             ArtifactFormat.JSON ->
@@ -508,6 +600,7 @@ class AgentLoop(
             ArtifactFormat.KOTLIN ->
                 "Create a concise Kotlin Android code draft for this mobile coding goal: $goal. Return Kotlin code only without markdown fences.$contextSnippet"
         }
+        return "$body$toolSnippet"
     }
 
     private fun buildArtifact(goal: String, format: ArtifactFormat, rawContent: String): DraftArtifact {
@@ -552,6 +645,70 @@ class AgentLoop(
             .joinToString(separator = "") { part -> part.replaceFirstChar { it.uppercase() } }
             .ifBlank { "AgentDraft" }
         return "package ai.openchat.mobile.agent.generated\n\nclass $className {\n  val draft: String = \"${trimmed.replace("\"", "'")}\"\n}\n"
+    }
+
+    private fun parseToolCalls(planText: String): List<Pair<String, Map<String, String>>> {
+        val toolCalls = mutableListOf<Pair<String, Map<String, String>>>()
+        val lines = planText.lines()
+        var i = 0
+        while (i < lines.size) {
+            val line = lines[i].trim()
+            if (line.startsWith("TOOL:")) {
+                val rest = line.removePrefix("TOOL:").trim()
+                val spaceIndex = rest.indexOf(' ')
+                val toolName = if (spaceIndex > 0) rest.substring(0, spaceIndex) else rest
+                val argsStr = if (spaceIndex > 0) rest.substring(spaceIndex + 1).trim() else ""
+                val args = mutableMapOf<String, String>()
+                if (argsStr.isNotBlank()) {
+                    argsStr.split("\\s+".toRegex()).forEach { pair ->
+                        val eqIndex = pair.indexOf('=')
+                        if (eqIndex > 0) {
+                            val key = pair.substring(0, eqIndex).trim()
+                            val value = pair.substring(eqIndex + 1).trim()
+                            args[key] = value
+                        }
+                    }
+                }
+                if (toolRegistry.get(toolName) != null) {
+                    toolCalls.add(toolName to args)
+                }
+            }
+            i++
+        }
+        return toolCalls
+    }
+
+    private fun buildToolTaskPackage(goal: String, toolCalls: List<Pair<String, Map<String, String>>>): TaskPackage {
+        val createdAtMs = System.currentTimeMillis()
+        val branchName = "mobile-agent/tool-${createdAtMs.toString().takeLast(6)}"
+        val toolSummary = toolCalls.joinToString(" -> ") { it.first }
+        return TaskPackage(
+            id = "tool-${createdAtMs.toString().takeLast(8)}",
+            goal = goal,
+            createdAtMs = createdAtMs,
+            artifactKind = ArtifactKind.MarkdownDraft,
+            planSummary = "Tool pipeline: $toolSummary",
+            artifacts = listOf(
+                Artifact(
+                    path = "mobile-agent-output/tool-result.md",
+                    mime = "text/markdown",
+                    content = "# Tool Result\n\nGoal: $goal\n\nTool calls: $toolSummary\n",
+                    summary = "Tool execution result",
+                )
+            ),
+            checkpoints = listOf(
+                Checkpoint(id = CHECKPOINT_PREVIEW, label = "Review final artifact", reason = "Inspect the tool pipeline result", artifactPaths = listOf("mobile-agent-output/tool-result.md")),
+                Checkpoint(id = CHECKPOINT_PUBLISH, label = "Approve GitHub publish", reason = "Confirm the artifact before publishing", artifactPaths = listOf("mobile-agent-output/tool-result.md")),
+            ),
+            publishIntent = PublishIntent(
+                baseBranch = baseBranchProvider(),
+                branchName = branchName,
+                commitMessage = "docs(agent): tool pipeline result for $goal",
+                prTitle = "agent: $goal",
+                prBody = "Automated tool pipeline result generated by OpenChat Android agent.\n\nTool calls: $toolSummary",
+            ),
+            rollbackHints = listOf("Close the generated PR if the result should not ship.", "Delete branch $branchName if the publish was accidental."),
+        )
     }
 
     class ScriptedProvider : ModelProvider {

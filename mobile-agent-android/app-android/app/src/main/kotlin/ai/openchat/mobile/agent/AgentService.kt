@@ -22,6 +22,8 @@ import ai.openchat.mobile.agent.core.github.GitHubDiscovery
 import ai.openchat.mobile.agent.core.github.GitHubClient
 import ai.openchat.mobile.agent.core.github.CommitFile
 import ai.openchat.mobile.agent.core.persistence.PersistenceManager
+import ai.openchat.mobile.agent.core.tools.ToolRegistry
+import ai.openchat.mobile.agent.core.tools.createGitHubTools
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -136,6 +138,15 @@ class AgentService : Service() {
         }
     }
 
+    private fun buildToolRegistry(): ToolRegistry {
+        val registry = ToolRegistry()
+        registry.registerAll(createGitHubTools {
+            val settings = settingsStore.load()
+            GitHubClient(settings.github.owner, settings.github.repo, settings.github.token)
+        })
+        return registry
+    }
+
     private fun buildAgentLoop(goal: String): AgentLoop {
         return AgentLoop(
             goalProvider = { goal },
@@ -225,6 +236,7 @@ class AgentService : Service() {
                     context
                 }
             },
+            toolRegistry = buildToolRegistry(),
         ).also { loop ->
             serviceScope.launch {
                 loop.log.collect { AgentStatusHub.emitLog(it) }

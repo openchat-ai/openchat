@@ -62,6 +62,27 @@ class GitHubClient(
         }
     }
 
+    suspend fun fetchTree(path: String, branch: String = "main"): Result<String> {
+        Log.d(TAG, "[C1.2] fetchTree $path from $branch")
+        return runCatching {
+            validateBranch(branch)
+            val urlPath = if (path.isBlank()) "/contents" else "/contents/${path.encodePath()}"
+            val fullUrl = "$urlPath?ref=${branch.encodePath()}"
+            val raw = rawRequest("GET", fullUrl)
+            JSONArray(raw)
+        }.map { array ->
+            buildString {
+                for (i in 0 until array.length()) {
+                    val entry = array.getJSONObject(i)
+                    val type = entry.optString("type", "file")
+                    val name = entry.optString("name", "")
+                    val size = entry.optInt("size", 0)
+                    appendLine("$type\t$name\t${size}B")
+                }
+            }.ifEmpty { "(empty)" }
+        }
+    }
+
     suspend fun commitFiles(
         branch: String,
         files: List<CommitFile>,
@@ -151,6 +172,11 @@ class GitHubClient(
     }
 
     private fun request(method: String, path: String, body: JSONObject? = null): JSONObject {
+        val responseBody = rawRequest(method, path, body)
+        return if (responseBody.isBlank()) JSONObject() else JSONObject(responseBody)
+    }
+
+    private fun rawRequest(method: String, path: String, body: JSONObject? = null): String {
         val url = URL("https://api.github.com/repos/$owner/$repo$path")
         val connection = (url.openConnection() as HttpURLConnection).apply {
             requestMethod = method
@@ -174,7 +200,7 @@ class GitHubClient(
         if (connection.responseCode !in 200..299) {
             throw IllegalStateException("GitHub HTTP ${connection.responseCode}: $responseBody")
         }
-        return if (responseBody.isBlank()) JSONObject() else JSONObject(responseBody)
+        return responseBody
     }
 }
 

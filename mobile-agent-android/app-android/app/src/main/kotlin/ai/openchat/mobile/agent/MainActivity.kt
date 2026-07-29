@@ -196,12 +196,36 @@ class MainActivity : AppCompatActivity() {
             }
             RuntimeMode.PLAN, RuntimeMode.AGENT -> toggleAgent(text)
             RuntimeMode.ADAPTIVE -> {
-                // Adaptive placeholder: for now just behave like Ask
-                if (askJob?.isActive == true) return
-                etInput.setText("")
-                submitAsk("[Adaptive] $text")
+                if (routeAdaptive(text)) {
+                    etInput.setText("")
+                    toggleAgent(text)
+                } else {
+                    if (askJob?.isActive == true) return
+                    etInput.setText("")
+                    submitAsk(text)
+                }
             }
         }
+    }
+
+    private fun routeAdaptive(text: String): Boolean {
+        val t = text.lowercase()
+        val agentKeywords = listOf(
+            "edit", "create", "add", "change", "update", "write", "refactor",
+            "implement", "modify", "remove", "delete", "fix", "build",
+            "generate", "file", "code", "function", "class", "method",
+            "branch", "pr", "commit", "push", "tool", "script",
+            "android", "kotlin", "gradle", "manifest", "layout",
+            "repository", "github", "readme",
+        )
+        val askKeywords = listOf(
+            "what", "why", "how", "when", "where", "who",
+            "explain", "describe", "tell", "meaning", "difference",
+            "compare", "vs", "versus", "example", "tutorial", "guide",
+        )
+        val agentScore = agentKeywords.count { t.contains(it) }
+        val askScore = askKeywords.count { t.contains(it) }
+        return agentScore > askScore
     }
 
     private fun stopRunning() {
@@ -631,7 +655,6 @@ class MainActivity : AppCompatActivity() {
         if (runtimeState.askHistory != previousHistory) {
             settingsStore.saveAskHistory(runtimeState.askHistory)
         }
-        settingsStore.saveRuntimeSnapshot(runtimeState.toPersistenceSnapshot())
         saveCurrentTab()
         settingsStore.saveTabs(tabs)
         renderRuntimeState()
@@ -684,7 +707,14 @@ class MainActivity : AppCompatActivity() {
                 updateAgentUi(runtimeState.agent)
             }
             RuntimeMode.ADAPTIVE -> {
-                tvStatus.text = "Adaptive mode ready"
+                tvStatus.text = when {
+                    runtimeState.recovery.needsResume && !runtimeState.recovery.lastRecoveryMessage.isNullOrBlank() ->
+                        runtimeState.recovery.lastRecoveryMessage
+                    askBusy -> getString(R.string.status_ask_running)
+                    runtimeState.agent !is AgentSessionState.Idle -> "Agent active in adaptive mode"
+                    !runtimeState.settings.providerReady -> getString(R.string.status_ask_config_needed)
+                    else -> "Adaptive mode: ask or agent?"
+                }
             }
         }
     }

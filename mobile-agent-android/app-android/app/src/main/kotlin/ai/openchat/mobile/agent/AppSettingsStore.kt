@@ -1,40 +1,5 @@
-package ai.openchat.mobile.agent
-
-import android.content.Context
-import android.content.SharedPreferences
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
-import org.json.JSONArray
-import org.json.JSONObject
-
-data class AskTurn(
-    val role: String,
-    val content: String,
-)
-
-data class ProviderSettings(
-    val baseUrl: String,
-    val apiKey: String,
-    val model: String,
-) {
-    val isComplete: Boolean
-        get() = baseUrl.isNotBlank() && apiKey.isNotBlank() && model.isNotBlank()
-}
-
-data class GitHubSettings(
-    val owner: String,
-    val repo: String,
-    val token: String,
-    val baseBranch: String,
-) {
-    val isComplete: Boolean
-        get() = owner.isNotBlank() && repo.isNotBlank() && token.isNotBlank() && baseBranch.isNotBlank()
-}
-
-data class AppSettings(
-    val provider: ProviderSettings,
-    val github: GitHubSettings,
-)
+// New single source: Runtime state is saved in PersistenceManager (plain prefs)
+// AppSettingsStore only manages provider/github settings + secrets
 
 // === invariants ===
 // - Secrets live only in EncryptedSharedPreferences
@@ -43,6 +8,9 @@ data class AppSettings(
 // - Default baseBranch is always "main" if not specified
 // - load() prefers encrypted prefs; external is non-secret fallback only
 
+// === invariants (G2) ===
+// - Runtime snapshot is saved in PersistenceManager (single source), not here
+// - SettingsStore only handles provider/github settings + secrets
 
 class AppSettingsStore(private val context: Context) {
 
@@ -125,25 +93,9 @@ class AppSettingsStore(private val context: Context) {
         prefs.edit().putString(KEY_ASK_HISTORY, json.toString()).apply()
     }
 
-    fun loadRuntimeSnapshot(): RuntimePersistenceSnapshot? {
-        val raw = prefs.getString(KEY_RUNTIME_SNAPSHOT, null) ?: return null
-        return runCatching {
-            val json = JSONObject(raw)
-            RuntimePersistenceSnapshot(
-                mode = RuntimeMode.valueOf(json.optString("mode", RuntimeMode.ASK.name)),
-                recovery = RecoveryState(
-                    degradedMode = json.optBoolean("degradedMode", false),
-                    needsResume = json.optBoolean("needsResume", false),
-                    pendingAskPrompt = json.optNullableString("pendingAskPrompt"),
-                    pendingAgentGoal = json.optNullableString("pendingAgentGoal"),
-                    pendingTaskPackage = json.optJSONObject("pendingTaskPackage")?.toTaskPackage(),
-                    lastCheckpointId = json.optNullableString("lastCheckpointId"),
-                    lastRecoveryMessage = json.optNullableString("lastRecoveryMessage"),
-                ),
-                lastError = json.optJSONObject("lastError")?.toAppError(),
-            )
-        }.getOrNull()
-    }
+    @Deprecated("Use PersistenceManager.loadSnapshot() instead", level = DeprecationLevel.WARNING)
+    @Suppress("unused")
+    fun loadRuntimeSnapshot(): RuntimePersistenceSnapshot? = null
 
     fun loadTabs(): List<ChatTab> {
         val raw = prefs.getString(KEY_TABS, null) ?: return emptyList()
@@ -163,18 +115,9 @@ class AppSettingsStore(private val context: Context) {
         prefs.edit().putString(KEY_TABS, json.toString()).apply()
     }
 
+    @Deprecated("Use PersistenceManager.save() instead", level = DeprecationLevel.WARNING)
+    @Suppress("unused")
     fun saveRuntimeSnapshot(snapshot: RuntimePersistenceSnapshot) {
-        val json = JSONObject()
-            .put("mode", snapshot.mode.name)
-            .put("degradedMode", snapshot.recovery.degradedMode)
-            .put("needsResume", snapshot.recovery.needsResume)
-            .put("pendingAskPrompt", snapshot.recovery.pendingAskPrompt ?: JSONObject.NULL)
-            .put("pendingAgentGoal", snapshot.recovery.pendingAgentGoal ?: JSONObject.NULL)
-            .put("pendingTaskPackage", snapshot.recovery.pendingTaskPackage?.toJson() ?: JSONObject.NULL)
-            .put("lastCheckpointId", snapshot.recovery.lastCheckpointId ?: JSONObject.NULL)
-            .put("lastRecoveryMessage", snapshot.recovery.lastRecoveryMessage ?: JSONObject.NULL)
-            .put("lastError", snapshot.lastError?.toJson() ?: JSONObject.NULL)
-        prefs.edit().putString(KEY_RUNTIME_SNAPSHOT, json.toString()).apply()
     }
 
     private fun saveToExternalFile(settings: AppSettings) {
