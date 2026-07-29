@@ -16,6 +16,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.yield
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -134,6 +135,7 @@ class AgentLoopSingleFlightTest {
         repeat(3) {
             awaitWaiting(loop)
             loop.approve()
+            yield() // let the loop coroutine consume the approval before the next iteration
         }
         job.join()
 
