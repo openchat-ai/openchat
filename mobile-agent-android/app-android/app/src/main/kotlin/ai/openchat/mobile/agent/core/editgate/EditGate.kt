@@ -37,6 +37,8 @@ class EditGate {
         return Result.success(proposed)
     }
 
-    private fun hashOf(content: String): String =
-        content.hashCode().toString(16)
+    private fun hashOf(content: String): String {
+        val digest = java.security.MessageDigest.getInstance("MD5")
+        return digest.digest(content.toByteArray()).joinToString("") { "%02x".format(it) }.take(8)
+    }
 }

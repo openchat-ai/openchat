@@ -1477,6 +1477,10 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
   int _lastHeartbeatMs = 0;
   static const int _heartbeatIntervalMs = 30000;
   VoiceUiConfig _uiVoice = const VoiceUiConfig();
+  int _pollFailCount = 0;
+  bool _pollRunning = false;
+  static const int _maxPollIntervalMs = 30000;
+  static const int _minPollIntervalMs = 2000;
   @override
   void initState() {
     super.initState();
@@ -1509,6 +1513,13 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
       if (mounted) setState(() { _error = e.toString(); _loading = false; });
     }
   }
+  void _scheduleNextPoll() {
+    _pollTimer?.cancel();
+    final interval = _minPollIntervalMs * (1 << _pollFailCount).clamp(1, 16);
+    final cappedInterval = interval < _maxPollIntervalMs ? interval : _maxPollIntervalMs;
+    _pollTimer = Timer(Duration(milliseconds: cappedInterval), _pollUsers);
+  }
+
   void _startPoll() {
     if (_client == null) return;
     _pollTimer?.cancel();

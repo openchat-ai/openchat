@@ -60,12 +60,55 @@ class SduiQiniuSource extends SduiConfigSource {
     final individualPath = 'oc/config/ui_$page.json';
     final prefs = await SharedPreferences.getInstance();
     final cacheKey = 'sdui:$page';
+    final statusKey = 'sdui_status:$page';
 
-    try { final raw = await QiniuDirectClient.fetchConfigFile(individualPath); if (raw != null && isValid(raw)) { await prefs.setString(cacheKey, jsonEncode(raw)); return Map<String, dynamic>.from(raw); } } catch (_) {}
-    try { final appRaw = await QiniuDirectClient.fetchConfigFile('oc/config/ui_app.json'); if (appRaw is Map && appRaw[page] is Map && isValid(appRaw[page])) { final data = Map<String, dynamic>.from(appRaw[page] as Map); await prefs.setString(cacheKey, jsonEncode(data)); return data; } } catch (_) {}
+    // Try individual page config
+    try {
+      final raw = await QiniuDirectClient.fetchConfigFile(individualPath);
+      if (raw != null && isValid(raw)) {
+        await prefs.setString(cacheKey, jsonEncode(raw));
+        await prefs.setString(statusKey, 'ok');
+        return Map<String, dynamic>.from(raw);
+      }
+    } catch (e) {
+      log('[sdui] individual load failed for $page: $e');
+    }
+
+    // Try combined config
+    try {
+      final appRaw = await QiniuDirectClient.fetchConfigFile('oc/config/ui_app.json');
+      if (appRaw is Map && appRaw[page] is Map && isValid(appRaw[page])) {
+        final data = Map<String, dynamic>.from(appRaw[page] as Map);
+        await prefs.setString(cacheKey, jsonEncode(data));
+        await prefs.setString(statusKey, 'ok');
+        return data;
+      }
+    } catch (e) {
+      log('[sdui] combined config load failed for $page: $e');
+    }
+
+    // Fall back to cache
     final cached = prefs.getString(cacheKey);
-    if (cached != null) { try { final p = jsonDecode(cached); if (p is Map) return Map<String, dynamic>.from(p); } catch (_) {} }
+    if (cached != null) {
+      try {
+        final p = jsonDecode(cached);
+        if (p is Map) {
+          await prefs.setString(statusKey, 'stale');
+          return Map<String, dynamic>.from(p);
+        }
+      } catch (e) {
+        log('[sdui] cache parse failed for $page: $e');
+      }
+    }
+
+    // Last resort: defaults
+    await prefs.setString(statusKey, 'default');
     return Map<String, dynamic>.from(defaults[page] ?? {});
+  }
+
+  static Future<String> loadStatus(String page) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('sdui_status:$page') ?? 'default';
   }
 
   static Future<void> clearCache() async { final prefs = await SharedPreferences.getInstance(); final keys = prefs.getKeys().where((k) => k.startsWith('sdui:')); for (final k in keys) await prefs.remove(k); }
