@@ -53,7 +53,7 @@ android {
 // and AndroidExceptionPreHandler (registered via ServiceLoader in coroutines-core's
 // CoroutineExceptionHandlerImplKt static initializer) deadlock in Android SDK stubs
 // when loaded during JUnit test JVM startup.
-configurations.getByName("testRuntimeClasspath") {
+configurations.matching { it.name == "testRuntimeClasspath" }.configureEach {
     exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-android")
 }
 
