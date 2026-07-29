@@ -1,19 +1,22 @@
-# MEMORY.md — OpenChat 项目记忆与路由
+# MEMORY.md — 路由 only
+> 只读当前任务相关段。勿全量注入对话。
 
-> 当前仅读本段落。修改后更新。
+## 路由
+| 主题 | 文件/段 |
+|------|---------|
+| mobile-agent | `mobile-agent-android/docs/*` + 本表 mobile 行 |
+| bridge crash/实验 | 专家表 P0-2/P0-3 |
+| 安全 WS/隐私 | 专家表 P0-5/P0-9 |
+| Flutter 超限/CI | 专家表 P0-6/P0-7 |
 
-## 专家意见跟踪
+## mobile-agent（当前）
+- branch: `mobile/android-agent-app-linear`
+- alpha tag: `mobile-agent-v0.1.0-alpha`
+- prod prompt: `mobile-agent-android/docs/PRODUCTION-LANDING-PROMPT.md`
+- G1 已提交待推: landmine tests + CI-only verify
+- 构建验证: **仅** GitHub workflow `mobile-agent-android.yml`（禁本地 gradle）
+- 已知 L2: 双持久化 SettingsStore + PersistenceManager
 
-| 轮次 | 意见摘要 | 提出专家 | 对应任务 | 状态 | 验收人 |
-|------|---------|---------|---------|------|-------|
-| R1 | 首次用户无法上手—无快速开始/端到端 walkthrough | 用户支持, 技术写作者, 架构师 | P0-1 | 🔴 待修 | - |
-| R1 | Bridge crash 端点(/projects, /experiments) | 架构师, 后端工程师, 产品经理 | P0-2 | 🔴 待修 | - |
-| R1 | 实验运行器无进程隔离 | 架构师, 性能工程师 | P0-3 | 🔴 待修 | - |
-| R1 | 无版本号声明的发布节奏 | 时间管理师, DevOps | P0-4 | 🔴 待修 | - |
-| R1 | WebSocket 无鉴权 | 安全研究员 | P0-5 | 🔴 待修 | - |
-| R1 | Flutter 文件超限(399行/250行)+缺 invariants | Flutter 开发者, 测试工程师 | P0-6 | 🔴 待修 | - |
-| R1 | 无 Flutter CI | 测试工程师, DevOps | P0-7 | 🔴 待修 | - |
-| R1 | Qiniu 轮询架构无文档 | Qiniu/S3 专家, 合规顾问 | P0-8 | 🔴 待修 | - |
-| R1 | 隐私政策/用户知情同意缺失 | 安全研究员, 合规顾问 | P0-9 | 🔴 待修 | - |
-| R1 | Express 无全局 error boundary | 架构师, 后端工程师 | P0-10 | 🔴 待修 | - |
-| R1 | 核心 AI 居民聊天流程无集成测试 | 测试工程师, 用户支持 | P0-11 | 🔴 待修 | - |
+## 专家意见跟踪（摘要）
+待修仍多（R1 P0-1..11）。做专家评审前读本表，已 ✅ 不重复提。
+全表备份需求时再展开 git history / 原 MEMORY 段。
