@@ -122,6 +122,7 @@ class AgentLoop(
     private var shouldStop = false
     private var cancelled = false
     private var latestTaskPackage: TaskPackage? = null
+    private var _resumeOnly = false
 
     suspend fun run() {
         if (_state.value != AgentState.IDLE) {
@@ -172,6 +173,7 @@ class AgentLoop(
         taskQueue.addLast(AgentTask.Summarize(taskPackage, "agent artifact pipeline complete for: $goal"))
 
         emit("[C1.resume] resumed from ${fromCheckpointId ?: "start"}: ${taskQueue.size} steps for $goal")
+        _resumeOnly = true
         runMainLoop(goal)
     }
 
@@ -238,6 +240,7 @@ class AgentLoop(
             throw error
         } finally {
             _state.value = AgentState.IDLE
+            _resumeOnly = false
             emit("[C6] agent loop stopped")
         }
     }
@@ -252,6 +255,7 @@ class AgentLoop(
 
     private suspend fun nextTask(goal: String): AgentTask? {
         if (taskQueue.isEmpty()) {
+            if (_resumeOnly) return null  // resume mode: stop after queue drained, don't replan
             val artifactFormat = inferArtifactFormat(goal)
             val context = repoContext()
             val response = planRequest(ModelRequest(prompt = buildPlanningPrompt(goal, artifactFormat, context)))
