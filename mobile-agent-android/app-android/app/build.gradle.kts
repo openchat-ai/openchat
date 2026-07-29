@@ -37,6 +37,11 @@ android {
     }
 }
 
+tasks.withType<Test> {
+    timeout.set(java.time.Duration.ofMinutes(3))
+    maxParallelForks = 1
+}
+
 dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
