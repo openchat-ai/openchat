@@ -116,7 +116,7 @@ class AgentLoop(
     )
     val log: SharedFlow<String> = _log.asSharedFlow()
 
-    private val approvalChannel = Channel<Boolean>(capacity = 1)
+    private var approvalChannel = Channel<Boolean>(capacity = 1)
     private val taskQueue = ArrayDeque<AgentTask>()
     private val editGate = EditGate()
     private var shouldStop = false
@@ -140,6 +140,7 @@ class AgentLoop(
         shouldStop = false
         cancelled = false
         latestTaskPackage = null
+        approvalChannel = Channel<Boolean>(capacity = 1)  // fresh channel per run, no stale data
         _state.value = AgentState.RUNNING
         onLifecycleEvent(AgentLifecycleEvent.Planning(goal))
         emit("[C1] agent loop started: $goal")
@@ -157,6 +158,7 @@ class AgentLoop(
         shouldStop = false
         cancelled = false
         latestTaskPackage = taskPackage
+        approvalChannel = Channel<Boolean>(capacity = 1)  // fresh channel per resume, no stale data
         _state.value = AgentState.RUNNING
 
         val checkpointIndex = taskPackage.checkpoints.indexOfFirst { it.id == fromCheckpointId }
@@ -191,9 +193,6 @@ class AgentLoop(
                 )
                 emit("[C3] awaiting human approval")
                 
-                // P0-5 FIX: Drain the channel before waiting to avoid stale clicks from previous runs
-                while (approvalChannel.tryReceive().isSuccess) { /* drain */ }
-
                 val approved = approvalChannel.receive()
                 if (!approved) {
                     cancelled = true
