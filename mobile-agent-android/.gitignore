@@ -8,3 +8,8 @@
 **/.idea/
 **/*.iml
 /android-sdk/
+
+.gradle-home/
+app-android/.gradle/
+app-android/**/build/
+

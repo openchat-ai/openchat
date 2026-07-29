@@ -13,10 +13,14 @@ Product is a mobile coding companion: Ask stream + human-approved Agent draft→
 # Iron rules
 1. Scope: only `mobile-agent-android/**`. One feature = one commit. Diff ≤500. `.kt` ≤200 lines; >100 needs `// === invariants ===`. New `.kt` >50 lines needs sibling `.spec.md` (flow/API/bounds/invariants/C-logs).
 2. Token: reply ≤4 lines while coding. No essays, no full-tree scans. Read ≤3 files before each edit.
-3. Verify before claim: `cd mobile-agent-android/app-android && ./gradlew :app:test :app:assembleDebug` (JDK17). No JDK = say blocked, don't fake pass.
+3. **Build/test ONLY via GitHub Actions** workflow `.github/workflows/mobile-agent-android.yml`.
+   - Do **NOT** run local `gradle`/`gradlew`/`assemble*`/`test*` to claim pass/fail.
+   - Local JDK/Gradle paths are irrelevant. Flutter is irrelevant.
+   - After push: `gh run list --workflow=mobile-agent-android.yml` / wait for green.
+   - No CI green = gate not done. Never fake pass.
 4. Push gate: after code, report 3-check then ask `可以推吗?` and WAIT.
    - path-trace (name crash points)
-   - local gradle/test result
+   - CI plan: which jobs must go green (unit test + assembleDebug; release when G4)
    - adversarial: dual-loop / secret leak / resume plan regen / recovery wipe
 5. Secrets: only `EncryptedSharedPreferences`. Never write apiKey/token to external file, logs, notifications, PR body, or plain prefs.
 6. Commit subject lowercase: `fix|feat|test|chore(mobile-agent): ...`
@@ -45,8 +49,8 @@ Add unit tests under `app/src/test/java/...` (robolectric only if unavoidable; p
 - `AppRuntimeState.reduce`: AgentFailed keeps package; ObserveAgent(Idle) keeps recovery; Completed clears
 - AgentLoop single-flight: second `run()` while active is no-op (scripted provider)
 - (if pure-JVM hard) extract pure functions rather than skip
-CI: workflow path-filter `mobile-agent-android/**` → `./gradlew :app:test :app:assembleDebug`
-Exit: tests green locally or document JDK missing.
+CI: `.github/workflows/mobile-agent-android.yml` must run `:app:testDebugUnitTest` then assembleDebug/Release.
+Exit: that workflow green on this branch. No local gradle.
 
 ## G2 — single persistence source
 Delete dual write. Runtime snapshot+history+TaskPackage: **one** store (`PersistenceManager` or migrate into encrypted store—pick one, migrate read fallback once).
@@ -99,9 +103,9 @@ app/build.gradle.kts       # versionName 0.1.0-alpha
 1. 3-bullet plan
 2. Read ≤3 files
 3. Minimal patch
-4. gradle test/assemble
-5. commit
-6. 3-check + `可以推吗?` wait
+4. commit → ask push → CI workflow verifies (never local gradle)
+5. 3-check + `可以推吗?` wait
+6. After push: poll CI; red → fix; green → next gate
 
 # Definition of done (prod)
 - [ ] G1 tests cover L3/L4/L6/single-flight
