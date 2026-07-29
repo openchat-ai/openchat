@@ -6,19 +6,37 @@ import ai.openchat.mobile.agent.Checkpoint
 import ai.openchat.mobile.agent.PublishIntent
 import ai.openchat.mobile.agent.TaskPackage
 import ai.openchat.mobile.agent.core.modelrouter.ModelResponse
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.withTimeout
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 import java.util.concurrent.atomic.AtomicInteger
 
 class AgentLoopSingleFlightTest {
+
+    private val testDispatcher = StandardTestDispatcher()
+
+    @Before
+    fun setUp() {
+        Dispatchers.setMain(testDispatcher)
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
 
     private fun fixture(goal: String = "demo goal") = TaskPackage(
         id = "task-sf",

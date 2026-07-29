@@ -39,6 +39,14 @@ android {
     }
 }
 
+// Exclude kotlinx-coroutines-android from test runtime: AndroidDispatcherFactory
+// and AndroidExceptionPreHandler (registered via ServiceLoader in coroutines-core's
+// CoroutineExceptionHandlerImplKt static initializer) deadlock in Android SDK stubs
+// when loaded during JUnit test JVM startup.
+configurations.testRuntimeClasspath {
+    exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-android")
+}
+
 tasks.withType<Test> {
     timeout.set(Duration.ofMinutes(3))
     maxParallelForks = 1
