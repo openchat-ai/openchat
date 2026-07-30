@@ -6,6 +6,7 @@ import ai.openchat.mobile.agent.Checkpoint
 import ai.openchat.mobile.agent.PublishIntent
 import ai.openchat.mobile.agent.TaskPackage
 import ai.openchat.mobile.agent.core.modelrouter.ModelResponse
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -70,10 +71,12 @@ class AgentLoopSingleFlightTest {
     @Test
     fun secondRun_whileActive_isNoOp() = runBlocking {
         val planCalls = AtomicInteger(0)
+        val planGate = CompletableDeferred<Unit>()
         val loop = AgentLoop(
             goalProvider = { "single flight goal" },
             planRequest = {
                 planCalls.incrementAndGet()
+                planGate.await()
                 ModelResponse(text = "# draft\n")
             },
             publishDraft = { "ok" },
@@ -83,10 +86,12 @@ class AgentLoopSingleFlightTest {
         withTimeout(5_000) {
             loop.log.first { it.contains("[C1] multi-role agent started") }
         }
+        // run() is now alive, blocked at planRequest (inside runSentinel)
         loop.run()
         withTimeout(5_000) {
             loop.log.first { it.contains("run ignored") }
         }
+        planGate.complete(Unit)
         loop.reject()
         first.await()
         assertTrue(planCalls.get() >= 1)
