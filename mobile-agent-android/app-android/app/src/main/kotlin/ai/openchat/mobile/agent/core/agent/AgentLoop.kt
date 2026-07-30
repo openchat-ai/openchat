@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.io.File
 
 sealed interface AgentLifecycleEvent {
     data class Planning(val goal: String) : AgentLifecycleEvent
@@ -33,6 +34,11 @@ sealed interface AgentLifecycleEvent {
     data class Publishing(
         val taskPackage: TaskPackage,
         val currentCheckpointId: String?,
+    ) : AgentLifecycleEvent
+    data class RoleResult(
+        val role: AgentRole,
+        val summary: String,
+        val decision: RoleDecision,
     ) : AgentLifecycleEvent
     data class Completed(
         val taskPackage: TaskPackage,
@@ -57,7 +63,8 @@ sealed interface AgentLifecycleEvent {
 // === invariants ===
 // - _state transitions: IDLE → RUNNING → WAITING → RUNNING → IDLE
 // - approvalChannel has capacity 1; second send before receive is dropped
-// - every mutating/publish step must carry an immutable TaskPackage + Checkpoint
+// - Role sequence: Sentinel → Explorer → Orchestrator → [Worker → Reviewer → Critic → Auditor] × milestones
+// - Worker steps with tool calls require human approval; analysis roles auto-proceed
 
 class AgentLoop(
     private val goalProvider: () -> String = { "Demo goal" },
@@ -73,6 +80,7 @@ class AgentLoop(
     private val onLifecycleEvent: suspend (AgentLifecycleEvent) -> Unit = {},
     private val repoContext: suspend () -> String = { "" },
     private val toolRegistry: ToolRegistry = ToolRegistry(),
+    private val handoffDir: File = File(System.getProperty("java.io.tmpdir", "/tmp"), "agent-handoffs"),
 ) {
 
     private enum class ArtifactFormat {
@@ -120,9 +128,9 @@ class AgentLoop(
     val state: StateFlow<AgentState> = _state.asStateFlow()
 
     private val _log = MutableSharedFlow<String>(
-        replay = 64, // Keep history for new collectors
+        replay = 64,
         extraBufferCapacity = 64,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
     val log: SharedFlow<String> = _log.asSharedFlow()
 
@@ -133,31 +141,35 @@ class AgentLoop(
     private var cancelled = false
     private var latestTaskPackage: TaskPackage? = null
     private var _resumeOnly = false
-    private var _planCount = 0
+    private var _milestoneRounds = 0
     private val toolOutputs = mutableMapOf<String, String>()
+
+    private val orchestrator = RoleOrchestrator()
+    private val handoff = ContextHandoff(handoffDir)
+    private var roleContext = RoleContext(goal = "")
 
     suspend fun run() {
         if (_state.value != AgentState.IDLE) {
             emit("[C0] run ignored: agent already active")
             return
         }
-
         val goal = goalProvider().trim()
         if (goal.isBlank()) {
             emit("[E0] agent goal is blank")
             return
         }
-
         taskQueue.clear()
         shouldStop = false
         cancelled = false
         latestTaskPackage = null
-        approvalChannel = Channel<Boolean>(capacity = 1)  // fresh channel per run, no stale data
-        _planCount = 0
+        approvalChannel = Channel<Boolean>(capacity = 1)
+        _milestoneRounds = 0
         _state.value = AgentState.RUNNING
         onLifecycleEvent(AgentLifecycleEvent.Planning(goal))
-        emit("[C1] agent loop started: $goal")
-        runMainLoop(goal)
+        emit("[C1] multi-role agent started: $goal")
+        roleContext = RoleContext(goal = goal)
+        handoff.clearHandoffs()
+        runRoleLoop(goal)
     }
 
     suspend fun resume(taskPackage: TaskPackage, fromCheckpointId: String?) {
@@ -165,18 +177,15 @@ class AgentLoop(
             emit("[C0] resume ignored: agent already active")
             return
         }
-
         val goal = taskPackage.goal
         taskQueue.clear()
         shouldStop = false
         cancelled = false
         latestTaskPackage = taskPackage
-        approvalChannel = Channel<Boolean>(capacity = 1)  // fresh channel per resume, no stale data
+        approvalChannel = Channel<Boolean>(capacity = 1)
         _state.value = AgentState.RUNNING
-
         val checkpointIndex = taskPackage.checkpoints.indexOfFirst { it.id == fromCheckpointId }
         val startIndex = if (checkpointIndex >= 0) checkpointIndex else 0
-
         for (i in startIndex until taskPackage.checkpoints.size) {
             val cp = taskPackage.checkpoints[i]
             when (cp.id) {
@@ -185,68 +194,82 @@ class AgentLoop(
                 else -> taskQueue.addLast(AgentTask.PreviewDraft(taskPackage, cp))
             }
         }
-        taskQueue.addLast(AgentTask.Summarize(taskPackage, "agent artifact pipeline complete for: $goal"))
-
-        emit("[C1.resume] resumed from ${fromCheckpointId ?: "start"}: ${taskQueue.size} steps for $goal")
+        taskQueue.addLast(AgentTask.Summarize(taskPackage, "agent pipeline complete for: $goal"))
+        emit("[C1.resume] resumed from ${fromCheckpointId ?: "start"}: ${taskQueue.size} steps")
         _resumeOnly = true
         runMainLoop(goal)
     }
 
-    private suspend fun runMainLoop(goal: String) {
+    private suspend fun runRoleLoop(goal: String) {
         try {
-            while (true) {
-                val task = nextTask(goal) ?: break
-                emit("[C2] task: ${describeTask(task)}")
-                _state.value = AgentState.WAITING
-                onLifecycleEvent(
-                    AgentLifecycleEvent.AwaitingApproval(
-                        taskPackage = task.taskPackage,
-                        currentCheckpoint = task.checkpoint ?: task.taskPackage.checkpoints.last(),
+            while (!orchestrator.isTerminalPhase(roleContext) && !shouldStop && !cancelled) {
+                val role = orchestrator.next(roleContext)
+                emit("[R] role=${role.label} phase=${orchestrator.milestoneProgress(roleContext).take(80)}")
+                onLifecycleEvent(AgentLifecycleEvent.RoleResult(role, "starting", RoleDecision.Proceed))
+
+                if (handoff.shouldHandoff(roleContext)) {
+                    val path = handoff.writeHandoff(roleContext, Phase.valueOf(role.name))
+                    emit("[H] context full: handoff written to $path")
+                    val summary = handoff.handoffSummary(roleContext)
+                    roleContext = roleContext.copy(
+                        sentinelSummary = summary,
+                        explorationResult = "",
+                        milestonePlan = "",
+                        workerOutput = "",
+                        reviewResult = "",
+                        criticResult = "",
+                        auditorResult = "",
                     )
-                )
-                emit("[C3] awaiting human approval")
-                
-                val approved = approvalChannel.receive()
-                if (!approved) {
-                    cancelled = true
-                    onLifecycleEvent(
-                        AgentLifecycleEvent.Cancelled(
-                            goal = goal,
-                            taskPackage = task.taskPackage,
-                            checkpointId = task.checkpoint?.id,
-                        )
-                    )
-                    emit("[C4] rejected, stopping")
-                    break
+                    emit("[H] context reset; summary injected")
                 }
-                _state.value = AgentState.RUNNING
-                onLifecycleEvent(task.toExecutionEvent())
-                emit("[C5] approved, executing")
-                executeTask(task)
-                if (shouldStop) {
-                    break
+
+                when (role) {
+                    AgentRole.SENTINEL -> runSentinel(goal)
+                    AgentRole.EXPLORER -> runExplorer(goal)
+                    AgentRole.ORCHESTRATOR -> runOrchestrator(goal)
+                    AgentRole.WORKER -> {
+                        _milestoneRounds++
+                        if (_milestoneRounds > maxPlanningRounds) {
+                            emit("[E6] max milestone rounds ($maxPlanningRounds) reached")
+                            shouldStop = true
+                            break
+                        }
+                        runWorker(goal)
+                    }
+                    AgentRole.REVIEWER -> runReviewer(goal)
+                    AgentRole.CRITIC -> runCritic(goal)
+                    AgentRole.AUDITOR -> runAuditor(goal)
                 }
             }
-            if (!shouldStop && !cancelled) {
+
+            if (stopAfterPlanningProvider() && !shouldStop && !cancelled) {
+                emit("[C1.2] plan-only mode: full audit complete, stopping")
+                onLifecycleEvent(AgentLifecycleEvent.Completed(
+                    taskPackage = latestTaskPackage ?: buildFallbackTaskPackage(goal),
+                    summary = buildFinalSummary(goal),
+                ))
+                shouldStop = true
+            } else if (orchestrator.isComplete(roleContext) && !shouldStop && !cancelled) {
                 val completedPackage = latestTaskPackage ?: buildFallbackTaskPackage(goal)
-                onLifecycleEvent(
-                    AgentLifecycleEvent.Completed(
-                        taskPackage = completedPackage,
-                        summary = "agent artifact pipeline complete for: $goal",
-                    )
-                )
-                emit("[C7] plan complete")
+                onLifecycleEvent(AgentLifecycleEvent.Completed(
+                    taskPackage = completedPackage,
+                    summary = buildFinalSummary(goal),
+                ))
+                emit("[C7] multi-role plan complete")
+            } else if (!shouldStop && !cancelled && orchestrator.isFailed(roleContext)) {
+                val auditVer = roleContext.auditorResult.take(100)
+                onLifecycleEvent(AgentLifecycleEvent.Failed(
+                    goal = goal, stage = "auditor",
+                    message = "Auditor rejected: $auditVer",
+                    retryable = true,
+                    taskPackage = latestTaskPackage,
+                ))
+                emit("[E5] auditor rejected, stopping")
             }
         } catch (error: kotlinx.coroutines.CancellationException) {
             if (!cancelled) {
                 cancelled = true
-                onLifecycleEvent(
-                    AgentLifecycleEvent.Cancelled(
-                        goal = goal,
-                        taskPackage = latestTaskPackage,
-                        checkpointId = null,
-                    )
-                )
+                onLifecycleEvent(AgentLifecycleEvent.Cancelled(goal = goal, taskPackage = latestTaskPackage))
                 emit("[C4] cancelled by stop")
             }
             throw error
@@ -257,91 +280,187 @@ class AgentLoop(
         }
     }
 
+    private suspend fun runMainLoop(goal: String) {
+        try {
+            while (true) {
+                val task = nextTask(goal) ?: break
+                emit("[C2] task: ${describeTask(task)}")
+                _state.value = AgentState.WAITING
+                onLifecycleEvent(AgentLifecycleEvent.AwaitingApproval(
+                    taskPackage = task.taskPackage,
+                    currentCheckpoint = task.checkpoint ?: task.taskPackage.checkpoints.last(),
+                ))
+                emit("[C3] awaiting human approval")
+                val approved = approvalChannel.receive()
+                if (!approved) {
+                    cancelled = true
+                    onLifecycleEvent(AgentLifecycleEvent.Cancelled(
+                        goal = goal, taskPackage = task.taskPackage, checkpointId = task.checkpoint?.id,
+                    ))
+                    emit("[C4] rejected, stopping")
+                    break
+                }
+                _state.value = AgentState.RUNNING
+                onLifecycleEvent(task.toExecutionEvent())
+                emit("[C5] approved, executing")
+                executeTask(task)
+                if (shouldStop) break
+            }
+            if (!shouldStop && !cancelled) {
+                val completedPackage = latestTaskPackage ?: buildFallbackTaskPackage(goal)
+                onLifecycleEvent(AgentLifecycleEvent.Completed(
+                    taskPackage = completedPackage,
+                    summary = "agent pipeline complete for: $goal",
+                ))
+                emit("[C7] plan complete")
+            }
+        } catch (error: kotlinx.coroutines.CancellationException) {
+            if (!cancelled) {
+                cancelled = true
+                onLifecycleEvent(AgentLifecycleEvent.Cancelled(goal = goal, taskPackage = latestTaskPackage))
+                emit("[C4] cancelled by stop")
+            }
+            throw error
+        } finally {
+            _state.value = AgentState.IDLE
+            _resumeOnly = false
+            emit("[C6] agent loop stopped")
+        }
+    }
+
+    private suspend fun runSentinel(goal: String) {
+        val prompt = RolePrompts.systemPrompt(AgentRole.SENTINEL, roleContext)
+        val response = planRequest(ModelRequest(prompt = prompt))
+        if (!response.isSuccess) {
+            shouldStop = true
+            onLifecycleEvent(AgentLifecycleEvent.Failed(goal, "sentinel", response.error ?: "sentinel failed", retryable = true))
+            emit("[E1] sentinel error: ${response.error}")
+            return
+        }
+        val text = response.text?.trim().orEmpty()
+        roleContext = orchestrator.onOutput(roleContext, RoleOutput(AgentRole.SENTINEL, text))
+        emit("[R] sentinel: ${text.take(120)}")
+    }
+
+    private suspend fun runExplorer(goal: String) {
+        if (!roleContext.sentinelSummary.contains("NEEDS_EXPLORATION: YES")) {
+            roleContext = roleContext.copy(explorationResult = "(no exploration needed)")
+            emit("[R] explorer skipped")
+            return
+        }
+        val prompt = RolePrompts.systemPrompt(AgentRole.EXPLORER, roleContext)
+        val response = planRequest(ModelRequest(prompt = prompt))
+        if (!response.isSuccess) {
+            shouldStop = true
+            onLifecycleEvent(AgentLifecycleEvent.Failed(goal, "explorer", response.error ?: "explorer failed", retryable = true))
+            emit("[E1] explorer error: ${response.error}")
+            return
+        }
+        val text = response.text?.trim().orEmpty()
+        roleContext = orchestrator.onOutput(roleContext, RoleOutput(AgentRole.EXPLORER, text))
+        emit("[R] explorer: ${text.take(120)}")
+    }
+
+    private suspend fun runOrchestrator(goal: String) {
+        val prompt = RolePrompts.systemPrompt(AgentRole.ORCHESTRATOR, roleContext)
+        val response = planRequest(ModelRequest(prompt = prompt))
+        if (!response.isSuccess) {
+            shouldStop = true
+            onLifecycleEvent(AgentLifecycleEvent.Failed(goal, "orchestrator", response.error ?: "orchestrator failed", retryable = true))
+            emit("[E1] orchestrator error: ${response.error}")
+            return
+        }
+        val text = response.text?.trim().orEmpty()
+        roleContext = orchestrator.onOutput(roleContext, RoleOutput(AgentRole.ORCHESTRATOR, text))
+        val milestoneCount = text.lines().count { it.trim().startsWith("MILESTONE") }
+        roleContext = roleContext.copy(
+            totalMilestones = maxOf(milestoneCount, 1),
+        )
+        emit("[R] orchestrator: $milestoneCount milestone(s)")
+    }
+
+    private suspend fun runWorker(goal: String) {
+        val toolDescriptions = if (toolRegistry.hasTools()) toolRegistry.listDescriptions() else ""
+        val prompt = RolePrompts.systemPrompt(AgentRole.WORKER, roleContext, toolDescriptions)
+        val response = planRequest(ModelRequest(prompt = prompt))
+        if (!response.isSuccess) {
+            shouldStop = true
+            onLifecycleEvent(AgentLifecycleEvent.Failed(goal, "worker", response.error ?: "worker failed", retryable = true))
+            emit("[E1] worker error: ${response.error}")
+            return
+        }
+        val text = response.text?.trim().orEmpty()
+        roleContext = orchestrator.onOutput(roleContext, RoleOutput(AgentRole.WORKER, text))
+
+        val toolCalls = parseToolCalls(text)
+        val context = repoContext()
+        val artifactFormat = inferArtifactFormat(goal)
+        if (toolCalls.isNotEmpty()) {
+            toolOutputs.clear()
+            val tp = buildToolTaskPackage(goal, toolCalls)
+            latestTaskPackage = tp
+            toolCalls.forEach { (toolName, args) ->
+                val cp = Checkpoint(id = "tool-$toolName-${System.currentTimeMillis()}", label = "Run $toolName", reason = "Worker tool call: $toolName", artifactPaths = emptyList())
+                taskQueue.addLast(AgentTask.ToolCall(taskPackage = tp, checkpoint = cp, toolName = toolName, toolArgs = args))
+            }
+            val previewCp = tp.checkpoints.first { it.id == CHECKPOINT_PREVIEW }
+            val publishCp = tp.checkpoints.first { it.id == CHECKPOINT_PUBLISH }
+            taskQueue.addLast(AgentTask.PreviewDraft(tp, previewCp))
+            taskQueue.addLast(AgentTask.PublishDraft(tp, publishCp))
+            taskQueue.addLast(AgentTask.Summarize(tp, "worker tool pipeline complete for: $goal"))
+            emit("[R.worker] ${toolCalls.size} tool(s) queued")
+            runMainLoop(goal)
+        } else {
+            val artifact = buildArtifact(goal, artifactFormat, text)
+            if (artifact.content.isNotBlank()) {
+                val tp = buildTaskPackage(goal, artifact)
+                latestTaskPackage = tp
+                val previewCp = tp.checkpoints.first { it.id == CHECKPOINT_PREVIEW }
+                val publishCp = tp.checkpoints.first { it.id == CHECKPOINT_PUBLISH }
+                taskQueue.addLast(AgentTask.PreviewDraft(tp, previewCp))
+                taskQueue.addLast(AgentTask.PublishDraft(tp, publishCp))
+                taskQueue.addLast(AgentTask.Summarize(tp, "worker draft complete for: $goal"))
+                emit("[R.worker] draft queued for preview/publish")
+                runMainLoop(goal)
+            }
+        }
+    }
+
+    private suspend fun runReviewer(goal: String) {
+        val prompt = RolePrompts.systemPrompt(AgentRole.REVIEWER, roleContext)
+        val response = planRequest(ModelRequest(prompt = prompt))
+        val text = response.text?.trim().orEmpty()
+        roleContext = orchestrator.onOutput(roleContext, RoleOutput(AgentRole.REVIEWER, text))
+        emit("[R] reviewer: ${text.take(120)}")
+    }
+
+    private suspend fun runCritic(goal: String) {
+        val prompt = RolePrompts.systemPrompt(AgentRole.CRITIC, roleContext)
+        val response = planRequest(ModelRequest(prompt = prompt))
+        val text = response.text?.trim().orEmpty()
+        roleContext = orchestrator.onOutput(roleContext, RoleOutput(AgentRole.CRITIC, text))
+        emit("[R] critic: ${text.take(120)}")
+    }
+
+    private suspend fun runAuditor(goal: String) {
+        val prompt = RolePrompts.systemPrompt(AgentRole.AUDITOR, roleContext)
+        val response = planRequest(ModelRequest(prompt = prompt))
+        val text = response.text?.trim().orEmpty()
+        roleContext = orchestrator.onOutput(roleContext, RoleOutput(AgentRole.AUDITOR, text))
+        emit("[R] auditor: ${text.take(120)}")
+    }
+
     fun approve() {
         approvalChannel.trySend(true)
     }
 
     fun reject() {
+        cancelled = true
         approvalChannel.trySend(false)
     }
 
     private suspend fun nextTask(goal: String): AgentTask? {
-        if (taskQueue.isEmpty()) {
-            if (_resumeOnly) return null  // resume mode: stop after queue drained, don't replan
-            _planCount++
-            if (_planCount > maxPlanningRounds) {
-                emit("[E6] max planning rounds ($maxPlanningRounds) reached, stopping")
-                shouldStop = true
-                return null
-            }
-            val artifactFormat = inferArtifactFormat(goal)
-            val context = repoContext()
-            val response = planRequest(ModelRequest(prompt = buildPlanningPrompt(goal, artifactFormat, context)))
-            if (!response.isSuccess) {
-                shouldStop = true
-                onLifecycleEvent(
-                    AgentLifecycleEvent.Failed(
-                        goal = goal,
-                        stage = "plan",
-                        message = response.error ?: "unknown planning error",
-                        retryable = true,
-                    )
-                )
-                emit("[E1] unable to create plan: ${response.error}")
-                return null
-            }
-
-            val planText = response.text?.trim().orEmpty()
-            val toolCalls = parseToolCalls(planText)
-
-            if (toolCalls.isNotEmpty()) {
-                toolOutputs.clear()
-                val tp = buildToolTaskPackage(goal, toolCalls)
-                latestTaskPackage = tp
-                toolCalls.forEach { (toolName, args) ->
-                    val cp = Checkpoint(id = "tool-$toolName-${System.currentTimeMillis()}", label = "Approve $toolName", reason = "Tool call: $toolName", artifactPaths = emptyList())
-                    taskQueue.addLast(AgentTask.ToolCall(taskPackage = tp, checkpoint = cp, toolName = toolName, toolArgs = args))
-                }
-                val previewCheckpoint = tp.checkpoints.first { it.id == CHECKPOINT_PREVIEW }
-                val publishCheckpoint = tp.checkpoints.first { it.id == CHECKPOINT_PUBLISH }
-                taskQueue.addLast(AgentTask.PreviewDraft(tp, previewCheckpoint))
-                taskQueue.addLast(AgentTask.PublishDraft(tp, publishCheckpoint))
-                taskQueue.addLast(AgentTask.Summarize(tp, "agent tool pipeline complete for: $goal"))
-                emit("[C1.t] seeded ${toolCalls.size} tool(s) + preview/publish: ${taskQueue.size} total")
-            } else {
-                val artifact = buildArtifact(goal, artifactFormat, planText)
-                if (artifact.content.isBlank()) {
-                    shouldStop = true
-                    onLifecycleEvent(
-                        AgentLifecycleEvent.Failed(
-                            goal = goal,
-                            stage = "plan",
-                            message = "generated draft was empty",
-                            retryable = true,
-                        )
-                    )
-                    emit("[E1.1] generated draft was empty")
-                    return null
-                }
-
-                val taskPackage = buildTaskPackage(goal, artifact)
-                latestTaskPackage = taskPackage
-                val previewCheckpoint = taskPackage.checkpoints.first { it.id == CHECKPOINT_PREVIEW }
-                val publishCheckpoint = taskPackage.checkpoints.first { it.id == CHECKPOINT_PUBLISH }
-
-                taskQueue.addLast(AgentTask.PreviewDraft(taskPackage, previewCheckpoint))
-                taskQueue.addLast(AgentTask.PublishDraft(taskPackage, publishCheckpoint))
-                taskQueue.addLast(AgentTask.Summarize(taskPackage, "agent artifact pipeline complete for: $goal"))
-                emit("[C1.1] seeded ${taskQueue.size} execution steps")
-            }
-
-            if (stopAfterPlanningProvider()) {
-                emit("[C1.2] plan generated, stopping as requested by PLAN mode")
-                shouldStop = true
-                return null
-            }
-        }
-
+        if (taskQueue.isEmpty()) return null
         return taskQueue.removeFirstOrNull()
     }
 
@@ -358,32 +477,18 @@ class AgentLoop(
         val tool = toolRegistry.get(task.toolName)
         if (tool == null) {
             shouldStop = true
-            onLifecycleEvent(
-                AgentLifecycleEvent.Failed(
-                    goal = task.taskPackage.goal,
-                    stage = "tool",
-                    message = "unknown tool: ${task.toolName}",
-                    retryable = true,
-                    taskPackage = task.taskPackage,
-                    checkpointId = task.checkpoint.id,
-                )
-            )
+            onLifecycleEvent(AgentLifecycleEvent.Failed(goal = task.taskPackage.goal, stage = "tool",
+                message = "unknown tool: ${task.toolName}", retryable = true,
+                taskPackage = task.taskPackage, checkpointId = task.checkpoint.id))
             emit("[E4] unknown tool: ${task.toolName}")
             return
         }
         val result = tool.invoke(task.toolArgs)
         if (!result.isSuccess) {
             shouldStop = true
-            onLifecycleEvent(
-                AgentLifecycleEvent.Failed(
-                    goal = task.taskPackage.goal,
-                    stage = "tool",
-                    message = result.error ?: "tool ${task.toolName} failed",
-                    retryable = true,
-                    taskPackage = task.taskPackage,
-                    checkpointId = task.checkpoint.id,
-                )
-            )
+            onLifecycleEvent(AgentLifecycleEvent.Failed(goal = task.taskPackage.goal, stage = "tool",
+                message = result.error ?: "tool ${task.toolName} failed", retryable = true,
+                taskPackage = task.taskPackage, checkpointId = task.checkpoint.id))
             emit("[E4] tool ${task.toolName} failed: ${result.error}")
             return
         }
@@ -397,24 +502,13 @@ class AgentLoop(
 
     private fun AgentTask.toExecutionEvent(): AgentLifecycleEvent = when (this) {
         is AgentTask.PreviewDraft -> AgentLifecycleEvent.Executing(
-            taskPackage = taskPackage,
-            currentCheckpointId = checkpoint.id,
-            stepLabel = describeTask(this),
-        )
+            taskPackage = taskPackage, currentCheckpointId = checkpoint.id, stepLabel = describeTask(this))
         is AgentTask.PublishDraft -> AgentLifecycleEvent.Publishing(
-            taskPackage = taskPackage,
-            currentCheckpointId = checkpoint.id,
-        )
+            taskPackage = taskPackage, currentCheckpointId = checkpoint.id)
         is AgentTask.ToolCall -> AgentLifecycleEvent.Executing(
-            taskPackage = taskPackage,
-            currentCheckpointId = checkpoint.id,
-            stepLabel = describeTask(this),
-        )
+            taskPackage = taskPackage, currentCheckpointId = checkpoint.id, stepLabel = describeTask(this))
         is AgentTask.Summarize -> AgentLifecycleEvent.Executing(
-            taskPackage = taskPackage,
-            currentCheckpointId = null,
-            stepLabel = describeTask(this),
-        )
+            taskPackage = taskPackage, currentCheckpointId = null, stepLabel = describeTask(this))
     }
 
     private suspend fun runEditGatePreview(taskPackage: TaskPackage, checkpoint: Checkpoint) {
@@ -427,22 +521,14 @@ class AgentLoop(
         val snapshot = editGate.snapshot(path = artifact.path, content = original)
         val diff = editGate.diff(snapshot, artifact.content)
         emit("[C5.1] diff preview\n$diff")
-        val applied = editGate.apply(snapshot, artifact.content).getOrElse { error ->
+        editGate.apply(snapshot, artifact.content).getOrElse { error ->
             shouldStop = true
-            onLifecycleEvent(
-                AgentLifecycleEvent.Failed(
-                    goal = taskPackage.goal,
-                    stage = "preview",
-                    message = error.message ?: "edit gate rejected",
-                    retryable = true,
-                    taskPackage = taskPackage,
-                    checkpointId = checkpoint.id,
-                )
-            )
+            onLifecycleEvent(AgentLifecycleEvent.Failed(goal = taskPackage.goal, stage = "preview",
+                message = error.message ?: "edit gate rejected", retryable = true,
+                taskPackage = taskPackage, checkpointId = checkpoint.id))
             emit("[E2] edit gate rejected: ${error.message}")
-            return
         }
-        emit("[C5.2] edit gate accepted ${applied.lines().size} lines")
+        emit("[C5.2] edit gate accepted ${artifact.content.lines().size} lines")
     }
 
     private fun resolveArtifact(taskPackage: TaskPackage): Artifact {
@@ -452,36 +538,23 @@ class AgentLoop(
                 val eq = kv.indexOf('=')
                 if (eq > 0) kv.substring(0, eq) to kv.substring(eq + 1) else "" to kv
             }
-            return Artifact(
-                path = parts["path"] ?: taskPackage.artifacts.first().path,
+            return Artifact(path = parts["path"] ?: taskPackage.artifacts.first().path,
                 mime = parts["mime"] ?: taskPackage.artifacts.first().mime,
                 content = parts["content"] ?: taskPackage.artifacts.first().content,
-                summary = parts["summary"] ?: taskPackage.artifacts.first().summary,
-            )
+                summary = parts["summary"] ?: taskPackage.artifacts.first().summary)
         }
         return taskPackage.artifacts.first()
     }
 
     private suspend fun runPublishDraft(taskPackage: TaskPackage, checkpoint: Checkpoint) {
         val resolvedArtifact = resolveArtifact(taskPackage)
-        val updatedPackage = taskPackage.copy(
-            artifacts = listOf(resolvedArtifact),
-            planSummary = if (toolOutputs.isNotEmpty()) "Tool pipeline: ${toolOutputs.keys.joinToString(" -> ")}" else taskPackage.planSummary,
-        )
-        val result = runCatching {
-            publishDraft(updatedPackage)
-        }.getOrElse { error ->
+        val updatedPackage = taskPackage.copy(artifacts = listOf(resolvedArtifact),
+            planSummary = if (toolOutputs.isNotEmpty()) "Tool pipeline: ${toolOutputs.keys.joinToString(" -> ")}" else taskPackage.planSummary)
+        val result = runCatching { publishDraft(updatedPackage) }.getOrElse { error ->
             shouldStop = true
-            onLifecycleEvent(
-                AgentLifecycleEvent.Failed(
-                    goal = taskPackage.goal,
-                    stage = "publish",
-                    message = error.message ?: "publish failed",
-                    retryable = true,
-                    taskPackage = updatedPackage,
-                    checkpointId = checkpoint.id,
-                )
-            )
+            onLifecycleEvent(AgentLifecycleEvent.Failed(goal = taskPackage.goal, stage = "publish",
+                message = error.message ?: "publish failed", retryable = true,
+                taskPackage = updatedPackage, checkpointId = checkpoint.id))
             emit("[E3] publish failed: ${error.message}")
             return
         }
@@ -489,72 +562,43 @@ class AgentLoop(
     }
 
     private fun describeTask(task: AgentTask): String = when (task) {
-        is AgentTask.PreviewDraft -> "preview ${task.taskPackage.artifacts.first().path} for ${task.taskPackage.goal}"
-        is AgentTask.PublishDraft -> "publish ${task.taskPackage.publishIntent.branchName} PR for ${task.taskPackage.goal}"
+        is AgentTask.PreviewDraft -> "preview ${task.taskPackage.artifacts.firstOrNull()?.path ?: "?"} for ${task.taskPackage.goal}"
+        is AgentTask.PublishDraft -> "publish ${task.taskPackage.publishIntent.branchName} PR"
         is AgentTask.ToolCall -> "tool ${task.toolName} for ${task.taskPackage.goal}"
         is AgentTask.Summarize -> task.text
+    }
+
+    private fun buildFinalSummary(goal: String): String = buildString {
+        appendLine("Multi-role agent complete for: $goal")
+        appendLine(orchestrator.milestoneProgress(roleContext))
     }
 
     private fun buildTaskPackage(goal: String, artifact: DraftArtifact): TaskPackage {
         val createdAtMs = System.currentTimeMillis()
         val branchName = artifactBranchName(artifact.path)
         return TaskPackage(
-            id = "task-${createdAtMs.toString().takeLast(8)}",
-            goal = goal,
-            createdAtMs = createdAtMs,
+            id = "task-${createdAtMs.toString().takeLast(8)}", goal = goal, createdAtMs = createdAtMs,
             artifactKind = artifactKind(artifact.format),
-            planSummary = "Generate, review, and publish a draft artifact for: $goal",
-            artifacts = listOf(
-                Artifact(
-                    path = artifact.path,
-                    mime = artifactMime(artifact.format),
-                    content = artifact.content,
-                    summary = artifactSummary(goal, artifact.format),
-                )
-            ),
+            planSummary = "Multi-role pipeline for: $goal",
+            artifacts = listOf(Artifact(path = artifact.path, mime = artifactMime(artifact.format),
+                content = artifact.content, summary = artifactSummary(goal, artifact.format))),
             checkpoints = listOf(
-                Checkpoint(
-                    id = CHECKPOINT_PREVIEW,
-                    label = "Review generated artifact",
-                    reason = "Inspect the draft before any publish action runs",
-                    artifactPaths = listOf(artifact.path),
-                ),
-                Checkpoint(
-                    id = CHECKPOINT_PUBLISH,
-                    label = "Approve GitHub publish",
-                    reason = "Confirm the artifact and publish intent before writing to GitHub",
-                    artifactPaths = listOf(artifact.path),
-                ),
+                Checkpoint(id = CHECKPOINT_PREVIEW, label = "Review artifact", reason = "Inspect before publish", artifactPaths = listOf(artifact.path)),
+                Checkpoint(id = CHECKPOINT_PUBLISH, label = "Approve GitHub publish", reason = "Confirm before writing to GitHub", artifactPaths = listOf(artifact.path)),
             ),
-            publishIntent = PublishIntent(
-                baseBranch = baseBranchProvider(),
-                branchName = branchName,
+            publishIntent = PublishIntent(baseBranch = baseBranchProvider(), branchName = branchName,
                 commitMessage = "docs(agent): add ${artifact.path.substringAfterLast('/').substringBeforeLast('.')} draft",
-                prTitle = "agent: $goal",
-                prBody = "Automated draft generated by OpenChat Android agent for goal:\n\n$goal",
-            ),
-            rollbackHints = listOf(
-                "Close the generated PR if the draft should not ship.",
-                "Delete branch $branchName if the publish attempt was accidental.",
-            ),
+                prTitle = "agent: $goal", prBody = "Multi-role agent draft for:\n\n$goal"),
+            rollbackHints = listOf("Close the PR if the draft should not ship.", "Delete branch $branchName if publish was accidental."),
         )
     }
 
     private fun buildFallbackTaskPackage(goal: String): TaskPackage = TaskPackage(
-        id = "task-fallback",
-        goal = goal,
-        createdAtMs = System.currentTimeMillis(),
-        artifactKind = ArtifactKind.MarkdownDraft,
-        planSummary = "Fallback task package",
-        artifacts = emptyList(),
-        checkpoints = emptyList(),
-        publishIntent = PublishIntent(
-            baseBranch = baseBranchProvider(),
-            branchName = "mobile-agent/fallback",
-            commitMessage = "docs(agent): fallback draft",
-            prTitle = "agent: $goal",
-            prBody = goal,
-        ),
+        id = "task-fallback", goal = goal, createdAtMs = System.currentTimeMillis(),
+        artifactKind = ArtifactKind.MarkdownDraft, planSummary = "Fallback task package",
+        artifacts = emptyList(), checkpoints = emptyList(),
+        publishIntent = PublishIntent(baseBranch = baseBranchProvider(), branchName = "mobile-agent/fallback",
+            commitMessage = "docs(agent): fallback draft", prTitle = "agent: $goal", prBody = goal),
         rollbackHints = emptyList(),
     )
 
@@ -584,58 +628,21 @@ class AgentLoop(
 
     private fun inferArtifactFormat(goal: String): ArtifactFormat {
         val normalized = goal.lowercase()
-        return if (
-            normalized.contains("json") ||
-            normalized.contains("config") ||
-            normalized.contains("sdui")
-        ) {
+        return if (normalized.contains("json") || normalized.contains("config") || normalized.contains("sdui")) {
             ArtifactFormat.JSON
-        } else if (
-            normalized.contains("kotlin") ||
-            normalized.contains("kt") ||
-            normalized.contains("android class") ||
-            normalized.contains("code")
-        ) {
+        } else if (normalized.contains("kotlin") || normalized.contains("kt") || normalized.contains("android class") || normalized.contains("code")) {
             ArtifactFormat.KOTLIN
         } else {
             ArtifactFormat.MARKDOWN
         }
     }
 
-    private fun buildPlanningPrompt(goal: String, format: ArtifactFormat, context: String): String {
-        val contextSnippet = if (context.isNotBlank()) "\n\nRepository Context:\n$context" else ""
-        val toolSnippet = if (toolRegistry.hasTools()) {
-            "\n\nAvailable tools:\n${toolRegistry.listDescriptions()}\nTo use a tool, add a line starting with TOOL: followed by the tool name and arguments. e.g. TOOL: read_file path=README.md"
-        } else ""
-        val body = when (format) {
-            ArtifactFormat.MARKDOWN ->
-                "Create a concise markdown implementation draft for this mobile coding goal: $goal$contextSnippet"
-            ArtifactFormat.JSON ->
-                "Create a concise JSON configuration draft for this mobile coding goal: $goal. Return JSON only.$contextSnippet"
-            ArtifactFormat.KOTLIN ->
-                "Create a concise Kotlin Android code draft for this mobile coding goal: $goal. Return Kotlin code only without markdown fences.$contextSnippet"
-        }
-        return "$body$toolSnippet"
-    }
-
     private fun buildArtifact(goal: String, format: ArtifactFormat, rawContent: String): DraftArtifact {
         val slug = slugify(goal)
         return when (format) {
-            ArtifactFormat.MARKDOWN -> DraftArtifact(
-                path = "mobile-agent-output/$slug.md",
-                content = rawContent.ensureHeading(goal),
-                format = format,
-            )
-            ArtifactFormat.JSON -> DraftArtifact(
-                path = "mobile-agent-output/$slug.json",
-                content = rawContent.ensureJsonDraft(goal),
-                format = format,
-            )
-            ArtifactFormat.KOTLIN -> DraftArtifact(
-                path = "mobile-agent-output/$slug.kt",
-                content = rawContent.ensureKotlinDraft(goal),
-                format = format,
-            )
+            ArtifactFormat.MARKDOWN -> DraftArtifact(path = "mobile-agent-output/$slug.md", content = rawContent.ensureHeading(goal), format = format)
+            ArtifactFormat.JSON -> DraftArtifact(path = "mobile-agent-output/$slug.json", content = rawContent.ensureJsonDraft(goal), format = format)
+            ArtifactFormat.KOTLIN -> DraftArtifact(path = "mobile-agent-output/$slug.kt", content = rawContent.ensureKotlinDraft(goal), format = format)
         }
     }
 
@@ -645,21 +652,14 @@ class AgentLoop(
     private fun String.ensureJsonDraft(goal: String): String {
         val trimmed = trim()
         if (trimmed.startsWith("{") && trimmed.endsWith("}")) return trimmed
-        return "{\n  \"goal\": \"${goal.replace("\"", "'")}\",\n  \"draft\": \"${trimmed.replace("\"", "'")}\"\n}"
+        return "{\n\"goal\": \"${goal.replace("\"", "'")}\",\n\"draft\": \"${trimmed.replace("\"", "'")}\"\n}"
     }
 
     private fun String.ensureKotlinDraft(goal: String): String {
-        val trimmed = trim()
-            .removePrefix("```kotlin")
-            .removePrefix("```")
-            .removeSuffix("```")
-            .trim()
+        val trimmed = trim().removePrefix("```kotlin").removePrefix("```").removeSuffix("```").trim()
         if (trimmed.startsWith("package ")) return trimmed
-        val className = slugify(goal)
-            .split('-')
-            .joinToString(separator = "") { part -> part.replaceFirstChar { it.uppercase() } }
-            .ifBlank { "AgentDraft" }
-        return "package ai.openchat.mobile.agent.generated\n\nclass $className {\n  val draft: String = \"${trimmed.replace("\"", "'")}\"\n}\n"
+        val className = slugify(goal).split('-').joinToString(separator = "") { part -> part.replaceFirstChar { it.uppercase() } }.ifBlank { "AgentDraft" }
+        return "package ai.openchat.mobile.agent.generated\n\nclass $className {\nval draft: String = \"${trimmed.replace("\"", "'")}\"\n}\n"
     }
 
     private fun parseToolCalls(planText: String): List<Pair<String, Map<String, String>>> {
@@ -678,9 +678,7 @@ class AgentLoop(
                     argsStr.split("\\s+".toRegex()).forEach { pair ->
                         val eqIndex = pair.indexOf('=')
                         if (eqIndex > 0) {
-                            val key = pair.substring(0, eqIndex).trim()
-                            val value = pair.substring(eqIndex + 1).trim()
-                            args[key] = value
+                            args[pair.substring(0, eqIndex).trim()] = pair.substring(eqIndex + 1).trim()
                         }
                     }
                 }
@@ -698,53 +696,38 @@ class AgentLoop(
         val branchName = "mobile-agent/tool-${createdAtMs.toString().takeLast(6)}"
         val toolSummary = toolCalls.joinToString(" -> ") { it.first }
         return TaskPackage(
-            id = "tool-${createdAtMs.toString().takeLast(8)}",
-            goal = goal,
-            createdAtMs = createdAtMs,
-            artifactKind = ArtifactKind.MarkdownDraft,
-            planSummary = "Tool pipeline: $toolSummary",
-            artifacts = listOf(
-                Artifact(
-                    path = "mobile-agent-output/tool-result.md",
-                    mime = "text/markdown",
-                    content = "# Tool Result\n\nGoal: $goal\n\nTool calls: $toolSummary\n",
-                    summary = "Tool execution result",
-                )
-            ),
+            id = "tool-${createdAtMs.toString().takeLast(8)}", goal = goal, createdAtMs = createdAtMs,
+            artifactKind = ArtifactKind.MarkdownDraft, planSummary = "Tool pipeline: $toolSummary",
+            artifacts = listOf(Artifact(path = "mobile-agent-output/tool-result.md", mime = "text/markdown",
+                content = "# Tool Result\n\nGoal: $goal\n\nTool calls: $toolSummary\n", summary = "Tool execution result")),
             checkpoints = listOf(
                 Checkpoint(id = CHECKPOINT_PREVIEW, label = "Review final artifact", reason = "Inspect the tool pipeline result", artifactPaths = listOf("mobile-agent-output/tool-result.md")),
-                Checkpoint(id = CHECKPOINT_PUBLISH, label = "Approve GitHub publish", reason = "Confirm the artifact before publishing", artifactPaths = listOf("mobile-agent-output/tool-result.md")),
+                Checkpoint(id = CHECKPOINT_PUBLISH, label = "Approve GitHub publish", reason = "Confirm before publishing", artifactPaths = listOf("mobile-agent-output/tool-result.md")),
             ),
-            publishIntent = PublishIntent(
-                baseBranch = baseBranchProvider(),
-                branchName = branchName,
-                commitMessage = "docs(agent): tool pipeline result for $goal",
-                prTitle = "agent: $goal",
-                prBody = "Automated tool pipeline result generated by OpenChat Android agent.\n\nTool calls: $toolSummary",
-            ),
-            rollbackHints = listOf("Close the generated PR if the result should not ship.", "Delete branch $branchName if the publish was accidental."),
+            publishIntent = PublishIntent(baseBranch = baseBranchProvider(), branchName = branchName,
+                commitMessage = "docs(agent): tool pipeline result for $goal", prTitle = "agent: $goal",
+                prBody = "Tool pipeline result.\n\nTool calls: $toolSummary"),
+            rollbackHints = listOf("Close the generated PR if unwanted.", "Delete branch $branchName if publish was accidental."),
         )
     }
 
     class ScriptedProvider : ModelProvider {
         override val id: String = "scripted-offline"
-
         override suspend fun ask(request: ModelRequest): ModelResponse {
             val prompt = request.prompt.lowercase()
-            val text = if (prompt.contains("json configuration draft") || prompt.contains("return json only")) {
-                "{\n  \"screen\": \"agent\",\n  \"goal\": \"demo\",\n  \"steps\": [\"inspect\", \"draft\", \"publish\"]\n}"
-            } else if (prompt.contains("kotlin android code draft") || prompt.contains("return kotlin code only")) {
-                "package ai.openchat.mobile.agent.generated\n\nclass DemoAgentDraft {\n  val summary: String = \"Generated Kotlin draft\"\n}\n"
-            } else {
-                listOf(
-                    "## Goal",
-                    request.prompt,
-                    "",
-                    "## Proposed Steps",
+            val text = when {
+                prompt.contains("you are the sentinel") -> "CATEGORY: other\nSUMMARY: Demo sentinel classification\nNEEDS_EXPLORATION: NO"
+                prompt.contains("you are the explorer") -> "- Current state: no relevant files found\n- Gap: nothing exists yet\n- Approach: create new draft"
+                prompt.contains("you are the orchestrator") -> "MILESTONE 1: Create initial draft\nTOOLS: none\nACCEPTANCE: draft exists\nPLAN_COMPLETE"
+                prompt.contains("you are the reviewer") -> "VERDICT: PASS\nREASONS: - Meets milestone requirements"
+                prompt.contains("you are the critic") -> "VERDICT: PASS\nGAPS: - No significant gaps found"
+                prompt.contains("you are the auditor") -> "VERDICT: APPROVE\nFINAL_ASSESSMENT: Solution satisfies the goal"
+                prompt.contains("json configuration draft") || prompt.contains("return json only") -> "{\n\"screen\": \"agent\",\n\"goal\": \"demo\"\n}"
+                prompt.contains("kotlin android code draft") || prompt.contains("return kotlin code only") -> "package ai.openchat.mobile.agent.generated\n\nclass DemoAgentDraft {\nval summary: String = \"Generated Kotlin draft\"\n}\n"
+                else -> listOf("## Goal", request.prompt, "", "## Proposed Steps",
                     "- inspect the target repository state",
                     "- generate a first-pass implementation draft",
-                    "- open a review PR after approval",
-                ).joinToString(separator = "\n")
+                    "- open a review PR after approval").joinToString(separator = "\n")
             }
             return ModelResponse(text = text)
         }

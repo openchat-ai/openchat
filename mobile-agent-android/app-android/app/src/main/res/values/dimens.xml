@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="radius_sm">8dp</dimen>
+    <dimen name="radius_md">12dp</dimen>
+    <dimen name="radius_lg">16dp</dimen>
+    <dimen name="radius_xl">22dp</dimen>
+    <dimen name="elevation_sm">1dp</dimen>
+    <dimen name="elevation_md">3dp</dimen>
+    <dimen name="avatar_size">32dp</dimen>
+    <dimen name="icon_size">24dp</dimen>
+    <dimen name="bubble_max_width">280dp</dimen>
+    <dimen name="chip_height">36dp</dimen>
+    <dimen name="send_size">44dp</dimen>
+</resources>

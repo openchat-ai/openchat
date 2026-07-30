@@ -70,13 +70,16 @@ class AgentService : Service() {
         val action = intent?.action
         val goal = intent?.getStringExtra("goal") ?: ""
 
+        val modeName = intent?.getStringExtra("mode") ?: RuntimeMode.AGENT.name
+        val mode = runCatching { RuntimeMode.valueOf(modeName) }.getOrDefault(RuntimeMode.AGENT)
+
         if (action == ACTION_START && goal.isNotBlank()) {
-            startLoop(goal)
+            startLoop(goal, mode)
         } else if (action == ACTION_RESUME) {
             val snapshot = persistenceManager.loadSnapshot()
             val tp = snapshot?.recovery?.pendingTaskPackage
             if (tp != null) {
-                resumeLoop(tp, snapshot.recovery.lastCheckpointId)
+                resumeLoop(tp, snapshot.recovery.lastCheckpointId, mode)
             } else {
                 serviceScope.launch {
                     AgentStatusHub.emitLog("[ERROR] Resume failed: No pending task package")
@@ -93,14 +96,14 @@ class AgentService : Service() {
         return START_NOT_STICKY
     }
 
-    private fun startLoop(goal: String) {
+    private fun startLoop(goal: String, mode: RuntimeMode = RuntimeMode.AGENT) {
         if (loopJob?.isActive == true) {
             serviceScope.launch {
                 AgentStatusHub.emitLog("[C0] start ignored: agent already active")
             }
             return
         }
-        agentLoop = buildAgentLoop(goal)
+        agentLoop = buildAgentLoop(goal, mode)
         loopJob = serviceScope.launch(Dispatchers.IO) {
             val self = coroutineContext[Job]
             try {
@@ -117,14 +120,14 @@ class AgentService : Service() {
         }
     }
 
-    private fun resumeLoop(taskPackage: TaskPackage, checkpointId: String?) {
+    private fun resumeLoop(taskPackage: TaskPackage, checkpointId: String?, mode: RuntimeMode = RuntimeMode.AGENT) {
         if (loopJob?.isActive == true) {
             serviceScope.launch {
                 AgentStatusHub.emitLog("[C0] resume ignored: agent already active")
             }
             return
         }
-        agentLoop = buildAgentLoop(taskPackage.goal)
+        agentLoop = buildAgentLoop(taskPackage.goal, mode)
         loopJob = serviceScope.launch(Dispatchers.IO) {
             val self = coroutineContext[Job]
             try {
@@ -155,11 +158,12 @@ class AgentService : Service() {
         return registry
     }
 
-    private fun buildAgentLoop(goal: String): AgentLoop {
+    private fun buildAgentLoop(goal: String, mode: RuntimeMode = RuntimeMode.AGENT): AgentLoop {
+        val isPlanMode = mode == RuntimeMode.PLAN
         return AgentLoop(
             goalProvider = { goal },
             baseBranchProvider = { settingsStore.load().github.baseBranch.ifBlank { "main" } },
-            stopAfterPlanningProvider = { false },
+            stopAfterPlanningProvider = { isPlanMode },
             maxPlanningRounds = 3,
             planRequest = { request ->
                 withContext(Dispatchers.IO) {
@@ -269,7 +273,8 @@ class AgentService : Service() {
             }
             is AgentLifecycleEvent.Idle -> AgentSessionState.Idle
             is AgentLifecycleEvent.Failed,
-            is AgentLifecycleEvent.Cancelled -> return
+            is AgentLifecycleEvent.Cancelled,
+            is AgentLifecycleEvent.RoleResult -> return
         }
         AgentStatusHub.updateState(newState)
         if (event !is AgentLifecycleEvent.Completed && event !is AgentLifecycleEvent.Idle) {

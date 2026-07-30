@@ -23,7 +23,17 @@
             android:textColor="@color/bubble_user_text"
             android:textSize="15sp"
             android:maxWidth="260dp"
-            android:lineSpacingExtra="3sp" />
+            android:lineSpacingExtra="3sp"
+            android:linksClickable="false" />
+
+        <TextView
+            android:id="@+id/tvTime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_secondary"
+            android:textSize="11sp"
+            android:paddingTop="2dp"
+            android:paddingHorizontal="4dp" />
     </LinearLayout>
 
     <ImageView

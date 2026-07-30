@@ -255,6 +255,7 @@ class MainActivity : AppCompatActivity() {
             val intent = Intent(this, AgentService::class.java).apply {
                 action = AgentService.ACTION_START
                 putExtra("goal", goal)
+                putExtra("mode", runtimeState.mode.name)
             }
             startService(intent)
         }

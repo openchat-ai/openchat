@@ -1,10 +1,17 @@
 package ai.openchat.mobile.agent
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 enum class MessageType {
     USER, AGENT, LOG
@@ -13,7 +20,8 @@ enum class MessageType {
 data class ChatMessage(
     val type: MessageType,
     val content: String,
-    val role: String? = null
+    val role: String? = null,
+    val time: Long = System.currentTimeMillis(),
 )
 
 class MessageAdapter(private val messages: List<ChatMessage>) :
@@ -55,17 +63,29 @@ class MessageAdapter(private val messages: List<ChatMessage>) :
 
     class UserViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         private val tvMessage: TextView = view.findViewById(R.id.tvMessage)
+        private val tvTime: TextView = view.findViewById(R.id.tvTime)
         fun bind(message: ChatMessage) {
             tvMessage.text = message.content
+            tvTime.text = formatTime(message.time)
+            itemView.setOnLongClickListener {
+                copyToClipboard(itemView.context, message.content)
+                true
+            }
         }
     }
 
     class AgentViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         private val tvRole: TextView = view.findViewById(R.id.tvRole)
         private val tvMessage: TextView = view.findViewById(R.id.tvMessage)
+        private val tvTime: TextView = view.findViewById(R.id.tvTime)
         fun bind(message: ChatMessage) {
             tvRole.text = message.role ?: "Assistant"
             tvMessage.text = message.content
+            tvTime.text = formatTime(message.time)
+            itemView.setOnLongClickListener {
+                copyToClipboard(itemView.context, message.content)
+                true
+            }
         }
     }
 
@@ -75,4 +95,13 @@ class MessageAdapter(private val messages: List<ChatMessage>) :
             tvLog.text = message.content
         }
     }
+}
+
+private val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+private fun formatTime(millis: Long): String = timeFormat.format(Date(millis))
+
+private fun copyToClipboard(context: Context, text: String) {
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    clipboard.setPrimaryClip(ClipData.newPlainText(null, text))
+    Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
 }
