@@ -63,6 +63,7 @@ class AgentLoop(
     private val goalProvider: () -> String = { "Demo goal" },
     private val baseBranchProvider: () -> String = { "main" },
     private val stopAfterPlanningProvider: () -> Boolean = { false },
+    private val maxPlanningRounds: Int = 3,
     private val planRequest: suspend (ModelRequest) -> ModelResponse = { request ->
         ScriptedProvider().ask(request)
     },
@@ -132,6 +133,7 @@ class AgentLoop(
     private var cancelled = false
     private var latestTaskPackage: TaskPackage? = null
     private var _resumeOnly = false
+    private var _planCount = 0
     private val toolOutputs = mutableMapOf<String, String>()
 
     suspend fun run() {
@@ -151,6 +153,7 @@ class AgentLoop(
         cancelled = false
         latestTaskPackage = null
         approvalChannel = Channel<Boolean>(capacity = 1)  // fresh channel per run, no stale data
+        _planCount = 0
         _state.value = AgentState.RUNNING
         onLifecycleEvent(AgentLifecycleEvent.Planning(goal))
         emit("[C1] agent loop started: $goal")
@@ -265,6 +268,12 @@ class AgentLoop(
     private suspend fun nextTask(goal: String): AgentTask? {
         if (taskQueue.isEmpty()) {
             if (_resumeOnly) return null  // resume mode: stop after queue drained, don't replan
+            _planCount++
+            if (_planCount > maxPlanningRounds) {
+                emit("[E6] max planning rounds ($maxPlanningRounds) reached, stopping")
+                shouldStop = true
+                return null
+            }
             val artifactFormat = inferArtifactFormat(goal)
             val context = repoContext()
             val response = planRequest(ModelRequest(prompt = buildPlanningPrompt(goal, artifactFormat, context)))

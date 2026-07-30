@@ -160,6 +160,7 @@ class AgentService : Service() {
             goalProvider = { goal },
             baseBranchProvider = { settingsStore.load().github.baseBranch.ifBlank { "main" } },
             stopAfterPlanningProvider = { false },
+            maxPlanningRounds = 3,
             planRequest = { request ->
                 withContext(Dispatchers.IO) {
                     val settings = settingsStore.load()
