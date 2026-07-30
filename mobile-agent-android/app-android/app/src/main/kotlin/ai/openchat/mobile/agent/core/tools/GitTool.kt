@@ -3,7 +3,13 @@ package ai.openchat.mobile.agent.core.tools
 import ai.openchat.mobile.agent.core.github.GitHubClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.BufferedReader
 import java.io.File
+import java.io.InputStreamReader
+import java.net.HttpURLConnection
+import java.net.URL
 
 class GitPushTool(
     private val baseDir: File,
@@ -40,6 +46,75 @@ class GitPushTool(
         } catch (e: Exception) {
             ToolResult(output = "", error = "git_push failed: ${e.message}")
         }
+    }
+}
+
+class CiStatusTool(
+    private val owner: String,
+    private val repo: String,
+    private val token: String,
+) : Tool {
+    override val name: String = "ci_status"
+    override val description: String = "Check latest CI run status for a branch. Args: branch (required)"
+
+    override suspend fun invoke(args: Map<String, String>): ToolResult = withContext(Dispatchers.IO) {
+        val branch = args["branch"] ?: return@withContext ToolResult(output = "", error = "ci_status requires branch")
+        try {
+            val runsJson = fetchJson(token, "https://api.github.com/repos/$owner/$repo/actions/runs?branch=$branch&per_page=1")
+            val workflowRuns = runsJson.optJSONArray("workflow_runs") ?: JSONArray()
+            if (workflowRuns.length() == 0) return@withContext ToolResult(output = "no CI runs found for branch: $branch")
+
+            val run = workflowRuns.getJSONObject(0)
+            val runId = run.getLong("id")
+            val status = run.optString("status", "unknown")
+            val conclusion = run.optString("conclusion", "null")
+            val htmlUrl = run.optString("html_url", "")
+            val runName = run.optString("name", "unknown")
+
+            val jobsJson = fetchJson(token, "https://api.github.com/repos/$owner/$repo/actions/runs/$runId/jobs")
+            val jobs = jobsJson.optJSONArray("jobs") ?: JSONArray()
+            val jobDetails = buildString {
+                for (i in 0 until jobs.length()) {
+                    val job = jobs.getJSONObject(i)
+                    val jName = job.optString("name", "?")
+                    val jStatus = job.optString("status", "?")
+                    val jConclusion = job.optString("conclusion", "null")
+                    appendLine("  $jName: $jStatus -> $jConclusion")
+                }
+            }
+
+            val output = buildString {
+                appendLine("CI Status for branch '$branch':")
+                appendLine("  Run: $runName (#$runId)")
+                appendLine("  Status: $status")
+                appendLine("  Conclusion: $conclusion")
+                appendLine("  URL: $htmlUrl")
+                if (jobDetails.isNotBlank()) appendLine("  Jobs:\n$jobDetails")
+            }
+            ToolResult(output = output)
+        } catch (e: Exception) {
+            ToolResult(output = "", error = "ci_status error: ${e.message}")
+        }
+    }
+}
+
+private fun fetchJson(token: String, urlStr: String): JSONObject {
+    val url = URL(urlStr)
+    val connection = (url.openConnection() as HttpURLConnection).apply {
+        requestMethod = "GET"
+        connectTimeout = 10000
+        readTimeout = 20000
+        setRequestProperty("Authorization", "Bearer $token")
+        setRequestProperty("Accept", "application/vnd.github+json")
+        setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
+        setRequestProperty("User-Agent", "OpenChat-Android-Agent")
+    }
+    return try {
+        val stream = if (connection.responseCode in 200..299) connection.inputStream else connection.errorStream
+        val text = if (stream == null) "" else BufferedReader(InputStreamReader(stream)).use { it.readText() }
+        if (text.isBlank()) JSONObject() else JSONObject(text)
+    } finally {
+        connection.disconnect()
     }
 }
 

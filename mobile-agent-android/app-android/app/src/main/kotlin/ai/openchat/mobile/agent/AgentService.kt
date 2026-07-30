@@ -24,6 +24,9 @@ import ai.openchat.mobile.agent.core.github.CommitFile
 import ai.openchat.mobile.agent.core.persistence.PersistenceManager
 import ai.openchat.mobile.agent.core.tools.ToolRegistry
 import ai.openchat.mobile.agent.core.tools.createGitHubTools
+import ai.openchat.mobile.agent.core.tools.createLocalFileTools
+import ai.openchat.mobile.agent.core.tools.createGitTools
+import ai.openchat.mobile.agent.core.tools.CiStatusTool
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -144,9 +147,11 @@ class AgentService : Service() {
             val s = settingsStore.load()
             GitHubClient(s.github.owner, s.github.repo, s.github.token)
         }
+        val settings = settingsStore.load()
         registry.registerAll(createGitHubTools(clientProvider))
         registry.registerAll(createLocalFileTools(filesDir))
         registry.registerAll(createGitTools(filesDir, clientProvider))
+        registry.register(CiStatusTool(settings.github.owner, settings.github.repo, settings.github.token))
         return registry
     }
 
