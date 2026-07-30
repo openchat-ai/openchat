@@ -197,45 +197,7 @@ class AgentService : Service() {
             onLifecycleEvent = { event ->
                 updateStateFromEvent(event)
             },
-            repoContext = {
-                withContext(Dispatchers.IO) {
-                    val settings = settingsStore.load()
-                    if (!settings.github.isComplete) return@withContext ""
-
-                    val client = GitHubClient(
-                        settings.github.owner,
-                        settings.github.repo,
-                        settings.github.token,
-                    )
-                    val baseBranch = settings.github.baseBranch.ifBlank { "main" }
-
-                    AgentStatusHub.emitLog("[AGENT] discovering repository...")
-                    val headSha = client.getBranchHeadSha(baseBranch).getOrNull()
-                        ?: return@withContext ""
-                    val files = GitHubDiscovery.fetchTree(
-                        settings.github.token,
-                        settings.github.owner,
-                        settings.github.repo,
-                        headSha,
-                        recursive = true,
-                    ).getOrNull() ?: emptyList()
-
-                    val fileListStr = files.take(50).joinToString("\n") { "- $it" }
-                    var context = "Files in repository:\n$fileListStr"
-
-                    val targetFile = files.find {
-                        goal.contains(it.substringAfterLast('/'), ignoreCase = true)
-                    }
-                    if (targetFile != null) {
-                        AgentStatusHub.emitLog("[AGENT] reading $targetFile for context...")
-                        val content = client.fetchFileContent(targetFile, baseBranch).getOrNull()
-                        if (content != null) {
-                            context += "\n\nContent of $targetFile:\n$content"
-                        }
-                    }
-                    context
-                }
-            },
+            repoContext = { "" },
             toolRegistry = buildToolRegistry(),
         ).also { loop ->
             serviceScope.launch {

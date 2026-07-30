@@ -538,8 +538,9 @@ class MainActivity : AppCompatActivity() {
         
         val etGithubToken = view.findViewById<EditText>(R.id.etGithubToken).apply { setText(settings.github.token) }
         val etGithubOwner = view.findViewById<EditText>(R.id.etGithubOwner).apply { setText(settings.github.owner) }
-        val btnFetchRepos = view.findViewById<Button>(R.id.btnFetchRepos)
+        val btnFetchOwners = view.findViewById<Button>(R.id.btnFetchOwners)
         val etGithubRepo = view.findViewById<EditText>(R.id.etGithubRepo).apply { setText(settings.github.repo) }
+        val btnFetchRepos = view.findViewById<Button>(R.id.btnFetchRepos)
         val etGithubBaseBranch = view.findViewById<EditText>(R.id.etGithubBaseBranch).apply { setText(settings.github.baseBranch) }
         val btnFetchBranches = view.findViewById<Button>(R.id.btnFetchBranches)
 
@@ -566,19 +567,18 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        btnFetchRepos.setOnClickListener {
+        btnFetchOwners.setOnClickListener {
             val token = etGithubToken.text.toString().trim()
-            val owner = etGithubOwner.text.toString().trim()
-            if (token.isBlank() || owner.isBlank()) {
-                appendConversation("[CFG] Token and Owner required")
+            if (token.isBlank()) {
+                appendConversation("[CFG] Token required")
                 return@setOnClickListener
             }
             lifecycleScope.launch {
-                btnFetchRepos.isEnabled = false
-                btnFetchRepos.text = "..."
+                btnFetchOwners.isEnabled = false
+                btnFetchOwners.text = "..."
                 val result = withContext(Dispatchers.IO) { GitHubDiscovery.fetchOwners(token) }
-                btnFetchRepos.isEnabled = true
-                btnFetchRepos.text = "▼"
+                btnFetchOwners.isEnabled = true
+                btnFetchOwners.text = "▼"
                 result.onSuccess { owners ->
                     if (owners.isEmpty()) {
                         appendConversation("[CFG] No owners found")
@@ -594,6 +594,37 @@ class MainActivity : AppCompatActivity() {
                         .setNegativeButton(android.R.string.cancel, null)
                         .show()
                 }.onFailure { e -> appendConversation("[CFG] Owner fetch failed: ${e.message}") }
+            }
+        }
+
+        btnFetchRepos.setOnClickListener {
+            val token = etGithubToken.text.toString().trim()
+            val owner = etGithubOwner.text.toString().trim()
+            if (token.isBlank() || owner.isBlank()) {
+                appendConversation("[CFG] Token and Owner required")
+                return@setOnClickListener
+            }
+            lifecycleScope.launch {
+                btnFetchRepos.isEnabled = false
+                btnFetchRepos.text = "..."
+                val result = withContext(Dispatchers.IO) { GitHubDiscovery.fetchRepos(token, owner) }
+                btnFetchRepos.isEnabled = true
+                btnFetchRepos.text = "▼"
+                result.onSuccess { repos ->
+                    if (repos.isEmpty()) {
+                        appendConversation("[CFG] No repos found")
+                        return@launch
+                    }
+                    AlertDialog.Builder(this@MainActivity)
+                        .setTitle("Select Repo")
+                        .setItems(repos.toTypedArray()) { _, which ->
+                            etGithubRepo.setText(repos[which])
+                            etGithubBaseBranch.setText("")
+                            autoFetchBranches(token, owner, repos[which], etGithubBaseBranch, btnFetchBranches)
+                        }
+                        .setNegativeButton(android.R.string.cancel, null)
+                        .show()
+                }.onFailure { e -> appendConversation("[CFG] Repo fetch failed: ${e.message}") }
             }
         }
 
@@ -647,6 +678,24 @@ class MainActivity : AppCompatActivity() {
                 appendConversation(getString(R.string.log_settings_saved))
             }
             .show()
+    }
+
+    private fun autoFetchBranches(token: String, owner: String, repo: String, etBranch: EditText, btn: Button) {
+        lifecycleScope.launch {
+            btn.isEnabled = false
+            btn.text = "..."
+            val result = withContext(Dispatchers.IO) { GitHubDiscovery.fetchBranches(token, owner, repo) }
+            btn.isEnabled = true
+            btn.text = "▼"
+            result.onSuccess { branches ->
+                if (branches.isEmpty()) return@launch
+                AlertDialog.Builder(this@MainActivity)
+                    .setTitle("Select Base Branch")
+                    .setItems(branches.toTypedArray()) { _, which -> etBranch.setText(branches[which]) }
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show()
+            }.onFailure { /* silent */ }
+        }
     }
 
     private fun dispatch(action: RuntimeAction) {
@@ -809,10 +858,14 @@ class MainActivity : AppCompatActivity() {
         val btnReject = view.findViewById<Button>(R.id.btnSheetReject)
         
         tvDetails.text = buildString {
-            append("Checkpoint: ${state.currentCheckpoint.label}\n")
-            append("Artifacts:\n")
+            appendLine("${state.currentCheckpoint.label}")
+            appendLine()
             state.taskPackage.artifacts.forEach { art ->
-                append("- ${art.path} (${art.mime})\n")
+                appendLine("File: ${art.path}")
+                val lines = art.content.lines()
+                val preview = if (lines.size > 200) lines.take(200) + listOf("... (${lines.size - 200} more lines)") else lines
+                preview.forEach { appendLine(it) }
+                appendLine()
             }
         }
         

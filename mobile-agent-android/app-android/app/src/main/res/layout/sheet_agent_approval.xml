@@ -30,7 +30,7 @@
         android:textSize="12sp"
         android:background="#f5f5f5"
         android:padding="8dp"
-        android:maxLines="10"
+        android:maxLines="20"
         android:scrollbars="vertical" />
 
     <LinearLayout

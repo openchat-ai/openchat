@@ -75,7 +75,7 @@
                 android:layout_weight="1"
                 android:hint="@string/hint_github_owner" />
             <Button
-                android:id="@+id/btnFetchRepos"
+                android:id="@+id/btnFetchOwners"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="▼" />
@@ -91,6 +91,11 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:hint="@string/hint_github_repo" />
+            <Button
+                android:id="@+id/btnFetchRepos"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="▼" />
         </LinearLayout>
 
         <LinearLayout

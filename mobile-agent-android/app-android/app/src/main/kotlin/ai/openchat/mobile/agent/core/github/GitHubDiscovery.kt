@@ -22,12 +22,20 @@ object GitHubDiscovery {
     }
 
     suspend fun fetchRepos(token: String, owner: String): Result<List<String>> = runCatching {
-        val repos = fetchJsonArray(token, "https://api.github.com/users/$owner/repos?per_page=100&sort=updated")
-        buildList {
-            for (i in 0 until repos.length()) {
-                repos.getJSONObject(i).optString("name").takeIf { it.isNotBlank() }?.let { add(it) }
+        val names = mutableSetOf<String>()
+        val userUrl = "https://api.github.com/users/$owner/repos?per_page=100&sort=updated&type=all"
+        val userRepos = fetchJsonArray(token, userUrl)
+        for (i in 0 until userRepos.length()) {
+            userRepos.getJSONObject(i).optString("name").takeIf { it.isNotBlank() }?.let { names.add(it) }
+        }
+        if (names.isEmpty()) {
+            val orgUrl = "https://api.github.com/orgs/$owner/repos?per_page=100&sort=updated&type=all"
+            val orgRepos = fetchJsonArray(token, orgUrl)
+            for (i in 0 until orgRepos.length()) {
+                orgRepos.getJSONObject(i).optString("name").takeIf { it.isNotBlank() }?.let { names.add(it) }
             }
-        }.sorted()
+        }
+        names.sorted()
     }
 
     suspend fun fetchBranches(token: String, owner: String, repo: String): Result<List<String>> = runCatching {
