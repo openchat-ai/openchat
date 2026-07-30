@@ -53,4 +53,5 @@
     <string name="log_cfg_base_model_required">[CFG] Base URL and Model are required</string>
     <string name="log_cfg_provider_verified">[CFG] Provider verified: %1$s...</string>
     <string name="log_cfg_provider_failed">[CFG] Provider verification failed: %1$s</string>
+    <string name="empty_state_welcome">Welcome to OpenChat Agent\n\nStart a conversation in Ask mode,\nor describe a coding task in Agent mode.</string>
 </resources>

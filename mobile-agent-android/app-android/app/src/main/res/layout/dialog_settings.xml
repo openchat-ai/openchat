@@ -14,6 +14,7 @@
             android:layout_height="wrap_content"
             android:text="LLM Provider"
             android:textStyle="bold"
+            android:textSize="16sp"
             android:paddingBottom="8dp" />
 
         <EditText
@@ -55,6 +56,7 @@
             android:layout_height="wrap_content"
             android:text="GitHub Configuration"
             android:textStyle="bold"
+            android:textSize="16sp"
             android:paddingBottom="8dp" />
 
         <EditText

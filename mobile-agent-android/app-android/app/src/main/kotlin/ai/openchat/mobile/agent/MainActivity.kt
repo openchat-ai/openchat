@@ -64,13 +64,14 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var tvStatus: TextView
     private lateinit var rvConversation: RecyclerView
+    private lateinit var tvEmptyState: TextView
     private lateinit var tvAgentRecoverySummary: TextView
     private lateinit var tvModel: TextView
     private lateinit var etInput: EditText
-    private lateinit var btnSend: TextView
+    private lateinit var btnSend: View
     private lateinit var modelRouter: ModelRouter
-    private lateinit var btnSettings: TextView
-    private lateinit var btnStop: TextView
+    private lateinit var btnSettings: View
+    private lateinit var btnStop: View
     private lateinit var btnModeAsk: TextView
     private lateinit var btnModePlan: TextView
     private lateinit var btnModeAgent: TextView
@@ -119,6 +120,7 @@ class MainActivity : AppCompatActivity() {
 
         tvStatus = findViewById(R.id.tvStatus)
         rvConversation = findViewById(R.id.rvConversation)
+        tvEmptyState = findViewById(R.id.tvEmptyState)
         tvAgentRecoverySummary = findViewById(R.id.tvAgentRecoverySummary)
 
         messageAdapter = MessageAdapter(chatMessages)
@@ -430,6 +432,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun renderConversation() {
+        val hasMessages = chatMessages.isNotEmpty()
+        tvEmptyState.visibility = if (hasMessages) View.GONE else View.VISIBLE
+        rvConversation.visibility = if (hasMessages) View.VISIBLE else View.GONE
         when (runtimeState.mode) {
             RuntimeMode.ASK -> {
                 val newMessages = runtimeState.askHistory.map { turn ->
@@ -855,8 +860,8 @@ class MainActivity : AppCompatActivity() {
         sheet.setContentView(view)
         
         val tvDetails = view.findViewById<TextView>(R.id.tvSheetDetails)
-        val btnApprove = view.findViewById<Button>(R.id.btnSheetApprove)
-        val btnReject = view.findViewById<Button>(R.id.btnSheetReject)
+        val btnApprove = view.findViewById<TextView>(R.id.btnSheetApprove)
+        val btnReject = view.findViewById<TextView>(R.id.btnSheetReject)
         
         tvDetails.text = buildString {
             appendLine("${state.currentCheckpoint.label}")

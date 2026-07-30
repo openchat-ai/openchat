@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.OpenChatAgent" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/bubble_user</item>
+        <item name="colorPrimaryVariant">#FF0055CC</item>
+        <item name="colorOnPrimary">@color/bubble_user_text</item>
+        <item name="colorSecondary">#FF30D158</item>
+        <item name="colorOnSecondary">@color/bubble_user_text</item>
+        <item name="colorSurface">#FF000000</item>
+        <item name="colorOnSurface">#FFF5F5F7</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>
