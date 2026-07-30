@@ -92,7 +92,6 @@ class AgentLoopSingleFlightTest {
             goalProvider = { "single flight goal" },
             planRequest = {
                 planCalls.incrementAndGet()
-                delay(200)
                 ModelResponse(text = "# draft\n")
             },
             publishDraft = { "ok" },
