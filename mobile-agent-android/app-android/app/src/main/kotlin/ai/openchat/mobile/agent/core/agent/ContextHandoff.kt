@@ -27,7 +27,7 @@ class ContextHandoff(
     fun shouldHandoff(context: RoleContext): Boolean {
         if (handoffCount >= maxHandoffs) return false
         val serialized = serialize(context)
-        return serialized.length() > 3000
+        return serialized.length > 3000
     }
 
     fun writeHandoff(context: RoleContext, phase: Phase): String {
