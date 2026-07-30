@@ -144,6 +144,7 @@ class AgentService : Service() {
             val settings = settingsStore.load()
             GitHubClient(settings.github.owner, settings.github.repo, settings.github.token)
         })
+        registry.registerAll(createLocalFileTools(filesDir))
         return registry
     }
 
