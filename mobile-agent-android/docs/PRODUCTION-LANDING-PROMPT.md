@@ -7,8 +7,8 @@ Baseline tag: `mobile-agent-v0.1.0-alpha` @ `docs/v0.1.0-alpha-BASELINE.md`.
 DNA+HASHLINE = architecture anchors (EditGate MD5-8 + ordered diff). Not a full experiment port. No bridge. No Flutter.
 
 # Mission
-Make the alpha path **reliably runnable end-to-end**, then harden to a signed `v0.1.0`.
-Product is a mobile coding companion: Ask stream + human-approved Agent draft→PR. Not a mobile IDE.
+Make the mobile agent **locally operate files, push to GitHub, poll CI**, all from phone.
+Product is a mobile coding companion: Ask stream + Agent read/edit local files → git push → GitHub CI builds/tests → result back to user. Not a mobile IDE.
 
 # Iron rules
 1. Scope: only `mobile-agent-android/**`. One feature = one commit. Diff ≤500. `.kt` ≤200 lines; >100 needs `// === invariants ===`. New `.kt` >50 lines needs sibling `.spec.md` (flow/API/bounds/invariants/C-logs).
@@ -39,46 +39,49 @@ L5 RESUME SEMANTICS: `AgentLoop.resume(tp, checkpointId)` rebuilds queue from sa
 L6 EDITGATE: hash = MD5 hex first 8. `diff` = ordered LCS line diff, not set-difference `filterNot { in }`.
 L7 STOP RACE: Stop = `reject()` + `loopJob.cancel()`; Cancelled must be single-fire (`if (!cancelled)`). Approval channel drained before wait.
 L8 NETWORK: `network_security_config` cleartext=false, system CA only. `allowBackup=false`. Provider baseUrl must be https.
-L9 TOOLS: `core/tools/Tool.kt` is interface-only today. AgentLoop still plans text drafts without tool calls. Don't claim "agent coding" until tools are wired + gated.
-L10 RELEASE: minify currently false; no signing config. Don't commit real keystores.
+L9 GITHUB-ONLY TOOLS: Current tools (list_tree/read_file/hash_edit) hit GitHub API only. No local file access. Agent cannot read/edit local repo or run shell commands.
+L10 RELEASE: minify=true, signing from properties. `keystore.properties.example` committed; real `*.jks` + `keystore.properties` in gitignore. Don't commit real secrets.
 
 # Gate order (finish & verify each before next)
-## G1 — tests that lock landmines
-Add unit tests under `app/src/test/java/...` (robolectric only if unavoidable; prefer pure JVM):
-- EditGate: same→empty diff; reorder lines; HASH_STALE on tampered snapshot
-- `AppRuntimeState.reduce`: AgentFailed keeps package; ObserveAgent(Idle) keeps recovery; Completed clears
-- AgentLoop single-flight: second `run()` while active is no-op (scripted provider)
-- (if pure-JVM hard) extract pure functions rather than skip
-CI: `.github/workflows/mobile-agent-android.yml` must run `:app:testDebugUnitTest` then assembleDebug/Release.
-Exit: that workflow green on this branch. No local gradle.
+## ✅ G1–G6 (complete, code delivered)
+- G1: unit tests for landmines (L3/L4/L6/single-flight) + CI green
+- G2: single persistence source (PersistenceManager)
+- G3: resume/publish hardened path + E2E checklist
+- G4: release minify + signing config + APK built
+- G5: GitHub API tools (list_tree/read_file/hash_edit) wired in AgentLoop
+- G6: ADAPTIVE routing via keyword heuristic
 
-## G2 — single persistence source
-Delete dual write. Runtime snapshot+history+TaskPackage: **one** store (`PersistenceManager` or migrate into encrypted store—pick one, migrate read fallback once).
-`AgentService` resume + `MainActivity` hydrate + Resume button all read that store.
-Exit: path-trace cold start loads same `pendingTaskPackage` Service would resume. No secret in that store if plain prefs; if TaskPackage stays plain, never put tokens in it (already true).
+## G7 — local file read/write tools (phone local)
+Add tools that operate on `context.filesDir` (app private directory):
+- `read_local_file(path)` — read file from app sandbox
+- `write_local_file(path, content)` — write to app sandbox
+- `list_local_dir(path)` — list files in sandbox directory
+- `delete_local_file(path)` — remove file
+All on `Dispatchers.IO`. Wire into ToolRegistry. Approval required for mutating ops.
+Exit: Agent can read a file from local storage and write a modified version.
 
-## G3 — resume/publish hardened path
-- Interrupt at AwaitingApproval → process death → relaunch → Resume visible → resume → no new plan logs (`[C1.resume]` not `[C1] agent loop started` plan seed)
-- Publish: branch exists / file commit / PR create failures → AgentFailed with package + retryable; second resume can finish
-- Add C-logs already used: C0/C1/C1.resume/C3/C4/C5/E1/E3 — don't renumber casually
-Exit: written E2E checklist in `docs/E2E-RESUME.md` with expected log greps; manual or instrumentation.
+## G8 — git init/add/commit/push from phone
+Wire JGit or shell `Process.exec("git ...")` inside app sandbox:
+- `git_init(repoUrl)` — clone or init
+- `git_add(paths)` — stage files
+- `git_commit(message)` — commit
+- `git_push()` — push to GitHub (use stored token)
+No credential in logs. Push needs approval checkpoint.
+Exit: Agent edits local file, commits, pushes → change appears on GitHub.
 
-## G4 — release harden
-- `isMinifyEnabled=true` + keep rules for app + coroutines
-- signingConfig from env/`keystore.properties` example only (`*.jks` gitignored)
-- `assembleRelease` smoke
-Exit: release APK builds; mapping file noted.
+## G9 — CI status poll
+- `ci_status(owner, repo, runId?)` — poll GitHub Actions workflow via API
+- Parse conclusion (success/failure/cancelled) + failed job names
+- Feed result back to LLM for fix loop
+Exit: Agent pushes code → polls CI → retries on failure (loop within TaskPackage).
 
-## G5 — minimal Tool loop (only after G1–G3)
-Implement 3 tools against GitHub API (IO thread): `list_tree`, `read_file`, `hash_edit` (EditGate snapshot→diff→apply→artifact).
-Wire into AgentLoop as optional plan steps; every mutating tool requires checkpoint approval.
-No local filesystem writes. No DNA full index unless already present as read-only helper.
-Exit: one demo goal produces PR that edits a real repo file via hash_edit, not only `mobile-agent-output/*` draft.
+## G10 — end-to-end fix loop
+Goal: "fix the CI failure in X" → read CI log → read local file → edit → push → poll CI → repeat until green.
+- Max retries = 3 per checkpoint to avoid infinite loop
+- Human approval required at each push
+Exit: one human command results in a CI-green PR, with Agent iterating automatically.
 
-## G6 — ADAPTIVE
-Either real route (ask vs agent by heuristic) or remove mode from UI. No fake prefix.
-
-Ship tag `mobile-agent-v0.1.0` only if G1–G5 green + README honest.
+Ship tag `mobile-agent-v0.1.0` only after G7–G10 green + README honest.
 
 # File map (read on demand)
 ```
@@ -86,17 +89,19 @@ app-android/app/src/main/kotlin/ai/openchat/mobile/agent/
   MainActivity.kt          # UI, dispatch, observe failures
   AgentService.kt          # FG service, loopJob, IO, failure emit
   AppRuntimeState.kt       # reducer + recovery invariants
-  AppSettingsStore.kt      # encrypted secrets; scrub external
+  AppSettingsStore.kt      # encrypted secrets
   TaskPackage.kt
-  core/agent/AgentLoop.kt  # plan/preview/publish/resume
+  core/agent/AgentLoop.kt  # plan/preview/publish/resume/tools
   core/agent/AgentStatusHub.kt
-  core/editgate/EditGate.kt
-  core/github/GitHubClient.kt
-  core/github/GitHubDiscovery.kt
-  core/modelrouter/* 
-  core/persistence/PersistenceManager.kt  # plain prefs runtime
-  core/tools/Tool.kt       # empty interface
-app/build.gradle.kts       # versionName 0.1.0-alpha
+  core/editgate/EditGate.kt       # MD5-8 hash + LCS diff
+  core/github/GitHubClient.kt     # HTTP GitHub API client
+  core/github/GitHubDiscovery.kt  # owners/repos/branches/tree listing
+  core/modelrouter/*
+  core/persistence/PersistenceManager.kt
+  core/tools/Tool.kt              # interface
+  core/tools/ToolRegistry.kt      # register/lookup tools
+  core/tools/GitHubTool.kt        # list_tree/read_file/hash_edit
+app/build.gradle.kts
 ```
 
 # Method each gate
@@ -109,15 +114,17 @@ app/build.gradle.kts       # versionName 0.1.0-alpha
 
 # Definition of done (prod)
 - [ ] G1 tests cover L3/L4/L6/single-flight
-- [ ] one persistence source; Service resume == UI
-- [ ] E2E resume checklist proven (logs)
-- [ ] release minify APK
+- [ ] G2–G6 delivered: single persist, resume E2E, release APK, GitHub tools, ADAPTIVE
+- [ ] G7: local file read/write tools
+- [ ] G8: git init/add/commit/push from phone
+- [ ] G9: CI status poll via GitHub API
+- [ ] G10: end-to-end fix loop (read CI → edit local → push → poll → repeat)
 - [ ] no secret outside encrypted settings
 - [ ] mutating path always checkpoint + EditGate
 - [ ] README = reality (alpha limitations listed)
 
 # Anti-goals
-Full IDE · background auto-publish · cleartext · user CA trust · multi-agent · bridge ports · silent plan regen · huge refactors
+Full IDE · background auto-publish · cleartext · user CA trust · multi-agent · bridge ports · silent plan regen · huge refactors · local compilation/testing on phone
 
-Start G1 now. First message: 3-bullet plan then code.
+Start G7 now. First message: 3-bullet plan then code.
 END

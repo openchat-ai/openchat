@@ -4,11 +4,11 @@ Native Android coding companion. Branch: `mobile/android-agent-app-linear`.
 Baseline: `docs/v0.1.0-alpha-BASELINE.md`. Prod prompt: `docs/PRODUCTION-LANDING-PROMPT.md`.
 
 ## Status
-**Alpha / demo only. Not production.**
+**Alpha. Not production.**
 
-Works: Ask stream · Agent draft→human approve→GitHub PR · resume skeleton · encrypted settings · EditGate hash+LCS.
+Works: Ask stream · Agent draft→human approve→GitHub PR · resume · encrypted settings · EditGate · G1 unit tests · release APK with minify+signing · GitHub tools (list_tree/read_file/hash_edit) · ADAPTIVE routing.
 
-Blocks prod: zero tests · release unsigned/no minify · no Tool loop · no E2E resume proof · ADAPTIVE shell.
+Blocks prod: no local file tools · no git push from phone · no CI poll loop · missing G7–G10.
 
 ## Build
 ```bash
