@@ -67,15 +67,16 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvAgentRecoverySummary: TextView
     private lateinit var tvModel: TextView
     private lateinit var etInput: EditText
-    private lateinit var btnSend: Button
-    private lateinit var btnResume: Button
-    private lateinit var btnSettings: Button
-    private lateinit var btnStop: Button
-    private lateinit var btnModeAsk: Button
-    private lateinit var btnModePlan: Button
-    private lateinit var btnModeAgent: Button
-    private lateinit var btnModeAdaptive: Button
+    private lateinit var btnSend: TextView
+    private lateinit var modelRouter: ModelRouter
+    private lateinit var btnSettings: TextView
+    private lateinit var btnStop: TextView
+    private lateinit var btnModeAsk: TextView
+    private lateinit var btnModePlan: TextView
+    private lateinit var btnModeAgent: TextView
+    private lateinit var btnModeAdaptive: TextView
     private lateinit var layoutAgentActions: View
+    private lateinit var btnResume: Button
 
     private lateinit var settingsStore: AppSettingsStore
     private var loopJob: Job? = null
@@ -770,11 +771,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun renderModeButtons() {
         val activeColor = ContextCompat.getColor(this, android.R.color.white)
-        val inactiveColor = ContextCompat.getColor(this, android.R.color.darker_gray)
-        val activeBg = 0x33FFFFFF.toInt()
-        val inactiveBg = 0x00000000
+        val inactiveColor = ContextCompat.getColor(this, R.color.tab_inactive)
+        val activeBg = ContextCompat.getColor(this, R.color.bubble_user)
+        val inactiveBg = ContextCompat.getColor(this, R.color.surface_card)
 
-        fun updateBtn(btn: Button, mode: RuntimeMode) {
+        fun updateBtn(btn: TextView, mode: RuntimeMode) {
             val isActive = runtimeState.mode == mode
             btn.setTextColor(if (isActive) activeColor else inactiveColor)
             btn.setBackgroundColor(if (isActive) activeBg else inactiveBg)

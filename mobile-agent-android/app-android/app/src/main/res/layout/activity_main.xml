@@ -1,58 +1,72 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:background="?attr/colorSurface">
 
-    <!-- Mode Selector: 4 static tabs -->
+    <!-- Mode Selector -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="4dp">
-        <Button
+        android:paddingHorizontal="8dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="4dp">
+
+        <TextView
             android:id="@+id/btnModeAsk"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="36dp"
             android:layout_weight="1"
-            style="?android:attr/borderlessButtonStyle"
+            android:gravity="center"
             android:text="Ask"
+            android:textSize="13sp"
             android:textAllCaps="false"
-            android:textSize="12sp" />
-        <Button
+            android:background="@drawable/bg_chip"
+            android:paddingHorizontal="12dp" />
+        <TextView
             android:id="@+id/btnModePlan"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="36dp"
             android:layout_weight="1"
-            style="?android:attr/borderlessButtonStyle"
+            android:gravity="center"
             android:text="Plan"
+            android:textSize="13sp"
             android:textAllCaps="false"
-            android:textSize="12sp" />
-        <Button
+            android:background="@drawable/bg_chip"
+            android:paddingHorizontal="12dp" />
+        <TextView
             android:id="@+id/btnModeAgent"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="36dp"
             android:layout_weight="1"
-            style="?android:attr/borderlessButtonStyle"
+            android:gravity="center"
             android:text="Agent"
+            android:textSize="13sp"
             android:textAllCaps="false"
-            android:textSize="12sp" />
-        <Button
+            android:background="@drawable/bg_chip"
+            android:paddingHorizontal="12dp" />
+        <TextView
             android:id="@+id/btnModeAdaptive"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="36dp"
             android:layout_weight="1"
-            style="?android:attr/borderlessButtonStyle"
+            android:gravity="center"
             android:text="Adaptive"
+            android:textSize="13sp"
             android:textAllCaps="false"
-            android:textSize="12sp" />
+            android:background="@drawable/bg_chip"
+            android:paddingHorizontal="12dp" />
 
-        <Button
+        <TextView
             android:id="@+id/btnSettings"
-            style="?android:attr/borderlessButtonStyle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="40dp"
+            android:layout_height="36dp"
+            android:gravity="center"
             android:text="☰"
-            android:textSize="22sp" />
+            android:textSize="20sp"
+            android:clickable="true"
+            android:focusable="true" />
     </LinearLayout>
 
     <!-- Status bar -->
@@ -60,48 +74,49 @@
         android:id="@+id/tvStatus"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingHorizontal="12dp"
-        android:paddingVertical="4dp"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="6dp"
         android:text="@string/app_name"
-        android:textSize="14sp" />
+        android:textSize="13sp"
+        android:textColor="@color/text_secondary" />
 
     <!-- Agent recovery summary -->
     <TextView
         android:id="@+id/tvAgentRecoverySummary"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#112233"
+        android:background="@color/surface_card"
         android:fontFamily="monospace"
-        android:padding="8dp"
+        android:padding="10dp"
         android:text="@string/agent_recovery_placeholder"
         android:textSize="11sp"
         android:visibility="gone" />
 
-    <!-- Conversation history -->
+    <!-- Conversation -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvConversation"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:clipToPadding="false"
-        android:paddingBottom="16dp" />
+        android:paddingBottom="8dp" />
 
-    <!-- Agent action buttons (Resume only) -->
+    <!-- Resume bar -->
     <LinearLayout
         android:id="@+id/layoutAgentActions"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="end"
         android:orientation="horizontal"
-        android:paddingHorizontal="8dp"
+        android:paddingHorizontal="16dp"
+        android:paddingBottom="4dp"
         android:visibility="gone">
-
         <Button
             android:id="@+id/btnResume"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
+            android:layout_height="36dp"
             android:text="@string/action_resume"
+            android:textAllCaps="false"
             android:visibility="gone" />
     </LinearLayout>
 
@@ -110,8 +125,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:paddingHorizontal="8dp"
-        android:paddingVertical="4dp">
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="6dp"
+        android:background="@color/surface_card">
 
         <EditText
             android:id="@+id/etInput"
@@ -122,15 +138,24 @@
             android:hint="@string/hint_ask_prompt"
             android:inputType="textMultiLine|textCapSentences"
             android:maxLines="5"
-            android:minLines="2"
-            android:padding="8dp" />
+            android:minLines="1"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="10dp"
+            android:background="@drawable/bg_input"
+            android:textSize="14sp" />
 
-        <Button
+        <TextView
             android:id="@+id/btnSend"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
             android:layout_marginStart="8dp"
-            android:text="@string/action_send" />
+            android:gravity="center"
+            android:text="↑"
+            android:textSize="22sp"
+            android:textColor="?attr/colorOnPrimary"
+            android:background="@drawable/bg_send"
+            android:clickable="true"
+            android:focusable="true" />
     </LinearLayout>
 
     <!-- Bottom bar -->
@@ -139,22 +164,25 @@
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingHorizontal="12dp"
-        android:paddingVertical="8dp">
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="6dp">
 
         <View
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_weight="1" />
 
-        <Button
+        <TextView
             android:id="@+id/btnStop"
-            style="?android:attr/borderlessButtonStyle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="■"
-            android:textSize="18sp"
-            android:visibility="gone" />
+            android:text="■ Stop"
+            android:textColor="@color/stop_red"
+            android:textSize="14sp"
+            android:visibility="gone"
+            android:clickable="true"
+            android:focusable="true"
+            android:padding="4dp" />
 
         <TextView
             android:id="@+id/tvModel"
@@ -162,7 +190,9 @@
             android:layout_height="wrap_content"
             android:clickable="true"
             android:focusable="true"
-            android:padding="8dp"
-            android:text="@string/summary_provider_offline" />
+            android:padding="4dp"
+            android:text="@string/summary_provider_offline"
+            android:textSize="12sp"
+            android:textColor="@color/text_secondary" />
     </LinearLayout>
 </LinearLayout>
