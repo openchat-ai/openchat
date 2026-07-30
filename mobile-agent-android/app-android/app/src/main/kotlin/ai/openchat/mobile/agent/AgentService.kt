@@ -140,11 +140,13 @@ class AgentService : Service() {
 
     private fun buildToolRegistry(): ToolRegistry {
         val registry = ToolRegistry()
-        registry.registerAll(createGitHubTools {
-            val settings = settingsStore.load()
-            GitHubClient(settings.github.owner, settings.github.repo, settings.github.token)
-        })
+        val clientProvider: suspend () -> GitHubClient = {
+            val s = settingsStore.load()
+            GitHubClient(s.github.owner, s.github.repo, s.github.token)
+        }
+        registry.registerAll(createGitHubTools(clientProvider))
         registry.registerAll(createLocalFileTools(filesDir))
+        registry.registerAll(createGitTools(filesDir, clientProvider))
         return registry
     }
 
