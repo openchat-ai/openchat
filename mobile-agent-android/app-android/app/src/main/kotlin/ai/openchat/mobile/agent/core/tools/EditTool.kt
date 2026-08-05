@@ -19,11 +19,9 @@ class EditTool(private val baseDir: File) : Tool {
         val oldString = args["old_string"]
         val newString = args["new_string"]
 
-        when {
-            rel.isNullOrBlank() -> return@withContext ToolResult(output = "", error = "edit requires path")
-            oldString.isNullOrEmpty() -> return@withContext ToolResult(output = "", error = "edit requires old_string")
-            newString == null -> return@withContext ToolResult(output = "", error = "edit requires new_string")
-        }
+        if (rel.isNullOrBlank()) return@withContext ToolResult(output = "", error = "edit requires path")
+        if (oldString.isNullOrEmpty()) return@withContext ToolResult(output = "", error = "edit requires old_string")
+        if (newString == null) return@withContext ToolResult(output = "", error = "edit requires new_string")
 
         val file = File(baseDir, rel).normalize()
         if (!file.startsWith(baseDir)) return@withContext ToolResult(output = "", error = "path outside sandbox")
@@ -38,7 +36,7 @@ class EditTool(private val baseDir: File) : Tool {
             if (occurrences > 1) {
                 return@withContext ToolResult(output = "", error = "old_string found $occurrences times in $rel; must be unique")
             }
-            val updated = content.replace(oldString, newString)
+            val updated = content.replace(oldString, newString!!)
             file.writeText(updated)
             return@withContext ToolResult(output = "edited $rel (replaced 1 occurrence, ${updated.length} bytes total)")
         } catch (e: Exception) {
