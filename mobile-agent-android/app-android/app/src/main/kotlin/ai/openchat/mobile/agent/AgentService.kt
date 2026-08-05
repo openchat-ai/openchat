@@ -25,6 +25,7 @@ import ai.openchat.mobile.agent.core.persistence.PersistenceManager
 import ai.openchat.mobile.agent.core.tools.ToolRegistry
 import ai.openchat.mobile.agent.core.tools.createGitHubTools
 import ai.openchat.mobile.agent.core.tools.createBashTool
+import ai.openchat.mobile.agent.core.tools.createGlobTool
 import ai.openchat.mobile.agent.core.tools.createGrepTools
 import ai.openchat.mobile.agent.core.tools.createLocalFileTools
 import ai.openchat.mobile.agent.core.tools.createGitTools
@@ -159,6 +160,7 @@ class AgentService : Service() {
         registry.register(CiStatusTool(settings.github.owner, settings.github.repo, settings.github.token))
         registry.registerAll(createGrepTools(filesDir, settings.github.owner, settings.github.repo, settings.github.token))
         registry.registerAll(createBashTool(filesDir))
+        registry.registerAll(createGlobTool(filesDir))
         return registry
     }
 

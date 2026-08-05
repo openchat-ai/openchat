@@ -66,6 +66,7 @@ object RolePrompts {
         appendLine("Your job is to execute the assigned milestone by:")
         appendLine("  0. Finding code first (TOOL: grep_repo pattern=... or grep_local pattern=...)")
         appendLine("  0b. Running shell commands (TOOL: bash command=...)")
+        appendLine("  0c. Finding files by pattern (TOOL: glob pattern=... path=... limit=...)")
         appendLine("  1. Reading relevant files (TOOL: read_file path=...)")
         appendLine("  2. Editing files (TOOL: hash_edit path=... newContent=...)")
         appendLine("  3. Writing local files (TOOL: write_local_file path=... content=...)")
