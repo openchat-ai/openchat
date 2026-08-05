@@ -36,9 +36,10 @@ class GlobTool(private val baseDir: File) : Tool {
                     truncated = true
                     return@forEach
                 }
-                val fileRel = file.relativeTo(baseDir).path.replace('\\', '/')
+                val fileRel = file.relativeTo(root).path.replace('\\', '/')
                 if (regex.matcher(fileRel).matches()) {
-                    matches.add(fileRel)
+                    val baseRel = file.relativeTo(baseDir).path.replace('\\', '/')
+                    matches.add(baseRel)
                 }
             }
             if (matches.isEmpty()) return@withContext ToolResult(output = "No files found")
@@ -56,11 +57,15 @@ class GlobTool(private val baseDir: File) : Tool {
             when (glob[i]) {
                 '*' -> {
                     if (i + 1 < glob.length && glob[i + 1] == '*') {
-                        sb.append(".*")
-                        i += 2
-                        if (i < glob.length && glob[i] == '/') {
-                            sb.append(".*/")
-                            i++
+                        // "**/" means match any depth (including zero)
+                        // "**/" at start → optional (dir/), so pattern matches both "a.kt" and "dir/a.kt"
+                        // "**" elsewhere → ".*"
+                        if (i + 2 < glob.length && glob[i + 2] == '/') {
+                            sb.append("(?:.*/)?")
+                            i += 3
+                        } else {
+                            sb.append(".*")
+                            i += 2
                         }
                     } else {
                         sb.append("[^/]*")
