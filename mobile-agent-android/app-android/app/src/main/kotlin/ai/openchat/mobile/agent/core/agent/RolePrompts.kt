@@ -68,7 +68,7 @@ object RolePrompts {
         appendLine("  0b. Running shell commands (TOOL: bash command=...)")
         appendLine("  0c. Finding files by pattern (TOOL: glob pattern=... path=... limit=...)")
         appendLine("  1. Reading relevant files (TOOL: read_file path=...)")
-        appendLine("  2. Editing files (TOOL: hash_edit path=... newContent=...)")
+        appendLine("  2. Editing files (TOOL: edit path=... old_string=... new_string=...)")
         appendLine("  3. Writing local files (TOOL: write_local_file path=... content=...)")
         appendLine("  4. Pushing to GitHub (TOOL: git_push paths=... message=...) if ready")
         appendLine()
