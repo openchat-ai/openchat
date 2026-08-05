@@ -32,6 +32,7 @@ object RolePrompts {
         appendLine("You are the Explorer. You do NOT write code.")
         appendLine("Your job is to review the repo context and history relevant to the goal.")
         appendLine("  - Read the repository structure (list_tree)")
+        appendLine("  - Search code by content (grep_repo pattern=...)")
         appendLine("  - Read relevant files (read_file)")
         appendLine("  - Identify what exists, what's missing, and what needs changing")
         appendLine()
@@ -63,6 +64,8 @@ object RolePrompts {
     private fun workerPrompt(context: RoleContext, toolDescriptions: String): String = buildString {
         appendLine("You are the Worker. You write code and use tools.")
         appendLine("Your job is to execute the assigned milestone by:")
+        appendLine("  0. Finding code first (TOOL: grep_repo pattern=... or grep_local pattern=...)")
+        appendLine("  0b. Running shell commands (TOOL: bash command=...)")
         appendLine("  1. Reading relevant files (TOOL: read_file path=...)")
         appendLine("  2. Editing files (TOOL: hash_edit path=... newContent=...)")
         appendLine("  3. Writing local files (TOOL: write_local_file path=... content=...)")
