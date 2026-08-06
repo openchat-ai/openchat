@@ -29,6 +29,8 @@ import ai.openchat.mobile.agent.core.tools.createGlobTool
 import ai.openchat.mobile.agent.core.tools.createEditTool
 import ai.openchat.mobile.agent.core.tools.createGrepTools
 import ai.openchat.mobile.agent.core.tools.createLocalFileTools
+import ai.openchat.mobile.agent.core.tools.createReadTool
+import ai.openchat.mobile.agent.core.tools.createWriteTool
 import ai.openchat.mobile.agent.core.tools.createGitTools
 import ai.openchat.mobile.agent.core.tools.CiStatusTool
 import kotlinx.coroutines.CoroutineScope
@@ -163,6 +165,8 @@ class AgentService : Service() {
         registry.registerAll(createBashTool(filesDir))
         registry.registerAll(createGlobTool(filesDir))
         registry.registerAll(createEditTool(filesDir))
+        registry.registerAll(createReadTool(filesDir))
+        registry.registerAll(createWriteTool(filesDir))
         return registry
     }
 
