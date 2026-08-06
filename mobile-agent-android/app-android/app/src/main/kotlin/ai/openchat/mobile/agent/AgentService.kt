@@ -25,6 +25,7 @@ import ai.openchat.mobile.agent.core.persistence.PersistenceManager
 import ai.openchat.mobile.agent.core.tools.ToolRegistry
 import ai.openchat.mobile.agent.core.tools.createGitHubTools
 import ai.openchat.mobile.agent.core.tools.createBashTool
+import ai.openchat.mobile.agent.core.tools.createDeleteTool
 import ai.openchat.mobile.agent.core.tools.createGlobTool
 import ai.openchat.mobile.agent.core.tools.createEditTool
 import ai.openchat.mobile.agent.core.tools.createGrepTools
@@ -169,6 +170,7 @@ class AgentService : Service() {
         registry.registerAll(createReadTool(filesDir))
         registry.registerAll(createWriteTool(filesDir))
         registry.registerAll(createListTool(filesDir))
+        registry.registerAll(createDeleteTool(filesDir))
         return registry
     }
 
