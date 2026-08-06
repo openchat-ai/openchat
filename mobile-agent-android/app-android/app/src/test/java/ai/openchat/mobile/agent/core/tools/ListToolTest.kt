@@ -28,8 +28,8 @@ class ListToolTest {
         write("b.txt", "b")
         val result = tool().invoke(mapOf("path" to "."))
         assertTrue(result.isSuccess)
-        assertTrue(result.output.contains("○ a.txt"))
-        assertTrue(result.output.contains("○ b.txt"))
+        assertTrue(result.output.contains("[FILE] a.txt"))
+        assertTrue(result.output.contains("[FILE] b.txt"))
     }
 
     @Test
@@ -72,7 +72,7 @@ class ListToolTest {
     @Test
     fun listToolHandlesRecursiveMode() = runBlocking {
         write("dir/sub/file.txt", "content")
-        val result = tool().invoke(mapOf("path" to ".", recursive = "true"))
+        val result = tool().invoke(mapOf("path" to ".", "recursive" to "true"))
         assertTrue(result.isSuccess)
         assertTrue(result.output.contains("[DIR] dir"))
         assertTrue(result.output.contains("[FILE] file.txt"))
