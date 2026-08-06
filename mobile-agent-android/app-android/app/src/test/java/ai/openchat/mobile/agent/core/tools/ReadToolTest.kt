@@ -46,7 +46,7 @@ class ReadToolTest {
 
     @Test
     fun readToolRejectsDirectory() = runBlocking {
-        write("subdir/")
+        tmp.root.resolve("subdir").mkdir()
         val result = tool().invoke(mapOf("path" to "subdir"))
         assertFalse(result.isSuccess)
         assertTrue(result.error!!.contains("not a file"))
