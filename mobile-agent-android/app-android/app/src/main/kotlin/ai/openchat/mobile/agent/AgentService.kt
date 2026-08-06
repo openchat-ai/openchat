@@ -29,6 +29,7 @@ import ai.openchat.mobile.agent.core.tools.createGlobTool
 import ai.openchat.mobile.agent.core.tools.createEditTool
 import ai.openchat.mobile.agent.core.tools.createGrepTools
 import ai.openchat.mobile.agent.core.tools.createLocalFileTools
+import ai.openchat.mobile.agent.core.tools.createListTool
 import ai.openchat.mobile.agent.core.tools.createReadTool
 import ai.openchat.mobile.agent.core.tools.createWriteTool
 import ai.openchat.mobile.agent.core.tools.createGitTools
