@@ -70,17 +70,28 @@ class CiStatusTool(
     private val token: String,
 ) : Tool {
     override val name: String = "ci_status"
-    override val description: String = "Check latest CI run status for a branch. Args: branch (required)"
+    override val description: String = "Check CI run status for a branch or runId. Args: branch (required unless runId), runId, owner, repo"
 
     override suspend fun invoke(args: Map<String, String>): ToolResult = withContext(Dispatchers.IO) {
-        val branch = args["branch"] ?: return@withContext ToolResult(output = "", error = "ci_status requires branch")
+        val owner = args["owner"] ?: this@CiStatusTool.owner
+        val repo = args["repo"] ?: this@CiStatusTool.repo
+        val runIdArg = args["runId"]?.toLongOrNull()
+        val branch = args["branch"]
         try {
-            val runsJson = fetchJson(token, "https://api.github.com/repos/$owner/$repo/actions/runs?branch=$branch&per_page=1")
-            val workflowRuns = runsJson.optJSONArray("workflow_runs") ?: JSONArray()
-            if (workflowRuns.length() == 0) return@withContext ToolResult(output = "no CI runs found for branch: $branch")
+            val runsJson: JSONObject
+            var runId: Long
+            if (runIdArg != null) {
+                runId = runIdArg
+                runsJson = JSONObject()
+            } else {
+                branch ?: return@withContext ToolResult(output = "", error = "ci_status requires branch or runId")
+                runsJson = fetchJson(token, "https://api.github.com/repos/$owner/$repo/actions/runs?branch=$branch&per_page=1")
+                val workflowRuns = runsJson.optJSONArray("workflow_runs") ?: JSONArray()
+                if (workflowRuns.length() == 0) return@withContext ToolResult(output = "no CI runs found for branch: $branch")
+                runId = workflowRuns.getJSONObject(0).getLong("id")
+            }
 
-            val run = workflowRuns.getJSONObject(0)
-            val runId = run.getLong("id")
+            val run = if (runIdArg == null) runsJson.getJSONArray("workflow_runs").getJSONObject(0) else fetchJson(token, "https://api.github.com/repos/$owner/$repo/actions/runs/$runId")
             val status = run.optString("status", "unknown")
             val conclusion = run.optString("conclusion", "null")
             val htmlUrl = run.optString("html_url", "")
@@ -97,13 +108,23 @@ class CiStatusTool(
                     appendLine("  $jName: $jStatus -> $jConclusion")
                 }
             }
+            val failedJobs = buildList {
+                for (i in 0 until jobs.length()) {
+                    val job = jobs.getJSONObject(i)
+                    val jConclusion = job.optString("conclusion", "null")
+                    if (jConclusion == "failure" || jConclusion == "cancelled" || jConclusion == "timed_out" || jConclusion == "action_required") {
+                        add(job.optString("name", "?"))
+                    }
+                }
+            }
 
             val output = buildString {
-                appendLine("CI Status for branch '$branch':")
+                appendLine("CI Status for branch '${branch ?: runId}':")
                 appendLine("  Run: $runName (#$runId)")
                 appendLine("  Status: $status")
                 appendLine("  Conclusion: $conclusion")
                 appendLine("  URL: $htmlUrl")
+                if (failedJobs.isNotEmpty()) appendLine("  Failed jobs: ${failedJobs.joinToString(", ")}")
                 if (jobDetails.isNotBlank()) appendLine("  Jobs:\n$jobDetails")
             }
             ToolResult(output = output)
