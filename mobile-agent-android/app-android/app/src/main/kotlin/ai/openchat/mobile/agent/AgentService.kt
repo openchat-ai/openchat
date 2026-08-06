@@ -167,6 +167,7 @@ class AgentService : Service() {
         registry.registerAll(createEditTool(filesDir))
         registry.registerAll(createReadTool(filesDir))
         registry.registerAll(createWriteTool(filesDir))
+        registry.registerAll(createListTool(filesDir))
         return registry
     }
 
