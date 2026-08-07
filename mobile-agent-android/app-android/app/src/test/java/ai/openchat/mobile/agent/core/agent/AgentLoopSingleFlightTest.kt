@@ -127,7 +127,10 @@ class AgentLoopSingleFlightTest {
         assertEquals(2, retryable.size)
         assertTrue(retryable.all { it.checkpointId == "publish-draft" })
         assertTrue(events.any { it is AgentLifecycleEvent.Completed })
-        assertTrue(loop.log.any { it.contains("[C5.retry] checkpoint publish-draft attempt 2/3") })
+        val retryLog = withTimeout(5_000) {
+            loop.log.first { it.contains("[C5.retry] checkpoint publish-draft attempt 2/3") }
+        }
+        assertTrue(retryLog.contains("[C5.retry] checkpoint publish-draft attempt 2/3"))
     }
 
     @Test
@@ -163,6 +166,9 @@ class AgentLoopSingleFlightTest {
         assertEquals("retry-exhausted", exhausted.stage)
         assertEquals("publish-draft", exhausted.checkpointId)
         assertTrue(events.none { it is AgentLifecycleEvent.Completed })
-        assertTrue(loop.log.any { it.contains("[E5] checkpoint publish-draft failed after 3 attempts") })
+        val exhaustedLog = withTimeout(5_000) {
+            loop.log.first { it.contains("[E5] checkpoint publish-draft failed after 3 attempts") }
+        }
+        assertTrue(exhaustedLog.contains("[E5] checkpoint publish-draft failed after 3 attempts"))
     }
 }
