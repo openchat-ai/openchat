@@ -35,6 +35,7 @@ import ai.openchat.mobile.agent.core.tools.createReadTool
 import ai.openchat.mobile.agent.core.tools.createWriteTool
 import ai.openchat.mobile.agent.core.tools.createGitTools
 import ai.openchat.mobile.agent.core.tools.CiStatusTool
+import ai.openchat.mobile.agent.core.tools.CiLogTool
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -163,6 +164,7 @@ class AgentService : Service() {
         registry.registerAll(createLocalFileTools(filesDir))
         registry.registerAll(createGitTools(filesDir, clientProvider))
         registry.register(CiStatusTool(settings.github.owner, settings.github.repo, settings.github.token))
+        registry.register(CiLogTool(settings.github.owner, settings.github.repo, settings.github.token))
         registry.registerAll(createGrepTools(filesDir, settings.github.owner, settings.github.repo, settings.github.token))
         registry.registerAll(createBashTool(filesDir))
         registry.registerAll(createGlobTool(filesDir))

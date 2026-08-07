@@ -96,4 +96,73 @@ class AgentLoopSingleFlightTest {
         assertFalse(events.any { it is AgentLifecycleEvent.Planning })
         assertTrue(events.any { it is AgentLifecycleEvent.Completed })
     }
+
+    @Test
+    fun retry_requeuesCheckpoint_andSucceedsWithinLimit() = runBlocking {
+        val publishCalls = AtomicInteger(0)
+        val events = mutableListOf<AgentLifecycleEvent>()
+        val loop = AgentLoop(
+            planRequest = { ModelResponse(text = "# plan\n") },
+            publishDraft = {
+                val n = publishCalls.incrementAndGet()
+                if (n <= 2) throw RuntimeException("publish boom $n") else "published"
+            },
+            onLifecycleEvent = { events.add(it) },
+        )
+
+        val job = launch { loop.resume(fixture(), fromCheckpointId = "preview-draft") }
+        withTimeout(5_000) {
+            loop.log.first { it.contains("[C1.resume]") }
+        }
+
+        repeat(5) {
+            awaitWaiting(loop)
+            loop.approve()
+            yield()
+        }
+        job.join()
+
+        assertEquals(3, publishCalls.get())
+        val retryable = events.filterIsInstance<AgentLifecycleEvent.Failed>().filter { it.retryable }
+        assertEquals(2, retryable.size)
+        assertTrue(retryable.all { it.checkpointId == "publish-draft" })
+        assertTrue(events.any { it is AgentLifecycleEvent.Completed })
+        loop.log.first { it.contains("[C5.retry] checkpoint publish-draft attempt 2/3") }
+    }
+
+    @Test
+    fun retry_exhausts_afterThreeFailures() = runBlocking {
+        val publishCalls = AtomicInteger(0)
+        val events = mutableListOf<AgentLifecycleEvent>()
+        val loop = AgentLoop(
+            planRequest = { ModelResponse(text = "# plan\n") },
+            publishDraft = {
+                publishCalls.incrementAndGet()
+                throw RuntimeException("publish boom")
+            },
+            onLifecycleEvent = { events.add(it) },
+        )
+
+        val job = launch { loop.resume(fixture(), fromCheckpointId = "preview-draft") }
+        withTimeout(5_000) {
+            loop.log.first { it.contains("[C1.resume]") }
+        }
+
+        repeat(6) {
+            awaitWaiting(loop)
+            loop.approve()
+            yield()
+        }
+        job.join()
+
+        assertEquals(4, publishCalls.get())
+        val retryable = events.filterIsInstance<AgentLifecycleEvent.Failed>().filter { it.retryable }
+        assertEquals(3, retryable.size)
+        assertTrue(retryable.all { it.checkpointId == "publish-draft" })
+        val exhausted = events.filterIsInstance<AgentLifecycleEvent.Failed>().first { !it.retryable }
+        assertEquals("retry-exhausted", exhausted.stage)
+        assertEquals("publish-draft", exhausted.checkpointId)
+        assertTrue(events.none { it is AgentLifecycleEvent.Completed })
+        loop.log.first { it.contains("[E5] checkpoint publish-draft failed after 3 attempts") }
+    }
 }

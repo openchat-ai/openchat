@@ -134,6 +134,54 @@ class CiStatusTool(
     }
 }
 
+class CiLogTool(
+    private val owner: String,
+    private val repo: String,
+    private val token: String,
+) : Tool {
+    override val name: String = "ci_log"
+    override val description: String = "Fetch CI job logs. Args: runId (required unless jobId), jobId, owner, repo. With runId returns failed-job logs (truncated); with jobId returns that job's full log."
+
+    override suspend fun invoke(args: Map<String, String>): ToolResult = withContext(Dispatchers.IO) {
+        val owner = args["owner"] ?: this@CiLogTool.owner
+        val repo = args["repo"] ?: this@CiLogTool.repo
+        val runId = args["runId"]?.toLongOrNull()
+        val jobId = args["jobId"]?.toLongOrNull()
+        try {
+            if (jobId != null) {
+                val log = fetchText(token, "https://api.github.com/repos/$owner/$repo/actions/jobs/$jobId/logs")
+                return@withContext ToolResult(output = "Logs for job #$jobId:\n${truncateLog(log)}")
+            }
+            runId ?: return@withContext ToolResult(output = "", error = "ci_log requires runId or jobId")
+            val jobsJson = fetchJson(token, "https://api.github.com/repos/$owner/$repo/actions/runs/$runId/jobs")
+            val jobs = jobsJson.optJSONArray("jobs") ?: JSONArray()
+            val failedJobs = buildList {
+                for (i in 0 until jobs.length()) {
+                    val job = jobs.getJSONObject(i)
+                    val conclusion = job.optString("conclusion", "null")
+                    if (conclusion == "failure" || conclusion == "cancelled" || conclusion == "timed_out" || conclusion == "action_required") {
+                        add(job)
+                    }
+                }
+            }
+            if (failedJobs.isEmpty()) return@withContext ToolResult(output = "no failed jobs for run #$runId")
+            val output = buildString {
+                for (job in failedJobs) {
+                    val jId = job.getLong("id")
+                    val jName = job.optString("name", "?")
+                    val log = fetchText(token, "https://api.github.com/repos/$owner/$repo/actions/jobs/$jId/logs")
+                    appendLine("=== $jName (#$jId) ===")
+                    appendLine(truncateLog(log))
+                    appendLine()
+                }
+            }
+            ToolResult(output = output)
+        } catch (e: Exception) {
+            ToolResult(output = "", error = "ci_log error: ${e.message}")
+        }
+    }
+}
+
 private fun fetchJson(token: String, urlStr: String): JSONObject {
     val url = URL(urlStr)
     val connection = (url.openConnection() as HttpURLConnection).apply {
@@ -153,6 +201,27 @@ private fun fetchJson(token: String, urlStr: String): JSONObject {
         connection.disconnect()
     }
 }
+
+private fun fetchText(token: String, urlStr: String): String {
+    val url = URL(urlStr)
+    val connection = (url.openConnection() as HttpURLConnection).apply {
+        requestMethod = "GET"
+        connectTimeout = 10000
+        readTimeout = 30000
+        setRequestProperty("Authorization", "Bearer $token")
+        setRequestProperty("Accept", "text/plain")
+        setRequestProperty("User-Agent", "OpenChat-Android-Agent")
+    }
+    return try {
+        val stream = if (connection.responseCode in 200..299) connection.inputStream else connection.errorStream
+        if (stream == null) "" else BufferedReader(InputStreamReader(stream)).use { it.readText() }
+    } finally {
+        connection.disconnect()
+    }
+}
+
+private fun truncateLog(text: String, maxChars: Int = 6000): String =
+    if (text.length <= maxChars) text else text.take(maxChars) + "\n...[truncated ${text.length - maxChars} chars]"
 
 fun createGitTools(baseDir: File, clientProvider: suspend () -> GitHubClient): List<Tool> {
     val store = GitRepositoryStore(baseDir)

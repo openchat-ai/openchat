@@ -143,6 +143,8 @@ class AgentLoop(
     private var _resumeOnly = false
     private var _milestoneRounds = 0
     private val toolOutputs = mutableMapOf<String, String>()
+    private val retryCounts = mutableMapOf<String, Int>()
+    private val maxTaskRetries = 3
 
     private val orchestrator = RoleOrchestrator()
     private val handoff = ContextHandoff(handoffDir)
@@ -304,7 +306,30 @@ class AgentLoop(
                 onLifecycleEvent(task.toExecutionEvent())
                 emit("[C5] approved, executing")
                 executeTask(task)
-                if (shouldStop) break
+                if (shouldStop) {
+                    val checkpointId = task.checkpoint?.id
+                    if (checkpointId != null) {
+                        val attempts = (retryCounts[checkpointId] ?: 0) + 1
+                        if (attempts <= maxTaskRetries) {
+                            retryCounts[checkpointId] = attempts
+                            shouldStop = false
+                            taskQueue.addLast(task)
+                            emit("[C5.retry] checkpoint $checkpointId attempt $attempts/$maxTaskRetries")
+                            continue
+                        }
+                        retryCounts.remove(checkpointId)
+                        onLifecycleEvent(AgentLifecycleEvent.Failed(
+                            goal = goal,
+                            stage = "retry-exhausted",
+                            message = "checkpoint $checkpointId failed after $maxTaskRetries attempts",
+                            retryable = false,
+                            taskPackage = task.taskPackage,
+                            checkpointId = checkpointId,
+                        ))
+                        emit("[E5] checkpoint $checkpointId failed after $maxTaskRetries attempts")
+                    }
+                    break
+                }
             }
             if (!shouldStop && !cancelled) {
                 val completedPackage = latestTaskPackage ?: buildFallbackTaskPackage(goal)
