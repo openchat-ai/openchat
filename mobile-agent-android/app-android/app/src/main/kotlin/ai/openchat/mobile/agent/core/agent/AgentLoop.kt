@@ -305,11 +305,11 @@ class AgentLoop(
                 _state.value = AgentState.RUNNING
                 onLifecycleEvent(task.toExecutionEvent())
                 emit("[C5] approved, executing")
-                executeTask(task)
+                val checkpointId = task.checkpoint?.id
+                val attempts = if (checkpointId != null) (retryCounts[checkpointId] ?: 0) + 1 else 1
+                executeTask(task, attempts)
                 if (shouldStop) {
-                    val checkpointId = task.checkpoint?.id
                     if (checkpointId != null) {
-                        val attempts = (retryCounts[checkpointId] ?: 0) + 1
                         if (attempts <= maxTaskRetries) {
                             retryCounts[checkpointId] = attempts
                             shouldStop = false
@@ -489,31 +489,35 @@ class AgentLoop(
         return taskQueue.removeFirstOrNull()
     }
 
-    private suspend fun executeTask(task: AgentTask) {
+    private suspend fun executeTask(task: AgentTask, attempts: Int) {
         when (task) {
             is AgentTask.PreviewDraft -> runEditGatePreview(task.taskPackage, task.checkpoint)
-            is AgentTask.PublishDraft -> runPublishDraft(task.taskPackage, task.checkpoint)
-            is AgentTask.ToolCall -> executeToolCall(task)
+            is AgentTask.PublishDraft -> runPublishDraft(task.taskPackage, task.checkpoint, attempts)
+            is AgentTask.ToolCall -> executeToolCall(task, attempts)
             is AgentTask.Summarize -> emit(task.text)
         }
     }
 
-    private suspend fun executeToolCall(task: AgentTask.ToolCall) {
+    private suspend fun executeToolCall(task: AgentTask.ToolCall, attempts: Int) {
         val tool = toolRegistry.get(task.toolName)
         if (tool == null) {
             shouldStop = true
-            onLifecycleEvent(AgentLifecycleEvent.Failed(goal = task.taskPackage.goal, stage = "tool",
-                message = "unknown tool: ${task.toolName}", retryable = true,
-                taskPackage = task.taskPackage, checkpointId = task.checkpoint.id))
+            if (attempts <= maxTaskRetries) {
+                onLifecycleEvent(AgentLifecycleEvent.Failed(goal = task.taskPackage.goal, stage = "tool",
+                    message = "unknown tool: ${task.toolName}", retryable = true,
+                    taskPackage = task.taskPackage, checkpointId = task.checkpoint.id))
+            }
             emit("[E4] unknown tool: ${task.toolName}")
             return
         }
         val result = tool.invoke(task.toolArgs)
         if (!result.isSuccess) {
             shouldStop = true
-            onLifecycleEvent(AgentLifecycleEvent.Failed(goal = task.taskPackage.goal, stage = "tool",
-                message = result.error ?: "tool ${task.toolName} failed", retryable = true,
-                taskPackage = task.taskPackage, checkpointId = task.checkpoint.id))
+            if (attempts <= maxTaskRetries) {
+                onLifecycleEvent(AgentLifecycleEvent.Failed(goal = task.taskPackage.goal, stage = "tool",
+                    message = result.error ?: "tool ${task.toolName} failed", retryable = true,
+                    taskPackage = task.taskPackage, checkpointId = task.checkpoint.id))
+            }
             emit("[E4] tool ${task.toolName} failed: ${result.error}")
             return
         }
@@ -571,15 +575,17 @@ class AgentLoop(
         return taskPackage.artifacts.first()
     }
 
-    private suspend fun runPublishDraft(taskPackage: TaskPackage, checkpoint: Checkpoint) {
+    private suspend fun runPublishDraft(taskPackage: TaskPackage, checkpoint: Checkpoint, attempts: Int) {
         val resolvedArtifact = resolveArtifact(taskPackage)
         val updatedPackage = taskPackage.copy(artifacts = listOf(resolvedArtifact),
             planSummary = if (toolOutputs.isNotEmpty()) "Tool pipeline: ${toolOutputs.keys.joinToString(" -> ")}" else taskPackage.planSummary)
         val result = runCatching { publishDraft(updatedPackage) }.getOrElse { error ->
             shouldStop = true
-            onLifecycleEvent(AgentLifecycleEvent.Failed(goal = taskPackage.goal, stage = "publish",
-                message = error.message ?: "publish failed", retryable = true,
-                taskPackage = updatedPackage, checkpointId = checkpoint.id))
+            if (attempts <= maxTaskRetries) {
+                onLifecycleEvent(AgentLifecycleEvent.Failed(goal = taskPackage.goal, stage = "publish",
+                    message = error.message ?: "publish failed", retryable = true,
+                    taskPackage = updatedPackage, checkpointId = checkpoint.id))
+            }
             emit("[E3] publish failed: ${error.message}")
             return
         }
