@@ -16,14 +16,14 @@ class EditTool(private val baseDir: File) : Tool {
     override val schemaFields: List<ArgField> = listOf(
         ArgsSchema.path("path", required = true, desc = "file to edit relative to base dir"),
         ArgsSchema.string("old_string", required = true, desc = "exact string to replace"),
-        ArgsSchema.string("new_string", desc = "replacement, default empty"),
+        ArgsSchema.string("new_string", required = true, desc = "replacement string"),
     )
 
     override suspend fun invoke(args: Map<String, String>): ToolResult = withContext(Dispatchers.IO) {
         val a = Args(args)
         val rel = a.string("path")
         val oldString = a.string("old_string")
-        val newString = a.string("new_string", "")
+        val newString = a.string("new_string")
 
         if (rel == null) return@withContext ToolResult(output = "", error = "edit requires path")
         if (oldString == null) return@withContext ToolResult(output = "", error = "edit requires old_string")
@@ -42,7 +42,8 @@ class EditTool(private val baseDir: File) : Tool {
             if (occurrences > 1) {
                 return@withContext ToolResult(output = "", error = "old_string found $occurrences times in $rel; must be unique")
             }
-            val updated = content.replace(oldString, newString!!)
+            val replacement = newString
+            val updated = content.replace(oldString, replacement)
             file.writeText(updated)
             return@withContext ToolResult(output = "edited $rel (replaced 1 occurrence, ${updated.length} bytes total)")
         } catch (e: Exception) {

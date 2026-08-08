@@ -88,7 +88,7 @@ class AgentLoop(
     private val toolRegistry: ToolRegistry = ToolRegistry(),
     private val handoffDir: File = File(System.getProperty("java.io.tmpdir", "/tmp"), "agent-handoffs"),
     private val emitBeforeTool: (String) -> Unit = {},
-    private val emitAfterTool: (String, ToolExecutionOutcome) -> Unit = { _, _ -> },
+    private val emitAfterTool: (String, String) -> Unit = { _, _ -> },
     private val onMemorySave: suspend (String, RoleContext, TaskPackage?, Int, String?) -> Unit = { _, _, _, _, _ -> },
     private val onMemoryLoad: () -> RoleContext? = { null },
 ) {
@@ -169,18 +169,6 @@ class AgentLoop(
     private var roleContext = RoleContext(goal = "")
     private val saveMemory: suspend (String, RoleContext, TaskPackage?, Int, String?) -> Unit = { phase, ctx, tp, idx, cp ->
         onMemorySave(phase, ctx, tp, idx, cp)
-    }
-
-    private fun recordPhase(task: AgentTask, role: AgentRole, phase: String): (RoleContext, RoleOutput) -> RoleContext = { ctx, out ->
-        val updated = orchestrator.onOutput(ctx, out)
-        saveMemory(
-            phase,
-            updated,
-            task.taskPackage,
-            task.taskPackage.checkpoints.size.coerceAtMost(10),
-            task.checkpoint?.id,
-        )
-        updated
     }
 
     private suspend fun askWithStream(roleLabel: String, prompt: String): ModelResponse {
@@ -602,9 +590,9 @@ class AgentLoop(
         _log.emit(msg)
     }
 
-    private fun verifyWorkerOutput(task: AgentTask.WorkerVerify) {
+    private suspend fun verifyWorkerOutput(task: AgentTask.WorkerVerify) {
         val missingOutputs = task.requiredToolNames.filter { name ->
-            task.toolOutputs[name]?.isNotBlank() != true
+            toolOutputs[name]?.isNotBlank() != true
         }
         if (missingOutputs.isNotEmpty()) {
             shouldStop = true

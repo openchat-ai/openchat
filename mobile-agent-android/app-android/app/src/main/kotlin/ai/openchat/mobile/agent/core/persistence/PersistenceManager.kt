@@ -14,6 +14,7 @@ import ai.openchat.mobile.agent.Artifact
 import ai.openchat.mobile.agent.ArtifactKind
 import ai.openchat.mobile.agent.Checkpoint
 import ai.openchat.mobile.agent.PublishIntent
+import ai.openchat.mobile.agent.core.agent.RoleContext
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -23,6 +24,7 @@ import org.json.JSONObject
 // - taskPackage is serialized to JSON embedded in the recovery object
 
 class PersistenceManager(context: Context) {
+    private val ctx: Context = context
     private val prefs: SharedPreferences = context.getSharedPreferences("agent_runtime", Context.MODE_PRIVATE)
 
     fun save(state: AppRuntimeState) {
@@ -210,7 +212,7 @@ class PersistenceManager(context: Context) {
     )
 
     private fun toFile(name: String): java.io.File {
-        val dir = context.getFilesDir()
+        val dir = ctx.getFilesDir()
         val target = java.io.File(dir, name)
         return target
     }

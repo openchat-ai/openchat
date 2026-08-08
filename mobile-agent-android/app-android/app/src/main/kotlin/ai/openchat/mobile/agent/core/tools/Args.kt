@@ -7,7 +7,7 @@ package ai.openchat.mobile.agent.core.tools
 // - The raw map is unchanged; Args only provides safe accessors
 
 class Args(val raw: Map<String, String>) {
-    fun string(key: String): String? = raw[key].takeIf { it.isNotBlank() }
+    fun string(key: String): String? = raw[key]?.takeIf { it.isNotBlank() }
     fun string(key: String, default: String): String = raw[key]?.takeIf { it.isNotBlank() } ?: default
     fun int(key: String): Int? = raw[key]?.toIntOrNull()
     fun int(key: String, default: Int): Int = raw[key]?.toIntOrNull() ?: default
