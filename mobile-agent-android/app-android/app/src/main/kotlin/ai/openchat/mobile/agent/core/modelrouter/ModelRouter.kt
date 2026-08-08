@@ -33,6 +33,10 @@ data class ModelResponse(val text: String? = null, val error: String? = null) {
 interface ModelProvider {
     val id: String
     suspend fun ask(request: ModelRequest): ModelResponse
+    suspend fun streamAsk(
+        request: ModelRequest,
+        onDelta: suspend (String) -> Unit,
+    ): ModelResponse = ask(request)
 }
 
 data class OpenAiCompatibleConfig(
@@ -71,7 +75,7 @@ class OpenAiCompatibleProvider(
         ModelResponse(error = "${config.model}: ${error.message}")
     }
 
-    suspend fun streamAsk(
+    override suspend fun streamAsk(
         request: ModelRequest,
         onDelta: suspend (String) -> Unit,
     ): ModelResponse = runCatching {
@@ -158,6 +162,19 @@ class ModelRouter(private val providers: List<ModelProvider>) {
         val failures = mutableListOf<String>()
         for (provider in providers) {
             val response = provider.ask(request)
+            if (response.isSuccess) return response
+            response.error?.let { failures += "${provider.id}: $it" }
+        }
+        return ModelResponse(error = failures.joinToString(separator = " | ").ifBlank { "all providers failed" })
+    }
+
+    suspend fun streamAsk(
+        request: ModelRequest,
+        onDelta: suspend (String) -> Unit,
+    ): ModelResponse {
+        val failures = mutableListOf<String>()
+        for (provider in providers) {
+            val response = provider.streamAsk(request, onDelta)
             if (response.isSuccess) return response
             response.error?.let { failures += "${provider.id}: $it" }
         }

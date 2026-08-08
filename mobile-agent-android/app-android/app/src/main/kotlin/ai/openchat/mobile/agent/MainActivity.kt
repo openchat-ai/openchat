@@ -286,6 +286,11 @@ class MainActivity : AppCompatActivity() {
             }
         }
         lifecycleScope.launch {
+            ai.openchat.mobile.agent.core.agent.AgentStatusHub.stream.collect { chunk ->
+                appendConversation(chunk)
+            }
+        }
+        lifecycleScope.launch {
             ai.openchat.mobile.agent.core.agent.AgentStatusHub.failures.collect { failure ->
                 dispatch(
                     RuntimeAction.AgentFailed(

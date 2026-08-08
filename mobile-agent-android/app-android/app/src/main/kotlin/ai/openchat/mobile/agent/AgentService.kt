@@ -16,6 +16,8 @@ import ai.openchat.mobile.agent.core.agent.AgentCommand
 import ai.openchat.mobile.agent.core.agent.AgentFailure
 import ai.openchat.mobile.agent.core.agent.AgentLifecycleEvent
 import ai.openchat.mobile.agent.core.agent.WorkspaceScanner
+import ai.openchat.mobile.agent.core.agent.RoleContext
+import ai.openchat.mobile.agent.core.persistence.PersistenceManager.WorkerMemorySnapshot
 import ai.openchat.mobile.agent.core.modelrouter.ModelRouter
 import ai.openchat.mobile.agent.core.modelrouter.OpenAiCompatibleProvider
 import ai.openchat.mobile.agent.core.modelrouter.OpenAiCompatibleConfig
@@ -231,6 +233,44 @@ class AgentService : Service() {
             },
             repoContext = { WorkspaceScanner(filesDir).scan() },
             toolRegistry = buildToolRegistry(),
+            streamRequest = { request, onDelta ->
+                withContext(Dispatchers.IO) {
+                    val settings = settingsStore.load()
+                    val router = ModelRouter(listOf(
+                        OpenAiCompatibleProvider(
+                            "primary",
+                            OpenAiCompatibleConfig(
+                                settings.provider.baseUrl,
+                                settings.provider.apiKey,
+                                settings.provider.model,
+                            ),
+                        ),
+                    ))
+                    router.streamAsk(request) { delta ->
+                        onDelta(delta)
+                    }
+                }
+            },
+            onMemorySave = { phase, ctx, tp, idx, cp ->
+                withContext(Dispatchers.IO) {
+                    persistenceManager.saveWorkerMemory(phase, ctx, tp, idx, cp)
+                }
+            },
+            onMemoryLoad = {
+                val snap: WorkerMemorySnapshot? = persistenceManager.loadWorkerMemory()
+                snap?.let { s ->
+                    RoleContext(
+                        goal = s.roleContext.goal,
+                        sentinelSummary = s.roleContext.sentinelSummary,
+                        explorationResult = s.roleContext.explorationResult,
+                        milestonePlan = s.roleContext.milestonePlan,
+                        workerOutput = s.roleContext.workerOutput,
+                        reviewResult = s.roleContext.reviewResult,
+                        criticResult = s.roleContext.criticResult,
+                        auditorResult = s.roleContext.auditorResult,
+                    )
+                }
+            },
         ).also { loop ->
             serviceScope.launch {
                 loop.log.collect { AgentStatusHub.emitLog(it) }

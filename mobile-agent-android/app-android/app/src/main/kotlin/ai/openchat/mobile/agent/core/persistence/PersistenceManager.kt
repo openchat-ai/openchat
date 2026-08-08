@@ -188,4 +188,91 @@ class PersistenceManager(context: Context) {
         baseBranch = j.getString("baseBranch"), branchName = j.getString("branchName"),
         commitMessage = j.getString("commitMessage"), prTitle = j.getString("prTitle"), prBody = j.getString("prBody")
     )
+
+    data class WorkerMemorySnapshot(
+        val phase: String,
+        val roleContext: RoleContextSnapshot,
+        val taskPackage: TaskPackage?,
+        val currentMilestoneIndex: Int,
+        val lastCheckpointId: String?,
+        val savedAtMs: Long,
+    )
+
+    data class RoleContextSnapshot(
+        val goal: String,
+        val sentinelSummary: String,
+        val explorationResult: String,
+        val milestonePlan: String,
+        val workerOutput: String,
+        val reviewResult: String,
+        val criticResult: String,
+        val auditorResult: String,
+    )
+
+    private fun toFile(name: String): java.io.File {
+        val dir = context.getFilesDir()
+        val target = java.io.File(dir, name)
+        return target
+    }
+
+    fun saveWorkerMemory(
+        phase: String,
+        context: RoleContext,
+        taskPackage: TaskPackage?,
+        currentMilestoneIndex: Int = 0,
+        lastCheckpointId: String? = null,
+    ) {
+        val json = JSONObject().apply {
+            put("phase", phase)
+            put("context", JSONObject().apply {
+                put("goal", truncate(context.goal, 800))
+                put("sentinelSummary", truncate(context.sentinelSummary, 1500))
+                put("explorationResult", truncate(context.explorationResult, 1500))
+                put("milestonePlan", truncate(context.milestonePlan, 2000))
+                put("workerOutput", truncate(context.workerOutput, 1500))
+                put("reviewResult", truncate(context.reviewResult, 1500))
+                put("criticResult", truncate(context.criticResult, 1500))
+                put("auditorResult", truncate(context.auditorResult, 1500))
+            })
+            put("taskPackage", taskPackage?.let { serializeTaskPackage(it) })
+            put("currentMilestoneIndex", currentMilestoneIndex)
+            put("lastCheckpointId", lastCheckpointId ?: "")
+            put("savedAtMs", System.currentTimeMillis())
+        }
+        val file = toFile("agent_memory_v1.json")
+        file.parentFile?.mkdirs()
+        file.writeText(json.toString())
+    }
+
+    fun loadWorkerMemory(): WorkerMemorySnapshot? = runCatching {
+        val file = toFile("agent_memory_v1.json")
+        if (!file.exists()) return@runCatching null
+        val json = JSONObject(file.readText())
+        WorkerMemorySnapshot(
+            phase = json.getString("phase"),
+            roleContext = json.getJSONObject("context").let { c ->
+                RoleContextSnapshot(
+                    goal = c.optString("goal", ""),
+                    sentinelSummary = c.optString("sentinelSummary", ""),
+                    explorationResult = c.optString("explorationResult", ""),
+                    milestonePlan = c.optString("milestonePlan", ""),
+                    workerOutput = c.optString("workerOutput", ""),
+                    reviewResult = c.optString("reviewResult", ""),
+                    criticResult = c.optString("criticResult", ""),
+                    auditorResult = c.optString("auditorResult", ""),
+                )
+            },
+            taskPackage = json.optJSONObject("taskPackage")?.let { deserializeTaskPackage(it) },
+            currentMilestoneIndex = json.optInt("currentMilestoneIndex", 0),
+            lastCheckpointId = json.optString("lastCheckpointId").takeIf { it.isNotEmpty() },
+            savedAtMs = json.optLong("savedAtMs", 0),
+        )
+    }.getOrNull()
+
+    fun clearWorkerMemory() {
+        toFile("agent_memory_v1.json").delete()
+    }
+
+    private fun truncate(s: String, max: Int): String =
+        if (s.length <= max) s else "${s.substring(0, max)}\n…[truncated]"
 }

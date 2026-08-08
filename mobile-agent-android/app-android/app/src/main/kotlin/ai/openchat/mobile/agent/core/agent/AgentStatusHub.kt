@@ -22,6 +22,13 @@ object AgentStatusHub {
     private val _failures = MutableSharedFlow<AgentFailure>(extraBufferCapacity = 8)
     val failures = _failures.asSharedFlow()
 
+    private val _stream = MutableSharedFlow<String>(replay = 1, extraBufferCapacity = 64)
+    val stream = _stream.asSharedFlow()
+
+    suspend fun emitStream(roleLabel: String, delta: String) {
+        _stream.emit("[STREAM:$roleLabel]$delta")
+    }
+
     fun updateState(newState: AgentSessionState) {
         _state.value = newState
     }

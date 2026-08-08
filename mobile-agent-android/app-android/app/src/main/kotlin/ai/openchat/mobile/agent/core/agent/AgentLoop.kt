@@ -8,6 +8,7 @@ import ai.openchat.mobile.agent.TaskPackage
 import ai.openchat.mobile.agent.core.editgate.EditGate
 import ai.openchat.mobile.agent.core.modelrouter.ModelProvider
 import ai.openchat.mobile.agent.core.modelrouter.ModelRequest
+import ai.openchat.mobile.agent.core.persistence.PersistenceManager
 import ai.openchat.mobile.agent.core.modelrouter.ModelResponse
 import ai.openchat.mobile.agent.core.tools.ToolRegistry
 import kotlinx.coroutines.channels.BufferOverflow
@@ -76,6 +77,9 @@ class AgentLoop(
     private val planRequest: suspend (ModelRequest) -> ModelResponse = { request ->
         ScriptedProvider().ask(request)
     },
+    private val streamRequest: suspend (ModelRequest, onDelta: suspend (String) -> Unit) -> ModelResponse = { request, _ ->
+        planRequest(request)
+    },
     private val publishDraft: suspend (taskPackage: TaskPackage) -> String = { _ ->
         "publish unavailable"
     },
@@ -83,6 +87,10 @@ class AgentLoop(
     private val repoContext: suspend () -> String = { "" },
     private val toolRegistry: ToolRegistry = ToolRegistry(),
     private val handoffDir: File = File(System.getProperty("java.io.tmpdir", "/tmp"), "agent-handoffs"),
+    private val emitBeforeTool: (String) -> Unit = {},
+    private val emitAfterTool: (String, ToolExecutionOutcome) -> Unit = { _, _ -> },
+    private val onMemorySave: suspend (String, RoleContext, TaskPackage?, Int, String?) -> Unit = { _, _, _, _, _ -> },
+    private val onMemoryLoad: () -> RoleContext? = { null },
 ) {
 
     private enum class ArtifactFormat {
@@ -159,6 +167,28 @@ class AgentLoop(
     private val orchestrator = RoleOrchestrator()
     private val handoff = ContextHandoff(handoffDir)
     private var roleContext = RoleContext(goal = "")
+    private val saveMemory: suspend (String, RoleContext, TaskPackage?, Int, String?) -> Unit = { phase, ctx, tp, idx, cp ->
+        onMemorySave(phase, ctx, tp, idx, cp)
+    }
+
+    private fun recordPhase(task: AgentTask, role: AgentRole, phase: String): (RoleContext, RoleOutput) -> RoleContext = { ctx, out ->
+        val updated = orchestrator.onOutput(ctx, out)
+        saveMemory(
+            phase,
+            updated,
+            task.taskPackage,
+            task.taskPackage.checkpoints.size.coerceAtMost(10),
+            task.checkpoint?.id,
+        )
+        updated
+    }
+
+    private suspend fun askWithStream(roleLabel: String, prompt: String): ModelResponse {
+        return streamRequest(ModelRequest(prompt = prompt)) { delta ->
+            AgentStatusHub.emitStream(roleLabel, delta)
+            emit("[STREAM:$roleLabel]$delta")
+        }
+    }
 
     suspend fun run() {
         if (_state.value != AgentState.IDLE) {
@@ -180,7 +210,18 @@ class AgentLoop(
         onLifecycleEvent(AgentLifecycleEvent.Planning(goal))
         emit("[C1] multi-role agent started: $goal")
         val scannedRepo = runCatching { repoContext() }.getOrElse { "Workspace unavailable: $it" }
-        roleContext = RoleContext(goal = goal, repoContext = scannedRepo)
+        val restoredContext = onMemoryLoad()
+        roleContext = RoleContext(
+            goal = goal,
+            repoContext = scannedRepo,
+            sentinelSummary = restoredContext?.sentinelSummary ?: "",
+            explorationResult = restoredContext?.explorationResult ?: "",
+            milestonePlan = restoredContext?.milestonePlan ?: "",
+            workerOutput = restoredContext?.workerOutput ?: "",
+            reviewResult = restoredContext?.reviewResult ?: "",
+            criticResult = restoredContext?.criticResult ?: "",
+            auditorResult = restoredContext?.auditorResult ?: "",
+        )
         handoff.clearHandoffs()
         runRoleLoop(goal)
     }
@@ -378,7 +419,7 @@ class AgentLoop(
 
     private suspend fun runSentinel(goal: String) {
         val prompt = RolePrompts.systemPrompt(AgentRole.SENTINEL, roleContext)
-        val response = planRequest(ModelRequest(prompt = prompt))
+        val response = askWithStream("SENTINEL", prompt)
         if (!response.isSuccess) {
             shouldStop = true
             onLifecycleEvent(AgentLifecycleEvent.Failed(goal, "sentinel", response.error ?: "sentinel failed", retryable = true))
@@ -387,6 +428,7 @@ class AgentLoop(
         }
         val text = response.text?.trim().orEmpty()
         roleContext = orchestrator.onOutput(roleContext, RoleOutput(AgentRole.SENTINEL, text))
+        saveMemory("SENTINEL", roleContext, latestTaskPackage, 0, null)
         emit("[R] sentinel: ${text.take(120)}")
     }
 
@@ -397,7 +439,7 @@ class AgentLoop(
             return
         }
         val prompt = RolePrompts.systemPrompt(AgentRole.EXPLORER, roleContext)
-        val response = planRequest(ModelRequest(prompt = prompt))
+        val response = askWithStream("EXPLORER", prompt)
         if (!response.isSuccess) {
             shouldStop = true
             onLifecycleEvent(AgentLifecycleEvent.Failed(goal, "explorer", response.error ?: "explorer failed", retryable = true))
@@ -406,12 +448,13 @@ class AgentLoop(
         }
         val text = response.text?.trim().orEmpty()
         roleContext = orchestrator.onOutput(roleContext, RoleOutput(AgentRole.EXPLORER, text))
+        saveMemory("EXPLORER", roleContext, latestTaskPackage, 0, null)
         emit("[R] explorer: ${text.take(120)}")
     }
 
     private suspend fun runOrchestrator(goal: String) {
         val prompt = RolePrompts.systemPrompt(AgentRole.ORCHESTRATOR, roleContext)
-        val response = planRequest(ModelRequest(prompt = prompt))
+        val response = askWithStream("ORCH", prompt)
         if (!response.isSuccess) {
             shouldStop = true
             onLifecycleEvent(AgentLifecycleEvent.Failed(goal, "orchestrator", response.error ?: "orchestrator failed", retryable = true))
@@ -420,6 +463,7 @@ class AgentLoop(
         }
         val text = response.text?.trim().orEmpty()
         roleContext = orchestrator.onOutput(roleContext, RoleOutput(AgentRole.ORCHESTRATOR, text))
+        saveMemory("ORCHESTRATOR", roleContext, latestTaskPackage, 0, null)
         val milestoneCount = text.lines().count { it.trim().startsWith("MILESTONE") }
         roleContext = roleContext.copy(
             totalMilestones = maxOf(milestoneCount, 1),
@@ -430,7 +474,7 @@ class AgentLoop(
     private suspend fun runWorker(goal: String) {
         val toolDescriptions = if (toolRegistry.hasTools()) toolRegistry.listDescriptions() else ""
         val prompt = RolePrompts.systemPrompt(AgentRole.WORKER, roleContext, toolDescriptions)
-        val response = planRequest(ModelRequest(prompt = prompt))
+        val response = askWithStream("WORKER", prompt)
         if (!response.isSuccess) {
             shouldStop = true
             onLifecycleEvent(AgentLifecycleEvent.Failed(goal, "worker", response.error ?: "worker failed", retryable = true))
@@ -439,6 +483,7 @@ class AgentLoop(
         }
         val text = response.text?.trim().orEmpty()
         roleContext = orchestrator.onOutput(roleContext, RoleOutput(AgentRole.WORKER, text))
+        saveMemory("WORKER", roleContext, latestTaskPackage, 0, null)
 
         val toolCalls = parseToolCalls(text)
         val context = repoContext()
@@ -477,25 +522,28 @@ class AgentLoop(
 
     private suspend fun runReviewer(goal: String) {
         val prompt = RolePrompts.systemPrompt(AgentRole.REVIEWER, roleContext)
-        val response = planRequest(ModelRequest(prompt = prompt))
+        val response = askWithStream("REVIEW", prompt)
         val text = response.text?.trim().orEmpty()
         roleContext = orchestrator.onOutput(roleContext, RoleOutput(AgentRole.REVIEWER, text))
+        saveMemory("REVIEWER", roleContext, latestTaskPackage, 0, null)
         emit("[R] reviewer: ${text.take(120)}")
     }
 
     private suspend fun runCritic(goal: String) {
         val prompt = RolePrompts.systemPrompt(AgentRole.CRITIC, roleContext)
-        val response = planRequest(ModelRequest(prompt = prompt))
+        val response = askWithStream("CRITIC", prompt)
         val text = response.text?.trim().orEmpty()
         roleContext = orchestrator.onOutput(roleContext, RoleOutput(AgentRole.CRITIC, text))
+        saveMemory("CRITIC", roleContext, latestTaskPackage, 0, null)
         emit("[R] critic: ${text.take(120)}")
     }
 
     private suspend fun runAuditor(goal: String) {
         val prompt = RolePrompts.systemPrompt(AgentRole.AUDITOR, roleContext)
-        val response = planRequest(ModelRequest(prompt = prompt))
+        val response = askWithStream("AUDIT", prompt)
         val text = response.text?.trim().orEmpty()
         roleContext = orchestrator.onOutput(roleContext, RoleOutput(AgentRole.AUDITOR, text))
+        saveMemory("AUDITOR", roleContext, latestTaskPackage, 0, null)
         emit("[R] auditor: ${text.take(120)}")
     }
 
