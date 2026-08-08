@@ -13,11 +13,15 @@ import java.io.File
 
 class DeleteTool(private val baseDir: File) : Tool {
     override val name: String = "delete"
-    override val description: String = "Delete a file in local storage. Args: path (relative, required)"
+    override val description: String = "Delete a file in local storage"
+    override val schemaFields: List<ArgField> = listOf(
+        ArgsSchema.path("path", required = true, desc = "file or empty dir to delete relative to base dir"),
+    )
 
     override suspend fun invoke(args: Map<String, String>): ToolResult = withContext(Dispatchers.IO) {
-        val rel = args["path"]
-        if (rel.isNullOrBlank()) return@withContext ToolResult(output = "", error = "delete requires path")
+        val a = Args(args)
+        val rel = a.string("path")
+        if (rel == null) return@withContext ToolResult(output = "", error = "delete requires path")
         val file = File(baseDir, rel).normalize()
         if (!file.startsWith(baseDir)) return@withContext ToolResult(output = "", error = "path outside sandbox")
         if (file == baseDir) return@withContext ToolResult(output = "", error = "refusing to delete sandbox root")

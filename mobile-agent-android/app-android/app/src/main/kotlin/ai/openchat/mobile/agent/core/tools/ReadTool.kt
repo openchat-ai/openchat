@@ -15,11 +15,15 @@ private const val MAX_READ_BYTES = 512 * 1024
 
 class ReadTool(private val baseDir: File) : Tool {
     override val name: String = "read"
-    override val description: String = "Read a file. Args: path (relative to base dir, required)"
+    override val description: String = "Read a file"
+    override val schemaFields: List<ArgField> = listOf(
+        ArgsSchema.path("path", required = true, desc = "file to read relative to base dir"),
+    )
 
     override suspend fun invoke(args: Map<String, String>): ToolResult = withContext(Dispatchers.IO) {
-        val rel = args["path"]
-        if (rel.isNullOrBlank()) return@withContext ToolResult(output = "", error = "read requires path")
+        val a = Args(args)
+        val rel = a.string("path")
+        if (rel == null) return@withContext ToolResult(output = "", error = "read requires path")
         val file = File(baseDir, rel).normalize()
         if (!file.startsWith(baseDir)) return@withContext ToolResult(output = "", error = "path outside sandbox")
         if (!file.exists()) return@withContext ToolResult(output = "", error = "file not found: $rel")

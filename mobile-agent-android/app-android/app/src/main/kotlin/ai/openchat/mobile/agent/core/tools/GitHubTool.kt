@@ -16,6 +16,9 @@ import kotlinx.coroutines.withContext
 class ListTreeTool(private val clientProvider: suspend () -> GitHubClient) : Tool {
     override val name: String = "list_tree"
     override val description: String = "List files in a directory tree. Args: path (default: root)"
+    override val schemaFields: List<ArgField> = listOf(
+        ArgsSchema.path("path", desc = "directory to list, default: root"),
+    )
 
     override suspend fun invoke(args: Map<String, String>): ToolResult = withContext(Dispatchers.IO) {
         val path = args["path"] ?: ""
@@ -35,6 +38,10 @@ class ListTreeTool(private val clientProvider: suspend () -> GitHubClient) : Too
 class ReadFileTool(private val clientProvider: suspend () -> GitHubClient) : Tool {
     override val name: String = "read_file"
     override val description: String = "Read a file from the repo. Args: path (required), branch (default: main)"
+    override val schemaFields: List<ArgField> = listOf(
+        ArgsSchema.path("path", required = true, desc = "file path in repo"),
+        ArgsSchema.string("branch", default = "main", desc = "branch, default: main"),
+    )
 
     override suspend fun invoke(args: Map<String, String>): ToolResult = withContext(Dispatchers.IO) {
         val path = args["path"] ?: return@withContext ToolResult(output = "", error = "read_file requires path")
@@ -58,6 +65,11 @@ class HashEditTool(
 ) : Tool {
     override val name: String = "hash_edit"
     override val description: String = "Edit a file via EditGate (snapshot→diff→apply→artifact). Args: path (required), newContent (required), branch (default: main)"
+    override val schemaFields: List<ArgField> = listOf(
+        ArgsSchema.path("path", required = true, desc = "file path in repo"),
+        ArgsSchema.string("newContent", required = true, desc = "new file content"),
+        ArgsSchema.string("branch", default = "main", desc = "branch, default: main"),
+    )
 
     override suspend fun invoke(args: Map<String, String>): ToolResult = withContext(Dispatchers.IO) {
         val path = args["path"] ?: return@withContext ToolResult(output = "", error = "hash_edit requires path")

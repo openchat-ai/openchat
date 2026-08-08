@@ -15,6 +15,12 @@ class GitPushTool(
 ) : Tool {
     override val name: String = "git_push"
     override val description: String = "Push a committed branch as PR (if git_commit was used) or commit local files and push to GitHub as PR. After git_commit, no args are needed. Otherwise args: paths (comma-separated, required), message (commit message, required), branch (optional, default: auto-generated), baseBranch (optional, default: main)"
+    override val schemaFields: List<ArgField> = listOf(
+        ArgsSchema.string("paths", required = true, desc = "comma-separated file paths to push"),
+        ArgsSchema.string("message", required = true, desc = "commit message"),
+        ArgsSchema.string("branch", desc = "branch name, default: auto-generated"),
+        ArgsSchema.string("baseBranch", default = "main", desc = "base branch, default: main"),
+    )
 
     override suspend fun invoke(args: Map<String, String>): ToolResult = withContext(Dispatchers.IO) {
         val committed = store
@@ -68,6 +74,12 @@ class CiStatusTool(
 ) : Tool {
     override val name: String = "ci_status"
     override val description: String = "Check CI run status for a branch or runId. Args: branch (required unless runId), runId, owner, repo"
+    override val schemaFields: List<ArgField> = listOf(
+        ArgsSchema.string("branch", desc = "branch name, required unless runId given"),
+        ArgsSchema.long("runId", desc = "CI run id, either runId or branch is required"),
+        ArgsSchema.string("owner", desc = "GitHub owner, default: configured"),
+        ArgsSchema.string("repo", desc = "GitHub repo, default: configured"),
+    )
 
     override suspend fun invoke(args: Map<String, String>): ToolResult = withContext(Dispatchers.IO) {
         val owner = args["owner"] ?: this@CiStatusTool.owner
@@ -138,6 +150,12 @@ class CiLogTool(
 ) : Tool {
     override val name: String = "ci_log"
     override val description: String = "Fetch CI job logs. Args: runId (required unless jobId), jobId, owner, repo. With runId returns failed-job logs (truncated); with jobId returns that job's full log."
+    override val schemaFields: List<ArgField> = listOf(
+        ArgsSchema.long("runId", desc = "CI run id, either runId or jobId is required"),
+        ArgsSchema.long("jobId", desc = "CI job id, fetches that job's full log"),
+        ArgsSchema.string("owner", desc = "GitHub owner, default: configured"),
+        ArgsSchema.string("repo", desc = "GitHub repo, default: configured"),
+    )
 
     override suspend fun invoke(args: Map<String, String>): ToolResult = withContext(Dispatchers.IO) {
         val owner = args["owner"] ?: this@CiLogTool.owner

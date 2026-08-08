@@ -12,15 +12,21 @@ import java.io.File
 
 class EditTool(private val baseDir: File) : Tool {
     override val name: String = "edit"
-    override val description: String = "Edit a file by replacing old_string with new_string. Args: path (relative, required), old_string (required), new_string (required)"
+    override val description: String = "Edit a file by replacing old_string with new_string"
+    override val schemaFields: List<ArgField> = listOf(
+        ArgsSchema.path("path", required = true, desc = "file to edit relative to base dir"),
+        ArgsSchema.string("old_string", required = true, desc = "exact string to replace"),
+        ArgsSchema.string("new_string", desc = "replacement, default empty"),
+    )
 
     override suspend fun invoke(args: Map<String, String>): ToolResult = withContext(Dispatchers.IO) {
-        val rel = args["path"]
-        val oldString = args["old_string"]
-        val newString = args["new_string"]
+        val a = Args(args)
+        val rel = a.string("path")
+        val oldString = a.string("old_string")
+        val newString = a.string("new_string", "")
 
-        if (rel.isNullOrBlank()) return@withContext ToolResult(output = "", error = "edit requires path")
-        if (oldString.isNullOrEmpty()) return@withContext ToolResult(output = "", error = "edit requires old_string")
+        if (rel == null) return@withContext ToolResult(output = "", error = "edit requires path")
+        if (oldString == null) return@withContext ToolResult(output = "", error = "edit requires old_string")
         if (newString == null) return@withContext ToolResult(output = "", error = "edit requires new_string")
 
         val file = File(baseDir, rel).normalize()

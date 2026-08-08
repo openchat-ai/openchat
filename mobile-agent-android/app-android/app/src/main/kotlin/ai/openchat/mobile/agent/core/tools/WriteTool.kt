@@ -13,12 +13,17 @@ import java.io.File
 
 class WriteTool(private val baseDir: File) : Tool {
     override val name: String = "write"
-    override val description: String = "Write content to a file in local storage. Args: path (relative, required), content (optional, default: empty)"
+    override val description: String = "Write content to a file in local storage"
+    override val schemaFields: List<ArgField> = listOf(
+        ArgsSchema.path("path", required = true, desc = "file to write relative to base dir"),
+        ArgsSchema.string("content", desc = "file content, default empty"),
+    )
 
     override suspend fun invoke(args: Map<String, String>): ToolResult = withContext(Dispatchers.IO) {
-        val rel = args["path"]
-        if (rel.isNullOrBlank()) return@withContext ToolResult(output = "", error = "write requires path")
-        val content = args["content"] ?: ""
+        val a = Args(args)
+        val rel = a.string("path")
+        if (rel == null) return@withContext ToolResult(output = "", error = "write requires path")
+        val content = a.string("content", "")
         val file = File(baseDir, rel).normalize()
         if (!file.startsWith(baseDir)) return@withContext ToolResult(output = "", error = "path outside sandbox")
         try {

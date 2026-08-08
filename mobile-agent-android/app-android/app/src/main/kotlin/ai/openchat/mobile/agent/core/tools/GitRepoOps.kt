@@ -32,6 +32,9 @@ class GitRepositoryStore(val baseDir: File) {
 class GitInitTool(private val store: GitRepositoryStore) : Tool {
     override val name: String = "git_init"
     override val description: String = "Configure a GitHub repository for git operations. Args: repoUrl (required, e.g. https://github.com/owner/repo or owner/repo)"
+    override val schemaFields: List<ArgField> = listOf(
+        ArgsSchema.string("repoUrl", required = true, desc = "GitHub repo URL or owner/repo"),
+    )
 
     override suspend fun invoke(args: Map<String, String>): ToolResult {
         val repoUrl = args["repoUrl"] ?: return ToolResult(output = "", error = "git_init requires repoUrl")
@@ -51,6 +54,9 @@ class GitAddTool(
 ) : Tool {
     override val name: String = "git_add"
     override val description: String = "Stage files for git commit. Args: paths (comma-separated, required)"
+    override val schemaFields: List<ArgField> = listOf(
+        ArgsSchema.string("paths", required = true, desc = "comma-separated file paths to stage"),
+    )
 
     override suspend fun invoke(args: Map<String, String>): ToolResult = withContext(Dispatchers.IO) {
         val pathsStr = args["paths"] ?: return@withContext ToolResult(output = "", error = "git_add requires paths (comma-separated)")
@@ -73,6 +79,9 @@ class GitCommitTool(
 ) : Tool {
     override val name: String = "git_commit"
     override val description: String = "Commit staged files to a new branch. Args: message (required). Requires git_init then git_add first."
+    override val schemaFields: List<ArgField> = listOf(
+        ArgsSchema.string("message", required = true, desc = "commit message"),
+    )
 
     override suspend fun invoke(args: Map<String, String>): ToolResult = withContext(Dispatchers.IO) {
         val message = args["message"] ?: return@withContext ToolResult(output = "", error = "git_commit requires message")

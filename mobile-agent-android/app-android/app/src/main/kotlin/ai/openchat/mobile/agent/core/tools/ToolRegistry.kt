@@ -19,7 +19,7 @@ class ToolRegistry {
     fun get(name: String): Tool? = tools[name]
 
     fun listDescriptions(): String = tools.entries.joinToString("\n") { (name, tool) ->
-        "  - $name: ${tool.description}"
+        "  - ${tool.summary()}"
     }
 
     fun hasTools(): Boolean = tools.isNotEmpty()

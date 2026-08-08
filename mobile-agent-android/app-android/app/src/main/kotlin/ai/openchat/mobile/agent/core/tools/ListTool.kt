@@ -20,6 +20,10 @@ class ListTool(private val baseDir: File) : Tool {
     override val name: String = "list"
     override val description: String =
         "List directory contents. Args: path (relative, required), recursive (optional, 'true' or 'false')"
+    override val schemaFields: List<ArgField> = listOf(
+        ArgsSchema.path("path", required = true, desc = "directory to list, relative to base"),
+        ArgsSchema.bool("recursive", desc = "list recursively"),
+    )
 
     override suspend fun invoke(args: Map<String, String>): ToolResult = withContext(Dispatchers.IO) {
         val rel = args["path"]

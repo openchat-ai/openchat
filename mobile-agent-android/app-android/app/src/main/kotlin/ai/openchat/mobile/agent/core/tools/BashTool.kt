@@ -21,13 +21,19 @@ private const val MAX_TIMEOUT_SECONDS = 300L
 
 class BashTool(private val baseDir: File) : Tool {
     override val name: String = "bash"
-    override val description: String = "Execute a shell command on the device. Args: command (required), workdir (relative to base, default: root), timeout (seconds, default: 30, max: 300)"
+    override val description: String = "Execute a shell command on the device"
+    override val schemaFields: List<ArgField> = listOf(
+        ArgsSchema.string("command", required = true, desc = "shell command to execute"),
+        ArgsSchema.string("workdir", desc = "relative directory, default: base dir"),
+        ArgsSchema.long("timeout", default = DEFAULT_TIMEOUT_SECONDS, desc = "seconds, default 30, max 300"),
+    )
 
     override suspend fun invoke(args: Map<String, String>): ToolResult = withContext(Dispatchers.IO) {
-        val command = args["command"]
-        if (command.isNullOrBlank()) return@withContext ToolResult(output = "", error = "bash requires command")
-        val workdir = args["workdir"]?.takeIf { it.isNotBlank() } ?: ""
-        val timeoutSec = args["timeout"]?.toLongOrNull() ?: DEFAULT_TIMEOUT_SECONDS
+        val a = Args(args)
+        val command = a.string("command")
+        if (command == null) return@withContext ToolResult(output = "", error = "bash requires command")
+        val workdir = a.string("workdir", "")
+        val timeoutSec = a.long("timeout", DEFAULT_TIMEOUT_SECONDS)
         if (timeoutSec > MAX_TIMEOUT_SECONDS) return@withContext ToolResult(output = "", error = "bash timeout exceeds maximum of ${MAX_TIMEOUT_SECONDS}s")
         if (timeoutSec < 1) return@withContext ToolResult(output = "", error = "bash timeout must be >= 1s")
         val root = File(baseDir, workdir).normalize()

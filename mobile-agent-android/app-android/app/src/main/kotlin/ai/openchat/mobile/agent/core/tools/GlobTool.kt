@@ -17,6 +17,11 @@ private const val MAX_RESULTS = 100
 class GlobTool(private val baseDir: File) : Tool {
     override val name: String = "glob"
     override val description: String = "Find files by glob pattern within base directory. Args: pattern (required), path (relative dir, default: root), limit (max results, default: 100)"
+    override val schemaFields: List<ArgField> = listOf(
+        ArgsSchema.string("pattern", required = true, desc = "glob pattern with * / **"),
+        ArgsSchema.path("path", desc = "relative directory, default: root"),
+        ArgsSchema.int("limit", default = MAX_RESULTS, desc = "max results, default 100"),
+    )
 
     override suspend fun invoke(args: Map<String, String>): ToolResult = withContext(Dispatchers.IO) {
         val pattern = args["pattern"]

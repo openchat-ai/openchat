@@ -26,6 +26,10 @@ private const val MAX_REPO_ITEMS = 20
 class GrepLocalTool(private val baseDir: File) : Tool {
     override val name: String = "grep_local"
     override val description: String = "Search file contents in local storage (case-sensitive substring). Args: pattern (required), path (relative dir, default: root)"
+    override val schemaFields: List<ArgField> = listOf(
+        ArgsSchema.string("pattern", required = true, desc = "substring to search"),
+        ArgsSchema.path("path", desc = "relative directory, default: root"),
+    )
 
     override suspend fun invoke(args: Map<String, String>): ToolResult = withContext(Dispatchers.IO) {
         val pattern = args["pattern"]
@@ -72,6 +76,10 @@ class GrepRepoTool(
 ) : Tool {
     override val name: String = "grep_repo"
     override val description: String = "Search file contents in the GitHub repo (default branch). Args: pattern (required, >=3 chars), path (optional dir filter)"
+    override val schemaFields: List<ArgField> = listOf(
+        ArgsSchema.string("pattern", required = true, desc = "search term, >= 3 chars"),
+        ArgsSchema.path("path", desc = "optional directory filter"),
+    )
 
     override suspend fun invoke(args: Map<String, String>): ToolResult = withContext(Dispatchers.IO) {
         val pattern = args["pattern"]
