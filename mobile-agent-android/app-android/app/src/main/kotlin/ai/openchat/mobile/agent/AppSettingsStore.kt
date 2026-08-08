@@ -104,10 +104,6 @@ class AppSettingsStore(private val context: Context) {
         prefs.edit().putString(KEY_ASK_HISTORY, json.toString()).apply()
     }
 
-    @Deprecated("Use PersistenceManager.loadSnapshot() instead", level = DeprecationLevel.WARNING)
-    @Suppress("unused")
-    fun loadRuntimeSnapshot(): RuntimePersistenceSnapshot? = null
-
     fun loadTabs(): List<ChatTab> {
         val raw = prefs.getString(KEY_TABS, null) ?: return emptyList()
         return runCatching {
@@ -124,11 +120,6 @@ class AppSettingsStore(private val context: Context) {
         val json = JSONArray()
         tabs.forEach { tab -> json.put(tab.toJson()) }
         prefs.edit().putString(KEY_TABS, json.toString()).apply()
-    }
-
-    @Deprecated("Use PersistenceManager.save() instead", level = DeprecationLevel.WARNING)
-    @Suppress("unused")
-    fun saveRuntimeSnapshot(snapshot: RuntimePersistenceSnapshot) {
     }
 
     private fun saveToExternalFile(settings: AppSettings) {
@@ -207,7 +198,6 @@ class AppSettingsStore(private val context: Context) {
             KEY_GITHUB_TOKEN,
             KEY_GITHUB_BASE_BRANCH,
             KEY_ASK_HISTORY,
-            KEY_RUNTIME_SNAPSHOT,
         )
         val editor = prefs.edit()
         var migratedAny = false
@@ -242,7 +232,6 @@ class AppSettingsStore(private val context: Context) {
         const val KEY_GITHUB_TOKEN = "github_token"
         const val KEY_GITHUB_BASE_BRANCH = "github_base_branch"
         const val KEY_ASK_HISTORY = "ask_history"
-        const val KEY_RUNTIME_SNAPSHOT = "runtime_snapshot"
         const val KEY_TABS = "chat_tabs"
     }
 }
