@@ -7,7 +7,6 @@
 | mobile-agent | `mobile-agent-android/docs/*` + 本表 mobile 行 |
 | bridge crash/实验 | 专家表 P0-2/P0-3 |
 | 安全 WS/隐私 | 专家表 P0-5/P0-9 |
-| Flutter 超限/CI | 专家表 P0-6/P0-7 |
 
 ## mobile-agent（当前）
 - branch: `mobile/android-agent-app-linear`
