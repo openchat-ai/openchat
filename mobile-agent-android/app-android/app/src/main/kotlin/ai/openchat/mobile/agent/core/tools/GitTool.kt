@@ -5,11 +5,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.BufferedReader
+import ai.openchat.mobile.agent.core.github.GithubHttp
 import java.io.File
-import java.io.InputStreamReader
-import java.net.HttpURLConnection
-import java.net.URL
 
 class GitPushTool(
     private val baseDir: File,
@@ -182,43 +179,18 @@ class CiLogTool(
     }
 }
 
-private fun fetchJson(token: String, urlStr: String): JSONObject {
-    val url = URL(urlStr)
-    val connection = (url.openConnection() as HttpURLConnection).apply {
-        requestMethod = "GET"
-        connectTimeout = 10000
-        readTimeout = 20000
-        setRequestProperty("Authorization", "Bearer $token")
-        setRequestProperty("Accept", "application/vnd.github+json")
-        setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
-        setRequestProperty("User-Agent", "OpenChat-Android-Agent")
-    }
-    return try {
-        val stream = if (connection.responseCode in 200..299) connection.inputStream else connection.errorStream
-        val text = if (stream == null) "" else BufferedReader(InputStreamReader(stream)).use { it.readText() }
-        if (text.isBlank()) JSONObject() else JSONObject(text)
-    } finally {
-        connection.disconnect()
-    }
+private suspend fun fetchJson(token: String, urlStr: String): JSONObject {
+    val text = GithubHttp.fetchWithRetry(
+        token = token,
+        urlStr = urlStr,
+        accept = "application/vnd.github+json",
+        readTimeout = 20000,
+    )
+    return if (text.isBlank()) JSONObject() else JSONObject(text)
 }
 
-private fun fetchText(token: String, urlStr: String): String {
-    val url = URL(urlStr)
-    val connection = (url.openConnection() as HttpURLConnection).apply {
-        requestMethod = "GET"
-        connectTimeout = 10000
-        readTimeout = 30000
-        setRequestProperty("Authorization", "Bearer $token")
-        setRequestProperty("Accept", "text/plain")
-        setRequestProperty("User-Agent", "OpenChat-Android-Agent")
-    }
-    return try {
-        val stream = if (connection.responseCode in 200..299) connection.inputStream else connection.errorStream
-        if (stream == null) "" else BufferedReader(InputStreamReader(stream)).use { it.readText() }
-    } finally {
-        connection.disconnect()
-    }
-}
+private suspend fun fetchText(token: String, urlStr: String): String =
+    GithubHttp.fetchWithRetry(token, urlStr, "text/plain", readTimeout = 30000)
 
 private fun truncateLog(text: String, maxChars: Int = 6000): String =
     if (text.length <= maxChars) text else text.take(maxChars) + "\n...[truncated ${text.length - maxChars} chars]"
