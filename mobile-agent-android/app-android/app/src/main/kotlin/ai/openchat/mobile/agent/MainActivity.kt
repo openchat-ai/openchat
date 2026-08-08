@@ -894,7 +894,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showResume(): Boolean =
-        runtimeState.recovery.needsResume &&
         runtimeState.recovery.pendingTaskPackage != null &&
         runtimeState.agent is AgentSessionState.Idle
 

@@ -98,6 +98,9 @@ fun AppRuntimeState.reduce(action: RuntimeAction): AppRuntimeState = when (actio
         recovery = recovery.copy(
             needsResume = false,
             pendingAskPrompt = null,
+            pendingAgentGoal = null,
+            pendingTaskPackage = null,
+            lastCheckpointId = null,
             lastRecoveryMessage = null,
         ),
         lastError = null,
