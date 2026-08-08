@@ -39,7 +39,7 @@ L5 RESUME SEMANTICS: `AgentLoop.resume(tp, checkpointId)` rebuilds queue from sa
 L6 EDITGATE: hash = MD5 hex first 8. `diff` = ordered LCS line diff, not set-difference `filterNot { in }`.
 L7 STOP RACE: Stop = `reject()` + `loopJob.cancel()`; Cancelled must be single-fire (`if (!cancelled)`). Approval channel drained before wait.
 L8 NETWORK: `network_security_config` cleartext=false, system CA only. `allowBackup=false`. Provider baseUrl must be https.
-L9 GITHUB-ONLY TOOLS: Current tools (list_tree/read_file/hash_edit) hit GitHub API only. No local file access. Agent cannot read/edit local repo or run shell commands.
+L9 LOCAL SANDBOX: Local tools (glob/edit/read/write/list/delete/bash) are sandboxed to `filesDir` only, never the app tree. GitHub tools (list_tree/read_file/hash_edit/ci_status/ci_log/git_*) hit GitHub API only. Sandbox boundary is a regression guard: local path must never escape `filesDir`; shell must not touch GitHub API.
 L10 RELEASE: minify=true, signing from properties. `keystore.properties.example` committed; real `*.jks` + `keystore.properties` in gitignore. Don't commit real secrets.
 
 # Gate order (finish & verify each before next)
