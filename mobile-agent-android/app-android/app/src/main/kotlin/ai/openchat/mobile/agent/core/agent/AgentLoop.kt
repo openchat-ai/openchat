@@ -169,7 +169,8 @@ class AgentLoop(
         _state.value = AgentState.RUNNING
         onLifecycleEvent(AgentLifecycleEvent.Planning(goal))
         emit("[C1] multi-role agent started: $goal")
-        roleContext = RoleContext(goal = goal)
+        val scannedRepo = runCatching { repoContext() }.getOrElse { "Workspace unavailable: $it" }
+        roleContext = RoleContext(goal = goal, repoContext = scannedRepo)
         handoff.clearHandoffs()
         runRoleLoop(goal)
     }
@@ -199,6 +200,8 @@ class AgentLoop(
         taskQueue.addLast(AgentTask.Summarize(taskPackage, "agent pipeline complete for: $goal"))
         emit("[C1.resume] resumed from ${fromCheckpointId ?: "start"}: ${taskQueue.size} steps")
         _resumeOnly = true
+        val scannedRepo = runCatching { repoContext() }.getOrElse { "Workspace unavailable: $it" }
+        roleContext = roleContext.copy(goal = goal, repoContext = scannedRepo)
         runMainLoop(goal)
     }
 

@@ -15,6 +15,7 @@ import ai.openchat.mobile.agent.core.agent.AgentStatusHub
 import ai.openchat.mobile.agent.core.agent.AgentCommand
 import ai.openchat.mobile.agent.core.agent.AgentFailure
 import ai.openchat.mobile.agent.core.agent.AgentLifecycleEvent
+import ai.openchat.mobile.agent.core.agent.WorkspaceScanner
 import ai.openchat.mobile.agent.core.modelrouter.ModelRouter
 import ai.openchat.mobile.agent.core.modelrouter.OpenAiCompatibleProvider
 import ai.openchat.mobile.agent.core.modelrouter.OpenAiCompatibleConfig
@@ -228,7 +229,7 @@ class AgentService : Service() {
             onLifecycleEvent = { event ->
                 updateStateFromEvent(event)
             },
-            repoContext = { "" },
+            repoContext = { WorkspaceScanner(filesDir).scan() },
             toolRegistry = buildToolRegistry(),
         ).also { loop ->
             serviceScope.launch {

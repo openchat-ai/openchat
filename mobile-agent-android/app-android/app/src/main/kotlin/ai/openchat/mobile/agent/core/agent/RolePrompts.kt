@@ -26,6 +26,7 @@ object RolePrompts {
         appendLine("NEEDS_EXPLORATION: YES or NO")
         appendLine()
         appendLine("User goal: ${context.goal}")
+        appendRepoContext(context.repoContext)
     }
 
     private fun explorerPrompt(context: RoleContext): String = buildString {
@@ -43,6 +44,7 @@ object RolePrompts {
         appendLine()
         appendLine("Sentinel summary: ${context.sentinelSummary}")
         appendLine("Goal: ${context.goal}")
+        appendRepoContext(context.repoContext)
     }
 
     private fun orchestratorPrompt(context: RoleContext): String = buildString {
@@ -59,6 +61,7 @@ object RolePrompts {
         appendLine()
         appendLine("Strategy from Explorer: ${context.explorationResult}")
         appendLine("Goal: ${context.goal}")
+        appendRepoContext(context.repoContext)
     }
 
     private fun workerPrompt(context: RoleContext, toolDescriptions: String): String = buildString {
@@ -79,6 +82,7 @@ object RolePrompts {
         appendLine()
         appendLine("Milestone: ${context.milestonePlan}")
         appendLine("Goal: ${context.goal}")
+        appendRepoContext(context.repoContext)
     }
 
     private fun reviewerPrompt(context: RoleContext): String = buildString {
@@ -94,6 +98,7 @@ object RolePrompts {
         appendLine()
         appendLine("Milestone: ${context.milestonePlan}")
         appendLine("Worker output: ${context.workerOutput}")
+        appendRepoContext(context.repoContext)
     }
 
     private fun criticPrompt(context: RoleContext): String = buildString {
@@ -110,6 +115,7 @@ object RolePrompts {
         appendLine("Milestone: ${context.milestonePlan}")
         appendLine("Worker output: ${context.workerOutput}")
         appendLine("Review verdict: ${context.reviewResult}")
+        appendRepoContext(context.repoContext)
     }
 
     private fun auditorPrompt(context: RoleContext): String = buildString {
@@ -128,5 +134,14 @@ object RolePrompts {
         appendLine("Worker output: ${context.workerOutput}")
         appendLine("Review: ${context.reviewResult}")
         appendLine("Critic: ${context.criticResult}")
+        appendRepoContext(context.repoContext)
+    }
+
+    private fun StringBuilder.appendRepoContext(repoContext: String) {
+        if (repoContext.isNotBlank()) {
+            appendLine("## Repository Context")
+            appendLine(repoContext)
+            appendLine()
+        }
     }
 }

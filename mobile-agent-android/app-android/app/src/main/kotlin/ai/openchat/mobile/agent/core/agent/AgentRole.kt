@@ -12,6 +12,7 @@ enum class AgentRole(val label: String) {
 
 data class RoleContext(
     val goal: String,
+    val repoContext: String = "",
     val sentinelSummary: String = "",
     val explorationResult: String = "",
     val milestonePlan: String = "",
