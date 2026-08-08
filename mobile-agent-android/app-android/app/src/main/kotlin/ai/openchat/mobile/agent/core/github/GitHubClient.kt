@@ -39,6 +39,14 @@ class GitHubClient(
                 .put("sha", fromSha)
             request("POST", "/git/refs", payload)
             Unit
+        }.recoverCatching { error ->
+            // Resume path: branch may already exist from a previous publish. 422 = reuse it.
+            if (error is GitHubHttpException && error.code == 422) {
+                Log.d(TAG, "[C1] branch $branch already exists, reusing")
+                Unit
+            } else {
+                throw error
+            }
         }
     }
 
@@ -198,11 +206,13 @@ class GitHubClient(
 
         val responseBody = connection.readBody()
         if (connection.responseCode !in 200..299) {
-            throw IllegalStateException("GitHub HTTP ${connection.responseCode}: $responseBody")
+            throw GitHubHttpException(connection.responseCode, "GitHub HTTP ${connection.responseCode}: $responseBody")
         }
         return responseBody
     }
 }
+
+private class GitHubHttpException(val code: Int, message: String) : IllegalStateException(message)
 
 private fun HttpURLConnection.readBody(): String {
     val stream = if (responseCode in 200..299) inputStream else errorStream
