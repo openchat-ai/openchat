@@ -8,8 +8,10 @@ node_modules/
 .env.*.local
 *.key
 *.pem
+*.jks
 **/secrets/
 **/credentials/
+**/keystore.properties
 
 # === Build Outputs ===
 /build
@@ -72,6 +74,9 @@ bridge/src/core/age_increment*.js
 bridge/src/core/*.backup*
 bridge/eval-report-*.json
 *_detect_*.log
+
+# === CI/Temp Logs ===
+ci-logs.txt
 
 # === Test Temp Files ===
 test-*.js

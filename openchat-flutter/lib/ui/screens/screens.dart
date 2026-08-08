@@ -246,7 +246,7 @@ class _AgentHubScreenState extends ConsumerState<AgentHubScreen> with SduiPageSt
           }, child: Text('Create', style: TextStyle(color: theme.primary))),
         ],
       ),
-    );
+    ).then((_) => controller.dispose());
   }
 
   void _confirmDelete(BuildContext context, Resident resident) {
@@ -1477,6 +1477,10 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
   int _lastHeartbeatMs = 0;
   static const int _heartbeatIntervalMs = 30000;
   VoiceUiConfig _uiVoice = const VoiceUiConfig();
+  int _pollFailCount = 0;
+  bool _pollRunning = false;
+  static const int _maxPollIntervalMs = 30000;
+  static const int _minPollIntervalMs = 2000;
   @override
   void initState() {
     super.initState();
@@ -1501,7 +1505,7 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
       await QiniuDirectClient.fetchConfigFile('oc/config/app.json').timeout(const Duration(seconds: 8));
       _uiConfig = await sduiSource.load('people')
           .timeout(const Duration(seconds: 8));
-      _pollTimer = Timer.periodic(Duration(milliseconds: _client!.pollIntervalMs), (_) => _pollUsers());
+      _scheduleNextPoll();
       await _pollUsers().timeout(const Duration(seconds: 10));
     } catch (e) {
       _pollTimer?.cancel();
@@ -1509,6 +1513,13 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
       if (mounted) setState(() { _error = e.toString(); _loading = false; });
     }
   }
+  void _scheduleNextPoll() {
+    _pollTimer?.cancel();
+    final interval = _minPollIntervalMs * (1 << _pollFailCount).clamp(1, 16);
+    final cappedInterval = interval < _maxPollIntervalMs ? interval : _maxPollIntervalMs;
+    _pollTimer = Timer(Duration(milliseconds: cappedInterval), _pollUsers);
+  }
+
   void _startPoll() {
     if (_client == null) return;
     _pollTimer?.cancel();
@@ -1526,6 +1537,7 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
     try {
       final users = await _client!.discoverUsers().timeout(const Duration(seconds: 8));
       if (!mounted) return;
+      _pollFailCount = 0;
       setState(() {
         _users = users.where((u) => u['peerId'] != _client!.peerId).toList();
         _error = null;
@@ -1550,9 +1562,13 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
       await _client!.pollDebug().timeout(const Duration(seconds: 8));
     } catch (e) {
       if (!mounted) return;
+      _pollFailCount++;
+      _scheduleNextPoll();
       setState(() => _error = e.toString());
+      return;
     }
     if (!mounted) return;
+    _scheduleNextPoll();
     setState(() => _refreshing = false);
   }
 

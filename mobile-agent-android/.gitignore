@@ -1,0 +1,15 @@
+# macOS
+.DS_Store
+
+# Android / Gradle
+**/.gradle/
+**/build/
+**/local.properties
+**/.idea/
+**/*.iml
+/android-sdk/
+
+.gradle-home/
+app-android/.gradle/
+app-android/**/build/
+
