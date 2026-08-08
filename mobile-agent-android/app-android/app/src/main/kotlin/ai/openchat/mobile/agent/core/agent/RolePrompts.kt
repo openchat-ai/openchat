@@ -82,6 +82,9 @@ object RolePrompts {
         appendLine()
         appendLine("Milestone: ${context.milestonePlan}")
         appendLine("Goal: ${context.goal}")
+        if (context.reviewResult.isNotBlank()) appendLine("Previous review feedback: ${context.reviewResult}")
+        if (context.criticResult.isNotBlank()) appendLine("Previous critic feedback: ${context.criticResult}")
+        if (context.auditorResult.isNotBlank()) appendLine("Previous audit feedback: ${context.auditorResult}")
         appendRepoContext(context.repoContext)
     }
 

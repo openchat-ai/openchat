@@ -63,7 +63,8 @@ sealed interface AgentLifecycleEvent {
 // === invariants ===
 // - _state transitions: IDLE → RUNNING → WAITING → RUNNING → IDLE
 // - approvalChannel has capacity 1; second send before receive is dropped
-// - Role sequence: Sentinel → Explorer → Orchestrator → [Worker → Reviewer → Critic → Auditor] × milestones
+// - Role sequence: Sentinel → Explorer → Orchestrator → [Worker → Reviewer → Critic → Auditor] × iterations ≤ maxIterations
+// - When Auditor rejects: clear workerOutput → rerun Worker with review/critic/audit feedback
 // - Worker steps with tool calls require human approval; analysis roles auto-proceed
 
 class AgentLoop(
@@ -71,6 +72,7 @@ class AgentLoop(
     private val baseBranchProvider: () -> String = { "main" },
     private val stopAfterPlanningProvider: () -> Boolean = { false },
     private val maxPlanningRounds: Int = 3,
+    private val maxIterations: Int = 3,
     private val planRequest: suspend (ModelRequest) -> ModelResponse = { request ->
         ScriptedProvider().ask(request)
     },
@@ -149,6 +151,7 @@ class AgentLoop(
     private var latestTaskPackage: TaskPackage? = null
     private var _resumeOnly = false
     private var _milestoneRounds = 0
+    private var _iterationRounds = 0
     private val toolOutputs = mutableMapOf<String, String>()
     private val retryCounts = mutableMapOf<String, Int>()
     private val maxTaskRetries = 3
@@ -238,7 +241,10 @@ class AgentLoop(
                 when (role) {
                     AgentRole.SENTINEL -> runSentinel(goal)
                     AgentRole.EXPLORER -> runExplorer(goal)
-                    AgentRole.ORCHESTRATOR -> runOrchestrator(goal)
+                    AgentRole.ORCHESTRATOR -> {
+                        _iterationRounds = 0
+                        runOrchestrator(goal)
+                    }
                     AgentRole.WORKER -> {
                         _milestoneRounds++
                         if (_milestoneRounds > maxPlanningRounds) {
@@ -251,6 +257,13 @@ class AgentLoop(
                     AgentRole.REVIEWER -> runReviewer(goal)
                     AgentRole.CRITIC -> runCritic(goal)
                     AgentRole.AUDITOR -> runAuditor(goal)
+                }
+
+                if (orchestrator.isFailed(roleContext) && _iterationRounds < maxIterations) {
+                    _iterationRounds++
+                    roleContext = roleContext.copy(workerOutput = "")
+                    emit("[I${_iterationRounds}] auditor rejected, retrying worker (iteration ${_iterationRounds}/$maxIterations)")
+                    continue
                 }
             }
 
@@ -272,11 +285,11 @@ class AgentLoop(
                 val auditVer = roleContext.auditorResult.take(100)
                 onLifecycleEvent(AgentLifecycleEvent.Failed(
                     goal = goal, stage = "auditor",
-                    message = "Auditor rejected: $auditVer",
+                    message = "Auditor rejected after ${_iterationRounds} iteration(s): $auditVer",
                     retryable = true,
                     taskPackage = latestTaskPackage,
                 ))
-                emit("[E5] auditor rejected, stopping")
+                emit("[E5] auditor rejected after ${_iterationRounds} iteration(s), stopping")
             }
         } catch (error: kotlinx.coroutines.CancellationException) {
             if (!cancelled) {
