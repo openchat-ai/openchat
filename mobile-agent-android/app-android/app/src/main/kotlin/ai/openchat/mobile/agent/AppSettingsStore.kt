@@ -32,19 +32,21 @@ class AppSettingsStore(private val context: Context) {
     fun load(): AppSettings {
         val fromPrefs = loadFromPrefs()
         if (fromPrefs.provider.isComplete || fromPrefs.github.isComplete) {
-            return fromPrefs
+            return fromPrefs.forceHttpsBaseUrl()
         }
         val fromFile = loadFromExternalFile()
         if (fromFile != null) {
-            saveToPrefs(fromFile)
-            return fromFile
+            val normalized = fromFile.forceHttpsBaseUrl()
+            saveToPrefs(normalized)
+            return normalized
         }
-        return fromPrefs
+        return fromPrefs.forceHttpsBaseUrl()
     }
 
     fun save(settings: AppSettings) {
-        saveToPrefs(settings)
-        saveToExternalFile(settings)
+        val normalized = settings.forceHttpsBaseUrl()
+        saveToPrefs(normalized)
+        saveToExternalFile(normalized)
     }
 
     fun saveToPrefs(settings: AppSettings) {
@@ -378,6 +380,17 @@ private fun JSONArray?.toCheckpoints(): List<Checkpoint> {
             )
         }
     }
+}
+
+private fun AppSettings.forceHttpsBaseUrl(): AppSettings {
+    val raw = provider.baseUrl.trim()
+    if (raw.isEmpty() || raw.startsWith("https://")) return this
+    val normalized = if (raw.startsWith("http://")) {
+        "https://" + raw.removePrefix("http://")
+    } else {
+        "https://$raw"
+    }
+    return copy(provider = provider.copy(baseUrl = normalized))
 }
 
 private fun JSONObject.toPublishIntent(): PublishIntent = PublishIntent(
