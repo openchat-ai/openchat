@@ -122,6 +122,13 @@ class AgentLoop(
         ) : AgentTask {
             override val checkpoint: Checkpoint? = null
         }
+
+        data class WorkerVerify(
+            override val taskPackage: TaskPackage,
+            val requiredToolNames: List<String>,
+        ) : AgentTask {
+            override val checkpoint: Checkpoint? = null
+        }
     }
 
     private val _state = MutableStateFlow(AgentState.IDLE)
@@ -431,6 +438,7 @@ class AgentLoop(
                 val cp = Checkpoint(id = "tool-$toolName-${System.currentTimeMillis()}", label = "Run $toolName", reason = "Worker tool call: $toolName", artifactPaths = emptyList())
                 taskQueue.addLast(AgentTask.ToolCall(taskPackage = tp, checkpoint = cp, toolName = toolName, toolArgs = args))
             }
+            taskQueue.addLast(AgentTask.WorkerVerify(tp, toolCalls.map { it.first }))
             val previewCp = tp.checkpoints.first { it.id == CHECKPOINT_PREVIEW }
             val publishCp = tp.checkpoints.first { it.id == CHECKPOINT_PUBLISH }
             taskQueue.addLast(AgentTask.PreviewDraft(tp, previewCp))
@@ -498,6 +506,7 @@ class AgentLoop(
             is AgentTask.PublishDraft -> runPublishDraft(task.taskPackage, task.checkpoint, attempts)
             is AgentTask.ToolCall -> executeToolCall(task, attempts)
             is AgentTask.Summarize -> emit(task.text)
+            is AgentTask.WorkerVerify -> verifyWorkerOutput(task)
         }
     }
 
@@ -532,6 +541,30 @@ class AgentLoop(
         _log.emit(msg)
     }
 
+    private fun verifyWorkerOutput(task: AgentTask.WorkerVerify) {
+        val missingOutputs = task.requiredToolNames.filter { name ->
+            task.toolOutputs[name]?.isNotBlank() != true
+        }
+        if (missingOutputs.isNotEmpty()) {
+            shouldStop = true
+            onLifecycleEvent(AgentLifecycleEvent.Failed(goal = task.taskPackage.goal, stage = "worker-verify",
+                message = "missing tool outputs: ${missingOutputs.joinToString(", ")}", retryable = false,
+                taskPackage = task.taskPackage, checkpointId = null))
+            emit("[V1] worker verify failed: missing outputs ${missingOutputs.joinToString(", ")}")
+            return
+        }
+        val resolved = resolveArtifact(task.taskPackage)
+        if (resolved.content.isBlank()) {
+            shouldStop = true
+            onLifecycleEvent(AgentLifecycleEvent.Failed(goal = task.taskPackage.goal, stage = "worker-verify",
+                message = "resolved artifact is empty", retryable = false,
+                taskPackage = task.taskPackage, checkpointId = null))
+            emit("[V1] worker verify failed: artifact empty")
+            return
+        }
+        emit("[V1] worker verify passed: ${task.requiredToolNames.size} tool(s), ${resolved.content.lines().size} lines")
+    }
+
     private fun AgentTask.toExecutionEvent(): AgentLifecycleEvent = when (this) {
         is AgentTask.PreviewDraft -> AgentLifecycleEvent.Executing(
             taskPackage = taskPackage, currentCheckpointId = checkpoint.id, stepLabel = describeTask(this))
@@ -540,6 +573,8 @@ class AgentLoop(
         is AgentTask.ToolCall -> AgentLifecycleEvent.Executing(
             taskPackage = taskPackage, currentCheckpointId = checkpoint.id, stepLabel = describeTask(this))
         is AgentTask.Summarize -> AgentLifecycleEvent.Executing(
+            taskPackage = taskPackage, currentCheckpointId = null, stepLabel = describeTask(this))
+        is AgentTask.WorkerVerify -> AgentLifecycleEvent.Executing(
             taskPackage = taskPackage, currentCheckpointId = null, stepLabel = describeTask(this))
     }
 
@@ -600,6 +635,7 @@ class AgentLoop(
         is AgentTask.PublishDraft -> "publish ${task.taskPackage.publishIntent.branchName} PR"
         is AgentTask.ToolCall -> "tool ${task.toolName} for ${task.taskPackage.goal}"
         is AgentTask.Summarize -> task.text
+        is AgentTask.WorkerVerify -> "verify ${task.requiredToolNames.size} tool output(s) for ${task.taskPackage.goal}"
     }
 
     private fun buildFinalSummary(goal: String): String = buildString {
