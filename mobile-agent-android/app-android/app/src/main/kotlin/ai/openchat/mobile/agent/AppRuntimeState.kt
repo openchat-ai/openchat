@@ -260,27 +260,6 @@ private fun List<AskTurn>.removeTrailingEmptyAssistant(): List<AskTurn> {
 private fun trimAskHistory(history: List<AskTurn>): List<AskTurn> =
     if (history.size <= 12) history else history.takeLast(12)
 
-fun AppRuntimeState.toPersistenceSnapshot(): RuntimePersistenceSnapshot {
-    val activeAskPrompt = (ask as? AskSessionState.Streaming)?.prompt
-    val activeAgentGoal = agent.goalOrNull()
-    val activeRecoveryMessage = when {
-        ask is AskSessionState.Streaming -> "Ask request interrupted"
-        activeAgentGoal != null && agent !is AgentSessionState.Completed -> "Agent execution interrupted"
-        else -> recovery.lastRecoveryMessage
-    }
-
-    return RuntimePersistenceSnapshot(
-        mode = mode,
-        recovery = recovery.copy(
-            needsResume = recovery.needsResume || activeAskPrompt != null || activeAgentGoal != null,
-            pendingAskPrompt = activeAskPrompt ?: recovery.pendingAskPrompt,
-            pendingAgentGoal = activeAgentGoal ?: recovery.pendingAgentGoal,
-            pendingTaskPackage = agent.taskPackageOrNull() ?: recovery.pendingTaskPackage,
-            lastCheckpointId = agent.checkpointIdOrNull() ?: recovery.lastCheckpointId,
-            lastRecoveryMessage = activeRecoveryMessage,
-        ),
-        lastError = lastError,
-    )
 }
 
 enum class RuntimeMode {
