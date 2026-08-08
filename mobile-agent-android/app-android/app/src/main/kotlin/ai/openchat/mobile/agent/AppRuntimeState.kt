@@ -263,8 +263,6 @@ private fun List<AskTurn>.removeTrailingEmptyAssistant(): List<AskTurn> {
 private fun trimAskHistory(history: List<AskTurn>): List<AskTurn> =
     if (history.size <= 12) history else history.takeLast(12)
 
-}
-
 enum class RuntimeMode {
     ASK,
     PLAN,
